@@ -1,14 +1,21 @@
 # SEC Python Web Scraper
 
-This repository contains a Python Web scraper for parsing 13F filings (mutual fund holdings) from SEC's website, [EDGAR](https://www.sec.gov/edgar/searchedgar/companysearch.html), and writing a .tsv file from the data.
+This repository contains a Python script to scrape and compare the two most recent 13F filings for a given CIK from the SEC's [EDGAR](https://www.sec.gov/edgar/searchedgar/companysearch.html) database, and generates a .csv showing latest changes in holdings.
 
 ## Requirements
 
 ### Getting Started
 
-- `pip install -r requirements.txt` (or `pipenv install` if you are using pipenv)
-- `python scraper.py` (or `pipenv run python scraper.py`)
-- When prompted, enter the 10-digit CIK number of a mutual fund (i.e. 0001067983 for Berkshire Hathaway Inc, Warren Buffett)
+1. Install the required packages: `pip install -r requirements.txt`
+2. Create a `.env` file in the root directory of the project.
+3. Add your Finnhub API key to the `.env` file in the following format:
+
+    ```text
+    FINNHUB_API_KEY="your_api_key_here"
+    ```
+
+4. Run the script: `python scraper.py`
+5. When prompted, enter the 10-digit CIK number of a mutual fund (e.g., `0001067983` for Berkshire Hathaway Inc).
 
 ### Key Dependencies
 
@@ -16,7 +23,8 @@ This repository contains a Python Web scraper for parsing 13F filings (mutual fu
 - [lxml](https://lxml.de/), Python library for processing XML and HTML
 - [Beautiful Soup](https://pypi.org/project/beautifulsoup4/), Python library for scraping information from Web pages
 - [re](https://docs.python.org/3/library/re.html), Python module for using regular expressions
-- [csv](https://docs.python.org/3/library/csv.html), Python module for parsing and writing CSV and TSV files
+- [csv](https://docs.python.org/3/library/csv.html), Python module for parsing and writing CSV files
+- [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), for mapping CUSIPs to stock tickers.
 
 ## Contributors
 
