@@ -1,88 +1,201 @@
-from unicodedata import name
 import pandas as pd
 import requests
 import re
-import csv
-import lxml
 from bs4 import BeautifulSoup
 
-sec_url = 'https://www.sec.gov'
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36'
+SEC_URL = 'https://www.sec.gov'
+
 
 def get_request(url):
+    """
+    Sends a GET request to the specified URL with custom headers.
+    """
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36',
+        'User-Agent': USER_AGENT,
         'Accept-Encoding': 'gzip, deflate, br',
         'HOST': 'www.sec.gov',
     }
-    return requests.get(url, headers=headers)
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
+        return None
+
 
 def create_url(cik):
-    return 'https://www.sec.gov/cgi-bin/browse-edgar?CIK={}&owner=exclude&action=getcompany&type=13F-HR'.format(cik)
+    """
+    Creates the SEC EDGAR URL for a given CIK.
+    """
+    return f'{SEC_URL}/cgi-bin/browse-edgar?CIK={cik}&owner=exclude&action=getcompany&type=13F-HR'
+
 
 def get_user_input():
+    """
+    Prompts the user for a 10-digit CIK number.
+    """
     cik = input("Enter 10-digit CIK number: ")
     return cik
 
 
-def scrap_company_report(requested_cik):
-    # Find mutual fund by CIK number on EDGAR
-    response = get_request(create_url(requested_cik))
+def get_filing_date(report_url):
+    """
+    Extracts the filing date from the report URL.
+    """
+    try:
+        response = get_request(report_url)
+        if response is None:
+            return None
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        filing_date_tag = soup.find('div', string=re.compile(r'Filing Date'))
+        if filing_date_tag:
+            filing_date = filing_date_tag.find_next().text.strip()
+            return filing_date
+        else:
+            print(f"Filing date not found on page: {report_url}")
+            return None
+    except Exception as e:
+        print(f"Error extracting filing date: {e}")
+        return None
+
+def scrape_company(requested_cik):
+    """
+    Scrapes the 13F reports for a given CIK from the SEC EDGAR database.
+    """
+    url = create_url(requested_cik)
+    response = get_request(url)
+
+    if response is None:
+        return
+
     soup = BeautifulSoup(response.text, "html.parser")
-    tags = soup.findAll('a', id="documentsbutton")
+    document_tags = soup.find_all('a', id="documentsbutton")
 
-    last_report = (sec_url + tags[0]['href'])
-    previous_report = (sec_url + tags[1]['href'])
-    scrap_report_by_url(last_report, "last_report")
-    scrap_report_by_url(previous_report, "previous_report")
+    if not document_tags:
+        print(f"No documents found for CIK: {requested_cik}")
+        return
+
+    report_data = []
+    filing_dates = []
+
+    for i, tag in enumerate(document_tags[:2]):
+        report_url = SEC_URL + tag['href']
+        filing_date = get_filing_date(report_url)
+        if filing_date:
+            print(f"Scraping report for {filing_date}")
+            filing_dates.append(filing_date)
+            report_data.append(scrape_report_by_url(report_url))
+        else:
+            print(f"Could not determine filing date for {report_url}.")
+
+    if len(report_data) == 2:
+        generate_comparison(requested_cik, filing_dates, report_data[0], report_data[1])
+    elif len(report_data) == 1:
+        print("Only one report found, cannot generate comparison.")
+    else:
+        print("No reports found.")
 
 
-def scrap_report_by_url(url, filename):
-    response_two = get_request(url)
-    soup_two = BeautifulSoup(response_two.text, "html.parser")
-    tags_two = soup_two.findAll('a', attrs={'href': re.compile('xml')})
-    xml_url = tags_two[3].get('href')
+def scrape_report_by_url(url):
+    """
+    Scrapes the 13F report from a given URL and saves the data to a CSV file.
+    """
+    response = get_request(url)
+    if response is None:
+        return
 
-    response_xml = get_request(sec_url + xml_url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    tags = soup.findAll('a', attrs={'href': re.compile('xml')})
+    xml_url = tags[3].get('href')
+
+    response_xml = get_request(SEC_URL + xml_url)
+    if response_xml is None:
+        print(f"Failed to get XML response from {SEC_URL + xml_url}")
+        return None
+
     soup_xml = BeautifulSoup(response_xml.content, "lxml")
-    xml_to_csv(soup_xml, filename)
+    return xml_to_dataframe(soup_xml)
 
 
-def xml_to_csv(soup_xml, name):
-
+def xml_to_dataframe(soup_xml):
+    """
+    Parses the XML content and returns the data as a Pandas DataFrame.
+    """
     columns = [
         "Name of Issuer",
         "CUSIP",
-        "Value (x$1000)",
+        "Value",
         "Shares",
-        "Investment Discretion",
-        "Voting Sole / Shared / None"
+        "Put/Call"
     ]
-    issuers = soup_xml.body.findAll(re.compile('nameofissuer'))
-    cusips = soup_xml.body.findAll(re.compile('cusip'))
-    values = soup_xml.body.findAll(re.compile('value'))
-    sshprnamts = soup_xml.body.findAll('sshprnamt')
-    sshprnamttypes = soup_xml.body.findAll(re.compile('sshprnamttype'))
-    investmentdiscretions = soup_xml.body.findAll(re.compile('investmentdiscretion'))
-    soles = soup_xml.body.findAll(re.compile('sole'))
-    shareds = soup_xml.body.findAll(re.compile('shared'))
-    nones = soup_xml.body.findAll(re.compile('none'))
 
-    df = pd.DataFrame(columns= columns)
+    data = []
 
-    for issuer, cusip, value, sshprnamt, sshprnamttype, investmentdiscretion, sole, shared, none in zip(issuers, cusips, values, sshprnamts, sshprnamttypes, investmentdiscretions, soles, shareds, nones):
-        row = {
-            "Name of Issuer": issuer.text,
-            "CUSIP": cusip.text,
-            "Value (x$1000)": value.text,
-            "Shares": f"{sshprnamt.text} {sshprnamttype.text}",
-            "Investment Discretion": investmentdiscretion.text,
-            "Voting Sole / Shared / None": f"{sole.text} / {shared.text} / {none.text}"
-        }
-        df = df.append(row, ignore_index=True)
+    for info_table in soup_xml.find_all('infotable'):
+        issuer = info_table.find('nameofissuer').text
+        cusip = info_table.find('cusip').text
+        value = info_table.find('value').text
+        shares = info_table.find('sshprnamt').text
+        put_call = info_table.find('putcall').text if info_table.find('putcall') else ''
+
+        data.append([
+            issuer,
+            cusip,
+            value,
+            shares,
+            put_call
+        ])
+
+    df = pd.DataFrame(data, columns=columns)
+
+    # Filtering options to keep only shares
+    df = df[df['Put/Call'] == ''].drop('Put/Call', axis=1)
+
+    # Convert numeric columns and handle errors
+    df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce')
+    df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
+
+    # Sum both value and shares by CUSIP
+    df = df.groupby(['CUSIP', 'Name of Issuer'], as_index=False).agg({
+        'Value': 'sum',
+        'Shares': 'sum'
+    })
+
+    return df
 
 
-    df.to_csv(f"{name}.csv")
+def generate_comparison(cik, filing_dates, df_recent, df_previous):
+    """
+    Generates a comparison report between the two DataFrames, calculating percentage change and indicating new positions.
+    """
+    df_recent = df_recent.set_index('CUSIP')
+    df_previous = df_previous.set_index('CUSIP')
 
+    df_comparison = df_recent.join(df_previous[['Shares']], lsuffix='_recent', rsuffix='_previous', how='left')
+    df_comparison['Shares_previous'] = df_comparison['Shares_previous'].fillna(0)
+    df_comparison['Percentage Change'] = ((df_comparison['Shares_recent'] - df_comparison['Shares_previous']) / df_comparison['Shares_previous']) * 100
+    df_comparison['Percentage Change'] = df_comparison.apply(
+        lambda row: 
+        'NEW' if row['Shares_previous'] == 0
+        else 'NO CHANGE' if row['Shares_recent'] == row['Shares_previous']
+        else '{:+.1f}%'.format(row['Percentage Change']),
+        axis=1
+    )
 
-requested_cik = get_user_input()
-scrap_company_report(requested_cik)
+    df_comparison = df_comparison.reset_index()
+    
+    df_comparison = df_comparison[['CUSIP', 'Name of Issuer', 'Value', 'Shares_recent', 'Percentage Change']] \
+                        .rename(columns={'Shares_recent': 'Shares'}) \
+                        .sort_values(by='Value', ascending=False)
+
+    # Save the comparison to CSV
+    filename = f"{cik}_{filing_dates[0]}.csv"
+    df_comparison.to_csv(filename, index=False)
+    print(f"Created {filename}")
+
+if __name__ == "__main__":
+    requested_cik = get_user_input()
+    scrape_company(requested_cik)
