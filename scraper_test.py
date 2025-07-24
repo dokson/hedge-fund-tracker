@@ -53,7 +53,7 @@ class TestScraper(unittest.TestCase):
 
         # Add assertions to check the output file
         df_actual = pd.read_csv(f"{cik}_{filing_dates[0]}.csv")
-        self.assertEqual(df_actual['Percentage Change'][0], '+100%')
+        self.assertEqual(df_actual['Percentage Change'][0], '+100.0%')
 
         # Clean up: remove the file
         os.remove(filename)
