@@ -28,13 +28,13 @@ This project uses `pipenv` for dependency management. If you don't have it, you 
 4. **Run the script:** Execute the scraper within the project's virtual environment:
 
     ```bash
-    pipenv run python scraper.py
+    pipenv run python -m scraper.main
     ```
 
     or
 
     ```bash
-    python -m pipenv run python scraper.py
+    python -m pipenv run python -m scraper.main
     ```
 
 5. **Enter CIK:** When prompted, enter the 10-digit CIK number of a mutual fund (e.g., `0001067983` for Berkshire Hathaway Inc).

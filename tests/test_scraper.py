@@ -2,7 +2,7 @@ import unittest
 import pandas as pd
 import os
 from bs4 import BeautifulSoup
-from scraper import create_url, xml_to_dataframe, generate_comparison
+from scraper.main import create_url, xml_to_dataframe, generate_comparison
 from unittest.mock import patch
 
 class TestScraper(unittest.TestCase):
@@ -37,7 +37,7 @@ class TestScraper(unittest.TestCase):
         self.assertEqual(df['Value'][0], 1000)
         self.assertEqual(df['Shares'][0], 100)
 
-    @patch('scraper.get_cusip_to_ticker_mapping_finnhub_with_fallback')
+    @patch('scraper.main.get_cusip_to_ticker_mapping_finnhub_with_fallback')
     def test_generate_comparison(self, mock_get_tickers):
         # Create mock DataFrames
         data1 = {'Name of Issuer': ['Test Issuer'], 'CUSIP': ['TC123456'], 'Value': [1000], 'Shares': [100]}
