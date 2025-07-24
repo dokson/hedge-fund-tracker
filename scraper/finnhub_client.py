@@ -1,6 +1,7 @@
 import finnhub
 import time
 import pandas as pd
+import os
 
 
 def load_api_key_from_env(file_path='.env'):
@@ -17,12 +18,18 @@ def load_api_key_from_env(file_path='.env'):
         print(f"Error reading credential file '{file_path}': {e}")
     return None
 
-
 # Initialize API Key and Client at module level
-FINNHUB_API_KEY = load_api_key_from_env()
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
+
 if not FINNHUB_API_KEY:
-    print("ERROR: Could not find FINNHUB_API_KEY. Please create a '.env' file with the line: FINNHUB_API_KEY=\"your_key_here\"")
-    exit()
+    FINNHUB_API_KEY = load_api_key_from_env()
+
+if not FINNHUB_API_KEY:
+    raise EnvironmentError(
+        "Could not find FINNHUB_API_KEY. "
+        "Please set it as an environment variable (e.g., in CI secrets) "
+        "or in a '.env' file with the line: FINNHUB_API_KEY=\"your_key_here\""
+    )
 
 FINNHUB_CLIENT = finnhub.Client(api_key=FINNHUB_API_KEY)
 FINNHUB_TIMEOUT = 0.2
