@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 requests = ">=2.31.0"
 lxml = ">=4.6.2"
-beautifulsoup4 = "==4.7.1"
+beautifulsoup4 = ">=4.12"
 pandas = ">=2.3.1"
 urllib3 = "==2.5.0"
 six = ">=1.16.0"

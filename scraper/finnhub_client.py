@@ -1,6 +1,6 @@
+from .pandas import pd
 import finnhub
 import time
-import pandas as pd
 import os
 
 
@@ -32,7 +32,7 @@ if not FINNHUB_API_KEY:
     )
 
 FINNHUB_CLIENT = finnhub.Client(api_key=FINNHUB_API_KEY)
-FINNHUB_TIMEOUT = 0.2
+FINNHUB_TIMEOUT = 0.3
 
 
 def _find_ticker_in_finnhub_response(response_data):
@@ -64,19 +64,16 @@ def _finnhub_lookup_with_retry(query, max_retries=3, backoff_factor=30):
             if '429' in str(e):
                 if attempt < max_retries - 1:
                     wait_time = backoff_factor * (2 ** attempt)
-                    print(
-                        f"Finnhub API rate limit hit. Retrying in {wait_time} seconds...")
+                    print(f"Finnhub API rate limit hit. Retrying in {wait_time} seconds...")
                     time.sleep(wait_time)
                 else:
-                    print(
-                        f"Finnhub API rate limit hit. Max retries reached for query '{query}'.")
+                    print(f"Finnhub API rate limit hit. Max retries reached for query '{query}'.")
                     return None
             else:
                 print(f"Finnhub API error for query '{query}': {e}")
                 return None
         except Exception as e:
-            print(
-                f"An unexpected error occurred during Finnhub request for query '{query}': {e}")
+            print(f"An unexpected error occurred during Finnhub request for query '{query}': {e}")
             return None
     return None
 
@@ -97,8 +94,8 @@ def get_ticker_with_finnhub_fallback(cusip, issuer_name):
     # 3. Fallback to the first word of the issuer name
     if pd.isna(ticker) and issuer_name:
         first_word = issuer_name.split(' ')[0]
-        # Block very common words
-        if len(first_word) > 2 and first_word.lower() not in ['the', 'corp', 'inc', 'group', 'ltd', 'co']:
+        # Block common words
+        if len(first_word) > 2 and first_word.lower() not in ['the', 'corp', 'inc', 'group', 'ltd', 'co', 'plc']:
             response = _finnhub_lookup_with_retry(first_word)
             ticker = _find_ticker_in_finnhub_response(response)
     if pd.isna(ticker):
@@ -111,8 +108,7 @@ def get_cusip_to_ticker_mapping_finnhub_with_fallback(df_comparison):
     Maps CUSIPs to tickers using Finnhub, with a fallback to the issuer name.
     Takes the entire comparison DataFrame as input to access both CUSIP and Name of Issuer.
     """
-    mapped_tickers = pd.Series(
-        index=df_comparison['CUSIP'].unique(), dtype=object)
+    mapped_tickers = pd.Series(index=df_comparison['CUSIP'].unique(), dtype=object)
 
     for index, row in df_comparison.iterrows():
         cusip = row['CUSIP']

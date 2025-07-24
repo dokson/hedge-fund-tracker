@@ -1,16 +1,10 @@
 import unittest
-import pandas as pd
 import os
-from bs4 import BeautifulSoup
-from scraper.main import create_url, xml_to_dataframe, generate_comparison
+import pandas as pd
+from scraper.main import xml_to_dataframe, generate_comparison
 from unittest.mock import patch
 
-class TestScraper(unittest.TestCase):
-
-    def test_create_url(self):
-        cik = "1234567890"
-        expected_url = f'https://www.sec.gov/cgi-bin/browse-edgar?CIK={cik}&owner=exclude&action=getcompany&type=13F-HR'
-        self.assertEqual(create_url(cik), expected_url)
+class TestMain(unittest.TestCase):
 
     def test_xml_to_dataframe(self):
         # Mock XML content
@@ -24,10 +18,9 @@ class TestScraper(unittest.TestCase):
             </shrsorprnamt>
         </infotable>
         """
-        soup_xml = BeautifulSoup(xml_content, "lxml")
-        
+       
         # Call the function
-        df = xml_to_dataframe(soup_xml)
+        df = xml_to_dataframe(xml_content)
         
         # Assertions
         self.assertIsInstance(df, pd.DataFrame)
@@ -45,7 +38,7 @@ class TestScraper(unittest.TestCase):
         df_recent = pd.DataFrame(data1)
         df_previous = pd.DataFrame(data2)
         cik = "0123456789"
-        filing_dates = ["1234-05-06"]
+        filing_dates = ["1234-05-06", "0123-04-05"]
         filename = f"{cik}_{filing_dates[0]}.csv"
 
         # Mock the return value of the ticker mapping function
@@ -57,7 +50,7 @@ class TestScraper(unittest.TestCase):
 
         # Add assertions to check the output file
         df_comparison = pd.read_csv(f"{cik}_{filing_dates[0]}.csv")
-        self.assertEqual(df_comparison['Percentage Change'][0], '+100.0%')
+        self.assertEqual(df_comparison['Delta_%'][0], '+100.0%')
         self.assertEqual(df_comparison['Ticker'][0], 'TEST')
 
 
