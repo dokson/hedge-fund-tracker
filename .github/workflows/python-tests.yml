@@ -1,8 +1,8 @@
-name: Python Tests
+name: Tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 jobs:
   test:
@@ -22,6 +22,5 @@ jobs:
         python -m pip install pipenv
         pipenv install --dev
 
-    # 4. Esegui i test con unittest
     - name: Run tests
       run: pipenv run python -m unittest scraper_test.py
