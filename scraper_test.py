@@ -1,8 +1,9 @@
 import unittest
 import pandas as pd
-from bs4 import BeautifulSoup
 import os
+from bs4 import BeautifulSoup
 from scraper import create_url, xml_to_dataframe, generate_comparison
+from unittest.mock import patch
 
 class TestScraper(unittest.TestCase):
 
@@ -23,7 +24,7 @@ class TestScraper(unittest.TestCase):
             </shrsorprnamt>
         </infotable>
         """
-        soup_xml = BeautifulSoup(xml_content, "xml")
+        soup_xml = BeautifulSoup(xml_content, "lxml")
         
         # Call the function
         df = xml_to_dataframe(soup_xml)
@@ -36,24 +37,29 @@ class TestScraper(unittest.TestCase):
         self.assertEqual(df['Value'][0], 1000)
         self.assertEqual(df['Shares'][0], 100)
 
-
-    def test_generate_comparison(self):
+    @patch('scraper.get_cusip_to_ticker_mapping_finnhub_with_fallback')
+    def test_generate_comparison(self, mock_get_tickers):
         # Create mock DataFrames
-        data1 = {'Name of Issuer': ['Test Issuer'], 'CUSIP': ['123456789'], 'Value': [1000], 'Shares': [100]}
-        data2 = {'Name of Issuer': ['Test Issuer'], 'CUSIP': ['123456789'], 'Value': [500], 'Shares': [50]}
+        data1 = {'Name of Issuer': ['Test Issuer'], 'CUSIP': ['TC123456'], 'Value': [1000], 'Shares': [100]}
+        data2 = {'Name of Issuer': ['Test Issuer'], 'CUSIP': ['TC123456'], 'Value': [500], 'Shares': [50]}
         df_recent = pd.DataFrame(data1)
         df_previous = pd.DataFrame(data2)
-        cik = "1234567890"
+        cik = "0123456789"
         filing_dates = ["1234-05-06"]
         filename = f"{cik}_{filing_dates[0]}.csv"
+
+        # Mock the return value of the ticker mapping function
+        mock_get_tickers.return_value = pd.Series(['TEST'], index=['TC123456'])
 
         # Call the function
         generate_comparison(cik, filing_dates, df_recent, df_previous)
         self.assertTrue(os.path.exists(filename))
 
         # Add assertions to check the output file
-        df_actual = pd.read_csv(f"{cik}_{filing_dates[0]}.csv")
-        self.assertEqual(df_actual['Percentage Change'][0], '+100.0%')
+        df_comparison = pd.read_csv(f"{cik}_{filing_dates[0]}.csv")
+        self.assertEqual(df_comparison['Percentage Change'][0], '+100.0%')
+        self.assertEqual(df_comparison['Ticker'][0], 'TEST')
+
 
         # Clean up: remove the file
         os.remove(filename)
