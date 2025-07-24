@@ -110,6 +110,7 @@ def get_cusip_to_ticker_mapping_finnhub_with_fallback(df_comparison):
     """
     mapped_tickers = pd.Series(index=df_comparison['CUSIP'].unique(), dtype=object)
 
+    print(f"Getting Tickers from CUSIPs using Finnhub...")
     for index, row in df_comparison.iterrows():
         cusip = row['CUSIP']
         issuer_name = row['Name of Issuer']

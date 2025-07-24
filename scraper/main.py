@@ -92,7 +92,6 @@ def generate_comparison(cik, filing_dates, df_recent, df_previous):
         axis=1
     )
 
-    print(f"Getting Tickers from CUSIPs using Finnhub...")
     df_comparison['Ticker'] = df_comparison['CUSIP'].map(get_cusip_to_ticker_mapping_finnhub_with_fallback(df_comparison))
 
     total_portfolio_value = df_comparison['Value_recent'].sum()
