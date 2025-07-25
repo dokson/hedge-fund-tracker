@@ -53,7 +53,6 @@ class TestMain(unittest.TestCase):
         self.assertEqual(df_comparison['Delta_%'][0], '+100.0%')
         self.assertEqual(df_comparison['Ticker'][0], 'TEST')
 
-
         # Clean up: remove the file
         os.remove(filename)
 

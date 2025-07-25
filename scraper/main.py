@@ -16,7 +16,7 @@ def xml_to_dataframe(xml_content):
     """
     Parses the XML content and returns the data as a Pandas DataFrame.
     """
-    soup_xml = BeautifulSoup(xml_content, "lxml")
+    soup_xml = BeautifulSoup(xml_content, "xml")
 
     columns = [
         "Name of Issuer",

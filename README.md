@@ -42,7 +42,6 @@ This project uses `pipenv` for dependency management. If you don't have it, you 
 ### Key Dependencies
 
 - [Requests](https://2.python-requests.org/en/master/), Python library for making HTTP requests
-- [lxml](https://lxml.de/), Python library for processing XML and HTML
 - [Beautiful Soup](https://pypi.org/project/beautifulsoup4/), Python library for scraping information from Web pages
 - [re](https://docs.python.org/3/library/re.html), Python module for using regular expressions
 - [csv](https://docs.python.org/3/library/csv.html), Python module for parsing and writing CSV files

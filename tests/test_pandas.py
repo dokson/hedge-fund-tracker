@@ -1,6 +1,5 @@
 import unittest
 import pandas as pd
-import numpy as np
 from scraper.pandas import coalesce
 
 class TestPandas(unittest.TestCase):
