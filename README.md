@@ -43,6 +43,7 @@ This project uses `pipenv` for dependency management. If you don't have it, you 
 
 - [Requests](https://2.python-requests.org/en/master/), Python library for making HTTP requests
 - [Beautiful Soup](https://pypi.org/project/beautifulsoup4/), Python library for scraping information from Web pages
+- [lxml](https://lxml.de/), Python library for processing XML and HTML
 - [re](https://docs.python.org/3/library/re.html), Python module for using regular expressions
 - [csv](https://docs.python.org/3/library/csv.html), Python module for parsing and writing CSV files
 - [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), for mapping CUSIPs to stock tickers.

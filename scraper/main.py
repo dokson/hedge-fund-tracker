@@ -1,8 +1,10 @@
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from .finnhub_client import get_cusip_to_ticker_mapping_finnhub_with_fallback
 from .pandas import coalesce, pd
 from .sec_scraper import fetch_latest_two_filings
+import warnings
 
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 def get_user_input():
     """
@@ -16,7 +18,7 @@ def xml_to_dataframe(xml_content):
     """
     Parses the XML content and returns the data as a Pandas DataFrame.
     """
-    soup_xml = BeautifulSoup(xml_content, "xml")
+    soup_xml = BeautifulSoup(xml_content, "lxml")
 
     columns = [
         "Name of Issuer",
