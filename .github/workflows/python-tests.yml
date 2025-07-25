@@ -25,3 +25,5 @@ jobs:
 
     - name: Run tests
       run: pipenv run python -m unittest discover
+      env:
+        FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
