@@ -3,6 +3,7 @@ import finnhub
 import time
 import os
 
+FINNHUB_TIMEOUT = 0.7
 
 def load_api_key_from_env(file_path='.env'):
     """Loads the Finnhub API key from a .env text file."""
@@ -19,10 +20,7 @@ def load_api_key_from_env(file_path='.env'):
     return None
 
 # Initialize API Key and Client at module level
-FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
-
-if not FINNHUB_API_KEY:
-    FINNHUB_API_KEY = load_api_key_from_env()
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY") or load_api_key_from_env()
 
 if not FINNHUB_API_KEY:
     raise EnvironmentError(
@@ -32,7 +30,6 @@ if not FINNHUB_API_KEY:
     )
 
 FINNHUB_CLIENT = finnhub.Client(api_key=FINNHUB_API_KEY)
-FINNHUB_TIMEOUT = 0.3
 
 
 def _find_ticker_in_finnhub_response(response_data):
@@ -78,7 +75,7 @@ def _finnhub_lookup_with_retry(query, max_retries=3, backoff_factor=30):
     return None
 
 
-def get_ticker_with_finnhub_fallback(cusip, issuer_name):
+def get_ticker_with_finnhub_fallback(cusip, company_name):
     """
     Attempts to get the ticker from Finnhub.io, first using the CUSIP,
     then falling back to the issuer name if the CUSIP finds nothing.
@@ -88,18 +85,18 @@ def get_ticker_with_finnhub_fallback(cusip, issuer_name):
     response = _finnhub_lookup_with_retry(cusip)
     ticker = _find_ticker_in_finnhub_response(response)
     # 2. Fallback to full issuer name (truncated)
-    if pd.isna(ticker) and issuer_name:
-        response = _finnhub_lookup_with_retry(issuer_name[:20])
+    if pd.isna(ticker) and company_name:
+        response = _finnhub_lookup_with_retry(company_name[:20])
         ticker = _find_ticker_in_finnhub_response(response)
     # 3. Fallback to the first word of the issuer name
-    if pd.isna(ticker) and issuer_name:
-        first_word = issuer_name.split(' ')[0]
+    if pd.isna(ticker) and company_name:
+        first_word = company_name.split(' ')[0]
         # Block common words
-        if len(first_word) > 2 and first_word.lower() not in ['the', 'corp', 'inc', 'group', 'ltd', 'co', 'plc']:
+        if len(first_word) > 2 and first_word.lower() not in ['the', 'corp', 'inc', 'group', 'ltd', 'co', 'plc', 'hldgs']:
             response = _finnhub_lookup_with_retry(first_word)
             ticker = _find_ticker_in_finnhub_response(response)
     if pd.isna(ticker):
-        print(f"Finnhub: No ticker found for CUSIP {cusip} / Issuer Name '{issuer_name}'.")
+        print(f"Finnhub: No ticker found for CUSIP {cusip} / Company '{company_name}'.")
     return ticker
 
 
@@ -113,12 +110,12 @@ def get_cusip_to_ticker_mapping_finnhub_with_fallback(df_comparison):
     print(f"Getting Tickers from CUSIPs using Finnhub...")
     for index, row in df_comparison.iterrows():
         cusip = row['CUSIP']
-        issuer_name = row['Name of Issuer']
+        company = row['Company']
 
         if cusip in mapped_tickers.index and pd.notna(mapped_tickers.loc[cusip]):
             continue
 
-        ticker = get_ticker_with_finnhub_fallback(cusip, issuer_name)
+        ticker = get_ticker_with_finnhub_fallback(cusip, company)
         mapped_tickers.loc[cusip] = ticker
 
     return mapped_tickers

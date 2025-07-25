@@ -14,6 +14,18 @@ def get_user_input():
     return cik
 
 
+def load_hedge_funds_from_csv(filepath="hedge_funds.csv"):
+    """
+    Loads hedge funds from file (hedge_funds.csv)
+    """
+    try:
+        df = pd.read_csv(filepath, dtype={'cik': str})
+        return df[['cik', 'hedge_fund']].to_dict('records')
+    except Exception as e:
+        print(f"Errore while reading '{filepath}': {e}")
+        return []
+
+
 def xml_to_dataframe(xml_content):
     """
     Parses the XML content and returns the data as a Pandas DataFrame.
@@ -21,7 +33,7 @@ def xml_to_dataframe(xml_content):
     soup_xml = BeautifulSoup(xml_content, "lxml")
 
     columns = [
-        "Name of Issuer",
+        "Company",
         "CUSIP",
         "Value",
         "Shares",
@@ -30,15 +42,16 @@ def xml_to_dataframe(xml_content):
 
     data = []
 
-    for info_table in soup_xml.find_all('infotable'):
-        issuer = info_table.find('nameofissuer').text
-        cusip = info_table.find('cusip').text
-        value = info_table.find('value').text
-        shares = info_table.find('sshprnamt').text
-        put_call = info_table.find('putcall').text if info_table.find('putcall') else ''
+    for info_table in soup_xml.find_all(lambda tag: tag.name.endswith('infotable')):
+        company = info_table.find(lambda tag: tag.name.endswith('nameofissuer')).text
+        cusip = info_table.find(lambda tag: tag.name.endswith('cusip')).text
+        value = info_table.find(lambda tag: tag.name.endswith('value')).text
+        shares = info_table.find(lambda tag: tag.name.endswith('sshprnamt')).text
+        put_call_tag = info_table.find(lambda tag: tag.name.endswith('putcall'))
+        put_call = put_call_tag.text if put_call_tag else ''
 
         data.append([
-            issuer,
+            company,
             cusip,
             value,
             shares,
@@ -50,12 +63,13 @@ def xml_to_dataframe(xml_content):
     # Filter out options to keep only shares
     df = df[df['Put/Call'] == ''].drop('Put/Call', axis=1)
 
-    # Convert numeric columns and handle errors
+    # Cast numeric columns
     df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce')
     df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
 
-    # Sum both value and shares by CUSIP
-    df = df.groupby(['CUSIP', 'Name of Issuer'], as_index=False).agg({
+    # Dedup by CUSIP
+    df = df.groupby(['CUSIP'], as_index=False).agg({
+        'Company': 'max',
         'Value': 'sum',
         'Shares': 'sum'
     })
@@ -63,64 +77,106 @@ def xml_to_dataframe(xml_content):
     return df
 
 
-def generate_comparison(cik, filing_dates, df_recent, df_previous):
+def generate_comparison(fund_name, filing_dates, df_recent, df_previous):
     """
     Generates a comparison report between the two DataFrames, calculating percentage change and indicating new positions.
     """
     df_comparison = pd.merge(
         df_recent,
         df_previous,
-        on=['CUSIP', 'Name of Issuer'],
+        on=['CUSIP'],
         how='outer',
         suffixes=('_recent', '_previous')
     )
 
+    df_comparison['Company'] = coalesce(df_comparison['Company_recent'], df_comparison['Company_previous'])
+
     df_comparison['Shares_recent'] = df_comparison['Shares_recent'].fillna(0).astype('int64')
     df_comparison['Shares_previous'] = df_comparison['Shares_previous'].fillna(0).astype('int64')
-    df_comparison['Value_recent'] = df_comparison['Value_recent'].fillna(0).astype('int64')
+    df_comparison['Value'] = df_comparison['Value_recent'].fillna(0).astype('int64')
     df_comparison['Value_previous'] = df_comparison['Value_previous'].fillna(0).astype('int64')
 
-    df_comparison['Price_per_Share'] = (coalesce(df_comparison['Value_recent'] / df_comparison['Shares_recent'], df_comparison['Value_previous'] / df_comparison['Shares_previous'])).round(2)
+    df_comparison['Price_per_Share'] = (coalesce(df_comparison['Value'] / df_comparison['Shares_recent'], df_comparison['Value_previous'] / df_comparison['Shares_previous'])).round(2)
     df_comparison['Delta_Shares'] = df_comparison['Shares_recent'] - df_comparison['Shares_previous']
     df_comparison['Delta_Value'] = (df_comparison['Delta_Shares'] * df_comparison['Price_per_Share']).fillna(0).astype(int)
 
-    df_comparison['Delta_%'] = (df_comparison['Delta_Shares'] / df_comparison['Shares_previous']) * 100
-    df_comparison['Delta_%'] = df_comparison.apply(
+    df_comparison['Delta%'] = (df_comparison['Delta_Shares'] / df_comparison['Shares_previous']) * 100
+
+    df_comparison['Delta'] = df_comparison.apply(
         lambda row: 
         'NEW' if row['Shares_previous'] == 0
         else 'CLOSE' if row['Shares_recent'] == 0
         else 'NO CHANGE' if row['Shares_recent'] == row['Shares_previous']
-        else '{:+.1f}%'.format(row['Delta_%']),
+        else '{:+.1f}%'.format(row['Delta%']),
         axis=1
     )
 
+    total_portfolio_value = df_comparison['Value'].sum()
+    df_comparison['Portfolio%'] = ((df_comparison['Value'] / total_portfolio_value) * 100).apply(lambda p: '<.01%' if 0 < p < 0.01 else f'{p:.2f}%')
+
     df_comparison['Ticker'] = df_comparison['CUSIP'].map(get_cusip_to_ticker_mapping_finnhub_with_fallback(df_comparison))
 
-    total_portfolio_value = df_comparison['Value_recent'].sum()
-
-    df_comparison['Portfolio %'] = ((df_comparison['Value_recent'] / total_portfolio_value) * 100).apply(lambda p: '<.01%' if 0 < p < 0.01 else f'{p:.2f}%')
-
-    df_comparison = df_comparison[['CUSIP', 'Ticker', 'Name of Issuer', 'Value_recent', 'Portfolio %', 'Price_per_Share', 'Delta_Value', 'Delta_%']] \
-        .rename(columns={'Value_recent': 'Value'}) \
-        .sort_values(by='Delta_Value', ascending=False)
+    df_comparison = df_comparison[['CUSIP', 'Ticker', 'Company', 'Value', 'Portfolio%', 'Price_per_Share', 'Delta_Value', 'Delta']] \
+        .sort_values(by=['Delta_Value', 'Value'], ascending=False)
 
     # Save the comparison to CSV
-    filename = f"{cik}_{filing_dates[0]}.csv"
+    filename = f"{fund_name.replace(' ', '_')}_{filing_dates[0]}.csv"
     df_comparison.to_csv(filename, index=False)
     print(f"Created {filename}")
 
 
-if __name__ == "__main__":
-    requested_cik = get_user_input()
-    filings = fetch_latest_two_filings(requested_cik)
-    
-    if len(filings) == 2:
+def process_fund(fund_info):
+    """
+    Processes a single fund: fetches filings and generates comparison.
+    """
+    cik = fund_info.get('cik')
+    fund_name = fund_info.get('hedge_fund') or fund_info.get('cik')
+    try:
+        filings = fetch_latest_two_filings(cik)
         filing_dates = [f['date'] for f in filings]
         df_recent = xml_to_dataframe(filings[0]['xml_content'])
         df_previous = xml_to_dataframe(filings[1]['xml_content'])
+        generate_comparison(fund_name, filing_dates, df_recent, df_previous)
+    except Exception as e:
+        print(f"Error fetching filings: {e}")
 
-        generate_comparison(requested_cik, filing_dates, df_recent, df_previous)
-    elif len(filings) == 1:
-        print("Only one report found, cannot generate comparison.")
-    else:
-        print("No reports found.")
+
+if __name__ == "__main__":
+
+     while True:
+        print("\n--- Main Menu ---")
+        print("1. Analyze a known investment fund (hedge_funds.csv)")
+        print("2. Enter a CIK manually")
+        print("3. Exit")
+        choice = input("Choose an option (1-3): ")
+
+        if choice == '1':
+            hedge_funds = load_hedge_funds_from_csv()
+            hedge_funds_size = len(hedge_funds)
+            print("Select the hedge fund you want to analyze:")
+            for i, fund in enumerate(hedge_funds):
+                print(f"  {i + 1}: {fund['hedge_fund']}")
+
+            try:
+                choice = input(f"\nEnter a number (1-{hedge_funds_size}): ")
+                selected_index = int(choice) - 1
+                if 0 <= selected_index < hedge_funds_size:
+                    selected_fund = hedge_funds[selected_index]
+                    process_fund(selected_fund)
+                else:
+                    print("Invalid selection.")
+            except ValueError:
+                print("Invalid input. Please enter a number.")
+            except KeyboardInterrupt:
+                print("Operation cancelled by user.")
+
+        elif choice == '2':
+            cik = get_user_input()
+            process_fund({'cik': cik})
+        
+        elif choice == '3':
+            print("Exiting.")
+            break
+
+        else:
+            print("Invalid choice. Try again.")

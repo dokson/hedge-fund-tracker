@@ -25,7 +25,7 @@ class TestMain(unittest.TestCase):
         # Assertions
         self.assertIsInstance(df, pd.DataFrame)
         self.assertEqual(len(df), 1)
-        self.assertEqual(df['Name of Issuer'][0], 'Test Issuer')
+        self.assertEqual(df['Company'][0], 'Test Company')
         self.assertEqual(df['CUSIP'][0], '123456789')
         self.assertEqual(df['Value'][0], 1000)
         self.assertEqual(df['Shares'][0], 100)
@@ -33,8 +33,8 @@ class TestMain(unittest.TestCase):
     @patch('scraper.main.get_cusip_to_ticker_mapping_finnhub_with_fallback')
     def test_generate_comparison(self, mock_get_tickers):
         # Create mock DataFrames
-        data1 = {'Name of Issuer': ['Test Issuer'], 'CUSIP': ['TC123456'], 'Value': [1000], 'Shares': [100]}
-        data2 = {'Name of Issuer': ['Test Issuer'], 'CUSIP': ['TC123456'], 'Value': [500], 'Shares': [50]}
+        data1 = {'Company': ['Test Company'], 'CUSIP': ['TC123456'], 'Value': [1000], 'Shares': [100]}
+        data2 = {'Company': ['Test Company'], 'CUSIP': ['TC123456'], 'Value': [500], 'Shares': [50]}
         df_recent = pd.DataFrame(data1)
         df_previous = pd.DataFrame(data2)
         cik = "0123456789"
@@ -50,7 +50,7 @@ class TestMain(unittest.TestCase):
 
         # Add assertions to check the output file
         df_comparison = pd.read_csv(f"{cik}_{filing_dates[0]}.csv")
-        self.assertEqual(df_comparison['Delta_%'][0], '+100.0%')
+        self.assertEqual(df_comparison['Delta'][0], '+100.0%')
         self.assertEqual(df_comparison['Ticker'][0], 'TEST')
 
         # Clean up: remove the file
