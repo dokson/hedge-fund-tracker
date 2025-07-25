@@ -10,7 +10,7 @@ class TestMain(unittest.TestCase):
         # Mock XML content
         xml_content = """
         <infotable>
-            <nameofissuer>Test Issuer</nameofissuer>
+            <nameofissuer>Test Company</nameofissuer>
             <cusip>123456789</cusip>
             <value>1000</value>
             <shrsorprnamt>
