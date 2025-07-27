@@ -1,8 +1,8 @@
+from bs4 import BeautifulSoup
 import requests
 import re
-from bs4 import BeautifulSoup
 
-# Constants for SEC interaction
+
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36'
 SEC_HOST = 'www.sec.gov'
 SEC_URL = 'https://' + SEC_HOST

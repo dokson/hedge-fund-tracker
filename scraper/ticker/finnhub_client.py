@@ -1,5 +1,5 @@
-from .pandas import pd
 import finnhub
+import pandas as pd
 import time
 import os
 
@@ -75,7 +75,7 @@ def _finnhub_lookup_with_retry(query, max_retries=3, backoff_factor=30):
     return None
 
 
-def get_ticker_with_finnhub_fallback(cusip, company_name):
+def get_ticker_with_fallback(cusip, company_name):
     """
     Attempts to get the ticker from Finnhub.io, first using the CUSIP,
     then falling back to the issuer name if the CUSIP finds nothing.
@@ -98,24 +98,3 @@ def get_ticker_with_finnhub_fallback(cusip, company_name):
     if pd.isna(ticker):
         print(f"Finnhub: No ticker found for CUSIP {cusip} / Company '{company_name}'.")
     return ticker
-
-
-def get_cusip_to_ticker_mapping_finnhub_with_fallback(df_comparison):
-    """
-    Maps CUSIPs to tickers using Finnhub, with a fallback to the issuer name.
-    Takes the entire comparison DataFrame as input to access both CUSIP and Name of Issuer.
-    """
-    mapped_tickers = pd.Series(index=df_comparison['CUSIP'].unique(), dtype=object)
-
-    print(f"Getting Tickers from CUSIPs using Finnhub...")
-    for index, row in df_comparison.iterrows():
-        cusip = row['CUSIP']
-        company = row['Company']
-
-        if cusip in mapped_tickers.index and pd.notna(mapped_tickers.loc[cusip]):
-            continue
-
-        ticker = get_ticker_with_finnhub_fallback(cusip, company)
-        mapped_tickers.loc[cusip] = ticker
-
-    return mapped_tickers

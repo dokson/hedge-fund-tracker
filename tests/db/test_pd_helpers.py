@@ -1,6 +1,7 @@
-import unittest
+from scraper.db.pd_helpers import coalesce
 import pandas as pd
-from scraper.pandas import coalesce
+import unittest
+
 
 class TestPandas(unittest.TestCase):
 

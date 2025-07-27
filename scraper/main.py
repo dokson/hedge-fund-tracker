@@ -1,10 +1,13 @@
-from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
-from .finnhub_client import get_cusip_to_ticker_mapping_finnhub_with_fallback
-from .pandas import coalesce, pd
 from .sec_scraper import fetch_latest_two_filings
+from scraper.db.masterdata import load_hedge_funds, sort_stocks
+from scraper.db.pd_helpers import coalesce
+from scraper.ticker.resolver import get_ticker
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+import pandas as pd
 import warnings
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
 
 def get_user_input():
     """
@@ -12,18 +15,6 @@ def get_user_input():
     """
     cik = input("Enter 10-digit CIK number: ")
     return cik
-
-
-def load_hedge_funds_from_csv(filepath="hedge_funds.csv"):
-    """
-    Loads hedge funds from file (hedge_funds.csv)
-    """
-    try:
-        df = pd.read_csv(filepath, dtype={'cik': str})
-        return df[['cik', 'hedge_fund']].to_dict('records')
-    except Exception as e:
-        print(f"Errore while reading '{filepath}': {e}")
-        return []
 
 
 def xml_to_dataframe(xml_content):
@@ -114,7 +105,7 @@ def generate_comparison(fund_name, filing_dates, df_recent, df_previous):
     total_portfolio_value = df_comparison['Value'].sum()
     df_comparison['Portfolio%'] = ((df_comparison['Value'] / total_portfolio_value) * 100).apply(lambda p: '<.01%' if 0 < p < 0.01 else f'{p:.2f}%')
 
-    df_comparison['Ticker'] = df_comparison['CUSIP'].map(get_cusip_to_ticker_mapping_finnhub_with_fallback(df_comparison))
+    df_comparison['Ticker'] = df_comparison['CUSIP'].map(get_ticker(df_comparison))
 
     df_comparison = df_comparison[['CUSIP', 'Ticker', 'Company', 'Value', 'Portfolio%', 'Price_per_Share', 'Delta_Value', 'Delta']] \
         .sort_values(by=['Delta_Value', 'Value'], ascending=False)
@@ -151,7 +142,7 @@ if __name__ == "__main__":
         choice = input("Choose an option (1-3): ")
 
         if choice == '1':
-            hedge_funds = load_hedge_funds_from_csv()
+            hedge_funds = load_hedge_funds()
             hedge_funds_size = len(hedge_funds)
             print("Select the hedge fund you want to analyze:")
             for i, fund in enumerate(hedge_funds):
@@ -175,7 +166,9 @@ if __name__ == "__main__":
             process_fund({'cik': cik})
         
         elif choice == '3':
-            print("Exiting.")
+            print("Sorting stocks file by Ticker before exiting...")
+            sort_stocks()
+            print("Exit.")
             break
 
         else:

@@ -1,6 +1,6 @@
-import unittest
 from scraper.sec_scraper import _create_search_url
-from unittest.mock import patch
+import unittest
+
 
 class TestSecScraper(unittest.TestCase):
 

@@ -1,8 +1,8 @@
+from scraper.main import xml_to_dataframe, generate_comparison
+from unittest.mock import patch
 import unittest
 import os
 import pandas as pd
-from scraper.main import xml_to_dataframe, generate_comparison
-from unittest.mock import patch
 
 class TestMain(unittest.TestCase):
 
@@ -30,7 +30,7 @@ class TestMain(unittest.TestCase):
         self.assertEqual(df['Value'][0], 1000)
         self.assertEqual(df['Shares'][0], 100)
 
-    @patch('scraper.main.get_cusip_to_ticker_mapping_finnhub_with_fallback')
+    @patch('scraper.main.get_ticker')
     def test_generate_comparison(self, mock_get_tickers):
         # Create mock DataFrames
         data1 = {'Company': ['Test Company'], 'CUSIP': ['TC123456'], 'Value': [1000], 'Shares': [100]}
