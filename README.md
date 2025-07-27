@@ -46,7 +46,8 @@ This project uses `pipenv` for dependency management. If you don't have it, you 
 - [lxml](https://lxml.de/), Python library for processing XML and HTML
 - [re](https://docs.python.org/3/library/re.html), Python module for using regular expressions
 - [csv](https://docs.python.org/3/library/csv.html), Python module for parsing and writing CSV files
-- [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), for mapping CUSIPs to stock tickers.
+- [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), Python library used for mapping CUSIPs to stock tickers.
+- [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/), another Python library used for mapping CUSIPs to stock tickers when Finnhub fails or is unavailable.
 
 ## Acknowledgments
 
