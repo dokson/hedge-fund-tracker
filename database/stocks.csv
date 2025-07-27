@@ -2,9 +2,11 @@ CUSIP,Ticker,Company
 02376R102,AAL,American Airlines
 037833100,AAPL,Apple Inc
 03076K108,ABCB,Ameris BanCorp
+043436104,ABG,Asbury Automotive Group Inc
 007002108,ACET,Adicet Bio Inc
 910710102,ACIC,American Coastal Ins Corp
 03940C100,ACLX,Arcellx Inc
+00724F101,ADBE,Adobe Inc
 N00985106,AER,Aercap Holdings Nv
 009119108,AFLYY,Air France Klm
 00827B106,AFRM,Affirm Hldgs Inc
@@ -22,16 +24,21 @@ G0403H108,AON,Aon Plc
 03674X106,AR,Antero Resources Corp
 37950E259,ARGT,Global X Fds
 042068205,ARM,ARM Holdings
+04271T100,ARRY,Array Technologies Inc
+G0260P102,AS,Amer Sports Inc
 00773T101,ASIX,Advansix Inc
 N07059210,ASML,Asml Holding N V
 04351P101,ASND,Ascendis Pharma A/S
 015658107,ASTL,Algoma Steel Group Inc
 11135F101,AVGO,Broadcom Inc
+05464C101,AXON,Axon Enterprise Inc
 025816109,AXP,American Express Co
+046353108,AZN,Astrazeneca Plc
 V0393H103,AZREF,Azure Power Global Ltd
 01609W102,BABA,Alibaba Group Hldg Ltd
 060505104,BAC,Bank Amer Corp
 047726302,BATRK,Atlanta Braves Hldgs Inc
+058934100,BBAR,Banco Bbva Argentina S A
 10806X102,BBIO,Bridgebio Pharma Inc
 055477103,BCAX,Bicara Therapeutics Inc
 06738E204,BCS,Barclays Plc
@@ -47,6 +54,7 @@ V0393H103,AZREF,Azure Power Global Ltd
 225310101,CACC,Credit Accep Corp Mich
 H1467J104,CB,Chubb Limited
 12510Q100,CCCS,Ccc Intelligent Solutions Hl
+127387108,CDNS,Cadence Design System Inc
 153436100,CEE,Central & Eastern Europe Fd
 21037T109,CEG,Constellation Energy Corp
 20717M103,CFLT,Confluent Inc
@@ -57,6 +65,7 @@ H1467J104,CB,Chubb Limited
 17888H103,CIVI,Civitas Resources Inc
 G2415A113,CLCO,Cool Co Ltd
 16208T102,CLDT,Chatham Lodging Trust
+20030N101,CMCSA,Comcast Corp New
 169656105,CMG,Chipotle Mexican Grill Inc
 20454B104,CMPX,Compass Therapeutics Inc
 126117100,CNA,Cna Financial     
@@ -70,12 +79,17 @@ G2415A113,CLCO,Cool Co Ltd
 14147L108,CRDF,Cardiff Oncology Inc
 79466L302,CRM,Salesforce Inc
 22663K107,CRNX,Crinetics Pharmaceuticals In
+22788C105,CRWD,Crowdstrike Hldgs Inc
+22160N109,CSGP,Costar Group Inc
+138103106,CTLP,Cantaloupe Inc
 192446102,CTSH,Cognizant Technology Solutio
 146869102,CVNA,Carvana Co
 166764100,CVX,Chevron Corp New
+21871N101,CXW,Corecivic Inc
 12769G100,CZR,Caesars Entertainment Inc Ne
 234264109,DAKT,Daktronics Inc
 247361702,DAL,Delta Air Lines Inc Del
+25809K105,DASH,Doordash Inc
 D18190898,DB,Deutsche Bank A G
 46655E100,DC,Dakota Gold Corp
 244199105,DE,Deere & Co
@@ -89,6 +103,7 @@ D18190898,DB,Deutsche Bank A G
 266605500,DRRX,Durect Corp
 268150109,DT,Dynatrace Inc
 23918K108,DVA,Davita Inc
+267475101,DY,Dycom Inds Inc
 294429105,EFX,Equifax Inc
 G3223R108,EG,Everest Group Ltd.
 284902509,EGO,Eldorado Gold Corp
@@ -97,6 +112,8 @@ G3223R108,EG,Everest Group Ltd.
 29336T100,ENLC,Enlink Midstream Llc
 293792107,EPD,Enterprise Products Partners Lp
 294375209,EPSN,Epsilon Energy Ltd
+29452E101,EQH,Equitable Hldgs Inc
+26884l109,EQT,Eqt Corp
 26884L109,EQT,Eqt Corp
 29446Y502,EQX,Equinox Gold Corp
 29273V100,ET,Energy Transfer L P
@@ -110,19 +127,22 @@ G3223R108,EG,Everest Group Ltd.
 35671D857,FCX,Freeport-Mcmoran Inc
 31428X106,FDX,Fedex Corp
 320517105,FHN,First Horizon Corporation
+337738108,FI,Fiserv Inc
 303250104,FICO,Fair Isaac Corp
 Y2573F102,FLEX,Flex Ltd
 G3643J108,FLUT,Flutter Entmt Plc
 358054104,FRSH,Freshworks Inc
 G87110105,FTI,Technipfmc Plc
 83001C108,FUN,Six Flags Entertainment Corp
-531229854,FWONK,Liberty Media Corp Del
+36118L106,FUTU,Futu Hldgs Ltd
 531229755,FWONK,Liberty Media Corp Del
+531229854,FWONK,Liberty Media Corp Del
 464287184,FXI,Ishares Tr
 G3922B107,G,Genpact Limited
 36352H100,GAU,Galiano Gold Inc
 690045109,GEAR,Revelyst Inc
 371927104,GEL,Genesis Energy Lp
+36162J106,GEO,Geo Group Inc New
 36828A101,GEV,Ge Vernova Inc
 399909100,GGAL,Grupo Financiero Galicia S.A
 40172N107,GHLD,Guild Holdings Co- Class A
@@ -136,6 +156,7 @@ L44385109,GLOB,Globant S A
 02079K107,GOOG,Alphabet Inc
 02079K305,GOOGL,Alphabet Inc
 135086106,GOOS,Canada Goose Hldgs Inc
+398905109,GPI,Group 1 Automotive Inc
 39115V101,GPLDF,Great Panther Mining
 402635502,GPOR,Gulfport Energy Corp
 Y27183600,GSL,Global Ship Lease Inc- Cl A
@@ -148,16 +169,22 @@ G33856108,GSM,Ferroglobe Plc
 422806208,HEI.A,Heico Corp New
 44267T102,HHH,Howard Hughes Holdings Inc
 43300A203,HLT,Hilton Worldwide Hldgs Inc
+438128308,HMC,Honda Motor Ltd
 439038100,HOFT,Hooker Furnishings Corp
 412822108,HOG,Harley-Davidson Inc
 44332N106,HTHT,H World Group Ltd
 42806J700,HTZ,Hertz Global Hldgs Inc
 44812J104,HUT,Hut 8 Corp
+443201108,HWM,Howmet Aerospace Inc
+464287556,IBB,Ishares Tr
 46438F101,IBIT,Ishares Bitcoin Trust Etf
 45841N107,IBKR,Interactive Brokers Group In
 45104G104,IBN,Icici Bank Limited
+45866F104,ICE,Intercontinental Exchange In
+P5626F128,IFS,Intercorp Finl Svcs Inc
 45719W205,IKT,Inhibikase Therapeutics Inc
 450913108,IMG,Iamgold Corp.
+46429B598,INDA,Ishares Tr
 456788108,INFY,Infosys Ltd
 457669307,INSM,Insmed Inc
 Y41053102,INSW,International Seaways
@@ -167,24 +194,32 @@ Y41053102,INSW,International Seaways
 46120E602,ISRG,Intuitive Surgical Inc
 00534A102,IVVD,Invivyd Inc
 464287598,IWD,Russell 1000
+464287655,IWM,Ishares Tr
 477143101,JBLU,Jetblue Airways
 47215P106,JD,Jd.Com Inc
 47233W109,JEF,Jefferies Finl Group Inc
 48203R104,JNPR,Juniper Networks Inc
 G65163100,JOBY,Joby Aviation Inc
+46591M109,JOYY,Joyy Inc
+46625H100,JPM,Jpmorgan Chase & Co.
 46817M107,JXN,Jackson Financial Inc
 48666K109,KBH,Kb Home
+49639K101,KC,Kingsoft Cloud Hldgs Ltd
 49428J109,KE,Kimball Electronics Inc
 500631106,KEP,Korea Electric Power Corp
 493267108,KEY,Keycorp
 500754106,KHC,Kraft Heinz Co
+48251W104,KKR,Kkr & Co Inc
 49456B101,KMI,Kinder Morgan Inc Del
 191216100,KO,Coca Cola Co
 501044101,KR,Kroger Co
 78464A698,KRE,Spdr Ser Tr
 49177J102,KVUE,Kenvue Inc
+49845K101,KVYO,Klaviyo Inc
 500767306,KWEB,Kraneshares Trust
 501976104,KYTX,Kyverna Therapeutics Inc
+536797103,LAD,Lithia Mtrs Inc
+52490G102,LEGN,Legend Biotech Corp
 526057302,LENB,Lennar Corp
 502431109,LHX,L3Harris Technologies Inc
 G9001E102,LILA,Liberty Latin America Ltd
@@ -193,16 +228,20 @@ G9001E128,LILAK,Liberty Latin America Ltd
 531229748,LLYVA,Liberty Media Corp Del
 531229722,LLYVK,Liberty Media Corp Del
 16411R208,LNG,Cheniere Energy Inc
+53947R105,LOAR,Loar Holdings Inc
 546347105,LPX,Louisiana Pac Corp
 512807306,LRCX,Lam Research Corp
+54975P201,LU,Lufax Holding Ltd
 517834107,LVS,Las Vegas Sands Corp
 52886X107,LXEO,Lexeo Therapeutics Inc
 55087P104,LYFT,Lyft Inc
 538034109,LYV,Live Nation Entertainment In
 57636Q104,MA,Mastercard Incorporated
 55939A107,MAGN,Magnera Corp
+60741F104,MBLY,Mobileye Global Inc
 615369105,MCO,Moodys Corp
 60937P106,MDB,Mongodb Inc
+58506Q109,MEDP,Medpace Hldgs Inc
 58733R102,MELI,Mercadolibre Inc
 30303M102,META,Meta Platforms Inc
 55305B101,MHO,M/I Homes
@@ -210,10 +249,12 @@ G9001E128,LILAK,Liberty Latin America Ltd
 V5633W109,MMYT,Makemytrip Limited Mauritius
 60255C885,MNMD,Mind Medicine Mindmed Inc
 60855R100,MOH,Molina Healthcare Inc
+423403104,MOMO,Hello Group Inc
 61945C103,MOS,The Mosaic Company
 620071100,MPAA,Motorcar Parts Of America
 55336V100,MPLX,Mplx Lp
 58463J304,MPW,Medical Pptys Trust Inc
+573874104,MRVL,Marvell Technology Inc
 86389T106,MSC,Studio City Intl Hldgs Ltd
 55354G100,MSCI,Msci Inc
 594918104,MSFT,Microsoft Corp
@@ -221,19 +262,28 @@ V5633W109,MMYT,Makemytrip Limited Mauritius
 595112103,MU,Micron Technology Inc
 N62509109,NAMS,Newamsterdam Pharma Company
 63938C108,NAVI,Navient Corp
+N97284108,NBIS,Nebius Group N.V.
+65339f101,NEE,Nextera Energy Inc
+18915M107,NET,Cloudflare Inc
 64110L106,NFLX,Netflix Inc
 629209305,NMIH,Nmi Holdings Inc
 65535H208,NMR,Nomura Holdings Inc
+65487X102,NOAH,Noah Hldgs Ltd
+64107A113,NPWR,Net Power Inc
+64107A105,NPWR,Net Power Inc
 629377508,NRG,Nrg Energy Inc
 45765U103,NSIT,Insight Enterprises Inc
 64111Q104,NTGR,Netgear Inc
 67059N108,NTNX,Nutanix Inc
 632307104,NTRA,Natera Inc
 G6683N103,NU,Nu Hldgs Ltd
+67080N101,NUVB,Nuvation Bio Inc
 67066G104,NVDA,Nvidia Corporation
 670100205,NVO,Novo-Nordisk A S
 62944T105,NVR,Nvr Inc
 G6700G107,NVT,Nvent Electric Plc
+651229106,NWL,Newell Brands Inc
+65290E101,NXT,Nextracker Inc
 682680103,OKE,Oneok Inc
 682189105,ON,On Semiconductor Corp
 68389X105,ORCL,Oracle Corp
@@ -244,9 +294,11 @@ G6700G107,NVT,Nvent Electric Plc
 697435105,PANW,Palo Alto Networks Inc
 70432V102,PAYC,Paycom Software Inc
 69331C108,PCG,Pg&E Corp
+74275K108,PCOR,Procore Technologies Inc
 74623V103,PCT,Purecycle Technologies Inc
 92243G108,PCVX,Vaxcyte Inc
 722304102,PDD,Pdd Holdings Inc
+743315103,PGR,Progressive Corp
 453204109,PI,Impinj Inc
 700517105,PK,Park Hotels & Resorts Inc
 69608A108,PLTR,Palantir Technologies Inc
@@ -254,44 +306,58 @@ G6700G107,NVT,Nvent Electric Plc
 73278L105,POOL,Pool Corp
 714266103,PPTA,Perpetua Resources Corp
 71424F105,PR,Permian Resources Corp
+74762E102,PWR,Quanta Scvs Inc
+70450Y103,PYPL,Paypal Hldgs Inc
 747525103,QCOM,Qualcomm Inc
+88557W101,QFIN,Qifu Technology Inc
+46090E103,QQQ,Invesco Qqq Tr
 74736K101,QRVO,Qorvo Inc
 76131D103,QSR,Restaurant Brands Intl Inc
 90400D108,RARE,Ultragenyx Pharmaceutical In
 771049103,RBLX,Roblox Corp
 750236101,RDN,Radian Group Inc
 256135203,RDY,Dr Reddys Labs Ltd
+00138L108,RERE,Atrenew Inc
 767292105,RIOT,Riot Platforms Inc
 77311W101,RKT,Rocket Cos Inc
 74965L101,RLJ,Rlj Lodging Trust
+76674Q107,RMNI,Rimini Str Inc Del
 77543R102,ROKU,Roku Inc
 75281A109,RRC,Range Resources Corp
 761CVR042,RSG,Resolute Forest Products - Contingent Value Rts
 76200L309,RZLT,Rezolute Inc
 278768AB2,SATS,Echostar Corp
 278768106,SATS,Echostar Corp
+81141R100,SE,Sea Ltd
 812215200,SEG,Seaport Entmt Group Inc
 88023U101,SGI,Somnigroup International Inc
+82489W107,SHLS,Shoals Technologies Group In
 829933100,SIRI,Sirius Xm Holdings Inc
 798241105,SJT,San Juan Basin Royalty Trust
 88331L108,SKIN,The Beauty Health Company
 830566105,SKX,Skechers U S A Inc
 78442P106,SLM,Slm Corp
+46428Q109,SLV,Ishares Silver Tr
+92189F676,SMH,Vaneck Etf Trust
 83304A106,SNAP,Snap Inc
+833445109,SNOW,Snowflake Inc
 867975104,SNRE,Sunrise Communications Ag Ads
 78574H104,SOC,Sable Offshore Corp
 78409V104,SPGI,S&P Global Inc
 55826T102,SPHR,Sphere Entertainment Co
 G8192H106,SPNT,Siriuspoint Ltd
 78462F103,SPY,SPDR S&P 500 ETF TR
+N82405106,STLA,Stellantis N.V
 G7997R103,STX,Seagate Technology Hldngs Pl
 21036P108,STZ,Constellation Brands Inc
 85205L107,SWTX,Springworks Therapeutics Inc
+874080104,TAL,Tal Education Group
 87652V109,TASK,Taskus Inc
 879433829,TDS,Telephone & Data Sys Inc
 878742204,TECK,Teck Resources Ltd
 881624209,TEVA,Teva Pharmaceutical Inds Ltd
 89832Q109,TFC,Truist Finl Corp
+88033G407,THC,Tenet Healthcare Corp
 89680M101,TLSI,Trisalus Life Sciences Inc
 87724P106,TMHC,Taylor Morrison Home Corp
 872590104,TMUS,T-Mobile Us Inc
@@ -300,12 +366,16 @@ G7997R103,STX,Seagate Technology Hldngs Pl
 87612G101,TRGP,Targa Resources Corp
 88160R101,TSLA,Tesla Inc
 874039100,TSM,Taiwan Semiconductor Mfg Ltd
+81764X103,TTAN,Servicetitan Inc
 88339J105,TTD,The Trade Desk Inc
+892672106,TW,Tradeweb Mkts Inc
 88830M102,TWI,Titan International Inc
 90138F102,TWLO,Twilio Inc
 880890108,TX,Ternium Sa
 910047109,UAL,United Airls Hldgs Inc
 90353T100,UBER,Uber Technologies Inc
+023586100,UHAL,U Haul Holding Company
+023586506,UHAL.B,U Haul Holding Company
 35909R108,ULCC,Frontier Group Hldgs Inc
 91324P102,UNH,Unitedhealth Group Inc
 91529Y106,UNM,Unum Group
@@ -321,17 +391,23 @@ G7997R103,STX,Seagate Technology Hldngs Pl
 11040G103,VTOL,Bristow Group Inc
 929740108,WAB,Wabtec
 934423104,WBD,Warner Bros Discovery Inc
+98138H101,WDAY,Workday Inc
 958102105,WDC,Western Digital Corp
 958669103,WES,Western Midstream Partners Lp
 949746101,WFC,Wells Fargo Co New
 M98068105,WIX,Wix Com Ltd
 969457100,WMB,Williams Cos Inc/The
+931142103,WMT,Walmart Inc
 G98196101,WNS,Wns Hldgs Ltd
+G96629103,WTW,Willis Towers Watson Plc Ltd
 88080T104,WULF,Terawulf Inc
 980745103,WWD,Woodward Inc
 983134107,WYNN,Wynn Resorts Ltd
 912909108,X,United States Stl Corp
 98422E103,XERS,Xeris Biopharma Holdings Inc
+81369Y506,XLE,Select Sector Spdr Tr
+81369Y605,XLF,Select Sector Spdr Tr
+81369Y209,XLV,Select Sector Spdr Tr
 30231G102,XOM,Exxon Mobil Corp
 852234103,XYZ,Block Inc
 984245100,YPF,Ypf Sociedad Anonima

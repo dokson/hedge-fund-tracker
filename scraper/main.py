@@ -217,7 +217,7 @@ if __name__ == "__main__":
             hedge_funds_size = len(hedge_funds)
             print("Select the hedge fund you want to analyze:")
             for i, fund in enumerate(hedge_funds):
-                print(f"  {i + 1}: {fund['hedge_fund']}")
+                print(f"  {i + 1:2}: {fund['hedge_fund']} - {fund['portfolio_manager']}")
 
             try:
                 choice = input(f"\nEnter a number (1-{hedge_funds_size}): ")

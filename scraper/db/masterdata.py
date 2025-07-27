@@ -12,7 +12,7 @@ def load_hedge_funds(filepath=f"./database/{HEDGE_FUNDS_FILE}"):
     try:
         df = pd.read_csv(filepath, dtype={'cik': str})
 
-        return df[['cik', 'hedge_fund']].to_dict('records')
+        return df[['cik', 'hedge_fund', 'portfolio_manager']].to_dict('records')
 
     except Exception as e:
         print(f"Errore while reading '{filepath}': {e}")
