@@ -50,7 +50,7 @@ class TestMain(unittest.TestCase):
 
         # Add assertions to check the output file
         df_comparison = pd.read_csv(f"{cik}_{filing_dates[0]}.csv")
-        self.assertEqual(df_comparison['Delta'][0], '+100.0%')
+        self.assertEqual(df_comparison['Delta'][0], '+100%')
         self.assertEqual(df_comparison['Ticker'][0], 'TEST')
 
         # Clean up: remove the file
