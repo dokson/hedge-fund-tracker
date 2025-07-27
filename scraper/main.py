@@ -9,6 +9,58 @@ import warnings
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 
+def format_percentage(value, show_sign=False, decimal_places=1):
+    """
+    Formats a numeric value as a percentage string:
+    - Returns '<.01%' for values between 0 and 0.01 (exclusive).
+    - Rounds to specified decimal_places and trims unnecessary zeros.
+    - Optionally prepends sign when show_sign is True.
+
+    Args:
+        value (float): The percentage value to format.
+        show_sign (bool, optional): Whether to prepend sign. Default is False.
+        decimal_places (int, optional): Number of decimal places to show. Default is 1.
+
+    Returns:
+        str: Formatted percentage string.
+    """
+    sign = '+' if show_sign else ''
+
+    if 0 < value < 0.01 and not show_sign:
+        return '<.01%'
+    else:
+        formatted = f'{value:{sign}.{decimal_places}f}'.rstrip('0').rstrip('.')
+        return f'{formatted}%'
+
+
+def format_value(value):
+    """
+    Formats a numeric value into a human-readable short scale string, up to 2 decimal places (e.g., 1.23B, 45.67M, 8.9K).
+
+    Args:
+        value (int or float): The numeric value to format.
+
+    Returns:
+        str: Formatted string.
+    """
+    abs_value = abs(value)
+
+    if abs_value >= 1_000_000_000:
+        formatted = f'{value / 1_000_000_000:.2f}'
+        suffix = 'B'
+    elif abs_value >= 1_000_000:
+        formatted = f'{value / 1_000_000:.2f}'
+        suffix = 'M'
+    elif abs_value >= 1_000:
+        formatted = f'{value / 1_000:.2f}'
+        suffix = 'K'
+    else:
+        formatted = f'{value:.2f}'
+        suffix = ''
+
+    return formatted.rstrip('0').rstrip('.') + suffix
+
+
 def get_user_input():
     """
     Prompts the user for a 10-digit CIK number.
@@ -98,17 +150,36 @@ def generate_comparison(fund_name, filing_dates, df_recent, df_previous):
         'NEW' if row['Shares_previous'] == 0
         else 'CLOSE' if row['Shares_recent'] == 0
         else 'NO CHANGE' if row['Shares_recent'] == row['Shares_previous']
-        else '{:+.1f}%'.format(row['Delta%']),
+        else format_percentage(row['Delta%'], True),
         axis=1
     )
 
     total_portfolio_value = df_comparison['Value'].sum()
-    df_comparison['Portfolio%'] = ((df_comparison['Value'] / total_portfolio_value) * 100).apply(lambda p: '<.01%' if 0 < p < 0.01 else f'{p:.2f}%')
-
+    previous_portfolio_value = df_comparison['Value_previous'].sum()
+    total_delta_value = total_portfolio_value - previous_portfolio_value
+    total_delta = (total_delta_value / previous_portfolio_value) * 100
+    
+    df_comparison['Portfolio%'] = ((df_comparison['Value'] / total_portfolio_value) * 100).apply(format_percentage)
     df_comparison['Ticker'] = df_comparison['CUSIP'].map(get_ticker(df_comparison))
 
-    df_comparison = df_comparison[['CUSIP', 'Ticker', 'Company', 'Value', 'Portfolio%', 'Price_per_Share', 'Delta_Value', 'Delta']] \
+    df_comparison = df_comparison[['CUSIP', 'Ticker', 'Company', 'Value', 'Portfolio%', 'Delta_Value', 'Delta']] \
         .sort_values(by=['Delta_Value', 'Value'], ascending=False)
+
+    df_comparison['Value'] = df_comparison['Value'].apply(format_value)
+    df_comparison['Delta_Value'] = df_comparison['Delta_Value'].apply(format_value)
+
+    # Add grand total row
+    total_row = pd.DataFrame([{
+        'CUSIP': 'Total', 
+        'Ticker': '', 
+        'Company': '',
+        'Value': format_value(total_portfolio_value),
+        'Portfolio%': format_percentage(100),
+        'Delta_Value': format_value(total_delta_value),
+        'Delta': format_percentage(total_delta, True)
+    }])
+
+    df_comparison = pd.concat([df_comparison, total_row], ignore_index=True)
 
     # Save the comparison to CSV
     filename = f"{fund_name.replace(' ', '_')}_{filing_dates[0]}.csv"

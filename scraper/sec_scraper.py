@@ -32,8 +32,7 @@ def _create_search_url(cik):
 def _get_filing_date(report_page_soup):
     """Extracts the filing date from the report page's soup."""
     try:
-        filing_date_tag = report_page_soup.find(
-            'div', string=re.compile(r'Filing Date'))
+        filing_date_tag = report_page_soup.find('div', string=re.compile(r'Filing Date'))
         if filing_date_tag:
             return filing_date_tag.find_next().text.strip()
     except Exception as e:
