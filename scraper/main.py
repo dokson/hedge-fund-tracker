@@ -8,6 +8,8 @@ import warnings
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
+OUTPUT_FOLDER = 'database'
+
 
 def format_percentage(value, show_sign=False, decimal_places=1):
     """
@@ -106,7 +108,9 @@ def xml_to_dataframe(xml_content):
     # Filter out options to keep only shares
     df = df[df['Put/Call'] == ''].drop('Put/Call', axis=1)
 
-    # Cast numeric columns
+    # Data cleaning
+    df['CUSIP'] = df['CUSIP'].str.upper()
+    df['Company'] = df['Company'].str.strip()
     df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce')
     df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
 
@@ -182,7 +186,7 @@ def generate_comparison(fund_name, filing_dates, df_recent, df_previous):
     df_comparison = pd.concat([df_comparison, total_row], ignore_index=True)
 
     # Save the comparison to CSV
-    filename = f"{fund_name.replace(' ', '_')}_{filing_dates[0]}.csv"
+    filename = f"{OUTPUT_FOLDER}/{filing_dates[0]}_{fund_name.replace(' ', '_')}.csv"
     df_comparison.to_csv(filename, index=False)
     print(f"Created {filename}")
 
@@ -191,8 +195,8 @@ def process_fund(fund_info):
     """
     Processes a single fund: fetches filings and generates comparison.
     """
-    cik = fund_info.get('cik')
-    fund_name = fund_info.get('hedge_fund') or fund_info.get('cik')
+    cik = fund_info.get('CIK')
+    fund_name = fund_info.get('Fund') or fund_info.get('CIK')
     try:
         filings = fetch_latest_two_filings(cik)
         filing_dates = [f['date'] for f in filings]
@@ -217,7 +221,7 @@ if __name__ == "__main__":
             hedge_funds_size = len(hedge_funds)
             print("Select the hedge fund you want to analyze:")
             for i, fund in enumerate(hedge_funds):
-                print(f"  {i + 1:2}: {fund['hedge_fund']} - {fund['portfolio_manager']}")
+                print(f"  {i + 1:2}: {fund['Fund']} - {fund['Manager']}")
 
             try:
                 choice = input(f"\nEnter a number (1-{hedge_funds_size}): ")
@@ -234,7 +238,7 @@ if __name__ == "__main__":
 
         elif choice == '2':
             cik = get_user_input()
-            process_fund({'cik': cik})
+            process_fund({'CIK': cik})
         
         elif choice == '3':
             print("Sorting stocks file by Ticker before exiting...")

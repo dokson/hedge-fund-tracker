@@ -39,7 +39,7 @@ class TestMain(unittest.TestCase):
         df_previous = pd.DataFrame(data2)
         cik = "0123456789"
         filing_dates = ["1234-05-06", "0123-04-05"]
-        filename = f"{cik}_{filing_dates[0]}.csv"
+        filename = f"database/{filing_dates[0]}_{cik}.csv"
 
         # Mock the return value of the ticker mapping function
         mock_get_tickers.return_value = pd.Series(['TEST'], index=['TC123456'])
@@ -49,7 +49,7 @@ class TestMain(unittest.TestCase):
         self.assertTrue(os.path.exists(filename))
 
         # Add assertions to check the output file
-        df_comparison = pd.read_csv(f"{cik}_{filing_dates[0]}.csv")
+        df_comparison = pd.read_csv(filename)
         self.assertEqual(df_comparison['Delta'][0], '+100%')
         self.assertEqual(df_comparison['Ticker'][0], 'TEST')
 

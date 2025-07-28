@@ -1,4 +1,5 @@
 import pandas as pd
+import csv
 
 
 HEDGE_FUNDS_FILE = 'hedge_funds.csv'
@@ -12,7 +13,7 @@ def load_hedge_funds(filepath=f"./database/{HEDGE_FUNDS_FILE}"):
     try:
         df = pd.read_csv(filepath, dtype={'cik': str})
 
-        return df[['cik', 'hedge_fund', 'portfolio_manager']].to_dict('records')
+        return df[['CIK', 'Fund', 'Manager']].to_dict('records')
 
     except Exception as e:
         print(f"Errore while reading '{filepath}': {e}")
@@ -33,22 +34,26 @@ def load_stocks(filepath=f"./database/{STOCKS_FILE}"):
 
 
 def save_stock(cusip, ticker, company):
-    """Appends a new CUSIP-Ticker pair to stocks.csv."""
+    """
+    Appends a new CUSIP-Ticker pair to stocks.csv.
+    """
     
     try:
-        with open(f'./database/{STOCKS_FILE}', 'a', newline='', encoding='utf-8') as f:
-            f.write(f'{cusip},{ticker},{company.title()}\n')
+        # Use csv.writer to properly handle quoting, ensuring all fields are enclosed in double quotes.
+        with open(f'./database/{STOCKS_FILE}', 'a', newline='', encoding='utf-8') as stocks_file:
+            writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
+            writer.writerow([cusip, ticker, company.title()])
     except Exception as e:
         print(f"An error occurred while writing file '{STOCKS_FILE}': {e}")
 
 
 def sort_stocks(filepath = f'./database/{STOCKS_FILE}'):
     """
-    Reads stocks.csv, sorts it by Ticker, removes duplicate CUSIPs, and overwrites the file.
+    Reads stocks.csv, sorts it by Ticker, and overwrites the file with consistent quoting.
     """
     try:
         df = pd.read_csv(filepath, dtype=str).fillna('')
         df.sort_values(by='Ticker', inplace=True)
-        df.to_csv(filepath, index=False, encoding='utf-8')
+        df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
     except Exception as e:
         print(f"An error occurred while writing file '{STOCKS_FILE}': {e}")
