@@ -53,7 +53,7 @@ def sort_stocks(filepath = f'./database/{STOCKS_FILE}'):
     """
     try:
         df = pd.read_csv(filepath, dtype=str).fillna('')
-        df.sort_values(by='Ticker', inplace=True)
+        df.sort_values(by=['Ticker', 'CUSIP'], inplace=True)
         df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
     except Exception as e:
         print(f"An error occurred while writing file '{STOCKS_FILE}': {e}")

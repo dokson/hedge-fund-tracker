@@ -14,8 +14,8 @@ def _get_ticker_from_fd(cusip):
     result = FINANCE_DATABASE.search(cusip=cusip)
 
     if not result.empty:
-        result["ticker_length"] = [len(idx) for idx in result.index]
-        result = result.sort_values(by="ticker_length")
+        result['ticker_length'] = [len(idx) for idx in result.index]
+        result = result.sort_values(by='ticker_length')
         return result.index[0]
     else:
         print(f"Finance Database: No ticker found for CUSIP {cusip}.")
