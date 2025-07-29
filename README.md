@@ -1,6 +1,16 @@
-# SEC Python Web Scraper
+# Hedge Fund Tracker
 
-This repository contains a Python script to scrape and compare the two most recent 13F filings for a given CIK from the SEC's [EDGAR](https://www.sec.gov/edgar/searchedgar/companysearch.html) database, and generates a .csv showing latest changes in holdings.
+**Hedge Fund Tracker** is a Python tool designed for analysts, investors, and finance enthusiasts who want to monitor the investment strategies of major hedge funds. By analyzing public [13F filings](https://www.sec.gov/divisions/investment/13ffaq.htm) submitted to the [SEC](http://sec.gov/)'s [EDGAR](https://www.sec.gov/edgar/searchedgar/companysearch.html) database, this script provides a clear and detailed view of quarterly changes in hedge funds portfolios.
+
+The goal is to transform raw [SEC](http://sec.gov/) data into clean CSV reports, highlighting the key moves of fund managers.
+
+## Key Features
+
+* **Comparative Analysis**: Automatically compares the last two 13F filings for each fund, highlighting **new** positions, **closed** positions, and percentage **changes** in existing holdings.
+* **Historical Database**: Creates and maintains a local database of generated reports, organized by quarter (e.g., `database/2024Q1/`), allowing for historical and trend analysis.
+* **Ticker Resolution**: Converts CUSIPs into familiar stock tickers (e.g., `AAPL`, `MSFT`) using the Finnhub API and a local caching system to optimize performance and reduce API calls.
+* **Detailed Reports**: Generates an easy-to-read `.csv` file for each fund, with intuitively formatted data
+* **Flexible Management**: Allows you to analyze all funds in a customizable list (`hedge_funds.csv`), a single fund of your choice, or a manually entered CIK via a command-line interface.
 
 ## Getting Started
 
@@ -41,23 +51,21 @@ This project uses `pipenv` for dependency management. If you don't have it, you 
 
 ### Key Dependencies
 
-- [Requests](https://2.python-requests.org/en/master/), Python library for making HTTP requests
-- [Beautiful Soup](https://pypi.org/project/beautifulsoup4/), Python library for scraping information from Web pages
-- [lxml](https://lxml.de/), Python library for processing XML and HTML
-- [re](https://docs.python.org/3/library/re.html), Python module for using regular expressions
-- [csv](https://docs.python.org/3/library/csv.html), Python module for parsing and writing CSV files
-- [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), Python library used for mapping CUSIPs to stock tickers.
-- [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/), another Python library used for mapping CUSIPs to stock tickers when Finnhub fails or is unavailable.
+* [Requests](https://2.python-requests.org/en/master/), Python library for making HTTP requests
+* [Beautiful Soup](https://pypi.org/project/beautifulsoup4/), Python library for scraping information from Web pages
+* [lxml](https://lxml.de/), Python library for processing XML and HTML
+* [re](https://docs.python.org/3/library/re.html), Python module for using regular expressions
+* [csv](https://docs.python.org/3/library/csv.html), Python module for parsing and writing CSV files
+* [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), Python library used for mapping CUSIPs to stock tickers.
+* [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/), another Python library used for mapping CUSIPs to stock tickers when Finnhub fails or is unavailable.
 
 ## Acknowledgments
 
-This project is a fork of the original [sec-web-scraper-13f](https://github.com/CodeWritingCow/sec-web-scraper-13f) created by [Gary Pang](https://github.com/CodeWritingCow).
-
-This version has been modified and updated by [Alessandro Colace](https://github.com/dokson).
+This project started as a fork of the [sec-web-scraper-13f](https://github.com/CodeWritingCow/sec-web-scraper-13f) by [Gary Pang](https://github.com/CodeWritingCow) that is a Python script to scrape the most recent 13F filing for a given CIK from the SEC's [EDGAR](https://www.sec.gov/edgar/searchedgar/companysearch.html) database. It has since evolved significantly into a comprehensive hedge fund tracker.
 
 ## References
 
-- [SEC: Frequently Asked Questions About Form 13F](https://www.sec.gov/divisions/investment/13ffaq.htm)
+* [SEC: Frequently Asked Questions About Form 13F](https://www.sec.gov/divisions/investment/13ffaq.htm)
 
 ## License
 

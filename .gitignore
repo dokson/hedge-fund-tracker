@@ -1,5 +1,4 @@
 __pycache__
 .env
 *.csv
-!database/hedge_funds.csv
-!database/stocks.csv
+!database/*/*

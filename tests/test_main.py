@@ -1,4 +1,4 @@
-from scraper.main import xml_to_dataframe, generate_comparison
+from scraper.main import xml_to_dataframe, generate_comparison, get_quarter
 from unittest.mock import patch
 import unittest
 import os
@@ -38,8 +38,8 @@ class TestMain(unittest.TestCase):
         df_recent = pd.DataFrame(data1)
         df_previous = pd.DataFrame(data2)
         cik = "0123456789"
-        filing_dates = ["1234-05-06", "0123-04-05"]
-        filename = f"database/{filing_dates[0]}_{cik}.csv"
+        filing_dates = ["2025-05-01", "2025-01-05"]
+        filename = f"database/{get_quarter(filing_dates[0])}/{cik}.csv"
 
         # Mock the return value of the ticker mapping function
         mock_get_tickers.return_value = pd.Series(['TEST'], index=['TC123456'])

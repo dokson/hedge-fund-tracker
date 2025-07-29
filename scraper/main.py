@@ -3,6 +3,7 @@ from scraper.db.masterdata import load_hedge_funds, sort_stocks
 from scraper.db.pd_helpers import coalesce
 from scraper.ticker.resolver import get_ticker
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+from pathlib import Path
 import pandas as pd
 import warnings
 
@@ -69,6 +70,35 @@ def get_user_input():
     """
     cik = input("Enter 10-digit CIK number: ")
     return cik
+
+
+def get_quarter(date_str):
+    """
+    Converts a date string (YYYY-MM-DD) into a quarter string (YYYYQQ)
+    based on the filing date, without using the datetime module.
+    
+    Logic:
+    - Apr 1 to Jun 30 -> YearQ1
+    - Jul 1 to Sep 30 -> YearQ2
+    - Oct 1 to Dec 31 -> YearQ3
+    - Jan 1 to Mar 31 -> PreviousYearQ4
+
+    Args:
+        date_str (str): The date string in 'YYYY-MM-DD' format.
+
+    Returns:
+        str: The formatted quarter string 'YYYYQQ'.
+    """
+    year, month, _ = map(int, date_str.split('-'))
+
+    if 3 <= month <= 5:
+        return f"{year}Q1"
+    elif 6 <= month <= 8:
+        return f"{year}Q2"
+    elif 9 <= month <= 11:
+        return f"{year}Q3"
+    else:
+        return f"{year - 1}Q4"
 
 
 def xml_to_dataframe(xml_content):
@@ -186,7 +216,10 @@ def generate_comparison(fund_name, filing_dates, df_recent, df_previous):
     df_comparison = pd.concat([df_comparison, total_row], ignore_index=True)
 
     # Save the comparison to CSV
-    filename = f"{OUTPUT_FOLDER}/{filing_dates[0]}_{fund_name.replace(' ', '_')}.csv"
+    quarter_folder = Path(OUTPUT_FOLDER) / get_quarter(filing_dates[0])
+    quarter_folder.mkdir(parents=True, exist_ok=True)
+    
+    filename = quarter_folder / f"{fund_name.replace(' ', '_')}.csv"
     df_comparison.to_csv(filename, index=False)
     print(f"Created {filename}")
 
@@ -204,29 +237,39 @@ def process_fund(fund_info):
         df_previous = xml_to_dataframe(filings[1]['xml_content'])
         generate_comparison(fund_name, filing_dates, df_recent, df_previous)
     except Exception as e:
-        print(f"Error fetching filings: {e}")
+        print(f"An unexpected error occurred while processing {fund_name} (CIK: {cik}): {e}")
 
 
 if __name__ == "__main__":
 
      while True:
         print("\n--- Main Menu ---")
-        print("1. Analyze a known investment fund (hedge_funds.csv)")
-        print("2. Enter a CIK manually")
-        print("3. Exit")
-        choice = input("Choose an option (1-3): ")
+        print("1. Generate latest reports for all known hedge funds (hedge_funds.csv)")
+        print("2. Update the latest report for a known hedge fund (hedge_funds.csv)")
+        print("3. Manually enter a hedge fund CIK number to get latest its filings and generate a report")
+        print("4. Exit")
+        choice = input("Choose an option (1-4): ")
 
         if choice == '1':
             hedge_funds = load_hedge_funds()
-            hedge_funds_size = len(hedge_funds)
-            print("Select the hedge fund you want to analyze:")
+            total_funds = len(hedge_funds)
+            print(f"Starting update reports for all {total_funds} funds...")
+            for i, fund in enumerate(hedge_funds):
+                print(f"\n--- Processing {i + 1:2}/{total_funds}: {fund['Fund']} - {fund['Manager']} ---")
+                process_fund(fund)
+            print("--- All funds processed. ---")
+
+        elif choice == '2':
+            hedge_funds = load_hedge_funds()
+            total_funds = len(hedge_funds)
+            print("Select the hedge fund you want to update:")
             for i, fund in enumerate(hedge_funds):
                 print(f"  {i + 1:2}: {fund['Fund']} - {fund['Manager']}")
 
             try:
-                choice = input(f"\nEnter a number (1-{hedge_funds_size}): ")
+                choice = input(f"\nEnter a number (1-{total_funds}): ")
                 selected_index = int(choice) - 1
-                if 0 <= selected_index < hedge_funds_size:
+                if 0 <= selected_index < total_funds:
                     selected_fund = hedge_funds[selected_index]
                     process_fund(selected_fund)
                 else:
@@ -236,11 +279,11 @@ if __name__ == "__main__":
             except KeyboardInterrupt:
                 print("Operation cancelled by user.")
 
-        elif choice == '2':
+        elif choice == '3':
             cik = get_user_input()
             process_fund({'CIK': cik})
         
-        elif choice == '3':
+        elif choice == '4':
             print("Sorting stocks file by Ticker before exiting...")
             sort_stocks()
             print("Exit.")

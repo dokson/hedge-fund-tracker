@@ -1,0 +1,107 @@
+CUSIP,Ticker,Company,Value,Portfolio%,Delta_Value,Delta
+76131D103,QSR,"Restaurant Brands International, Inc.",224.74M,1.3%,224.74M,NEW
+902494103,TSN,Tyson Foods Inc,298.6M,1.7%,102.03M,+51.9%
+89677Q107,TRIP,"Trip.com Group Ltd., ADR",309.19M,1.8%,70.94M,+29.8%
+03831W108,APP,"AppLovin Corp., Class A",43.19M,0.2%,43.19M,NEW
+038222105,AMAT,"Applied Materials, Inc.",724.61M,4.2%,40.77M,+6%
+35969L108,YMM,Full Truck Alliance Co. Ltd.,99.85M,0.6%,30.89M,+44.8%
+91912E105,VLO,"Vale S.A., ADR",27.28M,0.2%,27.28M,NEW
+552953101,MGM,MGM Resorts International,616.96M,3.6%,26.51M,+4.5%
+902973304,USB,U.S. Bancorp,628.61M,3.6%,21.7M,+3.6%
+92556V106,VTRS,Viatris Inc.,565.7M,3.3%,20.68M,+3.8%
+444859102,HUM,Humana Inc.,616.87M,3.6%,19.7M,+3.3%
+882508104,TXN,"Texas Instruments, Inc.",436.86M,2.5%,14.55M,+3.4%
+126650100,CVS,CVS Health Corporation,782.45M,4.5%,11.05M,+1.4%
+02079K305,GOOGL,"Alphabet Inc., Class A",470.03M,2.7%,3.68M,+0.8%
+101121101,BXP,"BXP, Inc.",13.67M,0.1%,3.4M,+33.1%
+001084102,AGCO,AGCO Corporation,187.66M,1.1%,3.32M,+1.8%
+20825C104,COP,ConocoPhillips,147.25M,0.8%,3.29M,+2.3%
+866674104,SUI,"Sun Communities, Inc.",3.22M,0%,3.22M,NEW
+83444M101,SOLV,Solventum Corp.,402.11M,2.3%,3.16M,+0.8%
+237266101,DAR,Darling Ingredients Inc.,77.36M,0.4%,3.07M,+4.1%
+59522J103,MAA,"Mid-America Apartment Communities, Inc.",8.62M,0%,2.65M,+44.3%
+25960P109,DEI,"Douglas Emmett, Inc",4.3M,0%,2.31M,+115.6%
+64119V303,NTST,NetSTREIT Corp.,1.82M,0%,1.82M,NEW
+570535104,MKL,"Markel Group, Inc",694.5M,4%,1.77M,+0.3%
+20369C106,CHCT,"Community Healthcare Trust, Inc.",5.48M,0%,1.56M,+39.9%
+44891N208,IAC,IAC Inc.,122.1M,0.7%,1.02M,+0.8%
+02665T306,AMH,American Homes 4 Rent - Class A,9.19M,0.1%,1M,+12.2%
+76169C100,REXR,"Rexford Industrial Realty, Inc.",14.24M,0.1%,940.77K,+7.1%
+133131102,CPT,Camden Property Trust,9.36M,0.1%,872K,+10.3%
+857477103,STT,State Street Corp.,6.51M,0%,858.86K,+15.2%
+316773100,FITB,Fifth Third Bancorp,96.48M,0.6%,664.16K,+0.7%
+594918104,MSFT,Microsoft Corp.,96.3M,0.6%,575.1K,+0.6%
+23908L405,DINT,Davis Select International ETF,89.9M,0.5%,482.21K,+0.5%
+125523100,CI,Cigna Group,471.54M,2.7%,478.69K,+0.1%
+89832Q109,TFC,Truist Financial Corp.,6.44M,0%,454.79K,+7.6%
+G7496G103,RNR,RenaissanceRe Holdings Ltd,34.51M,0.2%,357.12K,+1%
+55261F104,MTB,M & T Bank Corp,9.15M,0.1%,269.38K,+3%
+95082P105,WCC,"Wesco International, Inc.",40.15M,0.2%,235.43K,+0.6%
+G3223R108,EG,"Everest Group, Ltd.",14.41M,0.1%,163.5K,+1.1%
+015271109,ARE,"Alexandria Real Estate Equities, Inc.",14M,0.1%,103.61K,+0.7%
+053484101,AVB,"AvalonBay Communities, Inc.",12.16M,0.1%,92.29K,+0.8%
+277276101,EGP,"Eastgroup Properties, Inc.",7.88M,0%,54.61K,+0.7%
+18467V109,YOU,"Clear Secure, Inc.",15.07M,0.1%,51.95K,+0.3%
+G51502105,JCI,Johnson Controls International plc,32.38M,0.2%,50.47K,+0.2%
+444097109,HPP,Hudson Pacific Properties Inc.,6.78M,0%,47.2K,+0.7%
+23908L108,DFNL,Davis Select Financial ETF,83.66M,0.5%,23.37K,+0%
+512807306,LRCX,Lam Research Corp.,892.76K,<.01%,0,NO CHANGE
+228368106,CCK,"Crown Holdings, Inc.",764.96K,<.01%,0,NO CHANGE
+74967X103,RH,RH,525.08K,<.01%,0,NO CHANGE
+830566105,SKX,"Skechers U.S.A., Inc., Class A",340.68K,<.01%,0,NO CHANGE
+431284108,HIW,Highwoods Properties Inc.,3.83M,0%,-25.79K,-0.7%
+22822V101,CCI,"Crown Castle, Inc.",4.27M,0%,-27.1K,-0.6%
+42250P103,PEAK,"Healthpeak Properties, Inc.",4.99M,0%,-31.54K,-0.6%
+02079K107,GOOG,"Alphabet Inc., Class C",101.03M,0.6%,-40.46K,-0%
+88146M101,TRNO,Terreno Realty Corp.,6.37M,0%,-41.09K,-0.6%
+29476L107,EQR,Equity Residential,7.15M,0%,-42.95K,-0.6%
+758849103,REG,Regency Centers Corporation,8.71M,0.1%,-50.89K,-0.6%
+925652109,VICI,"VICI Properties, Inc.",4.68M,0%,-60.67K,-1.3%
+23908L306,DWLD,Davis Select Worldwide ETF,72.22M,0.4%,-63.81K,-0.1%
+74460D109,PSA,"Public Storage, Inc.",14.89M,0.1%,-98.77K,-0.7%
+867892101,SHO,"Sunstone Hotel Investors, Inc.",7.45M,0%,-102.47K,-1.4%
+65487X102,NOAH,"Noah Holdings Ltd., Class A, ADS",15.64M,0.1%,-102.81K,-0.7%
+92276F100,VTR,"Ventas, Inc.",17.2M,0.1%,-107.27K,-0.6%
+68389X105,ORCL,Oracle Corporation,19.07M,0.1%,-116.04K,-0.6%
+64110W102,NTES,NetEase Inc. - ADR,61.35M,0.4%,-124.12K,-0.2%
+03027X100,AMT,American Tower Corp,19.35M,0.1%,-128.38K,-0.7%
+23908L207,DUSA,Davis Select U.S. Equity ETF,143.18M,0.8%,-150.62K,-0.1%
+11120U105,BRX,"Brixmor Property Group, Inc.",12.86M,0.1%,-183.46K,-1.4%
+808513105,SCHW,Charles Schwab Corp.,23.3M,0.1%,-191.79K,-0.8%
+G0772R208,NTB,Bank of N.T. Butterfield & Son Limited,41.58M,0.2%,-310.7K,-0.7%
+77311W101,RKT,"Rocket Companies, Inc., Class A",37.89M,0.2%,-382.01K,-1%
+47215P106,JD,"JD.com Inc., Class A, ADR",14.21M,0.1%,-426.5K,-2.9%
+060505104,BAC,Bank of America Corp.,48.25M,0.3%,-596.2K,-1.2%
+30225T102,EXR,"Extra Space Storage, Inc.",8.43M,0%,-638.51K,-7%
+540424108,L,Loews Corp.,55.06M,0.3%,-655.41K,-1.2%
+22266T109,CPNG,"Coupang, Inc., Class A",128.97M,0.7%,-677.53K,-0.5%
+74340W103,PLD,"Prologis, Inc.",19.2M,0.1%,-820.54K,-4.1%
+025816109,AXP,American Express Co.,73.03M,0.4%,-821.95K,-1.1%
+693475105,PNC,"PNC Financial Services Group, Inc.",87.15M,0.5%,-1.02M,-1.2%
+91324P102,UNH,UnitedHealth Group Inc.,25.41M,0.1%,-1.36M,-5.1%
+74834L100,DGX,Quest Diagnostics Inc.,404.1M,2.3%,-1.52M,-0.4%
+902653104,UDR,"UDR, Inc.",7.16M,0%,-1.68M,-19%
+297178105,ESS,"Essex Property Trust, Inc.",8.5M,0%,-1.69M,-16.6%
+222795502,CUZ,"Cousins Properties, Inc.",13.18M,0.1%,-1.69M,-11.4%
+828806109,SPG,"Simon Property Group, Inc.",11.3M,0.1%,-2.11M,-15.7%
+H1467J104,CB,Chubb Ltd.,328.08M,1.9%,-2.6M,-0.8%
+313745101,FRT,Federal Realty Investment Trust,3.22M,0%,-2.65M,-45.2%
+29444U700,EQIX,"Equinix, Inc.",12.53M,0.1%,-3.12M,-19.9%
+253868103,DLR,"Digital Realty Trust, Inc.",9.62M,0.1%,-3.37M,-25.9%
+690742101,OC,Owens Corning,255.25M,1.5%,-3.43M,-1.3%
+95040Q104,WELL,"Welltower, Inc.",0,0%,-3.72M,CLOSE
+878742204,TECK,"Teck Resources Ltd., Class B",407.67M,2.3%,-3.94M,-1%
+46625H100,JPM,JPMorgan Chase & Co.,156.96M,0.9%,-4.38M,-2.7%
+803054204,SAP,SAP SE - ADR,20.44M,0.1%,-5.73M,-21.9%
+949746101,WFC,Wells Fargo & Co.,607.96M,3.5%,-11.95M,-1.9%
+81141R100,SE,"Sea Ltd., Class A, ADR",67.15M,0.4%,-16.1M,-19.3%
+064058100,BK,Bank of New York Mellon Corp.,160.25M,0.9%,-18.98M,-10.6%
+084670108,BRK.A,"Berkshire Hathaway Inc., Class A",1.24B,7.2%,-19.16M,-1.5%
+084670702,BRK.B,"Berkshire Hathaway Inc., Class B",361.33M,2.1%,-20.8M,-5.4%
+464287408,IVE,iShares S&P 500 Value Index Fund,3.76M,0%,-33.82M,-90%
+482497104,BEKE,"KE Holdings Inc., Class A, ADR",37.38M,0.2%,-35.91M,-49%
+14040H105,COF,Capital One Financial Corp.,1.61B,9.3%,-44.75M,-2.7%
+023135106,AMZN,"Amazon.com, Inc.",669.71M,3.9%,-54.72M,-7.6%
+458140100,INTC,Intel Corp.,242.61K,<.01%,-58.07M,-99.6%
+30303M102,META,"Meta Platforms, Inc., Class A",1.27B,7.3%,-162.73M,-11.3%
+Total,,,17.35B,100%,143.31M,+0.8%
