@@ -10,16 +10,7 @@ import warnings
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
-OUTPUT_FOLDER = '/database'
-
-
-def get_user_input():
-    """
-    Prompts the user for a 10-digit CIK number.
-    """
-    cik = input("Enter 10-digit CIK number: ")
-    return cik
-
+OUTPUT_FOLDER = './database'
 
 
 def xml_to_dataframe(xml_content):
@@ -201,7 +192,7 @@ if __name__ == "__main__":
                 print("Operation cancelled by user.")
 
         elif choice == '3':
-            cik = get_user_input()
+            cik = input("Enter 10-digit CIK number: ")
             process_fund({'CIK': cik})
         
         elif choice == '4':
