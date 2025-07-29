@@ -27,7 +27,7 @@ def load_stocks(filepath=f"./database/{STOCKS_FILE}"):
     """
     try:
         df = pd.read_csv(filepath, dtype={'CUSIP': str, 'Ticker': str, 'Company': str})
-        return df.set_index('CUSIP')['Ticker']
+        return df.set_index('CUSIP')
     except Exception as e:
         print(f"Errore while reading '{filepath}': {e}")
         return []
@@ -42,7 +42,7 @@ def save_stock(cusip, ticker, company):
         # Use csv.writer to properly handle quoting, ensuring all fields are enclosed in double quotes.
         with open(f'./database/{STOCKS_FILE}', 'a', newline='', encoding='utf-8') as stocks_file:
             writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
-            writer.writerow([cusip, ticker, company.title()])
+            writer.writerow([cusip, ticker, company])
     except Exception as e:
         print(f"An error occurred while writing file '{STOCKS_FILE}': {e}")
 

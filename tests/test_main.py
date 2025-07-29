@@ -1,8 +1,9 @@
-from scraper.main import xml_to_dataframe, generate_comparison, get_quarter
+from scraper.main import format_percentage, format_value, xml_to_dataframe, generate_comparison, get_quarter
 from unittest.mock import patch
-import unittest
+from pathlib import Path
 import os
 import pandas as pd
+import unittest
 
 class TestMain(unittest.TestCase):
 
@@ -30,31 +31,37 @@ class TestMain(unittest.TestCase):
         self.assertEqual(df['Value'][0], 1000)
         self.assertEqual(df['Shares'][0], 100)
 
-    @patch('scraper.main.get_ticker')
-    def test_generate_comparison(self, mock_get_tickers):
+
+    def test_generate_comparison(self):
         # Create mock DataFrames
-        data1 = {'Company': ['Test Company'], 'CUSIP': ['TC123456'], 'Value': [1000], 'Shares': [100]}
-        data2 = {'Company': ['Test Company'], 'CUSIP': ['TC123456'], 'Value': [500], 'Shares': [50]}
-        df_recent = pd.DataFrame(data1)
-        df_previous = pd.DataFrame(data2)
-        cik = "0123456789"
+        df_recent = pd.DataFrame([{"CUSIP": "TC123456", "Company": "Test Company", "Shares": 1000, "Value": 18000 }])
+        df_previous = pd.DataFrame([{"CUSIP": "TC123456", "Company": "Test Company", "Shares": 500, "Value": 10000 }])
+
+        fund_name = "Test Fund 123"
         filing_dates = ["2025-05-01", "2025-01-05"]
-        filename = f"database/{get_quarter(filing_dates[0])}/{cik}.csv"
 
-        # Mock the return value of the ticker mapping function
-        mock_get_tickers.return_value = pd.Series(['TEST'], index=['TC123456'])
+        filename = Path("database") / f"{get_quarter(filing_dates[0])}/{fund_name.replace(' ', '_')}.csv"
+        self.addCleanup(os.remove, filename)
 
-        # Call the function
-        generate_comparison(cik, filing_dates, df_recent, df_previous)
-        self.assertTrue(os.path.exists(filename))
+        def mock_resolve_ticker(df):
+            df['Ticker'] = 'TEST'
+            return df
 
-        # Add assertions to check the output file
-        df_comparison = pd.read_csv(filename)
-        self.assertEqual(df_comparison['Delta'][0], '+100%')
-        self.assertEqual(df_comparison['Ticker'][0], 'TEST')
+        with patch("scraper.main.resolve_ticker", side_effect=mock_resolve_ticker):
+            generate_comparison(fund_name, filing_dates, df_recent, df_previous)
 
-        # Clean up: remove the file
-        os.remove(filename)
+            self.assertTrue(filename.exists(), f"Output file was not created at {filename}")
+
+            df_output = pd.read_csv(filename)
+            
+            self.assertEqual(df_output.iloc[0]['CUSIP'], "TC123456")
+            self.assertEqual(df_output.iloc[0]['Delta'], format_percentage(100, True))
+            self.assertEqual(df_output.iloc[0]['Delta_Value'], format_value(9000))
+            
+            self.assertEqual(df_output.iloc[1]['CUSIP'], "Total")
+            self.assertEqual(df_output.iloc[1]['Delta'], format_percentage(80, True))
+            self.assertEqual(df_output.iloc[1]['Delta_Value'], format_value(8000))
+        
 
 if __name__ == '__main__':
     unittest.main()

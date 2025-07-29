@@ -1,7 +1,7 @@
 from .sec_scraper import fetch_latest_two_filings
 from scraper.db.masterdata import load_hedge_funds, sort_stocks
 from scraper.db.pd_helpers import coalesce
-from scraper.ticker.resolver import get_ticker
+from scraper.ticker.resolver import resolve_ticker
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from pathlib import Path
 import pandas as pd
@@ -140,7 +140,7 @@ def xml_to_dataframe(xml_content):
 
     # Data cleaning
     df['CUSIP'] = df['CUSIP'].str.upper()
-    df['Company'] = df['Company'].str.strip()
+    df['Company'] = df['Company'].str.strip().str.replace(r'\s+', ' ', regex=True)
     df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce')
     df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
 
@@ -194,7 +194,7 @@ def generate_comparison(fund_name, filing_dates, df_recent, df_previous):
     total_delta = (total_delta_value / previous_portfolio_value) * 100
     
     df_comparison['Portfolio%'] = ((df_comparison['Value'] / total_portfolio_value) * 100).apply(format_percentage)
-    df_comparison['Ticker'] = df_comparison['CUSIP'].map(get_ticker(df_comparison))
+    df_comparison = resolve_ticker(df_comparison)
 
     df_comparison = df_comparison[['CUSIP', 'Ticker', 'Company', 'Value', 'Portfolio%', 'Delta_Value', 'Delta']] \
         .sort_values(by=['Delta_Value', 'Value'], ascending=False)

@@ -1,0 +1,173 @@
+CUSIP,Ticker,Company,Value,Portfolio%,Delta_Value,Delta
+009066101,ABNB,Airbnb Inc,1.19B,2%,549.29M,+86%
+49271V100,KDP,Keurig Dr Pepper Inc,1.49B,2.5%,516.37M,+53.2%
+20825C104,COP,Conocophillips,1.91B,3.2%,380.05M,+24.9%
+60855R100,MOH,Molina Healthcare Inc,345.01M,0.6%,345.01M,NEW
+21036P108,STZ,Constellation Brands Inc,317.19M,0.5%,317.19M,NEW
+871829107,SYY,Sysco Corp,642.84M,1.1%,316.62M,+97.1%
+56585A102,MPC,Marathon Pete Corp,311.3M,0.5%,311.3M,NEW
+718546104,PSX,Phillips 66,1.71B,2.9%,264.96M,+18.4%
+14316J108,CG,Carlyle Group Inc,383.03M,0.6%,244.12M,+175.7%
+294429105,EFX,Equifax Inc,1.11B,1.9%,240.58M,+27.6%
+036752103,ELV,Elevance Health Inc,991.78M,1.7%,199.59M,+25.2%
+609207105,MDLZ,Mondelez International Inc,159.41M,0.3%,159.41M,NEW
+G3643J108,FLUT,Flutter Entmt Plc,127.08M,0.2%,127.08M,NEW
+36266G107,GEHC,Ge Healthcare Technologies I,454.72M,0.8%,111.92M,+32.6%
+58933Y105,MRK,Merck Inc,670.45M,1.1%,109.95M,+19.6%
+075887109,BDX,Becton Dickinson & Co,295.92M,0.5%,91.29M,+44.6%
+02005N100,ALLY,Ally Finl Inc,908.66M,1.5%,66.31M,+7.9%
+G87052109,TEL,Te Connectivity Plc,689.56M,1.2%,65.17M,+10.4%
+247361702,DAL,Delta Air Lines Inc Del,492.34M,0.8%,64.16M,+15%
+117043109,BC,Brunswick Corp,186.99M,0.3%,35.43M,+23.4%
+31946M103,FCNCA,First Ctzns Bancshares Inc N,1.24B,2.1%,33.81M,+2.8%
+02079K305,GOOGL,Alphabet Inc,2.58B,4.3%,32.77M,+1.3%
+857477103,STT,State Street Corp.,688.46M,1.2%,27.05M,+4.1%
+759351604,RGA,Reinsurance Group Of America Inc,421.47M,0.7%,26.53M,+6.7%
+34964C106,FBIN,Fortune Brands Innovations Inc,405.24M,0.7%,22.14M,+5.8%
+126650100,CVS,Cvs Health Corporation,406.22M,0.7%,19.52M,+5%
+071813109,BAX,Baxter Intl Inc,308.2M,0.5%,18.51M,+6.4%
+91879Q109,MTN,Vail Resorts Inc,165.75M,0.3%,18.03M,+12.2%
+372460105,GPC,Genuine Parts Co,336.05M,0.6%,17.8M,+5.6%
+536797103,LAD,Lithia Mtrs Inc,588.41M,1%,16.01M,+2.8%
+87612G101,TRGP,Targa Resources Corp,14.45M,0%,14.45M,NEW
+81211K100,SEE,Sealed Air Corp,183.98M,0.3%,12.58M,+7.3%
+G96629103,WTW,Willis Towers Watson Plc Ltd,1.2B,2%,12.38M,+1%
+03743Q108,APA,Apa Corporation,540.39M,0.9%,10.27M,+1.9%
+00091G104,ACVA,Acv Auctions Inc,42.14M,0.1%,10.19M,+31.9%
+631103108,NDAQ,Nasdaq Inc,659.49M,1.1%,7.74M,+1.2%
+000957100,ABM,Abm Industries Inc,108.35M,0.2%,7.62M,+7.6%
+95058W100,WEN,Wendy'S Co,142.66M,0.2%,7.34M,+5.4%
+37940X102,GPN,Global Pmts Inc,530.51M,0.9%,6.46M,+1.2%
+20030N101,CMCSA,Comcast Corp New,759.94M,1.3%,4.12M,+0.5%
+G7T16G103,SPNS,Sapiens International Corporation Nv,13.43M,0%,3.29M,+32.4%
+559222401,MGA,Magna Intl Inc,242.17M,0.4%,2.6M,+1.1%
+580135101,MCD,Mcdonalds Corp,2.49M,<.01%,2.19M,+729.2%
+150870103,CE,Celanese Corp Del,127.93M,0.2%,1.76M,+1.4%
+29430C102,VSTS,Vestis Corp,2.92M,<.01%,1.75M,+149.3%
+931142103,WMT,Walmart Inc,1.71M,<.01%,1.71M,NEW
+09290D101,BLK,Blackrock Inc,216.87M,0.4%,1.42M,+0.7%
+21871X109,CRBG,Corebridge Financial Inc,661.02M,1.1%,1.2M,+0.2%
+099724106,BWA,Borgwarner Inc,337.45M,0.6%,1.16M,+0.3%
+110122108,BMY,Bristol-Myers Squibb Co,731.88K,<.01%,731.88K,NEW
+30231G102,XOM,Exxon Mobil Corp,703.71K,<.01%,703.71K,NEW
+G2717B108,CWK,Cushman & Wakefield Plc,31.41M,0.1%,690.5K,+2.2%
+458140100,INTC,Intel Corp,661.63K,<.01%,661.63K,NEW
+438516106,HON,Honeywell International Inc,637.37K,<.01%,637.37K,NEW
+934423104,WBD,Warner Bros Discovery Inc,1.03B,1.7%,563.92K,+0.1%
+896522109,TRN,Trinity Industries Inc,451.77K,<.01%,451.77K,NEW
+228368106,CCK,"Crown Holdings, Inc.",17.49M,0%,394.08K,+2.3%
+904767704,UL,Unilever Plc,327.52K,<.01%,327.52K,NEW
+358029106,FMS,Fresenius Medical Care Ag,266.31K,<.01%,266.31K,NEW
+74435K204,PUK,Prudential Plc Adr,248.43K,<.01%,248.43K,NEW
+464287655,IWM,Ishares Tr,106.33K,<.01%,106.33K,NEW
+922908363,VOO,Vanguard Index Fds,80.17K,<.01%,80.17K,NEW
+25243Q205,DEO,Diageo P L C,1.21M,<.01%,66.54K,+5.8%
+594918104,MSFT,Microsoft Corp,1.43M,<.01%,22.9K,+1.6%
+46625H100,JPM,Jpmorgan Chase & Co.,1.2M,<.01%,12.02K,+1%
+67066G104,NVDA,Nvidia Corporation,470.37K,<.01%,10.84K,+2.4%
+683715106,OTEX,Open Text Corp,226.68M,0.4%,4.16K,+0%
+464288760,ITA,Ishares U.S. Aerospace & Defense Etf,2.14K,<.01%,2.14K,NEW
+57638P104,MBC,Masterbrand Inc,657.73K,<.01%,0,NO CHANGE
+174610105,CFG,Citizens Finl Group Inc,656.42K,<.01%,0,NO CHANGE
+053015103,ADP,Automatic Data Processing Inc,413.99K,<.01%,0,NO CHANGE
+46429B598,INDA,Ishares Tr,30.89K,<.01%,0,NO CHANGE
+464289180,EUFN,Ishares Msci Europe Financials Etf,17.09K,<.01%,0,NO CHANGE
+464288372,IGF,Ishares Global Infrastructure Etf,17.06K,<.01%,0,NO CHANGE
+922908769,VTI,Vanguard Total Stock Market Etf,13.74K,<.01%,0,NO CHANGE
+464288240,ACWX,Ishares Msci Acwi Ex U.S. Etf,5.21K,<.01%,0,NO CHANGE
+464287234,EEM,Ishrs Msci Emg'G Mkt Idx,2.23K,<.01%,0,NO CHANGE
+718172109,PM,Philip Morris Intl Inc,746.03K,<.01%,-1.59K,-0.2%
+278642103,EBAY,Ebay Inc,711.16K,<.01%,-4.61K,-0.6%
+464287465,EFA,Ishares Msci Eafe Etf,72.09K,<.01%,-7.36K,-9.3%
+464287804,IJR,Ishares Tr,0,0%,-8.06K,CLOSE
+149123101,CAT,Caterpillar Inc.,620.02K,<.01%,-13.19K,-2.1%
+539439109,LYG,Lloyds Banking Group Plc,173.39K,<.01%,-24.07K,-12.2%
+42704L104,HRI,Herc Holdings Inc,973.46K,<.01%,-28.87K,-2.9%
+48238T109,KAR,Openlane Inc,74.3M,0.1%,-31.2K,-0%
+464288257,ACWI,Ishares Msci Acwi Etf,220.21K,<.01%,-47.49K,-17.7%
+166764100,CVX,Chevron Corp New,310.32K,<.01%,-55.71K,-15.2%
+530307107,LBRDA,Liberty Broadband Corp,1.54M,<.01%,-59.92K,-3.7%
+56418H100,MAN,Manpowergroup Inc Wis,5.74M,<.01%,-115.24K,-2%
+89832Q109,TFC,Truist Finl Corp,16.97M,0%,-115.59K,-0.7%
+88033G407,THC,Tenet Healthcare Corp,322.8K,<.01%,-134.5K,-29.4%
+260003108,DOV,Dover Corp,2.27M,<.01%,-144.94K,-6%
+437076102,HD,Home Depot Inc,0,0%,-207.72K,CLOSE
+91324P102,UNH,Unitedhealth Group Inc,0,0%,-220.55K,CLOSE
+037833100,AAPL,Apple Inc,28.55M,0%,-226.13K,-0.8%
+882508104,TXN,Texas Instrs Inc,8.62M,0%,-241.88K,-2.7%
+78409V104,SPGI,S&P Global Inc,254.05K,<.01%,-290.12K,-53.3%
+98138H101,WDAY,Workday Inc,5.64M,<.01%,-310.36K,-5.2%
+02209S103,MO,Altria Group Inc,0,0%,-342.5K,CLOSE
+369550108,GD,General Dynamics Corp,0,0%,-349.12K,CLOSE
+235851102,DHR,Danaher Corporation,3.2M,<.01%,-421.69K,-11.6%
+09857L108,BKNG,Booking Holdings Inc,281.02K,<.01%,-423.84K,-60.1%
+052800109,ALV,Autoliv Inc,30.66M,0.1%,-425K,-1.4%
+64110L106,NFLX,Netflix Inc,3.09M,<.01%,-454.14K,-12.8%
+701094104,PH,Parker-Hannifin Corp,0,0%,-517.73K,CLOSE
+44267T102,HHH,Howard Hughes Holdings Inc,117.66M,0.2%,-635.01K,-0.5%
+34354P105,FLS,Flowserve Corp,0,0%,-644.22K,CLOSE
+934550203,WMG,Warner Music Group Corp,126.1M,0.2%,-742.9K,-0.6%
+01973R101,ALSN,Allison Transmission Hldgs Inc,36.49M,0.1%,-795.97K,-2.1%
+194693107,CIGI,Colliers International Group Inc,10.2M,0%,-1.01M,-9%
+521865204,LEA,Lear Corp,23.23M,0%,-1.13M,-4.6%
+57636Q104,MA,Mastercard Incorporated,70.9M,0.1%,-1.25M,-1.7%
+922908744,VTV,Vanguard Value Etf,1.05M,<.01%,-1.49M,-58.6%
+812215200,SEG,Seaport Entmt Group Inc,2.69M,<.01%,-1.55M,-36.5%
+885160101,THO,Thor Inds Inc,111.42M,0.2%,-1.63M,-1.4%
+142339100,CSL,Carlisle Inc,3.48M,<.01%,-1.99M,-36.4%
+398438408,GRFS,Grifols S A,24.45M,0%,-2.03M,-7.7%
+084670702,BRK.B,Berkshire Hathaway Inc Del,15.28M,0%,-2.08M,-12%
+615369105,MCO,Moodys Corp,1.53M,<.01%,-2.34M,-60.5%
+G51502105,JCI,Johnson Ctls Intl Plc,989.36K,<.01%,-2.94M,-74.8%
+513272104,LW,Lamb Weston Hldgs Inc,967.02K,<.01%,-4.03M,-80.6%
+530307305,LBRDA,Liberty Broadband Corp,564.47M,0.9%,-4.05M,-0.7%
+40412C101,HCA,Hca Healthcare Inc,105.4M,0.2%,-5.05M,-4.6%
+808513105,SCHW,Schwab Charles Corp,2.16B,3.6%,-6.02M,-0.3%
+574599106,MAS,Masco Corp,436.06M,0.7%,-7.25M,-1.6%
+025816109,AXP,American Express Co,70.69M,0.1%,-7.28M,-9.3%
+02079K107,GOOG,Alphabet Inc,232.85M,0.4%,-7.99M,-3.3%
+01609W102,BABA,Alibaba Group Hldg Ltd,14.53M,0%,-10.46M,-41.9%
+146229109,CRI,Carters Inc,5M,<.01%,-10.97M,-68.7%
+464287598,IWD,Russell 1000,0,0%,-11.04M,CLOSE
+92826C839,V,Visa Inc,293.69M,0.5%,-11.26M,-3.7%
+254687106,DIS,Disney Walt Co,495.18K,<.01%,-11.57M,-95.9%
+29415F104,NVST,Envista Holdings Corporation,149.84M,0.3%,-12.77M,-7.9%
+G8267P108,SW,Smurfit Westrock Plc,0,0%,-14.75M,CLOSE
+30303M102,META,Meta Platforms Inc,1.53M,<.01%,-16.36M,-91.5%
+50212V100,LPLA,Lpl Finl Hldgs Inc,44.32M,0.1%,-19.63M,-30.7%
+38141G104,GS,Goldman Sachs Group Inc,42.87M,0.1%,-19.88M,-31.7%
+073685109,BECN,Beacon Roofing Supply Inc,0,0%,-21.52M,CLOSE
+867975104,SNRE,Sunrise Communications Ag Ads,0,0%,-21.74M,CLOSE
+48251W104,KKR,Kkr & Co Inc,58.89M,0.1%,-23.86M,-28.8%
+43300A203,HLT,Hilton Worldwide Hldgs Inc,38.31M,0.1%,-25.47M,-39.9%
+37045V100,GM,General Motors,1.4B,2.3%,-26.52M,-1.9%
+46266C105,IQV,Iqvia Hldgs Inc,1.97B,3.3%,-29.32M,-1.5%
+78462F103,SPY,SPDR S&P 500 ETF TR,1.59M,<.01%,-30.74M,-95.1%
+460690100,IPG,Interpublic Group Of Companies Inc,141.98M,0.2%,-34.55M,-19.6%
+783513203,RYAAY,Ryanair Holdings Plc,270.18M,0.5%,-36.19M,-11.8%
+G3265R107,APTV,Aptiv Plc,187.7M,0.3%,-40.59M,-17.8%
+68389X105,ORCL,Oracle Corp,154.3M,0.3%,-53.23M,-25.6%
+22052L104,CTVA,Corteva Inc,815.05M,1.4%,-61.48M,-7%
+16119P108,CHTR,Charter Communications Inc N,1.53B,2.6%,-71.4M,-4.5%
+060505104,BAC,Bank Amer Corp,1.18B,2%,-73.72M,-5.9%
+026874784,AIG,American International Group,1.94B,3.3%,-77.94M,-3.9%
+172967424,C,Citigroup Inc,1.1B,1.8%,-78.59M,-6.7%
+29786A106,ETSY,Etsy Inc,1.16M,<.01%,-82.74M,-98.6%
+G61188101,LBTYA,Liberty Global Ltd,0,0%,-88.48M,CLOSE
+70432V102,PAYC,Paycom Software Inc,664.2M,1.1%,-101.11M,-13.2%
+49177J102,KVUE,Kenvue Inc,644.62M,1.1%,-111.18M,-14.7%
+12504L109,CBRE,Cbre Group Inc,1.27B,2.1%,-142.84M,-10.1%
+064058100,BK,Bank Of New York Mellon Corp.,609.36M,1%,-189.29M,-23.7%
+023135106,AMZN,Amazon Com Inc,424.55M,0.7%,-189.81M,-30.9%
+949746101,WFC,Wells Fargo Co New,845.83M,1.4%,-194.48M,-18.7%
+26875P101,EOG,Eog Resources Inc,788.23M,1.3%,-246.79M,-23.8%
+15135B101,CNC,Centene Corp,1.28B,2.2%,-258.88M,-16.8%
+79466L302,CRM,Salesforce Inc,87.4M,0.1%,-269.92M,-75.5%
+244199105,DE,Deere & Co,1.98B,3.3%,-303.34M,-13.3%
+45866F104,ICE,Intercontinental Exchange In,1.97B,3.3%,-341.07M,-14.7%
+14040H105,COF,Capital One Finl Corp,1.77B,3%,-360.28M,-16.9%
+N20944109,CNH,Cnh Indl N V,1.03B,1.7%,-393.37M,-27.6%
+501044101,KR,Kroger Co,679.3M,1.1%,-644.18M,-48.7%
+337738108,FI,Fiserv Inc,1.25B,2.1%,-751.39M,-37.6%
+29415FAD6,NVST,Envista Holdings Corporation Convertible Bond,0,0%,-15.57B,CLOSE
+Total,,,59.55B,100%,-16.44B,-21.6%
