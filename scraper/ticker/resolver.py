@@ -4,15 +4,13 @@ from scraper.db.masterdata import load_stocks, save_stock
 import financedatabase as fd
 import pandas as pd
 
-FINANCE_DATABASE = fd.Equities()
-
 
 def _get_ticker_from_fd(cusip):
     """
     Searches for a ticker for a given CUSIP using financedatabase.
     If multiple tickers are found, it returns the shortest one.
     """
-    result = FINANCE_DATABASE.search(cusip=cusip)
+    result = fd.Equities().search(cusip=cusip)
 
     if not result.empty:
         result['ticker_length'] = [len(idx) for idx in result.index]
@@ -28,7 +26,7 @@ def _get_company_from_fd(cusip):
     Searches for a company for a given CUSIP using financedatabase.
     If multiple rows are found, it returns the one with the shortest ticker.
     """
-    result = FINANCE_DATABASE.search(cusip=cusip)
+    result = fd.Equities().search(cusip=cusip)
     
     if not result.empty:
         result['ticker_length'] = [len(idx) for idx in result.index]

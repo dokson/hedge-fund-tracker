@@ -1,4 +1,4 @@
-from scraper.main import generate_comparison, xml_to_dataframe
+from scraper.main import generate_comparison, xml_to_dataframe_13f
 from scraper.string_utils import format_percentage, format_value, get_quarter
 from unittest.mock import patch
 from pathlib import Path
@@ -22,7 +22,7 @@ class TestMain(unittest.TestCase):
         """
        
         # Call the function
-        df = xml_to_dataframe(xml_content)
+        df = xml_to_dataframe_13f(xml_content)
         
         # Assertions
         self.assertIsInstance(df, pd.DataFrame)
