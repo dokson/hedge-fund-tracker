@@ -138,7 +138,7 @@ def fetch_latest_two_13f_filings(cik):
 
 def fetch_schedule_filings_after_date(cik, start_date):
     """
-    Fetches the raw content and filing dates for the latest 13D filings for a given CIK.
+    Fetches the raw content and filing dates for the latest schedule filings for a given CIK.
     Returns a list of dictionaries, or None if an error occurs.
     """
     search_url = _create_search_url(cik, 'SCHEDULE', start_date)
@@ -150,7 +150,7 @@ def fetch_schedule_filings_after_date(cik, start_date):
     document_tags = soup.find_all('a', id="documentsbutton")
 
     if not document_tags:
-        print(f"No 13D documents found for CIK: {cik}")
+        print(f"No schedule documents found for CIK: {cik}")
         return None
 
     filings = []
