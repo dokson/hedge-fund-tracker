@@ -189,7 +189,7 @@ def process_fund(fund_info):
         df_previous = xml_to_dataframe_13f(filings[1]['xml_content'])
         generate_comparison(fund_name, filing_dates, df_recent, df_previous)
     except Exception as e:
-        print(f"An unexpected error occurred while processing {fund_name} (CIK: {cik}): {e}")
+        print(f"An unexpected error occurred while processing {fund_name}: {e}")
 
 
 if __name__ == "__main__":
