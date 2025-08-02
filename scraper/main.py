@@ -100,7 +100,7 @@ if __name__ == "__main__":
             print("  7: Seven vs Eight quarters back (2 years)")
 
             try:
-                offset_input = input("Enter offset number (1-7):").strip()
+                offset_input = input("Enter offset number (1-7): ").strip()
                 offset = int(offset_input)
 
                 if 1 <= offset <= 7:
