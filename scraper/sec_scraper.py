@@ -2,7 +2,6 @@ from bs4 import BeautifulSoup
 import requests
 import re
 
-
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36'
 SEC_HOST = 'www.sec.gov'
 SEC_URL = 'https://' + SEC_HOST
@@ -15,6 +14,7 @@ FILING_CONFIGS = {
         'xml_link_index': 1
     }
 }
+
 
 def _get_request(url):
     """Sends a GET request to the specified URL with custom headers."""
@@ -110,7 +110,7 @@ def _scrape_filing(document_tag, filing_type):
     }
 
 
-def fetch_latest_two_13f_filings(cik):
+def fetch_latest_two_13f_filings(cik, offset=0):
     """
     Fetches the raw XML content and filing dates for the two most recent 13F-HR filings for a given CIK.
     Returns a list of dictionaries, or None if an error occurs.
@@ -128,7 +128,7 @@ def fetch_latest_two_13f_filings(cik):
         return None
 
     filings = []
-    for tag in document_tags[:2]:
+    for tag in document_tags[offset:offset+2]:
         filing_data = _scrape_filing(tag, '13F-HR')
         if filing_data:
             filings.append(filing_data)

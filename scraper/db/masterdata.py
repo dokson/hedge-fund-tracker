@@ -1,26 +1,26 @@
+from scraper.string_utils import get_quarter
+from pathlib import Path
 import pandas as pd
 import csv
 
-
+OUTPUT_FOLDER = './database'
 HEDGE_FUNDS_FILE = 'hedge_funds.csv'
 STOCKS_FILE = 'stocks.csv'
 
 
-def load_hedge_funds(filepath=f"./database/{HEDGE_FUNDS_FILE}"):
+def load_hedge_funds(filepath=f"./{OUTPUT_FOLDER}/{HEDGE_FUNDS_FILE}"):
     """
     Loads hedge funds from file (hedge_funds.csv)
     """
     try:
         df = pd.read_csv(filepath, dtype={'cik': str})
-
         return df[['CIK', 'Fund', 'Manager']].to_dict('records')
-
     except Exception as e:
         print(f"Errore while reading '{filepath}': {e}")
         return []
     
 
-def load_stocks(filepath=f"./database/{STOCKS_FILE}"):
+def load_stocks(filepath=f"./{OUTPUT_FOLDER}/{STOCKS_FILE}"):
     """
     Loads stocks masterdata into a pandas Series.
     Returns an empty Series if the file doesn't exist or is empty.
@@ -33,11 +33,25 @@ def load_stocks(filepath=f"./database/{STOCKS_FILE}"):
         return []
 
 
+def save_comparison(comparison_dataframe, date, fund_name):
+    """
+    Save comparison dataframe to .csv file in the appropriate folder
+    """
+    try:
+        quarter_folder = Path(OUTPUT_FOLDER) / get_quarter(date)
+        quarter_folder.mkdir(parents=True, exist_ok=True)
+
+        filename = quarter_folder / f"{fund_name.replace(' ', '_')}.csv"
+        comparison_dataframe.to_csv(filename, index=False)
+        print(f"Created {filename}")
+    except Exception as e:
+        print(f"An error occurred while writing comparison file from dataframe: {e}")
+
+
 def save_stock(cusip, ticker, company):
     """
     Appends a new CUSIP-Ticker pair to stocks.csv.
     """
-    
     try:
         # Use csv.writer to properly handle quoting, ensuring all fields are enclosed in double quotes.
         with open(f'./database/{STOCKS_FILE}', 'a', newline='', encoding='utf-8') as stocks_file:

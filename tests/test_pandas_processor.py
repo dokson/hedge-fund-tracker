@@ -1,14 +1,12 @@
-from scraper.main import generate_comparison, xml_to_dataframe_13f
-from scraper.string_utils import format_percentage, format_value, get_quarter
+from scraper.pandas_processor import generate_comparison, xml_to_dataframe_13f
+from scraper.string_utils import format_percentage, format_value
 from unittest.mock import patch
-from pathlib import Path
-import os
 import pandas as pd
 import unittest
 
-class TestMain(unittest.TestCase):
+class TestPandasProcessor(unittest.TestCase):
 
-    def test_xml_to_dataframe(self):
+    def test_xml_to_dataframe_13f(self):
         # Mock XML content
         xml_content = """
         <infotable>
@@ -38,22 +36,12 @@ class TestMain(unittest.TestCase):
         df_recent = pd.DataFrame([{"CUSIP": "TC123456", "Company": "Test Company", "Shares": 1000, "Value": 18000 }])
         df_previous = pd.DataFrame([{"CUSIP": "TC123456", "Company": "Test Company", "Shares": 500, "Value": 10000 }])
 
-        fund_name = "Test Fund 123"
-        filing_dates = ["2025-05-01", "2025-01-05"]
-        
-        filename = Path("database") / f"{get_quarter(filing_dates[0])}/{fund_name.replace(' ', '_')}.csv"
-        self.addCleanup(os.remove, filename)
-
         def mock_resolve_ticker(df):
             df['Ticker'] = 'TEST'
             return df
 
-        with patch("scraper.main.resolve_ticker", side_effect=mock_resolve_ticker):
-            generate_comparison(fund_name, filing_dates, df_recent, df_previous)
-
-            self.assertTrue(filename.exists(), f"Output file was not created at {filename}")
-
-            df_output = pd.read_csv(filename)
+        with patch("scraper.pandas_processor.resolve_ticker", side_effect=mock_resolve_ticker):
+            df_output = generate_comparison(df_recent, df_previous)
             
             self.assertEqual(df_output.iloc[0]['CUSIP'], "TC123456")
             self.assertEqual(df_output.iloc[0]['Delta'], format_percentage(100, True))

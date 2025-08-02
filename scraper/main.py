@@ -1,245 +1,123 @@
 from .sec_scraper import fetch_latest_two_13f_filings
-from scraper.db.masterdata import load_hedge_funds, sort_stocks
-from scraper.db.pd_helpers import coalesce
-from scraper.string_utils import format_percentage, format_value, get_quarter
-from scraper.ticker.resolver import resolve_ticker
-from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
-from pathlib import Path
-import pandas as pd
-import warnings
+from .pandas_processor import xml_to_dataframe_13f, generate_comparison
+from scraper.db.masterdata import load_hedge_funds, save_comparison, sort_stocks
 
-warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
-
-OUTPUT_FOLDER = './database'
+LINE_LENGTH=75
+DASH_LENGTH=5
 
 
-def xml_to_dataframe_13f(xml_content):
-    """
-    Parses the XML content and returns the data as a Pandas DataFrame.
-    """
-    soup_xml = BeautifulSoup(xml_content, "lxml")
-
-    columns = [
-        "Company",
-        "CUSIP",
-        "Value",
-        "Shares",
-        "Put/Call"
-    ]
-
-    data = []
-
-    for info_table in soup_xml.find_all(lambda tag: tag.name.endswith('infotable')):
-        company = info_table.find(lambda tag: tag.name.endswith('nameofissuer')).text
-        cusip = info_table.find(lambda tag: tag.name.endswith('cusip')).text
-        value = info_table.find(lambda tag: tag.name.endswith('value')).text
-        shares = info_table.find(lambda tag: tag.name.endswith('sshprnamt')).text
-        put_call_tag = info_table.find(lambda tag: tag.name.endswith('putcall'))
-        put_call = put_call_tag.text if put_call_tag else ''
-
-        data.append([
-            company,
-            cusip,
-            value,
-            shares,
-            put_call
-        ])
-
-    df = pd.DataFrame(data, columns=columns)
-
-    # Filter out options to keep only shares
-    df = df[df['Put/Call'] == ''].drop('Put/Call', axis=1)
-
-    # Data cleaning
-    df['CUSIP'] = df['CUSIP'].str.upper()
-    df['Company'] = df['Company'].str.strip().str.replace(r'\s+', ' ', regex=True)
-    df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce')
-    df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
-
-    # Dedup by CUSIP
-    df = df.groupby(['CUSIP'], as_index=False).agg({
-        'Company': 'max',
-        'Value': 'sum',
-        'Shares': 'sum'
-    })
-
-    return df
-
-
-def xml_to_dataframe_schedule(xml_content):
-    """
-    Parses the XML content and returns the data as a Pandas DataFrame.
-    """
-    soup_xml = BeautifulSoup(xml_content, "lxml")
-
-    columns = [
-        "Company",
-        "CUSIP",
-        "Shares",
-        "Owner"
-    ]
-
-    data = []
-
-    for info_share in soup_xml.find_all(lambda tag: tag.name.endswith('formdata')):
-        company = info_share.find('issuername').text
-        cusip = info_share.find('issuercusip').text
-
-        for reporting_person in soup_xml.find_all(lambda tag: tag.name.endswith('reportingpersoninfo')):
-            owner = reporting_person.find('reportingpersoncik').text
-            shares = reporting_person.find('sharedvotingpower').text
-
-            data.append([
-                company,
-                cusip,
-                shares,
-                owner
-            ])
-
-    df = pd.DataFrame(data, columns=columns)
-
-    # Data cleaning
-    df['CUSIP'] = df['CUSIP'].str.upper()
-    df['Company'] = df['Company'].str.strip().str.replace(r'\s+', ' ', regex=True)
-    df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce')
-    df['Owner'] = df['Owner'].str.upper()
-
-    return df
-
-def generate_comparison(fund_name, filing_dates, df_recent, df_previous):
-    """
-    Generates a comparison report between the two DataFrames, calculating percentage change and indicating new positions.
-    """
-    df_comparison = pd.merge(
-        df_recent,
-        df_previous,
-        on=['CUSIP'],
-        how='outer',
-        suffixes=('_recent', '_previous')
-    )
-
-    df_comparison['Company'] = coalesce(df_comparison['Company_recent'], df_comparison['Company_previous'])
-
-    df_comparison['Shares_recent'] = df_comparison['Shares_recent'].fillna(0).astype('int64')
-    df_comparison['Shares_previous'] = df_comparison['Shares_previous'].fillna(0).astype('int64')
-    df_comparison['Value'] = df_comparison['Value_recent'].fillna(0).astype('int64')
-    df_comparison['Value_previous'] = df_comparison['Value_previous'].fillna(0).astype('int64')
-
-    df_comparison['Price_per_Share'] = (coalesce(df_comparison['Value'] / df_comparison['Shares_recent'], df_comparison['Value_previous'] / df_comparison['Shares_previous'])).round(2)
-    df_comparison['Delta_Shares'] = df_comparison['Shares_recent'] - df_comparison['Shares_previous']
-    df_comparison['Delta_Value'] = (df_comparison['Delta_Shares'] * df_comparison['Price_per_Share']).fillna(0).astype(int)
-
-    df_comparison['Delta%'] = (df_comparison['Delta_Shares'] / df_comparison['Shares_previous']) * 100
-
-    df_comparison['Delta'] = df_comparison.apply(
-        lambda row: 
-        'NEW' if row['Shares_previous'] == 0
-        else 'CLOSE' if row['Shares_recent'] == 0
-        else 'NO CHANGE' if row['Shares_recent'] == row['Shares_previous']
-        else format_percentage(row['Delta%'], True),
-        axis=1
-    )
-
-    total_portfolio_value = df_comparison['Value'].sum()
-    previous_portfolio_value = df_comparison['Value_previous'].sum()
-    total_delta_value = total_portfolio_value - previous_portfolio_value
-    total_delta = (total_delta_value / previous_portfolio_value) * 100
-    
-    df_comparison['Portfolio%'] = ((df_comparison['Value'] / total_portfolio_value) * 100).apply(format_percentage)
-    df_comparison = resolve_ticker(df_comparison)
-
-    df_comparison = df_comparison[['CUSIP', 'Ticker', 'Company', 'Value', 'Portfolio%', 'Delta_Value', 'Delta']] \
-        .sort_values(by=['Delta_Value', 'Value'], ascending=False)
-
-    df_comparison['Value'] = df_comparison['Value'].apply(format_value)
-    df_comparison['Delta_Value'] = df_comparison['Delta_Value'].apply(format_value)
-
-    # Add grand total row
-    total_row = pd.DataFrame([{
-        'CUSIP': 'Total', 
-        'Ticker': '', 
-        'Company': '',
-        'Value': format_value(total_portfolio_value),
-        'Portfolio%': format_percentage(100),
-        'Delta_Value': format_value(total_delta_value),
-        'Delta': format_percentage(total_delta, True)
-    }])
-
-    df_comparison = pd.concat([df_comparison, total_row], ignore_index=True)
-
-    # Save the comparison to CSV
-    quarter_folder = Path(OUTPUT_FOLDER) / get_quarter(filing_dates[0])
-    quarter_folder.mkdir(parents=True, exist_ok=True)
-    
-    filename = quarter_folder / f"{fund_name.replace(' ', '_')}.csv"
-    df_comparison.to_csv(filename, index=False)
-    print(f"Created {filename}")
-
-
-def process_fund(fund_info):
+def process_fund(fund_info, offset=0):
     """
     Processes a single fund: fetches filings and generates comparison.
     """
     cik = fund_info.get('CIK')
     fund_name = fund_info.get('Fund') or fund_info.get('CIK')
     try:
-        filings = fetch_latest_two_13f_filings(cik)
+        filings = fetch_latest_two_13f_filings(cik, offset)
         filing_dates = [f['date'] for f in filings]
         df_recent = xml_to_dataframe_13f(filings[0]['xml_content'])
         df_previous = xml_to_dataframe_13f(filings[1]['xml_content'])
-        generate_comparison(fund_name, filing_dates, df_recent, df_previous)
+        
+        df_comparison = generate_comparison(df_recent, df_previous)
+        save_comparison(df_comparison, filing_dates[0], fund_name)
     except Exception as e:
         print(f"An unexpected error occurred while processing {fund_name}: {e}")
 
 
+def select_fund():
+    """
+    Fund selection.
+    Returns selected fund info or None if cancelled/invalid.
+    """
+    hedge_funds = load_hedge_funds()
+    total_funds = len(hedge_funds)
+    
+    print("Select the hedge fund:")
+    for i, fund in enumerate(hedge_funds):
+        print(f"  {i + 1:2}: {fund['Fund']} - {fund['Manager']}")
+
+    try:
+        choice = input(f"\nEnter a number (1-{total_funds}): ")
+        selected_index = int(choice) - 1
+        if 0 <= selected_index < total_funds:
+            return hedge_funds[selected_index]
+        else:
+            print("❌ Invalid selection.")
+            return None
+    except ValueError:
+        print("❌ Invalid input. Please enter a number.")
+        return None
+    except KeyboardInterrupt:
+        print("❌ Operation cancelled by user.")
+        return None
+
+
 if __name__ == "__main__":
 
-     while True:
-        print("\n--- Main Menu ---")
+    while True:
+        print("\n" + "="*LINE_LENGTH)
+        print(" "*int((LINE_LENGTH-16)/2) + "HEDGE FUND TRACKER")
+        print("="*LINE_LENGTH)
         print("1. Generate latest reports for all known hedge funds (hedge_funds.csv)")
-        print("2. Update the latest report for a known hedge fund (hedge_funds.csv)")
-        print("3. Manually enter a hedge fund CIK number to get latest its filings and generate a report")
-        print("4. Exit")
-        choice = input("Choose an option (1-4): ")
+        print("2. Generate latest report for a known hedge fund (hedge_funds.csv)")
+        print("3. Generate historical report for a known hedge fund (hedge_funds.csv)")
+        print("4. Manually enter a hedge fund CIK number to generate latest report")
+        print("5. Exit")
+        print("="*LINE_LENGTH)
 
-        if choice == '1':
+        offset_input = input("Choose an option (1-5): ")
+
+        if offset_input == '1':
             hedge_funds = load_hedge_funds()
             total_funds = len(hedge_funds)
-            print(f"Starting update reports for all {total_funds} funds...")
+            print(f"Starting updating reports for all {total_funds} funds...")
+            print("This will generate last vs previous quarter comparisons.")
             for i, fund in enumerate(hedge_funds):
-                print(f"\n--- Processing {i + 1:2}/{total_funds}: {fund['Fund']} - {fund['Manager']} ---")
+                print("\n")
+                print("-"*DASH_LENGTH + f" Processing {i + 1:2}/{total_funds}: {fund['Fund']} - {fund['Manager']} " + "-"*DASH_LENGTH)
                 process_fund(fund)
-            print("--- All funds processed. ---")
+            print("-"*DASH_LENGTH + "All funds processed." + "-"*DASH_LENGTH)
 
-        elif choice == '2':
-            hedge_funds = load_hedge_funds()
-            total_funds = len(hedge_funds)
-            print("Select the hedge fund you want to update:")
-            for i, fund in enumerate(hedge_funds):
-                print(f"  {i + 1:2}: {fund['Fund']} - {fund['Manager']}")
+        elif offset_input == '2':
+            print("Select the hedge fund for latest report generation:")
+            selected_fund = select_fund()
+            if selected_fund:
+                process_fund(selected_fund)
+
+        elif offset_input == '3':
+            print("Select the hedge fund for historical report generation:")
+            selected_fund = select_fund()
+            if not selected_fund:
+                continue
+
+            print("Select historical period comparison:")
+            print("  1: Previous vs Two quarters back")
+            print("  2: Two vs Three quarters back")
+            print("  3: Three vs Four quarters back")
+            print("  4: Four vs Five quarters back")
+            print("  5: Five vs Six quarters back")
+            print("  6: Six vs Seven quarters back")
+            print("  7: Seven vs Eight quarters back (2 years)")
 
             try:
-                choice = input(f"\nEnter a number (1-{total_funds}): ")
-                selected_index = int(choice) - 1
-                if 0 <= selected_index < total_funds:
-                    selected_fund = hedge_funds[selected_index]
-                    process_fund(selected_fund)
-                else:
-                    print("Invalid selection.")
-            except ValueError:
-                print("Invalid input. Please enter a number.")
-            except KeyboardInterrupt:
-                print("Operation cancelled by user.")
+                offset_input = input("Enter offset number (1-7):").strip()
+                offset = int(offset_input)
 
-        elif choice == '3':
+                if 1 <= offset <= 7:
+                    process_fund(selected_fund, offset)
+                else:
+                    print("❌ Offset must be positive and must not go back further than 2 years.")
+            except ValueError:
+                print("❌ Invalid input. Please enter a number.")
+
+        elif offset_input == '4':
             cik = input("Enter 10-digit CIK number: ")
             process_fund({'CIK': cik})
         
-        elif choice == '4':
-            print("Sorting stocks file by Ticker before exiting...")
+        elif offset_input == '5':
             sort_stocks()
             print("Exit.")
             break
 
         else:
-            print("Invalid choice. Try again.")
+            print("❌ Invalid choice. Try again.")
