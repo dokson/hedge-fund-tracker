@@ -6,7 +6,7 @@ USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 SEC_HOST = 'www.sec.gov'
 SEC_URL = 'https://' + SEC_HOST
 
-FILING_CONFIGS = {
+FILING_SPECS = {
     '13F-HR': {
         'xml_link_index': 3
     },
@@ -63,14 +63,14 @@ def _get_primary_xml_url(report_page_soup, filing_type):
     Uses the configuration based on filing type.
     """
     try:
-        config = FILING_CONFIGS.get(filing_type)      
+        config = FILING_SPECS.get(filing_type)      
         tags = report_page_soup.findAll('a', attrs={'href': re.compile('xml')})
 
         xml_link_index = config['xml_link_index']
         if len(tags) > xml_link_index:
             return SEC_URL + tags[xml_link_index].get('href')
     except Exception as e:
-        print(f"Error finding XML URL: {e}")
+        print(f"Error finding XML URL for filing type {filing_type}: {e}")
     return None
 
 

@@ -1,4 +1,4 @@
-from scraper.db.pd_helpers import coalesce
+from app.utils.pd import coalesce
 import pandas as pd
 import unittest
 

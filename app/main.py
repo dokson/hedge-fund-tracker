@@ -1,6 +1,8 @@
-from .sec_scraper import fetch_latest_two_13f_filings
-from .pandas_processor import xml_to_dataframe_13f, generate_comparison
-from scraper.db.masterdata import load_hedge_funds, save_comparison, sort_stocks
+from app.analysis.report import generate_comparison
+from app.analysis.stocks import analyze_quarter
+from app.scraper.sec_scraper import fetch_latest_two_13f_filings
+from app.scraper.xml_processor import xml_to_dataframe_13f
+from app.utils.database import get_all_quarters, load_hedge_funds, save_comparison, sort_stocks
 
 LINE_LENGTH=75
 DASH_LENGTH=5
@@ -52,6 +54,34 @@ def select_fund():
         return None
 
 
+def select_quarter():
+    """
+    Lists available quarters from the database folder and prompts the user to select one.
+    Returns the selected quarter string (e.g., '2025Q1') or None if cancelled/invalid.
+    """
+    try:
+        quarters = get_all_quarters()
+            
+        print("Select the quarter you want to analyze:")
+        for i, quarter in enumerate(quarters):
+            print(f"  {i + 1}: {quarter}")
+            
+        choice = input(f"Select the quarter (1-{len(quarters)}): ")
+        selected_index = int(choice) - 1
+        
+        if 0 <= selected_index < len(quarters):
+            return quarters[selected_index]
+        else:
+            print("❌ Invalid selection.")
+            return None
+    except ValueError:
+        print("❌ Invalid input. Please enter a number.")
+        return None
+    except KeyboardInterrupt:
+        print("❌ Operation cancelled by user.")
+        return None
+
+
 if __name__ == "__main__":
 
     while True:
@@ -62,12 +92,13 @@ if __name__ == "__main__":
         print("2. Generate latest report for a known hedge fund (hedge_funds.csv)")
         print("3. Generate historical report for a known hedge fund (hedge_funds.csv)")
         print("4. Manually enter a hedge fund CIK number to generate latest report")
-        print("5. Exit")
+        print("5. Analyze stock trends for a quarter")
+        print("6. Exit")
         print("="*LINE_LENGTH)
 
-        offset_input = input("Choose an option (1-5): ")
+        main_choice = input("Choose an option (1-6): ")
 
-        if offset_input == '1':
+        if main_choice == '1':
             hedge_funds = load_hedge_funds()
             total_funds = len(hedge_funds)
             print(f"Starting updating reports for all {total_funds} funds...")
@@ -78,13 +109,13 @@ if __name__ == "__main__":
                 process_fund(fund)
             print("-"*DASH_LENGTH + "All funds processed." + "-"*DASH_LENGTH)
 
-        elif offset_input == '2':
+        elif main_choice == '2':
             print("Select the hedge fund for latest report generation:")
             selected_fund = select_fund()
             if selected_fund:
                 process_fund(selected_fund)
 
-        elif offset_input == '3':
+        elif main_choice == '3':
             print("Select the hedge fund for historical report generation:")
             selected_fund = select_fund()
             if not selected_fund:
@@ -110,13 +141,18 @@ if __name__ == "__main__":
             except ValueError:
                 print("❌ Invalid input. Please enter a number.")
 
-        elif offset_input == '4':
+        elif main_choice == '4':
             cik = input("Enter 10-digit CIK number: ")
             process_fund({'CIK': cik})
         
-        elif offset_input == '5':
+        elif main_choice == '5':
+            selected_quarter = select_quarter()
+            if selected_quarter:
+                analyze_quarter(selected_quarter)
+
+        elif main_choice == '6':
             sort_stocks()
-            print("Exit.")
+            print("👋 Bye! Exited.")
             break
 
         else:

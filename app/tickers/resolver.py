@@ -1,8 +1,8 @@
-import time
-from .finnhub_client import _FINNHUB_TIMEOUT, get_ticker_and_company
-from scraper.db.masterdata import load_stocks, save_stock
+from .finnhub_client import get_finnhub_timeout, get_ticker_and_company
+from app.utils.database import load_stocks, save_stock
 import financedatabase as fd
 import pandas as pd
+import time
 
 
 def _get_ticker_from_fd(cusip):
@@ -42,7 +42,6 @@ def resolve_ticker(df):
     Maps CUSIPs to tickers using Finnhub (first choice) or Finance Database if Finnhub fails.
     Takes the entire comparison DataFrame as input to access both CUSIP and Company name (needed for Finnhub).
     """
-
     stocks = load_stocks().copy()
 
     for index, row in df.iterrows():
@@ -66,7 +65,7 @@ def resolve_ticker(df):
                 stocks.loc[cusip, 'Ticker'] = ticker
                 save_stock(cusip, ticker, company.title())
             
-            time.sleep(_FINNHUB_TIMEOUT)
+            time.sleep(get_finnhub_timeout())
 
         df.at[index, 'Ticker'] = stocks.loc[cusip, 'Ticker']
         if company == '':

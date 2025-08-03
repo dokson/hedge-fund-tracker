@@ -1,14 +1,49 @@
-from scraper.string_utils import get_quarter
+from app.utils.strings import get_quarter
 from pathlib import Path
 import pandas as pd
 import csv
+import re
 
-OUTPUT_FOLDER = './database'
+DB_FOLDER = './database'
 HEDGE_FUNDS_FILE = 'hedge_funds.csv'
 STOCKS_FILE = 'stocks.csv'
 
 
-def load_hedge_funds(filepath=f"./{OUTPUT_FOLDER}/{HEDGE_FUNDS_FILE}"):
+def get_all_quarters():
+    """
+    Returns a sorted list of all quarter directories (e.g., '2025Q1')
+    found in the specified database folder.
+    
+    Returns:
+        list: A list of strings, each representing a quarter directory name.
+    """
+    return sorted([
+        path.name for path in Path(DB_FOLDER).iterdir()
+        if path.is_dir() and re.match(r'^\d{4}Q[1-4]$', path.name)
+    ])
+
+
+def get_all_quarter_files(quarter):
+    """
+    Returns a list of full paths for all .csv files within a given quarter directory.
+
+    Args:
+        quarter (str): The quarter in 'YYYYQN' format.
+
+    Returns:
+        list: The list of each .csv file in the quarter folder, or an empty list if the directory does not exist.
+    """
+    quarter_dir = Path(DB_FOLDER) / quarter
+
+    if not quarter_dir.is_dir():
+        return []
+
+    return [
+        str(file_path) for file_path in quarter_dir.glob('*.csv')
+    ]
+
+
+def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}"):
     """
     Loads hedge funds from file (hedge_funds.csv)
     """
@@ -18,9 +53,9 @@ def load_hedge_funds(filepath=f"./{OUTPUT_FOLDER}/{HEDGE_FUNDS_FILE}"):
     except Exception as e:
         print(f"Errore while reading '{filepath}': {e}")
         return []
-    
 
-def load_stocks(filepath=f"./{OUTPUT_FOLDER}/{STOCKS_FILE}"):
+
+def load_stocks(filepath=f"./{DB_FOLDER}/{STOCKS_FILE}"):
     """
     Loads stocks masterdata into a pandas Series.
     Returns an empty Series if the file doesn't exist or is empty.
@@ -38,7 +73,7 @@ def save_comparison(comparison_dataframe, date, fund_name):
     Save comparison dataframe to .csv file in the appropriate folder
     """
     try:
-        quarter_folder = Path(OUTPUT_FOLDER) / get_quarter(date)
+        quarter_folder = Path(DB_FOLDER) / get_quarter(date)
         quarter_folder.mkdir(parents=True, exist_ok=True)
 
         filename = quarter_folder / f"{fund_name.replace(' ', '_')}.csv"
@@ -61,7 +96,7 @@ def save_stock(cusip, ticker, company):
         print(f"An error occurred while writing file '{STOCKS_FILE}': {e}")
 
 
-def sort_stocks(filepath = f'./database/{STOCKS_FILE}'):
+def sort_stocks(filepath=f'./database/{STOCKS_FILE}'):
     """
     Reads stocks.csv, sorts it by Ticker, and overwrites the file with consistent quoting.
     """

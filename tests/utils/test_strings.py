@@ -1,8 +1,7 @@
-from scraper.string_utils import format_percentage, format_value, get_numeric, get_quarter
-
+from app.utils.strings import format_percentage, format_value, get_numeric, get_quarter
 import unittest
 
-class TestStringUtils(unittest.TestCase):
+class TestStrings(unittest.TestCase):
 
     def test_format_percentage(self):
         self.assertEqual(format_percentage(0.1234), "0.1%")

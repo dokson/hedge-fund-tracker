@@ -1,4 +1,4 @@
-from scraper.sec_scraper import _create_search_url
+from app.scraper.sec_scraper import _create_search_url
 import unittest
 
 

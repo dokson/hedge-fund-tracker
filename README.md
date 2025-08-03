@@ -35,16 +35,16 @@ This project uses `pipenv` for dependency management. If you don't have it, you 
     FINNHUB_API_KEY="your_api_key_here"
     ```
 
-4. **Run the script:** Execute the scraper within the project's virtual environment:
+4. **Run the script:** Execute within the project's virtual environment:
 
     ```bash
-    pipenv run python -m scraper.main
+    pipenv run python -m app.main
     ```
 
     or
 
     ```bash
-    python -m pipenv run python -m scraper.main
+    python -m pipenv run python -m app.main
     ```
 
 5. **Enter CIK:** When prompted, enter the 10-digit CIK number of a mutual fund (e.g., `0001067983` for Berkshire Hathaway Inc).
@@ -56,6 +56,7 @@ This project uses `pipenv` for dependency management. If you don't have it, you 
 * [lxml](https://lxml.de/), Python library for processing XML and HTML
 * [re](https://docs.python.org/3/library/re.html), Python module for using regular expressions
 * [csv](https://docs.python.org/3/library/csv.html), Python module for parsing and writing CSV files
+* [python-dotenv](https://github.com/theskumar/python-dotenv), Python library for setting environment variables from a `.env` file
 * [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), Python library used for mapping CUSIPs to stock tickers.
 * [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/), another Python library used for mapping CUSIPs to stock tickers when Finnhub fails or is unavailable.
 
