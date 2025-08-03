@@ -6,14 +6,9 @@ import unittest
 
 
 @patch("app.analysis.report.resolve_ticker")
-@patch("app.tickers.finnhub_client")
 class TestReport(unittest.TestCase):
 
-    def test_generate_comparison(self, mock_finnhub_client, mock_resolve_ticker):
-        # The order of mock arguments is the reverse of the decorator order.
-        # First decorator @patch("...finnhub_client") corresponds to mock_finnhub_client.
-        # Second decorator @patch("...resolve_ticker") corresponds to mock_resolve_ticker.
-
+    def test_generate_comparison(self, mock_resolve_ticker):
         def mock_side_effect(df):
             df['Ticker'] = 'TEST'
             return df
@@ -24,11 +19,11 @@ class TestReport(unittest.TestCase):
         df_previous = pd.DataFrame([{"CUSIP": "TC123456", "Company": "Test Company", "Shares": 500, "Value": 10000 }])
 
         df_output = generate_comparison(df_recent, df_previous)
-        
+
         self.assertEqual(df_output.iloc[0]['CUSIP'], "TC123456")
         self.assertEqual(df_output.iloc[0]['Delta'], format_percentage(100, True))
         self.assertEqual(df_output.iloc[0]['Delta_Value'], format_value(9000))
-        
+
         self.assertEqual(df_output.iloc[1]['CUSIP'], "Total")
         self.assertEqual(df_output.iloc[1]['Delta'], format_percentage(80, True))
         self.assertEqual(df_output.iloc[1]['Delta_Value'], format_value(8000))

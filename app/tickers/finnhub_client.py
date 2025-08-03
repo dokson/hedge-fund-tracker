@@ -1,5 +1,6 @@
-from dotenv import load_dotenv, dotenv_values
+from dotenv import load_dotenv
 import finnhub
+import os
 import pandas as pd
 import time
 
@@ -9,10 +10,8 @@ _MAX_QUERY_LENGTH = 20
 
 # Load variables from .env file
 load_dotenv()
-# Get all key-value pairs from the .env file
-env_vars = dotenv_values()
-# Initialize API key and client from the loaded variables
-FINNHUB_API_KEY = env_vars.get("FINNHUB_API_KEY")
+# Initialize API Key and Client at module level
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
 
 if not FINNHUB_API_KEY:
     raise EnvironmentError(
