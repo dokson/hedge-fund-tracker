@@ -6,14 +6,15 @@ import unittest
 
 
 @patch("app.analysis.report.resolve_ticker")
+@patch("app.tickers.resolver.finnhub_client")
 class TestReport(unittest.TestCase):
 
-    def test_generate_comparison(self, mock_resolve_ticker):
+    def test_generate_comparison(self, mock_resolve_ticker, mock_finnhub_client):
         def mock_side_effect(df):
             df['Ticker'] = 'TEST'
             return df
         mock_resolve_ticker.side_effect = mock_side_effect
-    
+        
         # Create mock DataFrames
         df_recent = pd.DataFrame([{"CUSIP": "TC123456", "Company": "Test Company", "Shares": 1000, "Value": 18000 }])
         df_previous = pd.DataFrame([{"CUSIP": "TC123456", "Company": "Test Company", "Shares": 500, "Value": 10000 }])
