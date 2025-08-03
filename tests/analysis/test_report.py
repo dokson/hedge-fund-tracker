@@ -6,15 +6,19 @@ import unittest
 
 
 @patch("app.analysis.report.resolve_ticker")
-@patch("app.tickers.resolver.finnhub_client")
+@patch("app.tickers.finnhub_client")
 class TestReport(unittest.TestCase):
 
-    def test_generate_comparison(self, mock_resolve_ticker, mock_finnhub_client):
+    def test_generate_comparison(self, mock_finnhub_client, mock_resolve_ticker):
+        # The order of mock arguments is the reverse of the decorator order.
+        # First decorator @patch("...finnhub_client") corresponds to mock_finnhub_client.
+        # Second decorator @patch("...resolve_ticker") corresponds to mock_resolve_ticker.
+
         def mock_side_effect(df):
             df['Ticker'] = 'TEST'
             return df
         mock_resolve_ticker.side_effect = mock_side_effect
-        
+
         # Create mock DataFrames
         df_recent = pd.DataFrame([{"CUSIP": "TC123456", "Company": "Test Company", "Shares": 1000, "Value": 18000 }])
         df_previous = pd.DataFrame([{"CUSIP": "TC123456", "Company": "Test Company", "Shares": 500, "Value": 10000 }])
