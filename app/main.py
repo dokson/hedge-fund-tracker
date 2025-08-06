@@ -79,13 +79,17 @@ def process_fund(fund_info, offset=0):
         filings = fetch_latest_two_13f_filings(cik, offset)
 
         dataframe_latest = xml_to_dataframe_13f(filings[0]['xml_content'])
-        dataframe_previous = xml_to_dataframe_13f(filings[1]['xml_content'])
+        latest_date = filings[0]['date']
 
+        # TODO: update dataframe_latest with latest schedule filings
+        #schedule_filings = fetch_schedule_filings_after_date(cik, latest_date)
+        #schedule_filings_dataframe = get_latest_schedule_filings_dataframe(schedule_filings, fund_name, cik)
+
+        dataframe_previous = xml_to_dataframe_13f(filings[1]['xml_content'])
         dataframe_comparison = generate_comparison(dataframe_latest, dataframe_previous)
-        latest_date = [f['date'] for f in filings][0]
         save_comparison(dataframe_comparison, latest_date, fund_name)
     except Exception as e:
-        print(f"An unexpected error occurred while processing fund (CIK = {cik}): {e}")
+        print(f"⚠️ An unexpected error occurred while processing fund (CIK = {cik}): {e}")
 
 
 def display_analysis(dataframe, title, sort_by, ascending, cols, formatters=None):

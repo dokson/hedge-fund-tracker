@@ -1,7 +1,30 @@
-from app.utils.pd import coalesce
+from app.scraper.xml_processor import xml_to_dataframe_schedule
 from app.tickers.resolver import resolve_ticker
+from app.utils.pd import coalesce
 from app.utils.strings import format_percentage, format_value
 import pandas as pd
+
+
+def get_latest_schedule_filings_dataframe(schedule_filings, fund_name, cik):
+    schedule_list = []
+    
+    for filing in schedule_filings:
+        schedule_df = xml_to_dataframe_schedule(filing['xml_content'])
+        filtered_df = schedule_df[schedule_df['Owner'] == fund_name.upper()]
+        if filtered_df.empty:
+            schedule_df = schedule_df[schedule_df['Owner'] == cik.upper()]
+        else:
+            schedule_df = filtered_df
+
+        schedule_df['Date'] = pd.to_datetime(filing['date'])
+        schedule_list.append(schedule_df)
+
+    schedule_filings_df = pd.concat(schedule_list, ignore_index=True)
+    schedule_filings_df = schedule_filings_df.sort_values(by=['CUSIP', 'Date'], ascending=[True, False])
+    # Keep only the most recent entry for each CUSIP
+    schedule_filings_df = schedule_filings_df.drop_duplicates(subset='CUSIP', keep='first')
+
+    return schedule_filings_df
 
 
 def generate_comparison(df_recent, df_previous):

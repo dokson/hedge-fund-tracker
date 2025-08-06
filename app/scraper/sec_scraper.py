@@ -1,3 +1,4 @@
+from app.utils.strings import get_next_yyyymmdd_day
 from bs4 import BeautifulSoup
 import requests
 import re
@@ -141,7 +142,8 @@ def fetch_schedule_filings_after_date(cik, start_date):
     Fetches the raw content and filing dates for the latest schedule filings for a given CIK.
     Returns a list of dictionaries, or None if an error occurs.
     """
-    search_url = _create_search_url(cik, 'SCHEDULE', start_date)
+    yyyymmdd_date = start_date.replace('-', '')
+    search_url = _create_search_url(cik, 'SCHEDULE', get_next_yyyymmdd_day(yyyymmdd_date))
     response = _get_request(search_url)
     if not response:
         return None

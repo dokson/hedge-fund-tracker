@@ -1,3 +1,26 @@
+from datetime import datetime, timedelta
+
+def add_days_to_yyyymmdd(yyyymmdd_str, days):
+    """
+    Adds (or subtracts) a number of days to a date string in 'YYYYMMDD' format.
+    
+    Parameters:
+        yyyymmdd_str (str): A date string in 'YYYYMMDD' format.
+        days (int): Number of days to add (use negative value to subtract).
+    
+    Returns:
+        str: New date string in 'YYYYMMDD' format.
+    """
+    return (datetime.strptime(yyyymmdd_str, "%Y%m%d") + timedelta(days=days)).strftime("%Y%m%d")
+
+
+def get_next_yyyymmdd_day(yyyymmdd_str):
+    """
+    Adds one day to a date string in 'YYYYMMDD' format and returns the result in the same format.
+    """
+    return add_days_to_yyyymmdd(yyyymmdd_str, 1)
+
+
 def format_percentage(value, show_sign=False, decimal_places=1):
     """
     Formats a numeric value as a percentage string:
