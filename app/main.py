@@ -2,7 +2,7 @@ from app.analysis.report import generate_comparison
 from app.analysis.stocks import quarter_analysis
 from app.scraper.sec_scraper import fetch_latest_two_13f_filings
 from app.scraper.xml_processor import xml_to_dataframe_13f
-from app.utils.console import horizontal_rule, print_centered, prompt_for_selection
+from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
 from app.utils.database import get_all_quarters, load_hedge_funds, save_comparison, sort_stocks
 from app.utils.strings import format_percentage, format_value
 
@@ -18,6 +18,28 @@ def select_fund(text="Select the hedge fund:"):
         load_hedge_funds(),
         text,
         display_func=lambda fund: f"{fund['Fund']} - {fund['Manager']}"
+    )
+
+
+def select_period():
+    """
+    Prompts the user to select a historical comparison period.
+    Returns the selected offset integer or None if cancelled/invalid.
+    """
+    period_options = [
+        (1, "Previous vs Two quarters back (Offset=1)"),
+        (2, "Two vs Three quarters back (Offset=2)"),
+        (3, "Three vs Four quarters back (Offset=3)"),
+        (4, "Four vs Five quarters back (Offset=4)"),
+        (5, "Five vs Six quarters back (Offset=5)"),
+        (6, "Six vs Seven quarters back (Offset=6)"),
+        (7, "Seven vs Eight quarters back (Offset=7: 2 years)")
+    ]
+
+    return prompt_for_selection(
+        period_options,
+        "Select offset for historical period comparison:",
+        display_func=lambda option: option[1]
     )
 
 
@@ -54,19 +76,6 @@ def process_fund(fund_info, offset=0):
         print(f"❌ An unexpected error occurred while processing {fund_name} (CIK = {cik}): {e}")
 
 
-def display_analysis(dataframe, title, sort_by, ascending, cols, formatters={}):
-    print('\n')
-    print_centered(title, "-")
-
-    display_df = dataframe.sort_values(by=sort_by, ascending=ascending).head(10).copy()
-    
-    for col, formatter in formatters.items():
-        if col in display_df.columns:
-            display_df[col] = display_df[col].apply(formatter)
-
-    print(display_df[cols].to_string(index=False))
-
-
 def run_all_funds_report():
     """
     1. Generate latest reports for all known hedge funds.
@@ -98,24 +107,9 @@ def run_historical_fund_report():
     if not selected_fund:
         return
 
-    print("\nSelect historical period comparison:")
-    print("  1: Previous vs Two quarters back (Offset=1)")
-    print("  2: Two vs Three quarters back (Offset=2)")
-    print("  3: Three vs Four quarters back (Offset=3)")
-    print("  4: Four vs Five quarters back (Offset=4)")
-    print("  5: Five vs Six quarters back (Offset=5)")
-    print("  6: Six vs Seven quarters back (Offset=6)")
-    print("  7: Seven vs Eight quarters back (Offset=7: 2 years)")
-
-    try:
-        offset_input = input("Enter offset number (1-7): ").strip()
-        offset = int(offset_input)
-        if 1 <= offset <= 7:
-            process_fund(selected_fund, offset)
-        else:
-            print("❌ Offset must be between 1 and 7.")
-    except ValueError:
-        print("❌ Invalid input. Please enter a number.")
+    selected_period = select_period()
+    if selected_period is not None:
+        process_fund(selected_fund, offset=selected_period[0])
 
 
 def run_manual_cik_report():
@@ -140,10 +134,10 @@ def run_quarter_analysis():
         value = lambda x: format_value(int(x))
         percentage = lambda x: format_percentage(x)
 
-        display_analysis(df_analysis, 'Top 10 Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', False, ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': percentage})
-        display_analysis(df_analysis, 'Top 10 Sells (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', True, ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': percentage})
-        display_analysis(df_analysis, 'Most Widely Held Stocks (by # of Funds)', ['Holder_Count', 'Total_Value'], False, ['Ticker', 'Company', 'Holder_Count', 'Net_Buyers', 'Total_Value'], {'Total_Value': value})
-        display_analysis(df_analysis, 'Highest Conviction Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], False, ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count'])
+        print_dataframe(df_analysis, 'Top 10 Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', False, ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': percentage})
+        print_dataframe(df_analysis, 'Top 10 Sells (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', True, ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': percentage})
+        print_dataframe(df_analysis, 'Most Widely Held Stocks (by # of Funds)', ['Holder_Count', 'Total_Value'], False, ['Ticker', 'Company', 'Holder_Count', 'Net_Buyers', 'Total_Value'], {'Total_Value': value})
+        print_dataframe(df_analysis, 'Highest Conviction Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], False, ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count'])
 
 
 def exit():

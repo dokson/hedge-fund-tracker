@@ -9,6 +9,19 @@ def horizontal_rule(char='='):
     print(char * LINE_LENGTH)
 
 
+def print_dataframe(dataframe, title, sort_by, ascending, cols, formatters={}):
+    print("\n")
+    print_centered(title, "-")
+
+    display_df = dataframe.sort_values(by=sort_by, ascending=ascending).head(10).copy()
+    
+    for col, formatter in formatters.items():
+        if col in display_df.columns:
+            display_df[col] = display_df[col].apply(formatter)
+
+    print(display_df[cols].to_string(index=False))
+
+
 def print_centered(title, fill_char=' '):
     """
     Prints a title centered within a line, padded with a fill character.
