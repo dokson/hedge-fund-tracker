@@ -1,9 +1,9 @@
 CUSIP,Ticker,Company,Value,Portfolio%,Delta_Value,Delta
 G76225104,RYCEY,Rolls-Royce Holdings,233.87K,0.08%,233.93K,NEW
-038222105,AMAT,Applied Materials,22.02M,7.8%,6.59K,+0.03%
-45168D104,IDXX,Idexx Labs Inc,17.54M,6.2%,6.44K,+0.04%
-127387108,CDNS,Cadence Design Systems,13.69M,4.8%,4.93K,+0.04%
-83089J108,SKYT,Skywater Technology Inc,2.88M,1%,2.33K,+0.08%
+038222105,AMAT,Applied Materials,22.02M,7.8%,6.59K,+0%
+45168D104,IDXX,Idexx Labs Inc,17.54M,6.2%,6.44K,+0%
+127387108,CDNS,Cadence Design Systems,13.69M,4.8%,4.93K,+0%
+83089J108,SKYT,Skywater Technology Inc,2.88M,1%,2.33K,+0.1%
 949746101,WFC,Wells Fargo & Co.,19.98M,7%,0,NO CHANGE
 68389X105,ORCL,Oracle Corp,19.75M,7%,0,NO CHANGE
 48251W104,KKR,KKR & Co Inc,14.08M,5%,0,NO CHANGE

@@ -41,9 +41,6 @@ def format_percentage(value, show_sign=False, decimal_places=1):
     if 0 < value < 0.01 and not show_sign:
         return '<.01%'
     else:
-        if 0.01 <= value < 1:
-            decimal_places = max(decimal_places, 2)
-
         formatted = f'{value:{sign}.{decimal_places}f}'.rstrip('0').rstrip('.')
         return f'{formatted}%'
 

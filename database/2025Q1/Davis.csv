@@ -12,39 +12,39 @@ CUSIP,Ticker,Company,Value,Portfolio%,Delta_Value,Delta
 444859102,HUM,Humana Inc.,616.87M,3.6%,19.7M,+3.3%
 882508104,TXN,"Texas Instruments, Inc.",436.86M,2.5%,14.55M,+3.4%
 126650100,CVS,CVS Health Corporation,782.45M,4.5%,11.05M,+1.4%
-02079K305,GOOGL,"Alphabet Inc., Class A",470.03M,2.7%,3.68M,+0.79%
+02079K305,GOOGL,"Alphabet Inc., Class A",470.03M,2.7%,3.68M,+0.8%
 101121101,BXP,"BXP, Inc.",13.67M,0.08%,3.4M,+33.1%
 001084102,AGCO,AGCO Corporation,187.66M,1.1%,3.32M,+1.8%
 20825C104,COP,ConocoPhillips,147.25M,0.85%,3.29M,+2.3%
 866674104,SUI,"Sun Communities, Inc.",3.22M,0.02%,3.22M,NEW
-83444M101,SOLV,Solventum Corp.,402.11M,2.3%,3.16M,+0.79%
+83444M101,SOLV,Solventum Corp.,402.11M,2.3%,3.16M,+0.8%
 237266101,DAR,Darling Ingredients Inc.,77.36M,0.45%,3.07M,+4.1%
 59522J103,MAA,"Mid-America Apartment Communities, Inc.",8.62M,0.05%,2.65M,+44.3%
 25960P109,DEI,"Douglas Emmett, Inc",4.3M,0.02%,2.31M,+115.6%
 64119V303,NTST,NetSTREIT Corp.,1.82M,0.01%,1.82M,NEW
-570535104,MKL,"Markel Group, Inc",694.5M,4%,1.77M,+0.26%
+570535104,MKL,"Markel Group, Inc",694.5M,4%,1.77M,+0.3%
 20369C106,CHCT,"Community Healthcare Trust, Inc.",5.48M,0.03%,1.56M,+39.9%
-44891N208,IAC,IAC Inc.,122.1M,0.7%,1.02M,+0.84%
+44891N208,IAC,IAC Inc.,122.1M,0.7%,1.02M,+0.8%
 02665T306,AMH,American Homes 4 Rent - Class A,9.19M,0.05%,1M,+12.2%
 76169C100,REXR,"Rexford Industrial Realty, Inc.",14.24M,0.08%,940.77K,+7.1%
 133131102,CPT,Camden Property Trust,9.36M,0.05%,872K,+10.3%
 857477103,STT,State Street Corp.,6.51M,0.04%,858.86K,+15.2%
-316773100,FITB,Fifth Third Bancorp,96.48M,0.56%,664.16K,+0.69%
+316773100,FITB,Fifth Third Bancorp,96.48M,0.56%,664.16K,+0.7%
 594918104,MSFT,Microsoft Corp.,96.3M,0.56%,575.1K,+0.6%
-23908L405,DINT,Davis Select International ETF,89.9M,0.52%,482.21K,+0.54%
+23908L405,DINT,Davis Select International ETF,89.9M,0.52%,482.21K,+0.5%
 125523100,CI,Cigna Group,471.54M,2.7%,478.69K,+0.1%
 89832Q109,TFC,Truist Financial Corp.,6.44M,0.04%,454.79K,+7.6%
 G7496G103,RNR,RenaissanceRe Holdings Ltd,34.51M,0.2%,357.12K,+1%
 55261F104,MTB,M & T Bank Corp,9.15M,0.05%,269.38K,+3%
-95082P105,WCC,"Wesco International, Inc.",40.15M,0.23%,235.43K,+0.59%
+95082P105,WCC,"Wesco International, Inc.",40.15M,0.23%,235.43K,+0.6%
 G3223R108,EG,"Everest Group, Ltd.",14.41M,0.08%,163.5K,+1.1%
-015271109,ARE,"Alexandria Real Estate Equities, Inc.",14M,0.08%,103.61K,+0.75%
-053484101,AVB,"AvalonBay Communities, Inc.",12.16M,0.07%,92.29K,+0.76%
+015271109,ARE,"Alexandria Real Estate Equities, Inc.",14M,0.08%,103.61K,+0.7%
+053484101,AVB,"AvalonBay Communities, Inc.",12.16M,0.07%,92.29K,+0.8%
 277276101,EGP,"Eastgroup Properties, Inc.",7.88M,0.05%,54.61K,+0.7%
-18467V109,YOU,"Clear Secure, Inc.",15.07M,0.09%,51.95K,+0.35%
-G51502105,JCI,Johnson Controls International plc,32.38M,0.19%,50.47K,+0.16%
+18467V109,YOU,"Clear Secure, Inc.",15.07M,0.09%,51.95K,+0.3%
+G51502105,JCI,Johnson Controls International plc,32.38M,0.19%,50.47K,+0.2%
 444097109,HPP,Hudson Pacific Properties Inc.,6.78M,0.04%,47.2K,+0.7%
-23908L108,DFNL,Davis Select Financial ETF,83.66M,0.48%,23.37K,+0.03%
+23908L108,DFNL,Davis Select Financial ETF,83.66M,0.48%,23.37K,+0%
 512807306,LRCX,Lam Research Corp.,892.76K,<.01%,0,NO CHANGE
 228368106,CCK,"Crown Holdings, Inc.",764.96K,<.01%,0,NO CHANGE
 74967X103,RH,RH,525.08K,<.01%,0,NO CHANGE
@@ -104,4 +104,4 @@ H1467J104,CB,Chubb Ltd.,328.08M,1.9%,-2.6M,-0.8%
 023135106,AMZN,"Amazon.com, Inc.",669.71M,3.9%,-54.72M,-7.6%
 458140100,INTC,Intel Corp.,242.61K,<.01%,-58.07M,-99.6%
 30303M102,META,"Meta Platforms, Inc., Class A",1.27B,7.3%,-162.73M,-11.3%
-Total,,,17.35B,100%,143.31M,+0.83%
+Total,,,17.35B,100%,143.31M,+0.8%

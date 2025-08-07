@@ -111,7 +111,9 @@ def generate_comparison(df_recent, df_previous):
     df_comparison = df_comparison.sort_values(by=['Is_Schedule', 'Delta_Value', 'Value'], ascending=[False, False, False])
 
     # Format fields
-    df_comparison['Portfolio%'] = ((df_comparison['Value'] / total_portfolio_value) * 100).apply(format_percentage)
+    df_comparison['Portfolio%'] = ((df_comparison['Value'] / total_portfolio_value) * 100).apply(
+        lambda x: format_percentage(x, decimal_places=2) if 0.01 <= x < 1 else format_percentage(x)
+    )
     df_comparison['Value'] = df_comparison['Value'].apply(format_value)
     df_comparison['Delta_Value'] = df_comparison['Delta_Value'].apply(format_value)
 
