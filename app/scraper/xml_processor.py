@@ -42,6 +42,9 @@ def xml_to_dataframe_13f(xml_content):
     # Filter out options to keep only shares
     df = df[df['Put/Call'] == ''].drop('Put/Call', axis=1)
 
+    # Filter out 0 values
+    df = df[df['Value'] != "0"]
+
     # Data cleaning
     df['CUSIP'] = df['CUSIP'].str.upper()
     df['Company'] = df['Company'].str.strip().str.replace(r'\s+', ' ', regex=True)

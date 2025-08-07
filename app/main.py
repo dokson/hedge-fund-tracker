@@ -1,6 +1,6 @@
-from app.analysis.report import generate_comparison
+from app.analysis.report import generate_comparison, get_latest_schedule_filings_dataframe, update_dataframe_with_schedule
 from app.analysis.stocks import quarter_analysis
-from app.scraper.sec_scraper import fetch_latest_two_13f_filings
+from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_schedule_filings_after_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
 from app.utils.database import get_all_quarters, load_hedge_funds, save_comparison, sort_stocks
@@ -56,7 +56,7 @@ def process_fund(fund_info, offset=0):
     Processes a single fund: fetches filings and generates comparison.
     """
     cik = fund_info.get('CIK')
-    fund_name = fund_info.get('Fund') or f"CIK {cik}"
+    fund_name = fund_info.get('Fund') or fund_info.get('CIK')
 
     try:
         filings = fetch_latest_two_13f_filings(cik, offset)
@@ -64,10 +64,18 @@ def process_fund(fund_info, offset=0):
         dataframe_latest = xml_to_dataframe_13f(filings[0]['xml_content'])
         latest_date = filings[0]['date']
 
-        # TODO: update dataframe_latest with latest schedule filings
-        #if(offset == 0):
-            #schedule_filings = fetch_schedule_filings_after_date(cik, latest_date)
-            #schedule_filings_dataframe = get_latest_schedule_filings_dataframe(schedule_filings, fund_name, cik)
+        # If processing the latest report, check for futher 13D/G filings
+        if offset == 0:
+            print("Checking for more recent 13D/G filings...")
+            schedule_filings = fetch_schedule_filings_after_date(cik, latest_date)
+            
+            # TODO
+            #if schedule_filings:
+            #    schedule_filings_dataframe = get_latest_schedule_filings_dataframe(schedule_filings, fund_name, cik)
+            #    original_rows = len(dataframe_latest)
+            #    dataframe_latest = update_dataframe_with_schedule(dataframe_latest, schedule_filings_dataframe)
+            #    new_rows = len(dataframe_latest)
+            #    print(f"✅ Holdings updated with {new_rows - original_rows} changes from schedule filings.")
 
         dataframe_previous = xml_to_dataframe_13f(filings[1]['xml_content'])
         dataframe_comparison = generate_comparison(dataframe_latest, dataframe_previous)

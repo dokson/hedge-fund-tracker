@@ -4,17 +4,24 @@ import unittest
 class TestStrings(unittest.TestCase):
 
     def test_format_percentage(self):
-        self.assertEqual(format_percentage(0.1234), "0.1%")
-        self.assertEqual(format_percentage(0.1234, decimal_places=2), "0.12%")
-        self.assertEqual(format_percentage(0.1234, show_sign=True), "+0.1%")
+        self.assertEqual(format_percentage(0.1), "0.1%")
+        self.assertEqual(format_percentage(0.02), "0.02%")
+        self.assertEqual(format_percentage(0.09), "0.09%")
+        self.assertEqual(format_percentage(0.009), "<.01%")
+        self.assertEqual(format_percentage(0.12), "0.12%")
+        self.assertEqual(format_percentage(0.1234), "0.12%")
+        self.assertEqual(format_percentage(0.1234, decimal_places=3), "0.123%")
+        self.assertEqual(format_percentage(0.1234, decimal_places=4), "0.1234%")
         self.assertEqual(format_percentage(0.1234, show_sign=True, decimal_places=2), "+0.12%")
         self.assertEqual(format_percentage(-0.1234, show_sign=True, decimal_places=2), "-0.12%")
+        self.assertEqual(format_percentage(1.2, show_sign=True), "+1.2%")
         self.assertEqual(format_percentage(0.005), "<.01%")
         self.assertEqual(format_percentage(9.87), "9.9%")
         self.assertEqual(format_percentage(9.87, decimal_places=2), "9.87%")
         self.assertEqual(format_percentage(9.876, decimal_places=2), "9.88%")
         self.assertEqual(format_percentage(0.0), "0%")
         self.assertEqual(format_percentage(0.0, show_sign=True), "+0%")
+        self.assertEqual(format_percentage(100), "100%")
 
 
     def test_format_value(self):

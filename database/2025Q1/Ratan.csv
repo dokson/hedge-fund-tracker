@@ -6,26 +6,26 @@ CUSIP,Ticker,Company,Value,Portfolio%,Delta_Value,Delta
 82452J109,FOUR,Shift4 Payments Inc,12.33M,4%,6.54M,+112.8%
 420682058,ARM,Arm Holdings Plc,7.91M,2.6%,3.41M,+75.9%
 19247G107,COHR,Coherent Corp,4.65M,1.5%,1.79M,+62.7%
-69608A108,PLTR,Palantir Technologies Inc,1.29M,0.4%,1.29M,NEW
+69608A108,PLTR,Palantir Technologies Inc,1.29M,0.42%,1.29M,NEW
 717051076,BLCO,Bausch Lomb Corp,11.76M,3.8%,0,NO CHANGE
-57636Q104,MA,MasterCard Inc,1.7M,0.5%,0,NO CHANGE
-75513E101,RTX,RTX Corp,662.3K,0.2%,0,NO CHANGE
-49338L103,KEYS,Keysight Technologies Inc,546.66K,0.2%,0,NO CHANGE
-40415F101,HDB,HDFC Bank Ltd,431.86K,0.1%,0,NO CHANGE
-83444M101,SOLV,Solventum Corp,364.99K,0.1%,0,NO CHANGE
-46266C105,IQV,IQVIA Holdings Inc,2.87M,0.9%,-253.87K,-8.1%
+57636Q104,MA,MasterCard Inc,1.7M,0.55%,0,NO CHANGE
+75513E101,RTX,RTX Corp,662.3K,0.21%,0,NO CHANGE
+49338L103,KEYS,Keysight Technologies Inc,546.66K,0.18%,0,NO CHANGE
+40415F101,HDB,HDFC Bank Ltd,431.86K,0.14%,0,NO CHANGE
+83444M101,SOLV,Solventum Corp,364.99K,0.12%,0,NO CHANGE
+46266C105,IQV,IQVIA Holdings Inc,2.87M,0.93%,-253.87K,-8.1%
 848574109,SPR,Spirit Aerosystems Holdings Inc,0,0%,-852.58K,CLOSE
-26818M108,DYN,Dyne Therapeutics Inc,1.03M,0.3%,-1.38M,-57.2%
+26818M108,DYN,Dyne Therapeutics Inc,1.03M,0.33%,-1.38M,-57.2%
 722304102,PDD,PDD Holdings Inc,0,0%,-1.72M,CLOSE
 G25457105,CRDO,Credo Technology Group Holding Ltd,2.17M,0.7%,-1.85M,-46%
-47103N106,JBI,Janus International Group Inc,283.99K,0.1%,-2.04M,-87.8%
-883556102,TMO,Thermo Fisher Scientific Inc,771.28K,0.2%,-2.74M,-78%
-47103J105,JANX,Janux Therapeutics Inc,2.07M,0.7%,-2.77M,-57.2%
+47103N106,JBI,Janus International Group Inc,283.99K,0.09%,-2.04M,-87.8%
+883556102,TMO,Thermo Fisher Scientific Inc,771.28K,0.25%,-2.74M,-78%
+47103J105,JANX,Janux Therapeutics Inc,2.07M,0.67%,-2.77M,-57.2%
 336433107,FSLR,First Solar Inc,0,0%,-2.79M,CLOSE
 23804L103,DDOG,Datadog Inc,0,0%,-3.04M,CLOSE
-235851102,DHR,Danaher Corp,1.15M,0.4%,-3.28M,-74.1%
+235851102,DHR,Danaher Corp,1.15M,0.37%,-3.28M,-74.1%
 874039100,TSM,Taiwan Semiconductor Manufacturing Co Ltd,3.73M,1.2%,-4.72M,-55.8%
-81762P102,NOW,SeviceNow Inc,955.37K,0.3%,-5.11M,-84.3%
+81762P102,NOW,SeviceNow Inc,955.37K,0.31%,-5.11M,-84.3%
 855244109,SBUX,Starbucks Corp,11.1M,3.6%,-5.77M,-34.2%
 01609W102,BABA,Alibaba Group Holding Ltd,0,0%,-5.82M,CLOSE
 92840M102,VST,Vistra Corp,23.11M,7.5%,-7.12M,-23.6%
