@@ -43,7 +43,7 @@ def _lookup_with_retry(query, max_retries=3, backoff_factor=30):
                 print(f"⚠️ Finnhub API error for query '{query}': {e}")
                 return None
         except Exception as e:
-            print(f"⚠️ An unexpected error occurred during Finnhub request for query '{query}': {e}")
+            print(f"❌ An unexpected error occurred during Finnhub request for query '{query}': {e}")
             return None
     return None
 
