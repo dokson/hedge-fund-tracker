@@ -142,8 +142,9 @@ def run_quarter_analysis():
         value = lambda x: format_value(int(x))
         percentage = lambda x: format_percentage(x)
 
-        print_dataframe(df_analysis, 'Top 10 Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', False, ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': percentage})
         print_dataframe(df_analysis, 'Top 10 Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], False, ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count'])
+        print_dataframe(df_analysis, 'Top 10 Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', False, ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': percentage})
+        print_dataframe(df_analysis, 'Top 10 New Positions (by # of New Holders)', 'New_Holder_Count', False, ['Ticker', 'Company', 'New_Holder_Count', 'Net_Buyers', 'Buyer_Count'])
         print_dataframe(df_analysis, 'Top 10 Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', False, ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Holder_Count', 'Net_Buyers'], {'Max_Portfolio_Pct': percentage})
         print_dataframe(df_analysis, 'Top 10 Widely Held Stocks (by # of Funds)', ['Holder_Count', 'Total_Value'], False, ['Ticker', 'Company', 'Holder_Count', 'Net_Buyers', 'Total_Value'], {'Total_Value': value})
 
