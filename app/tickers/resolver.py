@@ -17,7 +17,7 @@ def _get_ticker_from_fd(cusip):
         result = result.sort_values(by='ticker_length')
         return result.index[0]
     else:
-        print(f"Finance Database: No ticker found for CUSIP {cusip}")
+        print(f"⚠️\u3000Finance Database: No ticker found for CUSIP {cusip}")
         return None
 
 
@@ -33,7 +33,7 @@ def _get_company_from_fd(cusip):
         result = result.sort_values(by='ticker_length')
         return result.iloc[0]['name']
     else:
-        print(f"Finance Database: No company found for CUSIP {cusip}")
+        print(f"⚠️\u3000Finance Database: No company found for CUSIP {cusip}")
         return ''
 
 

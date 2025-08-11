@@ -47,10 +47,15 @@ def quarter_analysis(quarter):
         pd.DataFrame: A DataFrame with aggregated stock analysis for the quarter
     """
     df_quarter = _load_quarter_data(quarter)
+    df_stocks = load_stocks()
+
+    # Drop company/ticker from quarterly data to use master data instead. 
+    # This ensures consistency and correctly aggregates data for companies that may have multiple CUSIPs
+    df_quarter = df_quarter.drop(columns=['Ticker', 'Company']).set_index('CUSIP').join(df_stocks[['Ticker', 'Company']], how='left').reset_index()
 
     # Using named aggregation for clarity and to avoid multi-level columns
     df_analysis = (
-        df_quarter.groupby('CUSIP')
+        df_quarter.groupby(['Ticker', 'Company'])
         .agg(
             Total_Value=('Value_Num', 'sum'),
             Total_Delta_Value=('Delta_Value_Num', 'sum'),
@@ -65,9 +70,5 @@ def quarter_analysis(quarter):
     )
 
     df_analysis['Net_Buyers'] = df_analysis['Buyer_Count'] - df_analysis['Seller_Count']
-
-    # Retrieve ticker and company name from stocks masterdata
-    df_stocks = load_stocks() 
-    df_analysis = df_analysis.set_index('CUSIP').join(df_stocks[['Ticker', 'Company']], how='left').reset_index()
 
     return df_analysis

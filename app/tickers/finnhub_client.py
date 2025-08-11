@@ -34,13 +34,13 @@ def _lookup_with_retry(query, max_retries=3, backoff_factor=30):
             if '429' in str(e):
                 if attempt < max_retries - 1:
                     wait_time = backoff_factor * (2 ** attempt)
-                    print(f"⚠️ Finnhub API rate limit hit. Retrying in {wait_time} seconds...")
+                    print(f"⚠️\u3000Finnhub API rate limit hit. Retrying in {wait_time} seconds...")
                     time.sleep(wait_time)
                 else:
-                    print(f"⚠️ Finnhub API rate limit hit. Max retries reached for query '{query}'.")
+                    print(f"⚠️\u3000Finnhub API rate limit hit. Max retries reached for query '{query}'.")
                     return None
             else:
-                print(f"⚠️ Finnhub API error for query '{query}': {e}")
+                print(f"⚠️\u3000Finnhub API error for query '{query}': {e}")
                 return None
         except Exception as e:
             print(f"❌ An unexpected error occurred during Finnhub request for query '{query}': {e}")
@@ -101,5 +101,5 @@ def get_ticker_and_company(cusip, company_name):
             ticker, _ = _find_ticker_and_company(response)
 
     if pd.isna(ticker):
-        print(f"⚠️ Finnhub: No ticker found for CUSIP {cusip} / Company '{company_name}'.")
+        print(f"⚠️\u3000Finnhub: No ticker found for CUSIP {cusip} / Company '{company_name}'.")
     return ticker, company_name
