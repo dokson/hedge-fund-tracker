@@ -1,4 +1,4 @@
-from app.analysis.report import generate_comparison, get_latest_schedule_filings_dataframe, update_dataframe_with_schedule
+from app.analysis.report import generate_comparison
 from app.analysis.stocks import quarter_analysis
 from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_schedule_filings_after_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
