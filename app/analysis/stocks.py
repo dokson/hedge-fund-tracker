@@ -1,5 +1,5 @@
 from app.utils.database import get_all_quarter_files
-from app.utils.strings import format_percentage, format_value, get_numeric
+from app.utils.strings import get_numeric, get_percentage_number
 from pathlib import Path
 import pandas as pd
 
@@ -22,9 +22,6 @@ def _load_quarter_data(quarter):
         df = pd.read_csv(file_path)
 
         total_row = df[df['CUSIP'] == 'Total']
-        if total_row.empty:
-            continue
-
         total_portfolio_value = get_numeric(total_row['Value'].iloc[0])
 
         df_stocks = df[df['CUSIP'] != 'Total'].copy()
@@ -32,6 +29,7 @@ def _load_quarter_data(quarter):
         df_stocks.loc[:, 'Delta_Value_Num'] = df_stocks['Delta_Value'].apply(get_numeric)
         df_stocks.loc[:, 'Value_Num'] = df_stocks['Value'].apply(get_numeric)
         df_stocks.loc[:, 'Weighted_Delta_Pct'] = (df_stocks['Delta_Value_Num'] / total_portfolio_value) * 100
+        df_stocks.loc[:, 'Portfolio_Pct'] = df_stocks['Portfolio%'].apply(get_percentage_number)
         df_stocks.loc[:, 'Fund'] = fund_name
 
         all_fund_data.append(df_stocks)
@@ -58,6 +56,7 @@ def quarter_analysis(quarter):
             Total_Value=('Value_Num', 'sum'),
             Total_Delta_Value=('Delta_Value_Num', 'sum'),
             Total_Weighted_Delta_Pct=('Weighted_Delta_Pct', 'sum'),
+            Max_Portfolio_Pct=('Portfolio_Pct', 'max'),
             Holder_Count=('Fund', pd.Series.nunique),
             Buyer_Count=('Delta_Value_Num', lambda s: (s > 0).sum()),
             Seller_Count=('Delta_Value_Num', lambda s: (s < 0).sum()),

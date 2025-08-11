@@ -1,4 +1,4 @@
-from app.utils.strings import format_percentage, format_value, get_numeric, get_quarter
+from app.utils.strings import format_percentage, format_value, get_numeric, get_percentage_number, get_quarter
 import unittest
 
 class TestStrings(unittest.TestCase):
@@ -44,6 +44,17 @@ class TestStrings(unittest.TestCase):
         self.assertEqual(get_numeric("9.88B"), 9880000000)
         self.assertEqual(get_numeric("1.23T"), 1230000000000)
         self.assertEqual(get_numeric("1.00M"), 1000000)
+
+    
+    def test_get_percentage_number(self):
+        self.assertEqual(get_percentage_number("12.3%"), 12.3)
+        self.assertEqual(get_percentage_number("100%"), 100.0)
+        self.assertEqual(get_percentage_number("<.01%"), 0.0)
+        self.assertEqual(get_percentage_number("5%"), 5.0)
+        self.assertEqual(get_percentage_number(".5%"), 0.5)
+        self.assertEqual(get_percentage_number("-10.5%"), -10.5)
+        self.assertEqual(get_percentage_number("0%"), 0.0)
+
 
     def test_get_quarter(self):
         self.assertEqual(get_quarter("2023-03-15"), "2023Q1")

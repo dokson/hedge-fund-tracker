@@ -106,16 +106,32 @@ def get_numeric(formatted_value: str) -> int:
     return int(float(number) * multiplier)
 
 
+def get_percentage_number(formatted_percentage: str) -> float:
+    """
+    Parses a formatted percentage string (e.g., '12.3%', '100%', '<.01%') back into a numeric float value.
+
+    Args:
+        formatted_percentage (str): The formatted percentage string to parse.
+
+    Returns:
+        float: The numeric value of the percentage. Returns 0.0 for '<.01%'.
+    """
+    if formatted_percentage == '<.01%':
+        return 0.0
+    else:
+        return float(formatted_percentage.replace('%', ''))
+
+
 def get_quarter(date_str):
     """
     Converts a date string (YYYY-MM-DD) into a quarter string (YYYYQQ)
     based on the filing date, without using the datetime module.
     
     Logic:
-    - Apr 1 to Jun 30 -> YearQ1
-    - Jul 1 to Sep 30 -> YearQ2
-    - Oct 1 to Dec 31 -> YearQ3
-    - Jan 1 to Mar 31 -> PreviousYearQ4
+    - Apr 1 to Jun 30 -> '<Year>Q1'
+    - Jul 1 to Sep 30 -> '<Year>Q2'
+    - Oct 1 to Dec 31 -> '<Year>Q3'
+    - Jan 1 to Mar 31 -> '<PreviousYear>Q4'
 
     Args:
         date_str (str): The date string in 'YYYY-MM-DD' format.
