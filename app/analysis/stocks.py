@@ -1,8 +1,7 @@
-from app.utils.database import get_all_quarter_files
+from app.utils.database import get_all_quarter_files, load_stocks
 from app.utils.strings import get_numeric, get_percentage_number
 from pathlib import Path
 import pandas as pd
-
 
 def _load_quarter_data(quarter):
     """
@@ -51,7 +50,7 @@ def quarter_analysis(quarter):
 
     # Using named aggregation for clarity and to avoid multi-level columns
     df_analysis = (
-        df_quarter.groupby(['CUSIP', 'Ticker', 'Company'])
+        df_quarter.groupby('CUSIP')
         .agg(
             Total_Value=('Value_Num', 'sum'),
             Total_Delta_Value=('Delta_Value_Num', 'sum'),
@@ -66,5 +65,9 @@ def quarter_analysis(quarter):
     )
 
     df_analysis['Net_Buyers'] = df_analysis['Buyer_Count'] - df_analysis['Seller_Count']
+
+    # Retrieve ticker and company name from stocks masterdata
+    df_stocks = load_stocks() 
+    df_analysis = df_analysis.set_index('CUSIP').join(df_stocks[['Ticker', 'Company']], how='left').reset_index()
 
     return df_analysis
