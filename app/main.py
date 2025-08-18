@@ -136,8 +136,8 @@ def run_quarter_analysis():
     if selected_quarter:
         df_analysis = quarter_analysis(selected_quarter)
         horizontal_rule('-')
-        print_centered("Stock Analysis for Quarter:", "-")
-        horizontal_rule('-')
+        print("\n")
+        print_centered(f"{selected_quarter} QUARTER ANALYSIS:")
 
         value = lambda x: format_value(int(x))
         percentage = lambda x: format_percentage(x)
@@ -146,6 +146,7 @@ def run_quarter_analysis():
         print_dataframe(df_analysis, 'Top 10 Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', False, ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': percentage})
         print_dataframe(df_analysis, 'Top 10 New Positions (by # of New Holders)', 'New_Holder_Count', False, ['Ticker', 'Company', 'New_Holder_Count', 'Total_Weighted_Delta_Pct'], {'Total_Weighted_Delta_Pct': percentage})
         print_dataframe(df_analysis, 'Top 10 Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', False, ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Holder_Count', 'Net_Buyers'], {'Max_Portfolio_Pct': percentage})
+        print("\n")
 
 
 def exit():

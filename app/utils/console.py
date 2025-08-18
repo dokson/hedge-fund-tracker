@@ -1,5 +1,4 @@
-LINE_LENGTH = 90
-DASH_LENGTH = 10
+LINE_LENGTH = 108
 
 
 def horizontal_rule(char='='):
@@ -19,7 +18,9 @@ def print_dataframe(dataframe, title, sort_by, ascending, cols, formatters={}):
         if col in display_df.columns:
             display_df[col] = display_df[col].apply(formatter)
 
-    print(display_df[cols].to_string(index=False))
+    num_cols = len(cols)
+
+    print(display_df[cols].to_string(index=False, col_space=((LINE_LENGTH - num_cols * 2) // num_cols), justify='center'))
 
 
 def print_centered(title, fill_char=' '):

@@ -11,7 +11,7 @@ STOCKS_FILE = 'stocks.csv'
 
 def get_all_quarters():
     """
-    Returns a sorted list of all quarter directories (e.g., '2025Q1')
+    Returns a sorted (descending order) list of all quarter directories (e.g., '2025Q1')
     found in the specified database folder.
     
     Returns:
@@ -20,7 +20,7 @@ def get_all_quarters():
     return sorted([
         path.name for path in Path(DB_FOLDER).iterdir()
         if path.is_dir() and re.match(r'^\d{4}Q[1-4]$', path.name)
-    ])
+    ], reverse=True)
 
 
 def get_all_quarter_files(quarter):
