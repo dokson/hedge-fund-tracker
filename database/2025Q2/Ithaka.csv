@@ -1,0 +1,42 @@
+CUSIP,Ticker,Company,Value,Portfolio%,Delta_Value,Delta
+770700102,HOOD,"Robinhood Markets, Inc.",8.61M,1.5%,8.61M,NEW
+30303M102,META,"Meta Platforms, Inc.",40.91M,7%,7.15M,+21.2%
+19260Q107,COIN,"Coinbase Global, Inc.",6.63M,1.1%,6.63M,NEW
+82509L107,SHOP,Shopify Inc.,14.47M,2.5%,4.1M,+39.5%
+22788C105,CRWD,"CrowdStrike Holdings, Inc.",18.04M,3.1%,1.57M,+9.5%
+594918104,MSFT,Microsoft Corporation,40.72M,7%,809.29K,+2%
+697435105,PANW,"Palo Alto Networks, Inc.",14.11M,2.4%,724.22K,+5.4%
+922475108,VEEV,Veeva Systems Inc.,15.76M,2.7%,569.05K,+3.7%
+02079K107,GOOG,Alphabet Inc. Class C,226.7K,0.04%,226.7K,NEW
+G51502105,JCI,"Johnson Controls, Inc.",4.03M,0.69%,173.32K,+4.5%
+69608A108,PLTR,Palantir Technologies Inc.,8.56M,1.5%,74.57K,+0.9%
+461202103,INTU,Intuit Inc.,11.62M,2%,70.1K,+0.6%
+808515605,SCHW,Schwab Value Advantage Money I,577.22K,0.1%,42.99K,+8%
+742718109,PG,Procter & Gamble Co.,238.98K,0.04%,0,NO CHANGE
+00724F101,ADBE,Adobe Inc.,352.45K,0.06%,-36.37K,-9.4%
+532457108,LLY,Eli Lilly & Co.,6.55M,1.1%,-121.61K,-1.8%
+05464C101,AXON,"Axon Enterprise, Inc.",6.05M,1%,-129.16K,-2.1%
+88339J105,TTD,"Trade Desk, Inc.",7.1M,1.2%,-321K,-4.3%
+040413205,ANET,Arista Networks,7.34M,1.3%,-345.81K,-4.5%
+26856L103,ELF,"E.L.F. Beauty, Inc.",5.38M,0.92%,-410.03K,-7.1%
+127387108,CDNS,"Cadence Design Systems, Inc.",8.32M,1.4%,-414.77K,-4.7%
+81762P102,NOW,"ServiceNow, Inc.",42.15M,7.2%,-485.25K,-1.1%
+808524862,SCHO,Schwab ST U.S. Treasury,0,0%,-526.84K,CLOSE
+573874104,MRVL,Marvell Technology Grp,7.47M,1.3%,-559.52K,-7%
+90353T100,UBER,Uber Technologies Inc.,13.83M,2.4%,-566.05K,-3.9%
+007903107,AMD,Advanced Micro Devices,10.73M,1.8%,-582.64K,-5.2%
+252131107,DXCM,"DexCom, Inc.",8.95M,1.5%,-619.85K,-6.5%
+N07059210,ASML,ASML Hldg NV NY Reg Shs,9.52M,1.6%,-646.72K,-6.4%
+09260D107,BX,Blackstone Inc.,12.57M,2.2%,-665.48K,-5%
+92826C839,V,VISA Inc.,23.34M,4%,-812K,-3.4%
+45784P101,PODD,Insulet Corp,8.69M,1.5%,-870.91K,-9.1%
+169656105,CMG,Chipotle Mexican Grill,16.04M,2.7%,-920.13K,-5.4%
+46120E602,ISRG,"Intuitive Surgical, Inc.",21.76M,3.7%,-1.13M,-4.9%
+58733R102,MELI,"MercadoLibre, Inc.",16.69M,2.9%,-1.14M,-6.4%
+57636Q104,MA,Mastercard Inc.,34.11M,5.8%,-1.35M,-3.8%
+023135106,AMZN,Amazon.com Inc.,43.36M,7.4%,-1.55M,-3.5%
+64110L106,NFLX,Netflix Inc,27.17M,4.7%,-1.76M,-6.1%
+67066G104,NVDA,NVIDIA Corp,48.59M,8.3%,-5.06M,-9.4%
+79466L302,CRM,"Salesforce, Inc",11.64M,2%,-6.82M,-36.9%
+037833100,AAPL,Apple Inc.,1.91M,0.33%,-18.85M,-90.8%
+Total,,,584.13M,100%,93.4M,+19%
