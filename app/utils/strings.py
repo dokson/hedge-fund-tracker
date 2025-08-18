@@ -24,6 +24,7 @@ def get_next_yyyymmdd_day(yyyymmdd_str):
 def format_percentage(value, show_sign=False, decimal_places=1):
     """
     Formats a numeric value as a percentage string:
+    - Returns 'N/A' for infinite values.
     - Returns '<.01%' for values between 0 and 0.01 (exclusive).
     - Rounds to specified decimal_places and trims unnecessary zeros.
     - Optionally prepends sign when show_sign is True.
@@ -36,13 +37,16 @@ def format_percentage(value, show_sign=False, decimal_places=1):
     Returns:
         str: Formatted percentage string.
     """
+    if value == float('inf'):
+        return "N/A"
+
     sign = '+' if show_sign else ''
 
     if 0 < value < 0.01 and not show_sign:
-        return '<.01%'
+        return "<.01%"
     else:
         formatted = f'{value:{sign}.{decimal_places}f}'.rstrip('0').rstrip('.')
-        return f'{formatted}%'
+        return f"{formatted}%"
 
 
 def format_value(value: int) -> str:
