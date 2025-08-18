@@ -61,7 +61,7 @@ def load_stocks(filepath=f"./{DB_FOLDER}/{STOCKS_FILE}"):
     Returns an empty Series if the file doesn't exist or is empty.
     """
     try:
-        df = pd.read_csv(filepath, dtype={'CUSIP': str, 'Ticker': str, 'Company': str})
+        df = pd.read_csv(filepath, dtype={'CUSIP': str, 'Ticker': str, 'Company': str}, keep_default_na=False)
         return df.set_index('CUSIP')
     except Exception as e:
         print(f"Errore while reading '{filepath}': {e}")
@@ -101,7 +101,7 @@ def sort_stocks(filepath=f'./database/{STOCKS_FILE}'):
     Reads stocks.csv, sorts it by Ticker, and overwrites the file with consistent quoting.
     """
     try:
-        df = pd.read_csv(filepath, dtype=str).fillna('')
+        df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna('')
         df.sort_values(by=['Ticker', 'CUSIP'], inplace=True)
         df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
     except Exception as e:
