@@ -7,6 +7,7 @@ from app.utils.database import get_all_quarters, load_hedge_funds, save_comparis
 from app.utils.strings import format_percentage, format_value
 
 APP_NAME = "HEDGE FUND TRACKER"
+TOP_N = 15
 
 
 def select_fund(text="Select the hedge fund:"):
@@ -142,10 +143,10 @@ def run_quarter_analysis():
         value = lambda x: format_value(int(x))
         percentage = lambda x: format_percentage(x)
 
-        print_dataframe(df_analysis, 'Top 10 Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], False, ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Total_Value'], {'Total_Value': value})
-        print_dataframe(df_analysis, 'Top 10 Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', False, ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': percentage})
-        print_dataframe(df_analysis, 'Top 10 New Positions (by # of New Holders)', 'New_Holder_Count', False, ['Ticker', 'Company', 'New_Holder_Count', 'Total_Weighted_Delta_Pct'], {'Total_Weighted_Delta_Pct': percentage})
-        print_dataframe(df_analysis, 'Top 10 Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', False, ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Holder_Count', 'Net_Buyers'], {'Max_Portfolio_Pct': percentage})
+        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Total_Value'], {'Total_Value': value})
+        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': percentage})
+        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} New Positions (by # of New Holders)', 'New_Holder_Count', ['Ticker', 'Company', 'New_Holder_Count', 'Total_Weighted_Delta_Pct'], {'Total_Weighted_Delta_Pct': percentage})
+        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Holder_Count', 'Net_Buyers'], {'Max_Portfolio_Pct': percentage})
         print("\n")
 
 

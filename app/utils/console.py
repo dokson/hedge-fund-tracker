@@ -8,11 +8,11 @@ def horizontal_rule(char='='):
     print(char * LINE_LENGTH)
 
 
-def print_dataframe(dataframe, title, sort_by, ascending, cols, formatters={}):
+def print_dataframe(dataframe, top_n, title, sort_by, cols, formatters={}):
     print("\n")
     print_centered(title, "-")
 
-    display_df = dataframe.sort_values(by=sort_by, ascending=ascending).head(10).copy()
+    display_df = dataframe.sort_values(by=sort_by, ascending=False).head(top_n).copy()
     
     for col, formatter in formatters.items():
         if col in display_df.columns:
