@@ -1,5 +1,5 @@
 from app.analysis.report import generate_comparison
-from app.analysis.stocks import quarter_analysis
+from app.analysis.stocks import quarter_analysis, stock_analysis
 from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_schedule_filings_after_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
@@ -8,6 +8,8 @@ from app.utils.strings import format_percentage, format_value
 
 APP_NAME = "HEDGE FUND TRACKER"
 TOP_N = 15
+VALUE_FORMAT = lambda x: format_value(int(x))
+PERC_FORMAT = lambda x: format_percentage(x, decimal_places=2)
 
 
 def select_fund(text="Select the hedge fund:"):
@@ -137,22 +139,51 @@ def run_quarter_analysis():
     if selected_quarter:
         df_analysis = quarter_analysis(selected_quarter)
         horizontal_rule('-')
-        print("\n")
         print_centered(f"{selected_quarter} QUARTER ANALYSIS:")
+        horizontal_rule('-')
 
-        value = lambda x: format_value(int(x))
-        percentage = lambda x: format_percentage(x)
+        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Total_Value'], {'Total_Value': VALUE_FORMAT})
+        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': PERC_FORMAT})
+        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} New Positions (by # of New Holders)', ['New_Holder_Count', 'Total_Weighted_Delta_Pct'], ['Ticker', 'Company', 'New_Holder_Count', 'Total_Weighted_Delta_Pct'], {'Total_Weighted_Delta_Pct': PERC_FORMAT})
+        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Holder_Count', 'Net_Buyers'], {'Max_Portfolio_Pct': PERC_FORMAT})
+        print("\n")
 
-        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Total_Value'], {'Total_Value': value})
-        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': percentage})
-        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} New Positions (by # of New Holders)', 'New_Holder_Count', ['Ticker', 'Company', 'New_Holder_Count', 'Total_Weighted_Delta_Pct'], {'Total_Weighted_Delta_Pct': percentage})
-        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Holder_Count', 'Net_Buyers'], {'Max_Portfolio_Pct': percentage})
+
+def run_single_stock_analysis():
+    """
+    6. Analyze a single stock for a specific quarter.
+    """
+    selected_quarter = select_quarter()
+    if selected_quarter:
+        ticker = input("Enter stock ticker to analyze: ").strip().upper()
+        if not ticker:
+            print("❌ Ticker cannot be empty.")
+            return
+        
+        df_analysis = stock_analysis(ticker, selected_quarter)
+
+        if df_analysis.empty:
+            print(f"❌ No data found for ticker {ticker} in quarter {selected_quarter}.")
+            return
+        
+        horizontal_rule('-')
+        print_centered(f"{ticker} ({df_analysis['Company'].iloc[0]}) - {selected_quarter} QUARTER ANALYSIS")
+        horizontal_rule('-')
+
+        print("\n")
+        print_centered(f"TOTAL HELD: {format_value(df_analysis['Value'].sum())}")
+        print_centered(f"TOTAL DELTA VALUE: {format_value(df_analysis['Delta_Value'].sum())}")
+        print_centered(f"HOLDERS: {len(df_analysis)}")
+        print_centered(f"BUYERS: {(df_analysis['Delta_Value'] > 0).sum()} ({(df_analysis['Delta'] == 'NEW').sum()} new)")
+        print_centered(f"SELLERS: {(df_analysis['Delta_Value'] < 0).sum()} ({(df_analysis['Delta'] == 'CLOSE').sum()} sold out)")
+
+        print_dataframe(df_analysis, len(df_analysis), f'Holders by Delta Value', 'Delta_Value', ['Fund', 'Portfolio_Pct', 'Value', 'Delta', 'Delta_Value'], {'Portfolio_Pct': PERC_FORMAT, 'Value': VALUE_FORMAT, 'Delta_Value': VALUE_FORMAT})
         print("\n")
 
 
 def exit():
     """
-    6. Exit the application (after sorting stocks).
+    7. Exit the application (after sorting stocks).
     """
     sort_stocks()
     print("Bye! 👋 Exited.")
@@ -166,7 +197,8 @@ if __name__ == "__main__":
         '3': run_historical_fund_report,
         '4': run_manual_cik_report,
         '5': run_quarter_analysis,
-        '6': exit,
+        '6': run_single_stock_analysis,
+        '7': exit
     }
 
     while True:
@@ -179,10 +211,11 @@ if __name__ == "__main__":
             print("3. Generate historical report for a known hedge fund (hedge_funds.csv)")
             print("4. Manually enter a hedge fund CIK number to generate latest report")
             print("5. Analyze stock trends for a quarter")
-            print("6. Exit")
+            print("6. Analyze a single stock for a quarter")
+            print("7. Exit")
             horizontal_rule()
 
-            main_choice = input("Choose an option (1-6): ")
+            main_choice = input("Choose an option (1-7): ")
             action = actions.get(main_choice)
             if action:
                 if action() is False:

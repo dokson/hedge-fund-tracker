@@ -1,5 +1,5 @@
 from app.utils.database import get_all_quarter_files, load_stocks
-from app.utils.strings import get_numeric, get_percentage_number
+from app.utils.strings import format_percentage, get_numeric, get_percentage_number
 from pathlib import Path
 import pandas as pd
 
@@ -70,5 +70,48 @@ def quarter_analysis(quarter):
     )
 
     df_analysis['Net_Buyers'] = df_analysis['Buyer_Count'] - df_analysis['Seller_Count']
+
+    return df_analysis
+
+
+def stock_analysis(ticker, quarter):
+    """
+    Analyzes a single stock for a given quarter, returning a list of funds that hold it.
+    
+    Args:
+        ticker (str): The stock ticker to analyze.
+        quarter (str): The quarter in 'YYYYQN' format.
+
+    Returns:
+        pd.DataFrame: A DataFrame with fund-level details for the specified stock.
+    """
+    df_quarter = _load_quarter_data(quarter)
+    df_quarter = df_quarter[df_quarter['Ticker'] == ticker]
+
+    # Aggregates data for Ticker that may have multiple CUSIPs in the same hedge fund report
+    df_analysis = (
+        df_quarter.groupby(['Fund', 'Ticker'])
+        .agg(
+            Company=('Company', 'first'),
+            Value=('Value_Num', 'sum'),
+            Delta_Value=('Delta_Value_Num', 'sum'),
+            Portfolio_Pct=('Portfolio_Pct', 'sum'),
+        )
+        .reset_index()
+    )
+
+    # If the sum of Portfolio_Pct is 0 but the value is positive, it means the position is composed of <0.01% holdings
+    # We assign a small non-zero value to represent this.
+    df_analysis.loc[(df_analysis['Portfolio_Pct'] == 0) & (df_analysis['Value'] > 0), 'Portfolio_Pct'] = 0.009
+
+    # Recalculate 'Delta' based on aggregated values
+    df_analysis['Delta'] = df_analysis.apply(
+        lambda row: 
+        'NEW' if row['Value'] == row['Delta_Value']
+        else 'CLOSE' if row['Value'] == 0
+        else 'NO CHANGE' if row['Delta_Value'] == 0
+        else format_percentage(row['Delta_Value'] / (row['Value'] - row['Delta_Value']) * 100, True),
+        axis=1
+    )
 
     return df_analysis
