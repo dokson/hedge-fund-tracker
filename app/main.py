@@ -142,9 +142,9 @@ def run_quarter_analysis():
         horizontal_rule('-')
 
         top_n = 20
-        print_dataframe(df_analysis, top_n, f'Top {top_n} Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Total_Value'], {'Total_Value': VALUE_FORMAT})
-        print_dataframe(df_analysis, top_n, f'Top {top_n} Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': PERC_FORMAT})
-        print_dataframe(df_analysis, top_n, f'Top {top_n} New Positions (by # of New Holders)', ['New_Holder_Count', 'Total_Weighted_Delta_Pct'], ['Ticker', 'Company', 'New_Holder_Count', 'Total_Weighted_Delta_Pct'], {'Total_Weighted_Delta_Pct': PERC_FORMAT})
+        print_dataframe(df_analysis, top_n, f'Top {top_n} Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Total_Delta_Value'], {'Total_Delta_Value': VALUE_FORMAT})
+        print_dataframe(df_analysis, top_n, f'Top {top_n} Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Net_Buyers', 'Total_Delta_Value'], {'Total_Weighted_Delta_Pct': PERC_FORMAT, 'Total_Delta_Value': VALUE_FORMAT})
+        print_dataframe(df_analysis, top_n, f'Top {top_n} New Positions (by # of New Holders)', ['New_Holder_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'New_Holder_Count', 'Total_Delta_Value', 'Total_Weighted_Delta_Pct'], {'Total_Delta_Value': VALUE_FORMAT, 'Total_Weighted_Delta_Pct': PERC_FORMAT})
         print_dataframe(df_analysis, top_n, f'Top {top_n} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Holder_Count', 'Net_Buyers'], {'Max_Portfolio_Pct': PERC_FORMAT})
         print("\n")
 
