@@ -7,7 +7,6 @@ from app.utils.database import get_all_quarters, load_hedge_funds, save_comparis
 from app.utils.strings import format_percentage, format_value
 
 APP_NAME = "HEDGE FUND TRACKER"
-TOP_N = 15
 VALUE_FORMAT = lambda x: format_value(int(x))
 PERC_FORMAT = lambda x: format_percentage(x, decimal_places=2)
 
@@ -142,10 +141,11 @@ def run_quarter_analysis():
         print_centered(f"{selected_quarter} QUARTER ANALYSIS:")
         horizontal_rule('-')
 
-        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Total_Value'], {'Total_Value': VALUE_FORMAT})
-        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': PERC_FORMAT})
-        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} New Positions (by # of New Holders)', ['New_Holder_Count', 'Total_Weighted_Delta_Pct'], ['Ticker', 'Company', 'New_Holder_Count', 'Total_Weighted_Delta_Pct'], {'Total_Weighted_Delta_Pct': PERC_FORMAT})
-        print_dataframe(df_analysis, TOP_N, f'Top {TOP_N} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Holder_Count', 'Net_Buyers'], {'Max_Portfolio_Pct': PERC_FORMAT})
+        top_n = 20
+        print_dataframe(df_analysis, top_n, f'Top {top_n} Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Total_Value'], {'Total_Value': VALUE_FORMAT})
+        print_dataframe(df_analysis, top_n, f'Top {top_n} Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Holder_Count', 'Net_Buyers'], {'Total_Weighted_Delta_Pct': PERC_FORMAT})
+        print_dataframe(df_analysis, top_n, f'Top {top_n} New Positions (by # of New Holders)', ['New_Holder_Count', 'Total_Weighted_Delta_Pct'], ['Ticker', 'Company', 'New_Holder_Count', 'Total_Weighted_Delta_Pct'], {'Total_Weighted_Delta_Pct': PERC_FORMAT})
+        print_dataframe(df_analysis, top_n, f'Top {top_n} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Holder_Count', 'Net_Buyers'], {'Max_Portfolio_Pct': PERC_FORMAT})
         print("\n")
 
 

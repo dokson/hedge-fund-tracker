@@ -107,7 +107,7 @@ def stock_analysis(ticker, quarter):
     # Recalculate 'Delta' based on aggregated values
     df_analysis['Delta'] = df_analysis.apply(
         lambda row: 
-        'NEW' if row['Value'] == row['Delta_Value']
+        'NEW' if round(row['Value'], 1) == round(row['Delta_Value'], 1)
         else 'CLOSE' if row['Value'] == 0
         else 'NO CHANGE' if row['Delta_Value'] == 0
         else format_percentage(row['Delta_Value'] / (row['Value'] - row['Delta_Value']) * 100, True),

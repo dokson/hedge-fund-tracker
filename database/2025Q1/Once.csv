@@ -1,0 +1,20 @@
+CUSIP,Ticker,Company,Value,Portfolio%,Delta_Value,Delta
+67066G104,NVDA,Nvidia Corporation,59.83M,27.3%,7.17M,+13.6%
+773122106,RKLB,Rocket Lab Usa Inc,8.69M,4%,4.95M,+132.5%
+037833100,AAPL,Apple Inc,17.96M,8.2%,3.87M,+27.4%
+74347R206,QLD,Proshares Tr,3.82M,1.7%,3.82M,NEW
+00217D100,ASTS,Ast Spacemobile Inc,14.79M,6.8%,3.41M,+30%
+007903107,AMD,Advanced Micro Devices Inc,12.46M,5.7%,1.9M,+18%
+81762P102,NOW,Sevicenow Inc,4.02M,1.8%,1.55M,+62.9%
+88160R101,TSLA,Tesla Inc,1.94M,0.89%,1.43M,+275%
+594918104,MSFT,Microsoft Corp,12.05M,5.5%,863.4K,+7.7%
+023135106,AMZN,Amazon Com Inc,12.12M,5.5%,818.12K,+7.2%
+67079K100,SMR,Nuscale Pwr Corp,1.94M,0.88%,654.19K,+51%
+573874104,MRVL,Marvell Technology Inc,10.28M,4.7%,578.76K,+6%
+L8681T102,SPOT,Spotify Technology S A,22.06M,10.1%,0,NO CHANGE
+22788C105,CRWD,Crowdstrike Hldgs Inc,17.98M,8.2%,0,NO CHANGE
+833445109,SNOW,Snowflake Inc,11.24M,5.1%,0,NO CHANGE
+389637109,GBTC,Grayscale Bitcoin Trust Etf,7.02M,3.2%,0,NO CHANGE
+389930207,BTC,Grayscale Bitcoin Mini Tr Et,786K,0.36%,0,NO CHANGE
+72352L106,PINS,Pinterest Inc,0,0%,-5.99M,CLOSE
+Total,,,218.99M,100%,-1.29M,-0.6%
