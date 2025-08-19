@@ -1,4 +1,4 @@
-LINE_LENGTH = 108
+LINE_LENGTH = 120
 
 
 def horizontal_rule(char='='):

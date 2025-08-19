@@ -50,7 +50,20 @@ def xml_to_dataframe_13f(xml_content):
     df['Company'] = df['Company'].str.strip().str.replace(r'\s+', ' ', regex=True)
     df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce')
     df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
+    
+    # --- Smart Value Scaling ---
+    # SEC 13F-HR rules state values are in full dollar amount. Some filings, however, report the thousands.
+    # We use a dual-threshold heuristic to distinguish between the two formats.
+    # We assume values are in thousands and should be scaled up ONLY IF:
+    # 1. The largest single position is below a certain threshold (e.g., $1M). A value of 1M in thousands would be $1B, a rare single position.
+    # 2. The total portfolio value is also below a threshold (e.g., $100M, the 13F filing minimum).
+    # If either of these is false, we assume the values are already in full dollars and do not scale them.
+    MAX_POSITION_THRESHOLD = 1_000_000
+    TOTAL_VALUE_THRESHOLD = 100_000_000
 
+    if not df.empty and df['Value'].max() < MAX_POSITION_THRESHOLD and df['Value'].sum() < TOTAL_VALUE_THRESHOLD:
+        df['Value'] = df['Value'] * 1000
+        
     # Dedup by CUSIP
     df = df.groupby(['CUSIP'], as_index=False).agg({
         'Company': 'max',
