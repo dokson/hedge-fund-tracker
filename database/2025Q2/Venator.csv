@@ -1,0 +1,27 @@
+CUSIP,Ticker,Company,Value,Portfolio%,Delta_Value,Delta
+023135106,AMZN,Amazon.com,47.27M,12.2%,5.93M,+14.3%
+31946M103,FCNCA,"First Citizens BancShares, I",5.31M,1.4%,5.31M,NEW
+B9151N105,TTAM,Titan America SA,3.75M,0.97%,3.04M,+425.7%
+91324P102,UNH,United Health Group Inc.,1.99M,0.51%,1.99M,NEW
+14040H105,COF,Capital One Financial,13.28M,3.4%,1.81M,+15.7%
+855244109,SBUX,Starbucks Corp.,8.95M,2.3%,1.46M,+19.4%
+05589G102,BWIN,"The Baldwin Insurance Group,",33.12M,8.6%,806.97K,+2.5%
+62944T105,NVR,NVR Inc.,21M,5.4%,723.79K,+3.6%
+30303M102,META,Meta Platforms Inc.,41.24M,10.7%,202.97K,+0.5%
+883556102,TMO,Thermo Fisher Scientific Inc,202.73K,0.05%,202.73K,NEW
+02079K305,GOOGL,Alphabet Inc. - Class A,24.5M,6.3%,140.46K,+0.6%
+009279100,EADSY,Airbus Group ADR,2.82M,0.73%,110.22K,+4.1%
+46625H100,JPM,JP Morgan Chase & Co.,16.41M,4.2%,7.25K,+0%
+98379L100,XPEL,"XPEL, Inc.",1.79M,0.46%,0,NO CHANGE
+872590104,TMUS,T-Mobile US Inc.,1.5M,0.39%,0,NO CHANGE
+084670108,BRK.A,Berkshire Hathaway Inc. Clas,1.46M,0.38%,0,NO CHANGE
+02079K107,GOOG,Alphabet Inc. - Class C,40.43M,10.5%,-53.22K,-0.1%
+084670702,BRK.B,Berkshire Hathaway Inc. Clas,8.97M,2.3%,-259.89K,-2.8%
+92826C839,V,Visa Inc.,35.9M,9.3%,-264.51K,-0.7%
+64110L106,NFLX,Netflix Inc.,33.23M,8.6%,-574.49K,-1.7%
+687793109,OSCR,"Oscar Health, Inc.",1.72M,0.44%,-964.8K,-36%
+03769M106,APO,"Apollo Global Management, In",0,0%,-1.05M,CLOSE
+90353T100,UBER,Uber Technologies Inc.,36.03M,9.3%,-1.68M,-4.5%
+21036P108,STZ,"Constellation Brands, Inc.",0,0%,-5.41M,CLOSE
+12769G100,CZR,Caesars Entertainment Inc.,5.87M,1.5%,-5.89M,-50.1%
+Total,,,386.74M,100%,51.57M,+15.4%
