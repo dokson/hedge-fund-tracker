@@ -172,12 +172,20 @@ def run_single_stock_analysis():
         print_centered(f"{ticker} ({df_analysis['Company'].iloc[0]}) - {selected_quarter} QUARTER ANALYSIS")
         horizontal_rule('-')
 
+        total_value = df_analysis['Value'].sum()
+        total_delta_value = df_analysis['Delta_Value'].sum()
+        num_buyers = (df_analysis['Delta_Value'] > 0).sum()
+        num_sellers = (df_analysis['Delta_Value'] < 0).sum()
+        delta = total_delta_value / total_value * 100
+
         print("\n")
-        print_centered(f"TOTAL HELD: {format_value(df_analysis['Value'].sum())}")
-        print_centered(f"TOTAL DELTA VALUE: {format_value(df_analysis['Delta_Value'].sum())}")
+        print_centered(f"TOTAL HELD: {format_value(total_value)}")
+        print_centered(f"TOTAL DELTA VALUE: {format_value(total_delta_value)}")
+        print_centered(f"TOTAL DELTA %: {"NEW" if delta == 100 else format_percentage(delta)}")
         print_centered(f"HOLDERS: {len(df_analysis)}")
-        print_centered(f"BUYERS: {(df_analysis['Delta_Value'] > 0).sum()} ({(df_analysis['Delta'] == 'NEW').sum()} new)")
-        print_centered(f"SELLERS: {(df_analysis['Delta_Value'] < 0).sum()} ({(df_analysis['Delta'] == 'CLOSE').sum()} sold out)")
+        print_centered(f"BUYERS: {num_buyers} ({(df_analysis['Delta'] == 'NEW').sum()} new)")
+        print_centered(f"SELLERS: {num_sellers} ({(df_analysis['Delta'] == 'CLOSE').sum()} sold out)")
+        print_centered(f"BUYER/SELLER RATIO: {format_value(num_buyers / num_sellers if num_sellers > 0 else float('inf'))}")
 
         print_dataframe(df_analysis, len(df_analysis), f'Holders by Delta Value', 'Delta_Value', ['Fund', 'Portfolio_Pct', 'Value', 'Delta', 'Delta_Value'], {'Portfolio_Pct': PERC_FORMAT, 'Value': VALUE_FORMAT, 'Delta_Value': VALUE_FORMAT})
         print("\n")

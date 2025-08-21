@@ -37,12 +37,11 @@ def format_percentage(value, show_sign=False, decimal_places=1):
     Returns:
         str: Formatted percentage string.
     """
-    if value == float('inf'):
-        return "N/A"
-
     sign = '+' if show_sign else ''
-
-    if 0 < value < 0.01 and not show_sign:
+    
+    if value == float('inf'):
+        return f"{sign}∞"
+    elif 0 < value < 0.01 and not show_sign:
         return "<.01%"
     else:
         formatted = f'{value:{sign}.{decimal_places}f}'.rstrip('0').rstrip('.')
@@ -61,7 +60,9 @@ def format_value(value: int) -> str:
     """
     abs_value = abs(value)
 
-    if abs_value >= 1_000_000_000_000:
+    if abs_value == float('inf'):
+        return '∞'
+    elif abs_value >= 1_000_000_000_000:
         formatted = f'{value / 1_000_000_000_000:.2f}'
         suffix = 'T'
     elif abs_value >= 1_000_000_000:

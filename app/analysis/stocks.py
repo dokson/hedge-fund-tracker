@@ -110,7 +110,7 @@ def stock_analysis(ticker, quarter):
         'CLOSE' if row['Value'] == 0
         else 'NO CHANGE' if row['Delta_Value'] == 0
         # This is needed due to floating point inaccuracies in reports
-        else 'NEW' if row['Value'] > 0 and (abs((row['Value'] - row['Delta_Value'])/row['Value']) < 0.001 or abs(row['Value'] - row['Delta_Value']) <= 1)
+        else 'NEW' if row['Value'] > 0 and abs((row['Value'] - row['Delta_Value'])/row['Value']) < 0.01
         else format_percentage(row['Delta_Value'] / (row['Value'] - row['Delta_Value']) * 100, True),
         axis=1
     )
