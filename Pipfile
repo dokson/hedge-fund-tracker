@@ -4,12 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-requests = ">=2.31.0"
+requests = ">=2.32.5"
 beautifulsoup4 = ">=4.13.4"
-lxml = ">=5.2.2"
+lxml = ">=5.4.0"
 pandas = ">=2.3.1"
 urllib3 = "==2.5.0"
-six = ">=1.16.0"
+six = ">=1.17.0"
 python-dotenv = ">=1.1.1"
 finnhub-python = ">=2.4.24"
 financedatabase = ">=2.3.1"
