@@ -23,6 +23,13 @@ def get_all_quarters():
     ], reverse=True)
 
 
+def get_last_quarter():
+    """
+    Return the last available quarter
+    """
+    return get_all_quarters()[0]
+
+
 def get_all_quarter_files(quarter):
     """
     Returns a list of full paths for all .csv files within a given quarter directory.

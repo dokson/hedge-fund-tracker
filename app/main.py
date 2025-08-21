@@ -13,13 +13,14 @@ PERC_FORMAT = lambda x: format_percentage(x, decimal_places=2)
 
 def select_fund(text="Select the hedge fund:"):
     """
-    Prompts the user to select a hedge fund.
+    Prompts the user to select a hedge fund, displaying them in columns.
     Returns selected fund info or None if cancelled/invalid.
     """
     return prompt_for_selection(
         load_hedge_funds(),
         text,
-        display_func=lambda fund: f"{fund['Fund']} - {fund['Manager']}"
+        display_func=lambda fund: f"{fund['Fund']} - {fund['Manager']}",
+        num_columns=-1
     )
 
 
@@ -41,7 +42,8 @@ def select_period():
     return prompt_for_selection(
         period_options,
         "Select offset for historical period comparison:",
-        display_func=lambda option: option[1]
+        display_func=lambda option: option[1],
+        num_columns=2
     )
 
 
