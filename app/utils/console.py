@@ -32,6 +32,7 @@ def print_dataframe(dataframe, top_n, title, sort_by, cols, formatters={}):
     """
     print("\n")
     print_centered(title, "-")
+    print("\n")
 
     display_df = dataframe.sort_values(by=sort_by, ascending=False).head(top_n).copy()
     
@@ -39,17 +40,22 @@ def print_dataframe(dataframe, top_n, title, sort_by, cols, formatters={}):
         if col in display_df.columns:
             display_df[col] = display_df[col].apply(formatter)
 
-    num_cols = len(cols)
-
-    print(display_df[cols].to_string(index=False, col_space=((get_terminal_width() - num_cols * 2) // num_cols), justify='center'))
+    print_centered_table(tabulate(display_df[cols], headers="keys", tablefmt="psql", showindex=False, stralign="center", numalign="center"))
 
 
 def print_centered(title, fill_char=' '):
     """
     Prints a title centered within a line, padded with a fill character.
-    e.g., '--- My Title ---'
     """
     print(f" {title} ".center(get_terminal_width(), fill_char))
+
+
+def print_centered_table(table):
+    """
+    Prints a screen centered table
+    """
+    for line in table.splitlines():
+        print_centered(line)
 
 
 def prompt_for_selection(items, text, display_func=None, num_columns=None):
