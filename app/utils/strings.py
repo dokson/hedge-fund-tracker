@@ -81,6 +81,14 @@ def format_value(value: int) -> str:
     return formatted.rstrip('0').rstrip('.') + suffix
 
 
+def get_value_formatter():
+    return lambda x: format_value(int(x))
+
+
+def get_percentage_formatter():
+    return lambda x: format_percentage(x, decimal_places=2)
+
+
 def get_numeric(formatted_value: str) -> int:
     """
     Parses a formatted value string (e.g., '1.23B', '45.67M', '8.9K') back into a numeric value.

@@ -2,6 +2,7 @@ from app.utils.database import get_all_quarter_files, load_stocks
 from app.utils.strings import format_percentage, get_numeric, get_percentage_number
 from pathlib import Path
 import pandas as pd
+import numpy as np
 
 def _load_quarter_data(quarter):
     """
@@ -65,11 +66,14 @@ def quarter_analysis(quarter):
             Seller_Count=('Delta_Value_Num', lambda s: (s < 0).sum()),
             Holder_Count=('Fund', lambda s: s[df_quarter.loc[s.index, 'Delta'] != 'CLOSE'].nunique()),
             New_Holder_Count=('Fund', lambda s: s[df_quarter.loc[s.index, 'Delta'] == 'NEW'].nunique()),
+            Close_Count=('Fund', lambda s: s[df_quarter.loc[s.index, 'Delta'] == 'CLOSE'].nunique()),
         )
         .reset_index()
     )
 
     df_analysis['Net_Buyers'] = df_analysis['Buyer_Count'] - df_analysis['Seller_Count']
+    df_analysis['Delta'] = np.where((df_analysis['New_Holder_Count'] != df_analysis['Holder_Count']) & (df_analysis['Close_Count'] == 0), np.inf, df_analysis['Total_Delta_Value'] / df_analysis['Total_Value'] * 100)
+    df_analysis['Buyer_Seller_Ratio'] = np.where(df_analysis['Seller_Count'] > 0, df_analysis['Buyer_Count'] / df_analysis['Seller_Count'],  np.inf)
 
     return df_analysis
 

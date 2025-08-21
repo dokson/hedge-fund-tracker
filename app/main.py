@@ -4,11 +4,10 @@ from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_schedule
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
 from app.utils.database import get_all_quarters, load_hedge_funds, save_comparison, sort_stocks
-from app.utils.strings import format_percentage, format_value
+from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_value_formatter
+import numpy as np
 
 APP_NAME = "HEDGE FUND TRACKER"
-VALUE_FORMAT = lambda x: format_value(int(x))
-PERC_FORMAT = lambda x: format_percentage(x, decimal_places=2)
 
 
 def select_fund(text="Select the hedge fund:"):
@@ -143,11 +142,13 @@ def run_quarter_analysis():
         print_centered(f"{selected_quarter} QUARTER ANALYSIS:")
         horizontal_rule('-')
 
-        top_n = 20
-        print_dataframe(df_analysis, top_n, f'Top {top_n} Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Total_Delta_Value'], {'Total_Delta_Value': VALUE_FORMAT})
-        print_dataframe(df_analysis, top_n, f'Top {top_n} Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Net_Buyers', 'Total_Delta_Value'], {'Total_Weighted_Delta_Pct': PERC_FORMAT, 'Total_Delta_Value': VALUE_FORMAT})
-        print_dataframe(df_analysis, top_n, f'Top {top_n} New Positions (by # of New Holders)', ['New_Holder_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'New_Holder_Count', 'Total_Delta_Value', 'Total_Weighted_Delta_Pct'], {'Total_Delta_Value': VALUE_FORMAT, 'Total_Weighted_Delta_Pct': PERC_FORMAT})
-        print_dataframe(df_analysis, top_n, f'Top {top_n} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Holder_Count', 'Net_Buyers'], {'Max_Portfolio_Pct': PERC_FORMAT})
+        top_n = 15
+        print_dataframe(df_analysis, top_n, f'Top {top_n} Consensus Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Holder_Count', 'Total_Delta_Value', 'Total_Value'], {'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
+        print_dataframe(df_analysis[df_analysis['Total_Delta_Value'] > 0], top_n, f'Top {top_n} Impacting Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Net_Buyers', 'Holder_Count', 'Total_Delta_Value', 'Total_Value'], {'Total_Weighted_Delta_Pct': get_percentage_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
+        print_dataframe(df_analysis[(df_analysis['Delta'] != np.inf) & (df_analysis['Total_Delta_Value'] > 100_000_000)], top_n, f'Top {top_n} Money Flow (by Delta)', 'Delta', ['Ticker', 'Company', 'Delta', 'Total_Delta_Value', 'Total_Value', 'Buyer_Count', 'New_Holder_Count', 'Holder_Count'], {'Delta': get_percentage_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
+        print_dataframe(df_analysis, top_n, f'Top {top_n} Global New Positions (by Buyer/Seller Ratio)', ['Buyer_Seller_Ratio', 'Net_Buyers', 'Total_Delta_Value'], ['Ticker', 'Company', 'Buyer_Count', 'Total_Value'], {'Total_Value': get_value_formatter()})
+        print_dataframe(df_analysis[(df_analysis['Buyer_Seller_Ratio'] != np.inf) & (df_analysis['Total_Delta_Value'] > 0)], top_n, f'Top {top_n} New Consensus (by # of New Holders)', ['New_Holder_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'New_Holder_Count', 'Holder_Count', 'Total_Delta_Value', 'Total_Weighted_Delta_Pct'], {'Total_Delta_Value': get_value_formatter(), 'Total_Weighted_Delta_Pct': get_percentage_formatter()})
+        print_dataframe(df_analysis, top_n, f'Top {top_n} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Buyer_Count', 'Net_Buyers', 'New_Holder_Count', 'Holder_Count'], {'Max_Portfolio_Pct': get_percentage_formatter()})
         print("\n")
 
 
@@ -176,18 +177,21 @@ def run_single_stock_analysis():
         total_delta_value = df_analysis['Delta_Value'].sum()
         num_buyers = (df_analysis['Delta_Value'] > 0).sum()
         num_sellers = (df_analysis['Delta_Value'] < 0).sum()
+        holder_count = (df_analysis['Delta'] != 'CLOSE').sum()
+        new_holder_count = (df_analysis['Delta'] == 'NEW').sum()
+        close_count = (df_analysis['Delta'] == 'CLOSE').sum()
         delta = total_delta_value / total_value * 100
 
         print("\n")
         print_centered(f"TOTAL HELD: {format_value(total_value)}")
         print_centered(f"TOTAL DELTA VALUE: {format_value(total_delta_value)}")
-        print_centered(f"TOTAL DELTA %: {"NEW" if delta == 100 else format_percentage(delta)}")
+        print_centered(f"DELTA: {"NEW" if holder_count == new_holder_count and close_count == 0 else format_percentage(delta, True)}")
         print_centered(f"HOLDERS: {len(df_analysis)}")
-        print_centered(f"BUYERS: {num_buyers} ({(df_analysis['Delta'] == 'NEW').sum()} new)")
-        print_centered(f"SELLERS: {num_sellers} ({(df_analysis['Delta'] == 'CLOSE').sum()} sold out)")
+        print_centered(f"BUYERS: {num_buyers} ({new_holder_count} new)")
+        print_centered(f"SELLERS: {num_sellers} ({close_count} sold out)")
         print_centered(f"BUYER/SELLER RATIO: {format_value(num_buyers / num_sellers if num_sellers > 0 else float('inf'))}")
 
-        print_dataframe(df_analysis, len(df_analysis), f'Holders by Delta Value', 'Delta_Value', ['Fund', 'Portfolio_Pct', 'Value', 'Delta', 'Delta_Value'], {'Portfolio_Pct': PERC_FORMAT, 'Value': VALUE_FORMAT, 'Delta_Value': VALUE_FORMAT})
+        print_dataframe(df_analysis, len(df_analysis), f'Holders by Delta Value', 'Delta_Value', ['Fund', 'Portfolio_Pct', 'Value', 'Delta', 'Delta_Value'], {'Portfolio_Pct': get_percentage_formatter(), 'Value': get_value_formatter(), 'Delta_Value': get_value_formatter()})
         print("\n")
 
 
