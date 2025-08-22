@@ -1,9 +1,10 @@
+from app.ai.agent import AnalystAgent
 from app.analysis.report import generate_comparison
 from app.analysis.stocks import quarter_analysis, stock_analysis
 from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_schedule_filings_after_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
-from app.utils.database import get_all_quarters, load_hedge_funds, save_comparison, sort_stocks
+from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, save_comparison, sort_stocks
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_value_formatter
 import numpy as np
 
@@ -195,9 +196,22 @@ def run_single_stock_analysis():
         print("\n")
 
 
+def run_ai_analyst():
+    """
+    7. Run AI Analyst
+    """
+    try:
+        top_n = 30
+        agent = AnalystAgent(get_last_quarter())
+        scored_list = agent.generate_scored_list(top_n)
+        print_dataframe(scored_list, top_n, title=f'Best {top_n} Promising Stocks (according to the AI Analyst)', sort_by='Promise_Score', cols=['Ticker', 'Company', 'Industry', 'Promise_Score', 'Risk_Score', 'Low_Volatility_Score', 'Momentum_Score'])
+    except Exception as e:
+        print(f"❌ An unexpected error occurred while running AI Financial Agent: {e}")
+
+
 def exit():
     """
-    7. Exit the application (after sorting stocks).
+    8. Exit the application (after sorting stocks).
     """
     sort_stocks()
     print("Bye! 👋 Exited.")
@@ -212,7 +226,8 @@ if __name__ == "__main__":
         '4': run_manual_cik_report,
         '5': run_quarter_analysis,
         '6': run_single_stock_analysis,
-        '7': exit
+        '7': run_ai_analyst,
+        '8': exit
     }
 
     while True:
@@ -226,10 +241,11 @@ if __name__ == "__main__":
             print("4. Manually enter a hedge fund CIK number to generate latest report")
             print("5. Analyze stock trends for a quarter")
             print("6. Analyze a single stock for a quarter")
-            print("7. Exit")
+            print("7. Run AI Analyst for most promising stocks")
+            print("8. Exit")
             horizontal_rule()
 
-            main_choice = input("Choose an option (1-7): ")
+            main_choice = input("Choose an option (1-8): ")
             action = actions.get(main_choice)
             if action:
                 if action() is False:

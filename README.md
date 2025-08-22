@@ -11,6 +11,7 @@ The goal is to transform raw [SEC](http://sec.gov/) data into clean CSV reports,
 * **Ticker Resolution**: Converts CUSIPs into familiar stock tickers (e.g., `AAPL`, `MSFT`) using the Finnhub API and a local caching system to optimize performance and reduce API calls.
 * **Detailed Reports**: Generates an easy-to-read `.csv` file for each fund, with intuitively formatted data
 * **Flexible Management**: Allows you to analyze all funds in a customizable list (`hedge_funds.csv`), a single fund of your choice, or a manually entered CIK via a command-line interface.
+* **AI-Powered Analysis**: Utilizes Google's Generative AI to provide advanced analysis using latest 13F filings.
 
 ## Getting Started
 
@@ -29,10 +30,11 @@ This project uses `pipenv` for dependency management. If you don't have it, you 
     ```
 
 2. **Create environment file:** Create a `.env` file in the root directory of the project.
-3. **Add API Key:** Add your Finnhub API key to the `.env` file in the following format:
+3. **Add API Keys:** Add your Finnhub API key to the `.env` file. If you want to use the AI agent for advanced analysis, you must also add your Google API Key.
 
     ```text
     FINNHUB_API_KEY="your_api_key_here"
+    GOOGLE_API_KEY="your_google_api_key_here"
     ```
 
 4. **Run the script:** Execute within the project's virtual environment:
@@ -56,9 +58,11 @@ This project uses `pipenv` for dependency management. If you don't have it, you 
 * [lxml](https://lxml.de/), Python library for processing XML and HTML
 * [re](https://docs.python.org/3/library/re.html), Python module for using regular expressions
 * [csv](https://docs.python.org/3/library/csv.html), Python module for parsing and writing CSV files
+* [pandas](https://pandas.pydata.org/), Python tool used for analysis and for creating CSV reports.
 * [python-dotenv](https://github.com/theskumar/python-dotenv), Python library for setting environment variables from a `.env` file
 * [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), Python library used for mapping CUSIPs to stock tickers.
 * [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/), another Python library used for mapping CUSIPs to stock tickers when Finnhub fails or is unavailable.
+* [Google Gen AI SDK](https://googleapis.github.io/python-genai/), Python client library for interacting with Google's Generative AI APIs.
 
 ## Acknowledgments
 
