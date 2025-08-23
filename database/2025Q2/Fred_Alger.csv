@@ -146,31 +146,31 @@ N3167Y103,RACE,Ferrari NV,2.52M,0.01%,1.82M,+261.5%
 77311W101,RKT,"Rocket Companies, Inc. Class A",1.15M,<.01%,1.15M,NEW
 538034109,LYV,"Live Nation Entertainment, Inc.",1.14M,<.01%,1.14M,NEW
 204166102,CVLT,"Commvault Systems, Inc.",1.14M,<.01%,1.14M,NEW
-40637H109,HALO,"Halozyme Therapeutics, Inc.",1.35M,<.01%,982.91K,+264.5%
+40637H109,HALO,"Halozyme Therapeutics, Inc.",1.35M,<.01%,983K,+264.5%
 87583X109,TNGX,"Tango Therapeutics, Inc.",979.64K,<.01%,979.64K,NEW
 15687V109,CERT,"Certara, Inc.",978K,<.01%,978K,NEW
 881624209,TEVA,Teva Pharmaceutical Industries Limited Sponsored ADR,975.9K,<.01%,975.9K,NEW
 74168J101,PRME,"Prime Medicine, Inc.",946.49K,<.01%,946.49K,NEW
 829214105,SLP,"Simulations Plus, Inc.",935.81K,<.01%,935.81K,NEW
 80810D103,SDGR,"Schrodinger, Inc.",904.39K,<.01%,904.39K,NEW
-19459J104,COLL,"Collegium Pharmaceutical, Inc.",903.07K,<.01%,903.08K,NEW
+19459J104,COLL,"Collegium Pharmaceutical, Inc.",903.07K,<.01%,903.07K,NEW
 88025U109,TXG,10x Genomics Inc Class A,1.66M,<.01%,903.04K,+119.2%
 501270102,KRUS,"Kura Sushi USA, Inc. Class A",31.2M,0.14%,901.86K,+3%
 88339J105,TTD,"Trade Desk, Inc. Class A",3.56M,0.02%,882.31K,+32.9%
 83086J200,SKYE,"Skye Bioscience, Inc.",842.07K,<.01%,842.07K,NEW
-185123106,CWAN,"Clearwater Analytics Holdings, Inc. Class A",37.43M,0.17%,834.17K,+2.3%
+185123106,CWAN,"Clearwater Analytics Holdings, Inc. Class A",37.43M,0.17%,834.32K,+2.3%
 55354G100,MSCI,MSCI Inc. Class A,4.42M,0.02%,824.74K,+22.9%
 640491106,NEOG,Neogen Corp,19.99M,0.09%,807.14K,+4.2%
-194014502,ENOV,Enovis Corporation,801.92K,<.01%,801.81K,NEW
+194014502,ENOV,Enovis Corporation,801.92K,<.01%,801.92K,NEW
 316773100,FITB,Fifth Third Bancorp,3.96M,0.02%,749.32K,+23.4%
 80706P103,SRRK,Scholar Rock Holding Corp.,747.36K,<.01%,747.36K,NEW
 98978V103,ZTS,"Zoetis, Inc. Class A",1.25M,<.01%,705.21K,+130.5%
 090043100,BILL,"BILL Holdings, Inc.",938.66K,<.01%,696.44K,+287.5%
-86881A100,SGRY,"Surgery Partners, Inc.",682.74K,<.01%,682.75K,NEW
+86881A100,SGRY,"Surgery Partners, Inc.",682.74K,<.01%,682.74K,NEW
 30231G102,XOM,Exxon Mobil Corporation,12.6M,0.06%,677.41K,+5.7%
 28176E108,EW,Edwards Lifesciences Corporation,663.46K,<.01%,663.46K,NEW
 171077407,NAGE,"Niagen Bioscience, Inc.",661.75K,<.01%,661.75K,NEW
-74276L105,PRCT,PROCEPT BioRobotics Corp.,638.27K,<.01%,638.26K,NEW
+74276L105,PRCT,PROCEPT BioRobotics Corp.,638.27K,<.01%,638.27K,NEW
 88023B103,TEM,"Tempus AI, Inc. Class A",3.12M,0.01%,636.48K,+25.7%
 747525103,QCOM,QUALCOMM Incorporated,10.58M,0.05%,628.76K,+6.3%
 92538J106,VERX,"Vertex, Inc. Class A",59.57M,0.27%,614.41K,+1%
@@ -188,7 +188,7 @@ N3167Y103,RACE,Ferrari NV,2.52M,0.01%,1.82M,+261.5%
 713448108,PEP,"PepsiCo, Inc.",6.22M,0.03%,340.66K,+5.8%
 697947109,PVLA,"Palvella Therapeutics, Inc.",305.24K,<.01%,305.24K,NEW
 718172109,PM,Philip Morris International Inc.,6.75M,0.03%,259.44K,+4%
-565394103,CART,Maplebear Inc.,255.52K,<.01%,255.51K,NEW
+565394103,CART,Maplebear Inc.,255.52K,<.01%,255.52K,NEW
 N14506104,ESTC,Elastic NV,252.99K,<.01%,252.99K,NEW
 00972D105,AKBA,"Akebia Therapeutics, Inc.",243.93K,<.01%,243.93K,NEW
 169656105,CMG,"Chipotle Mexican Grill, Inc.",11.35M,0.05%,240.83K,+2.2%
@@ -293,7 +293,7 @@ G0457F107,ARCO,"Arcos Dorados Holdings, Inc. Class A",102.37K,<.01%,-232.97K,-69
 256163106,DOCU,"DocuSign, Inc.",0,0%,-255.84K,CLOSE
 91307C102,UTHR,United Therapeutics Corporation,0,0%,-256.48K,CLOSE
 44980X109,IPGP,IPG Photonics Corporation,0,0%,-257.74K,CLOSE
-72815L107,PLTK,Playtika Holding Corp.,0,0%,-268.09K,CLOSE
+72815L107,PLTK,Playtika Holding Corp.,0,0%,-267.91K,CLOSE
 009158106,APD,"Air Products and Chemicals, Inc.",7.31M,0.03%,-286.86K,-3.8%
 152309100,CNTA,Centessa Pharmaceuticals PLC ADR,1.63M,<.01%,-297.51K,-15.5%
 M20791105,CAMT,Camtek Ltd,337.31K,<.01%,-316.25K,-48.4%
@@ -307,7 +307,7 @@ G3643J108,FLUT,Flutter Entertainment Plc,3.55M,0.02%,-385.49K,-9.8%
 750917106,RMBS,Rambus Inc.,6M,0.03%,-386.42K,-6%
 253868103,DLR,"Digital Realty Trust, Inc.",0,0%,-413.68K,CLOSE
 G01767105,ALKS,Alkermes Public Limited Company,647.96K,<.01%,-425.23K,-39.6%
-609839105,MPWR,"Monolithic Power Systems, Inc.",13.34M,0.06%,-444.15K,-3.2%
+609839105,MPWR,"Monolithic Power Systems, Inc.",13.34M,0.06%,-444.16K,-3.2%
 12572Q105,CME,CME Group Inc. Class A,7.75M,0.03%,-482.89K,-5.9%
 G52694109,KNSA,"Kiniksa Pharmaceuticals International, plc Class A",0,0%,-484.69K,CLOSE
 438516106,HON,Honeywell International Inc.,10.64M,0.05%,-514.9K,-4.6%
@@ -316,11 +316,11 @@ G52694109,KNSA,"Kiniksa Pharmaceuticals International, plc Class A",0,0%,-484.69
 337738108,FI,"Fiserv, Inc.",0,0%,-545.45K,CLOSE
 042068205,ARM,ARM Holdings PLC Sponsored ADR,0,0%,-553.28K,CLOSE
 03969K108,ARQT,Arcutis Biotherapeutics Inc,0,0%,-567.93K,CLOSE
-13321L108,CCJ,Cameco Corporation,3.25M,0.01%,-584.73K,-15.3%
-T9224W109,STVN,Stevanato Group SpA,25.02M,0.11%,-594.59K,-2.3%
+13321L108,CCJ,Cameco Corporation,3.25M,0.01%,-584.69K,-15.3%
+T9224W109,STVN,Stevanato Group SpA,25.02M,0.11%,-594.63K,-2.3%
 28036F105,EWTX,"Edgewise Therapeutics, Inc.",0,0%,-607.97K,CLOSE
 478160104,JNJ,Johnson & Johnson,8.73M,0.04%,-619.86K,-6.6%
-12674W109,CABA,"Cabaletta Bio, Inc.",90.92K,<.01%,-634.44K,-87.5%
+12674W109,CABA,"Cabaletta Bio, Inc.",90.92K,<.01%,-634.45K,-87.5%
 501147102,KRYS,"Krystal Biotech, Inc.",0,0%,-672.16K,CLOSE
 12008R107,BLDR,"Builders FirstSource, Inc.",14.86M,0.07%,-711.58K,-4.6%
 G5960L103,MDT,Medtronic Plc,3.59M,0.02%,-719.38K,-16.7%
