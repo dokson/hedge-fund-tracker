@@ -159,16 +159,14 @@ AVAILABLE METRICS:
 • Holder_Count: Total number of funds holding the stock (measures popularity/consensus).
 • New_Holder_Count: Number of funds initiating new positions (measures emerging interest).
 • Net_Buyers: Buyer_Count - Seller_Count (measures net institutional sentiment).
-• Buyer_Seller_Ratio: Buyer_Count / Seller_Count. A high ratio indicates strong buying pressure. A value of 'inf' (infinity) signifies there are buyers but zero sellers from the previous quarter. This is a powerful signal for new interest.
-• Delta: Percentage change in total value held by institutions. A value of 'inf' (infinity) also indicates a new position that wasn't held in the previous quarter by any hedge fund.
 
 WEIGHTING PHILOSOPHY:
-Focus on metrics that predict future outperformance:
-- High-conviction moves (large % allocations) over raw dollar amounts.
-- New institutional interest over existing holdings. Metrics like `Buyer_Seller_Ratio` and `Delta` being infinite are strong indicators of new, potentially high-momentum stocks (like recent IPOs).
-- Quality of buyers over quantity.
+Focus on metrics that predict future outperformance (considering data is only available from top world hedge funds):
+- High-conviction moves.
+- New institutional interest over existing holdings.
+- Quantity of buyers over quantity of sellers.
 - Forward-looking momentum indicators.
-- CAUTION: `Buyer_Seller_Ratio` and `Delta` can be infinite, while `New_Holder_Count` is often very high especially for recent IPOs. Balance these powerful but potentially noisy signals to avoid overweighting IPOs which have no particular need to be identified using this heuristic.
+- CAUTION: `New_Holder_Count` can be very high especially for recent IPOs. Balance this powerful but potentially noisy signal to avoid overweighting IPOs which have no particular need to be identified using this heuristic.
 
 CONSTRAINTS:
 - Weights must sum to EXACTLY 1.
@@ -220,7 +218,7 @@ OUTPUT (JSON only):"""
                 return {}
 
             # Validate that metrics exist in our analysis
-            available_metrics = ['Total_Value', 'Total_Delta_Value', 'Total_Weighted_Delta_Pct', 'Max_Portfolio_Pct', 'Buyer_Count', 'Seller_Count', 'Holder_Count', 'New_Holder_Count', 'Net_Buyers', 'Close_Count', 'Buyer_Seller_Ratio', 'Delta']
+            available_metrics = ['Total_Value', 'Total_Delta_Value', 'Total_Weighted_Delta_Pct', 'Max_Portfolio_Pct', 'Buyer_Count', 'Seller_Count', 'Holder_Count', 'New_Holder_Count', 'Net_Buyers', 'Close_Count']
 
             invalid_metrics = [m for m in parsed_weights.keys() if m not in available_metrics]
             if invalid_metrics:
