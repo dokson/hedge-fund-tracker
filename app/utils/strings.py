@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta
 
+
 def add_days_to_yyyymmdd(yyyymmdd_str, days):
     """
     Adds (or subtracts) a number of days to a date string in 'YYYYMMDD' format.
-    
+
     Parameters:
         yyyymmdd_str (str): A date string in 'YYYYMMDD' format.
         days (int): Number of days to add (use negative value to subtract).
-    
+
     Returns:
         str: New date string in 'YYYYMMDD' format.
     """
@@ -38,7 +39,7 @@ def format_percentage(value, show_sign=False, decimal_places=1):
         str: Formatted percentage string.
     """
     sign = '+' if show_sign else ''
-    
+
     if value == float('inf'):
         return f"{sign}∞"
     elif 0 < value < 0.01 and not show_sign:
@@ -82,10 +83,30 @@ def format_value(value: int) -> str:
 
 
 def get_value_formatter():
+    """
+    Creates a formatter function for converting numbers to a short scale string (e.g., 1.2M).
+
+    This is a factory function that returns a lambda. The lambda expects a value,
+    converts it to an integer, and then formats it using the `format_value` utility.
+    Useful for applying consistent formatting to data columns (e.g., in pandas).
+
+    Returns:
+        callable: A function that takes a numeric value and returns its formatted string representation.
+    """
     return lambda x: format_value(int(x))
 
 
 def get_percentage_formatter():
+    """
+    Creates a formatter function for converting numbers to a percentage string with 2 decimal places.
+
+    This is a factory function that returns a lambda. The lambda expects a numeric value
+    and formats it using the `format_percentage` utility with a fixed precision of 2 decimal places.
+    Useful for applying consistent percentage formatting to data columns.
+
+    Returns:
+        callable: A function that takes a numeric value and returns its formatted percentage string.
+    """
     return lambda x: format_percentage(x, decimal_places=2)
 
 
@@ -139,7 +160,7 @@ def get_quarter(date_str):
     """
     Converts a date string (YYYY-MM-DD) into a quarter string (YYYYQQ)
     based on the filing date, without using the datetime module.
-    
+
     Logic:
     - Apr 1 to Jun 30 -> '<Year>Q1'
     - Jul 1 to Sep 30 -> '<Year>Q2'
@@ -162,3 +183,19 @@ def get_quarter(date_str):
         return f"{year}Q3"
     else:
         return f"{year - 1}Q4"
+
+
+def get_quarter_date(quarter: str) -> str:
+    """
+    Converts a quarter string (e.g., '2024Q2') into its corresponding quarter-end date string.
+
+    Args:
+        quarter (str): The quarter string in 'YYYYQQ' format.
+
+    Returns:
+        str: The quarter-end date in 'YYYY-MM-DD' format (e.g., '2024-06-30')
+    """
+    year = int(quarter[:4])
+    quarter = int(quarter[5])
+    date_map = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}
+    return f"{year}-{date_map[quarter]}"

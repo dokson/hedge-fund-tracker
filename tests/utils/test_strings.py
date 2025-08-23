@@ -1,4 +1,4 @@
-from app.utils.strings import format_percentage, format_value, get_numeric, get_percentage_number, get_quarter
+from app.utils.strings import format_percentage, format_value, get_numeric, get_percentage_number, get_quarter, get_quarter_date
 import unittest
 
 class TestStrings(unittest.TestCase):
@@ -63,6 +63,13 @@ class TestStrings(unittest.TestCase):
         self.assertEqual(get_quarter("2023-11-10"), "2023Q3")
         self.assertEqual(get_quarter("2024-01-15"), "2023Q4")
         self.assertEqual(get_quarter("2024-04-28"), "2024Q1")
+
+
+    def test_get_quarter_date(self):
+        self.assertEqual(get_quarter_date("2024Q1"), "2024-03-31")
+        self.assertEqual(get_quarter_date("2025Q2"), "2025-06-30")
+        self.assertEqual(get_quarter_date("2023Q3"), "2023-09-30")
+        self.assertEqual(get_quarter_date("2021Q4"), "2021-12-31")
 
 
 if __name__ == '__main__':

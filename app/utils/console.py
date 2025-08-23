@@ -17,7 +17,7 @@ def horizontal_rule(char='='):
     print(char * get_terminal_width())
 
 
-def print_dataframe(dataframe, top_n, title, sort_by, cols, formatters={}):
+def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters={}):
     """
     Sorts, formats, and prints a DataFrame as a centered, responsive table in the console.
 
@@ -26,21 +26,24 @@ def print_dataframe(dataframe, top_n, title, sort_by, cols, formatters={}):
         top_n (int): The number of top rows to display.
         title (str): The title to be printed above the table.
         sort_by (str or list): The columns to sort the DataFrame by (in descending order).
-        cols (list): The list of column names to include in the final output.
+        cols (list, optional): The list of column names to include in the final output.
+                               If None, all columns are displayed. Defaults to None.
         formatters (dict, optional): A dictionary mapping column names to formatting functions.
                                      e.g., {'Value': format_value}
     """
     print("\n")
     print_centered(title, "-")
     print("\n")
-
+ 
     display_df = dataframe.sort_values(by=sort_by, ascending=False).head(top_n).copy()
-    
+ 
     for col, formatter in formatters.items():
         if col in display_df.columns:
             display_df[col] = display_df[col].apply(formatter)
-
-    print_centered_table(tabulate(display_df[cols], headers="keys", tablefmt="psql", showindex=False, stralign="center", numalign="center"))
+ 
+    # If 'cols' is not specified, use all columns from the dataframe
+    columns_to_show = cols if cols is not None else display_df.columns
+    print_centered_table(tabulate(display_df[columns_to_show], headers="keys", tablefmt="psql", showindex=False, stralign="center", numalign="center"))
 
 
 def print_centered(title, fill_char=' '):

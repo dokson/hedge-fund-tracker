@@ -1,8 +1,8 @@
 from app.analysis.stocks import quarter_analysis
+from app.utils.strings import get_quarter_date
 from dotenv import load_dotenv
 from google import genai
 import pandas as pd
-import os
 import re
 
 
@@ -16,6 +16,7 @@ class AnalystAgent:
         self.client = genai.Client()
         self.model = 'gemini-2.5-flash'
         self.quarter = quarter
+        self.filing_date = get_quarter_date(quarter)
         
         print(f"Initializing Analyst Agent for quarter {self.quarter}...")
         self.analysis_df = quarter_analysis(self.quarter)
@@ -31,9 +32,11 @@ class AnalystAgent:
         stocks_to_analyze_str = "\n".join([f"- {s['Ticker']} ({s['Company']})" for s in stocks])
 
         prompt = f"""
-ROLE: You are a senior equity research analyst with 15+ years of experience in sector analysis and risk assessment.
+ROLE: You are a senior equity research analyst with 15+ years of experience in sector analysis, risk assessment, and price action analysis. You have access to real-time and historical market data.
 
-TASK: Analyze the following stocks (Ticker and Company Name) and provide precise industry classification and quantitative scores.
+TASK: For the following stocks, provide precise industry classification and quantitative scores. A key score is the "Growth Potential", which you must calculate.
+
+REFERENCE DATE FOR GROWTH POTENTIAL: {self.filing_date}
 
 STOCKS TO ANALYZE:
 {stocks_to_analyze_str}
@@ -44,7 +47,8 @@ REQUIRED OUTPUT FORMAT (JSON only, no other text):
     "sub_industry": "GICS Sub-Industry Name",
     "momentum_score": integer_1_to_100,
     "low_volatility_score": integer_1_to_100,
-    "risk_score": integer_1_to_100
+    "risk_score": integer_1_to_100,
+    "growth_potential_score": integer_1_to_100
   }}
 }}
 
@@ -73,10 +77,22 @@ SCORING CRITERIA:
    - 30-49: Large cap tech, diversified healthcare
    - 1-29: Utilities, consumer staples, dividend aristocrats
 
-VALIDATION EXAMPLES:
-- NVDA (NVIDIA Corp): {{"sub_industry": "Semiconductors", "momentum_score": 95, "low_volatility_score": 25, "risk_score": 65}}
-- JNJ (Johnson & Johnson): {{"sub_industry": "Pharmaceuticals", "momentum_score": 60, "low_volatility_score": 85, "risk_score": 25}}
-- TSLA (Tesla, Inc.): {{"sub_industry": "Automobile Manufacturers", "momentum_score": 85, "low_volatility_score": 15, "risk_score": 80}}
+5. GROWTH_POTENTIAL_SCORE (1-100):
+   - **Objective**: Calculate a score representing untapped growth potential. The score is INVERSELY proportional to the stock's price performance since the reference date.
+   - **Methodology**:
+    1. For each stock, calculate its percentage price change from the reference date ({self.filing_date}) to the present day.
+    2. Assign a score based on the following brackets. A high score means the stock has grown little or fallen, suggesting higher potential. A low score means the stock has already run up significantly.
+   - **Scoring Brackets**:
+       - 90-100: The stock has fallen significantly in price (>10% drop).
+       - 70-89: The stock has fallen slightly or is flat (-10% to +5% change).
+       - 50-69: The stock has seen modest growth (+5% to +20% change).
+       - 30-49: The stock has grown significantly (+20% to +50% change).
+       - 1-29: The stock has experienced explosive growth (>50% growth).
+
+VALIDATION EXAMPLES (Illustrative, assuming today is late July 2024 and reference date is 2024-06-30):
+- NVDA (NVIDIA Corp): Price has been volatile but might be slightly down since June 30. {{"sub_industry": "Semiconductors", "momentum_score": 95, "low_volatility_score": 25, "risk_score": 65, "growth_potential_score": 75}}
+- JNJ (Johnson & Johnson): Stable stock, likely minor change. {{"sub_industry": "Pharmaceuticals", "momentum_score": 60, "low_volatility_score": 85, "risk_score": 25, "growth_potential_score": 65}}
+- LLY (Eli Lilly): Has continued its strong run-up. {{"sub_industry": "Pharmaceuticals", "momentum_score": 92, "low_volatility_score": 30, "risk_score": 55, "growth_potential_score": 20}}
 
 OUTPUT (JSON only):"""
 
@@ -107,7 +123,7 @@ OUTPUT (JSON only):"""
             
             # Validate the structure
             for ticker, data in parsed_data.items():
-                required_keys = ['sub_industry', 'momentum_score', 'low_volatility_score', 'risk_score']
+                required_keys = ['sub_industry', 'momentum_score', 'low_volatility_score', 'risk_score', 'growth_potential_score']
                 if not all(key in data for key in required_keys):
                     print(f"Warning: Missing required keys for {ticker}")
                     return {}
@@ -251,15 +267,16 @@ OUTPUT (JSON only):"""
         top_stocks = suggestions_df[['Ticker', 'Company']].to_dict('records')
         if top_stocks:
             ai_scores_data = self._get_ai_scores(top_stocks)
-            # Map the nested dictionary to columns
             suggestions_df['Industry'] = suggestions_df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('sub_industry', 'N/A'))
             suggestions_df['Risk_Score'] = suggestions_df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('risk_score', 0))
             suggestions_df['Momentum_Score'] = suggestions_df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('momentum_score', 0))
             suggestions_df['Low_Volatility_Score'] = suggestions_df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('low_volatility_score', 0))
+            suggestions_df['Growth_Score'] = suggestions_df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('growth_potential_score', 0))
         else:
-            suggestions_df['Industry'] = 'N/A'
-            suggestions_df['Risk_Score'] = 0
-            suggestions_df['Momentum_Score'] = 0
-            suggestions_df['Low_Volatility_Score'] = 0
+            suggestions_df['Industry'] = None
+            suggestions_df['Risk_Score'] = None
+            suggestions_df['Momentum_Score'] = None
+            suggestions_df['Low_Volatility_Score'] = None
+            suggestions_df['Growth_Score'] = None
 
         return suggestions_df
