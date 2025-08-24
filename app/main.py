@@ -8,6 +8,7 @@ from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_fu
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_value_formatter
 import numpy as np
 
+
 APP_NAME = "HEDGE FUND TRACKER"
 
 
@@ -68,20 +69,20 @@ def process_fund(fund_info, offset=0):
         dataframe_latest = xml_to_dataframe_13f(filings[0]['xml_content'])
         latest_date = filings[0]['date']
 
+        # TODO
         # If processing the latest report, check for futher 13D/G filings
-        if offset == 0:
-            print("Checking for more recent 13D/G filings...")
-            schedule_filings = fetch_schedule_filings_after_date(cik, latest_date)
-            
-            # TODO
-            #if schedule_filings:
-            #    schedule_filings_dataframe = get_latest_schedule_filings_dataframe(schedule_filings, fund_name, cik)
-            #    original_rows = len(dataframe_latest)
-            #    dataframe_latest = update_dataframe_with_schedule(dataframe_latest, schedule_filings_dataframe)
-            #    new_rows = len(dataframe_latest)
-            #    print(f"✅ Holdings updated with {new_rows - original_rows} changes from schedule filings.")
+        # if offset == 0:
+        #    print("Checking for more recent 13D/G filings...")
+        #    schedule_filings = fetch_schedule_filings_after_date(cik, latest_date)
+        #    
+        #    if schedule_filings:
+        #        schedule_filings_dataframe = get_latest_schedule_filings_dataframe(schedule_filings, fund_name, cik)
+        #        original_rows = len(dataframe_latest)
+        #        dataframe_latest = update_dataframe_with_schedule(dataframe_latest, schedule_filings_dataframe)
+        #        new_rows = len(dataframe_latest)
+        #        print(f"✅ Holdings updated with {new_rows - original_rows} changes from schedule filings.")
 
-        dataframe_previous = xml_to_dataframe_13f(filings[1]['xml_content'])
+        dataframe_previous = xml_to_dataframe_13f(filings[1]['xml_content']) if len(filings) == 2 else None
         dataframe_comparison = generate_comparison(dataframe_latest, dataframe_previous)
         save_comparison(dataframe_comparison, latest_date, fund_name)
     except Exception as e:

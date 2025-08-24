@@ -70,6 +70,9 @@ def generate_comparison(df_recent, df_previous):
     """
     Generates a comparison report between the two DataFrames, calculating percentage change and indicating new positions.
     """
+    if df_previous is None:
+        df_previous = pd.DataFrame(columns=df_recent.columns)
+
     df_comparison = pd.merge(
         df_recent,
         df_previous,
@@ -78,10 +81,10 @@ def generate_comparison(df_recent, df_previous):
         suffixes=('_recent', '_previous')
     )
 
-    df_comparison['Shares_recent'] = df_comparison['Shares_recent'].fillna(0).astype('int64')
-    df_comparison['Shares_previous'] = df_comparison['Shares_previous'].fillna(0).astype('int64')
-    df_comparison['Value'] = df_comparison['Value_recent'].fillna(0).astype('int64')
-    df_comparison['Value_previous'] = df_comparison['Value_previous'].fillna(0).astype('int64')
+    df_comparison['Shares_recent'] = pd.to_numeric(df_comparison['Shares_recent'], errors='coerce').fillna(0).astype('int64')
+    df_comparison['Shares_previous'] = pd.to_numeric(df_comparison['Shares_previous'], errors='coerce').fillna(0).astype('int64')
+    df_comparison['Value'] = pd.to_numeric(df_comparison['Value_recent'], errors='coerce').fillna(0).astype('int64')
+    df_comparison['Value_previous'] = pd.to_numeric(df_comparison['Value_previous'], errors='coerce').fillna(0).astype('int64')
 
     df_comparison['Company'] = coalesce(df_comparison['Company_recent'], df_comparison['Company_previous'])
     df_comparison['Price_per_Share'] = (coalesce(df_comparison['Value'] / df_comparison['Shares_recent'], df_comparison['Value_previous'] / df_comparison['Shares_previous']))
