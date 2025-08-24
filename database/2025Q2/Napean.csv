@@ -1,0 +1,40 @@
+CUSIP,Ticker,Company,Value,Portfolio%,Delta_Value,Delta
+16935C109,CHYM,Chime Finl Inc,19.51M,5.2%,19.51M,NEW
+461202103,INTU,Intuit,10.4M,2.8%,10.4M,NEW
+78410G104,SBAC,Sba Communications Corp New,9.64M,2.6%,3.37M,+53.7%
+594918104,MSFT,Microsoft Corp,8.54M,2.3%,2.99M,+54%
+874039100,TSM,Taiwan Semiconductor Mfg Ltd,5.33M,1.4%,2.8M,+110.9%
+871607107,SNPS,Synopsys Inc,12.14M,3.2%,1.82M,+17.6%
+036752103,ELV,Elevance Health Inc,6.68M,1.8%,1.42M,+26.9%
+81764X103,TTAN,Servicetitan Inc,860.12K,0.23%,860.12K,NEW
+040413205,ANET,Arista Networks Inc,6.61M,1.8%,449.24K,+7.3%
+055477103,BCAX,Bicara Therapeutics Inc,2.56M,0.68%,0,NO CHANGE
+46438F101,IBIT,Ishares Bitcoin Trust Etf,2.29M,0.61%,0,NO CHANGE
+57636Q104,MA,Mastercard Incorporated,11.48M,3%,-723.22K,-5.9%
+G4705A100,ICLR,Icon Plc,3.39M,0.9%,-724.34K,-17.6%
+093712107,BE,Bloom Energy Corp,4.2M,1.1%,-1.01M,-19.5%
+052769106,ADSK,Autodesk Inc,4.23M,1.1%,-1.14M,-21.2%
+518415104,LSCC,Lattice Semiconductor Corp,2.99M,0.79%,-1.6M,-34.8%
+833445109,SNOW,Snowflake Inc,8.17M,2.2%,-1.92M,-19.1%
+67059N108,NTNX,Nutanix Inc,4.12M,1.1%,-2.08M,-33.6%
+30303M102,META,Meta Platforms Inc,23.83M,6.3%,-2.28M,-8.7%
+437076102,HD,Home Depot Inc,6M,1.6%,-2.36M,-28.2%
+235851102,DHR,Danaher Corporation,10.37M,2.8%,-2.37M,-18.6%
+22788C105,CRWD,Crowdstrike Hldgs Inc,3.52M,0.93%,-2.47M,-41.2%
+053332102,AZO,Autozone Inc,10.88M,2.9%,-2.57M,-19.1%
+64110L106,NFLX,Netflix Inc,10.9M,2.9%,-3.19M,-22.7%
+67066G104,NVDA,Nvidia Corporation,8.66M,2.3%,-3.46M,-28.6%
+037833100,AAPL,Apple Inc,2.07M,0.55%,-3.56M,-63.2%
+03662Q105,ANSS,Ansys Inc,0,0%,-3.65M,CLOSE
+74624M102,PSTG,Pure Storage Inc.,0,0%,-4.06M,CLOSE
+02079K305,GOOGL,Alphabet Inc,3.7M,0.98%,-4.39M,-54.3%
+872540109,TJX,Tjx Cos Inc New,10.75M,2.9%,-4.56M,-29.8%
+11135F101,AVGO,Broadcom Inc,15.52M,4.1%,-5.15M,-24.9%
+82509L107,SHOP,Shopify Inc,0,0%,-5.81M,CLOSE
+90353T100,UBER,Uber Technologies Inc,5.21M,1.4%,-5.92M,-53.2%
+023135106,AMZN,Amazon Com Inc,15.92M,4.2%,-5.97M,-27.3%
+58155Q103,MCK,Mckesson Corp,7.48M,2%,-6.04M,-44.7%
+512807306,LRCX,Lam Research Corp,12.07M,3.2%,-7.27M,-37.6%
+91324P102,UNH,Unitedhealth Group Inc,0,0%,-10.73M,CLOSE
+770700102,HOOD,Robinhood Mkts Inc,106.82M,28.3%,-40.77M,-27.6%
+Total,,,376.86M,100%,34.28M,+10%

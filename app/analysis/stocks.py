@@ -62,6 +62,7 @@ def quarter_analysis(quarter):
             Total_Delta_Value=('Delta_Value_Num', 'sum'),
             Total_Weighted_Delta_Pct=('Weighted_Delta_Pct', 'sum'),
             Max_Portfolio_Pct=('Portfolio_Pct', 'max'),
+            Avg_Portfolio_Pct=('Portfolio_Pct', 'mean'),
             Buyer_Count=('Delta_Value_Num', lambda s: (s > 0).sum()),
             Seller_Count=('Delta_Value_Num', lambda s: (s < 0).sum()),
             Holder_Count=('Fund', lambda s: s[df_quarter.loc[s.index, 'Delta'] != 'CLOSE'].nunique()),
