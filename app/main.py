@@ -1,7 +1,7 @@
 from app.ai.agent import AnalystAgent
 from app.analysis.report import generate_comparison
 from app.analysis.stocks import quarter_analysis, stock_analysis
-from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_schedule_filings_after_date
+from app.scraper.sec_scraper import fetch_latest_two_13f_filings
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
 from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, save_comparison, sort_stocks
@@ -151,7 +151,7 @@ def run_quarter_analysis():
         print_dataframe(df_analysis, top_n, f'Top {top_n} Global New Positions (by Buyer/Seller Ratio)', ['Buyer_Seller_Ratio', 'Total_Delta_Value'], ['Ticker', 'Company', 'Buyer_Count', 'New_Holder_Count', 'Total_Delta_Value', 'Total_Value'], {'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
         print_dataframe(df_analysis[(df_analysis['Buyer_Seller_Ratio'] != np.inf) & (df_analysis['Total_Delta_Value'] > 100_000_000)], top_n, f'Top {top_n} New Consensus (by # of New Holders)', ['New_Holder_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'New_Holder_Count', 'Holder_Count', 'Total_Delta_Value', 'Total_Weighted_Delta_Pct'], {'Total_Delta_Value': get_value_formatter(), 'Total_Weighted_Delta_Pct': get_percentage_formatter()})
         print_dataframe(df_analysis, top_n, f'Top {top_n} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Avg_Portfolio_Pct', 'Delta', 'Total_Weighted_Delta_Pct', 'Total_Delta_Value'], {'Max_Portfolio_Pct': get_percentage_formatter(), 'Avg_Portfolio_Pct': get_percentage_formatter(), 'Delta': get_percentage_formatter(), 'Total_Weighted_Delta_Pct': get_percentage_formatter(), 'Total_Delta_Value': get_value_formatter()})
-        print_dataframe(df_analysis[(df_analysis['Holder_Count'] >= len(load_hedge_funds())/10)], top_n, f'Average {top_n} Stocks Portfolio', 'Avg_Portfolio_Pct', ['Ticker', 'Company', 'Avg_Portfolio_Pct', 'Max_Portfolio_Pct', 'Holder_Count', 'Total_Weighted_Delta_Pct'], {'Avg_Portfolio_Pct': get_percentage_formatter(), 'Max_Portfolio_Pct': get_percentage_formatter(), 'Total_Weighted_Delta_Pct': get_percentage_formatter()})
+        print_dataframe(df_analysis[(df_analysis['Holder_Count'] >= round(len(load_hedge_funds())/10))], top_n, f'Average {top_n} Stocks Portfolio', 'Avg_Portfolio_Pct', ['Ticker', 'Company', 'Avg_Portfolio_Pct', 'Max_Portfolio_Pct', 'Holder_Count', 'Total_Weighted_Delta_Pct'], {'Avg_Portfolio_Pct': get_percentage_formatter(), 'Max_Portfolio_Pct': get_percentage_formatter(), 'Total_Weighted_Delta_Pct': get_percentage_formatter()})
         print("\n")
 
 
@@ -178,6 +178,8 @@ def run_single_stock_analysis():
 
         total_value = df_analysis['Value'].sum()
         total_delta_value = df_analysis['Delta_Value'].sum()
+        avg_percentage = df_analysis['Portfolio_Pct'].mean()
+        max_percentage = df_analysis['Portfolio_Pct'].max()
         num_buyers = (df_analysis['Delta_Value'] > 0).sum()
         num_sellers = (df_analysis['Delta_Value'] < 0).sum()
         holder_count = (df_analysis['Delta'] != 'CLOSE').sum()
@@ -187,11 +189,10 @@ def run_single_stock_analysis():
 
         print("\n")
         print_centered(f"TOTAL HELD: {format_value(total_value)}")
-        print_centered(f"TOTAL DELTA VALUE: {format_value(total_delta_value)}")
-        print_centered(f"DELTA: {"NEW" if holder_count == new_holder_count and close_count == 0 else format_percentage(delta, True)}")
+        print_centered(f"DELTA VALUE: {format_value(total_delta_value)} / DELTA %: {"NEW" if holder_count == new_holder_count and close_count == 0 else format_percentage(delta, True)}")
+        print_centered(f"AVG PTF %: {format_percentage(avg_percentage, decimal_places=2)} / MAX PTF %: {format_percentage(max_percentage)}")
         print_centered(f"HOLDERS: {len(df_analysis)}")
-        print_centered(f"BUYERS: {num_buyers} ({new_holder_count} new)")
-        print_centered(f"SELLERS: {num_sellers} ({close_count} sold out)")
+        print_centered(f"BUYERS: {num_buyers} ({new_holder_count} new) / SELLERS: {num_sellers} ({close_count} sold out)")
         print_centered(f"BUYER/SELLER RATIO: {format_value(num_buyers / num_sellers if num_sellers > 0 else float('inf'))}")
 
         print_dataframe(df_analysis, len(df_analysis), f'Holders by Delta Value', 'Delta_Value', ['Fund', 'Portfolio_Pct', 'Value', 'Delta', 'Delta_Value'], {'Portfolio_Pct': get_percentage_formatter(), 'Value': get_value_formatter(), 'Delta_Value': get_value_formatter()})

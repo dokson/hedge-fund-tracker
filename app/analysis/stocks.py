@@ -17,8 +17,6 @@ def _load_quarter_data(quarter):
     all_fund_data = []
 
     for file_path in get_all_quarter_files(quarter):
-        fund_name = Path(file_path).stem
-        
         df = pd.read_csv(file_path)
 
         total_row = df[df['CUSIP'] == 'Total']
@@ -30,7 +28,7 @@ def _load_quarter_data(quarter):
         df_stocks.loc[:, 'Value_Num'] = df_stocks['Value'].apply(get_numeric)
         df_stocks.loc[:, 'Weighted_Delta_Pct'] = (df_stocks['Delta_Value_Num'] / total_portfolio_value) * 100
         df_stocks.loc[:, 'Portfolio_Pct'] = df_stocks['Portfolio%'].apply(get_percentage_number)
-        df_stocks.loc[:, 'Fund'] = fund_name
+        df_stocks.loc[:, 'Fund'] = Path(file_path).stem.replace('_', ' ')
 
         all_fund_data.append(df_stocks)
 
