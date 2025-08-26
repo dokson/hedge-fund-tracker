@@ -52,20 +52,38 @@ def quarter_analysis(quarter):
     # This ensures consistency and correctly aggregates data for companies that may have multiple CUSIPs
     df_quarter = df_quarter.drop(columns=['Ticker', 'Company']).set_index('CUSIP').join(df_stocks[['Ticker', 'Company']], how='left').reset_index()
 
-    # Using named aggregation for clarity and to avoid multi-level columns
+    # Fund level calculation
+    df_fund_quarter = (
+        df_quarter.groupby(['Fund', 'Ticker', 'Company'])
+        .agg(
+            Value_Num=('Value_Num', 'sum'),
+            Delta_Value_Num=('Delta_Value_Num', 'sum'),
+            Portfolio_Pct=('Portfolio_Pct', 'sum'),
+            Weighted_Delta_Pct=('Weighted_Delta_Pct', 'sum')
+        )
+        .reset_index()
+    )
+
+    df_fund_quarter['is_buyer'] = df_fund_quarter['Delta_Value_Num'] > 0
+    df_fund_quarter['is_seller'] = df_fund_quarter['Delta_Value_Num'] < 0
+    df_fund_quarter['is_holder'] = df_fund_quarter['Value_Num'] > 0
+    df_fund_quarter['is_new'] = (df_fund_quarter['Value_Num'] == df_fund_quarter['Delta_Value_Num']) & (df_fund_quarter['Value_Num'] > 0)
+    df_fund_quarter['is_closed'] = df_fund_quarter['Value_Num'] == 0
+    
+    # Stock level calculation
     df_analysis = (
-        df_quarter.groupby(['Ticker', 'Company'])
+        df_fund_quarter.groupby(['Ticker', 'Company'])
         .agg(
             Total_Value=('Value_Num', 'sum'),
             Total_Delta_Value=('Delta_Value_Num', 'sum'),
             Total_Weighted_Delta_Pct=('Weighted_Delta_Pct', 'sum'),
             Max_Portfolio_Pct=('Portfolio_Pct', 'max'),
             Avg_Portfolio_Pct=('Portfolio_Pct', 'mean'),
-            Buyer_Count=('Delta_Value_Num', lambda s: (s > 0).sum()),
-            Seller_Count=('Delta_Value_Num', lambda s: (s < 0).sum()),
-            Holder_Count=('Fund', lambda s: s[df_quarter.loc[s.index, 'Delta'] != 'CLOSE'].nunique()),
-            New_Holder_Count=('Fund', lambda s: s[df_quarter.loc[s.index, 'Delta'] == 'NEW'].nunique()),
-            Close_Count=('Fund', lambda s: s[df_quarter.loc[s.index, 'Delta'] == 'CLOSE'].nunique()),
+            Buyer_Count=('is_buyer', 'sum'),
+            Seller_Count=('is_seller', 'sum'),
+            Holder_Count=('is_holder', 'sum'),
+            New_Holder_Count=('is_new', 'sum'),
+            Close_Count=('is_closed', 'sum'),
         )
         .reset_index()
     )
