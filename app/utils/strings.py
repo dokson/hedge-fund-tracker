@@ -110,6 +110,20 @@ def get_percentage_formatter():
     return lambda x: format_percentage(x, decimal_places=2)
 
 
+def get_signed_perc_formatter():
+    """
+    Creates a formatter function for converting numbers to a percentage string with 2 decimal places.
+
+    This is a factory function that returns a lambda. The lambda expects a numeric value
+    and formats it using the `format_percentage` utility with a fixed precision of 2 decimal places.
+    Useful for applying consistent percentage formatting to data columns.
+
+    Returns:
+        callable: A function that takes a numeric value and returns its formatted percentage string.
+    """
+    return lambda x: format_percentage(x, True)
+
+
 def get_numeric(formatted_value: str) -> int:
     """
     Parses a formatted value string (e.g., '1.23B', '45.67M', '8.9K') back into a numeric value.

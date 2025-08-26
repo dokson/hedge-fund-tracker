@@ -19,14 +19,10 @@ def _load_quarter_data(quarter):
     for file_path in get_all_quarter_files(quarter):
         df = pd.read_csv(file_path)
 
-        total_row = df[df['CUSIP'] == 'Total']
-        total_portfolio_value = get_numeric(total_row['Value'].iloc[0])
-
-        df_stocks = df[df['CUSIP'] != 'Total'].copy()
+        df_stocks = df[df['CUSIP'] != 'Total']
 
         df_stocks.loc[:, 'Delta_Value_Num'] = df_stocks['Delta_Value'].apply(get_numeric)
         df_stocks.loc[:, 'Value_Num'] = df_stocks['Value'].apply(get_numeric)
-        df_stocks.loc[:, 'Weighted_Delta_Pct'] = (df_stocks['Delta_Value_Num'] / total_portfolio_value) * 100
         df_stocks.loc[:, 'Portfolio_Pct'] = df_stocks['Portfolio%'].apply(get_percentage_number)
         df_stocks.loc[:, 'Fund'] = Path(file_path).stem.replace('_', ' ')
 
@@ -34,6 +30,48 @@ def _load_quarter_data(quarter):
 
     return pd.concat(all_fund_data, ignore_index=True)
 
+
+def _aggregate_quarter_by_fund(df_quarter):
+    """
+    Aggregates quarter fund holdings at the Ticker level.
+
+    Args:
+        df_quarter (pd.DataFrame): The DataFrame containing quarterly data.
+
+    Returns:
+        pd.DataFrame: An aggregated DataFrame.
+    """
+    df_stocks = load_stocks()
+
+    # Drop company/ticker from quarterly data to use master data instead. 
+    # This ensures consistency and correctly aggregates data for companies that may have multiple CUSIPs
+    df_quarter = df_quarter.drop(columns=['Ticker', 'Company']).set_index('CUSIP').join(df_stocks[['Ticker', 'Company']], how='left').reset_index()
+
+    df_fund_quarter = (
+        df_quarter.groupby(['Fund', 'Ticker', 'Company'])
+        .agg(
+            Value=('Value_Num', 'sum'),
+            Delta_Value=('Delta_Value_Num', 'sum'),
+            Portfolio_Pct=('Portfolio_Pct', 'sum')
+        )
+        .reset_index()
+    )
+
+    # If the sum of Portfolio_Pct is 0 but the value is positive, it means the position is composed of <0.01% holdings
+    # We assign a small non-zero value to represent this.
+    df_fund_quarter.loc[(df_fund_quarter['Portfolio_Pct'] == 0) & (df_fund_quarter['Value'] > 0), 'Portfolio_Pct'] = 0.009
+
+    # Calculate 'Delta' based on aggregated values
+    df_fund_quarter['Delta'] = df_fund_quarter.apply(
+        lambda row:
+        'CLOSE' if row['Value'] == 0
+        else 'NO CHANGE' if row['Delta_Value'] == 0
+        else 'NEW' if row['Value'] > 0 and row['Value'] == row['Delta_Value']
+        else format_percentage(row['Delta_Value'] / (row['Value'] - row['Delta_Value']) * 100, True),
+        axis=1
+    )
+
+    return df_fund_quarter
 
 def quarter_analysis(quarter):
     """
@@ -45,38 +83,21 @@ def quarter_analysis(quarter):
     Returns:
         pd.DataFrame: A DataFrame with aggregated stock analysis for the quarter
     """
-    df_quarter = _load_quarter_data(quarter)
-    df_stocks = load_stocks()
-
-    # Drop company/ticker from quarterly data to use master data instead. 
-    # This ensures consistency and correctly aggregates data for companies that may have multiple CUSIPs
-    df_quarter = df_quarter.drop(columns=['Ticker', 'Company']).set_index('CUSIP').join(df_stocks[['Ticker', 'Company']], how='left').reset_index()
-
     # Fund level calculation
-    df_fund_quarter = (
-        df_quarter.groupby(['Fund', 'Ticker', 'Company'])
-        .agg(
-            Value_Num=('Value_Num', 'sum'),
-            Delta_Value_Num=('Delta_Value_Num', 'sum'),
-            Portfolio_Pct=('Portfolio_Pct', 'sum'),
-            Weighted_Delta_Pct=('Weighted_Delta_Pct', 'sum')
-        )
-        .reset_index()
-    )
+    df_fund_quarter = _aggregate_quarter_by_fund(_load_quarter_data(quarter))
 
-    df_fund_quarter['is_buyer'] = df_fund_quarter['Delta_Value_Num'] > 0
-    df_fund_quarter['is_seller'] = df_fund_quarter['Delta_Value_Num'] < 0
-    df_fund_quarter['is_holder'] = df_fund_quarter['Value_Num'] > 0
-    df_fund_quarter['is_new'] = (df_fund_quarter['Value_Num'] == df_fund_quarter['Delta_Value_Num']) & (df_fund_quarter['Value_Num'] > 0)
-    df_fund_quarter['is_closed'] = df_fund_quarter['Value_Num'] == 0
+    df_fund_quarter['is_buyer'] = df_fund_quarter['Delta_Value'] > 0
+    df_fund_quarter['is_seller'] = df_fund_quarter['Delta_Value'] < 0
+    df_fund_quarter['is_holder'] = df_fund_quarter['Value'] > 0
+    df_fund_quarter['is_new'] = (df_fund_quarter['Value'] == df_fund_quarter['Delta_Value']) & (df_fund_quarter['Value'] > 0)
+    df_fund_quarter['is_closed'] = df_fund_quarter['Value'] == 0
     
     # Stock level calculation
     df_analysis = (
         df_fund_quarter.groupby(['Ticker', 'Company'])
         .agg(
-            Total_Value=('Value_Num', 'sum'),
-            Total_Delta_Value=('Delta_Value_Num', 'sum'),
-            Total_Weighted_Delta_Pct=('Weighted_Delta_Pct', 'sum'),
+            Total_Value=('Value', 'sum'),
+            Total_Delta_Value=('Delta_Value', 'sum'),
             Max_Portfolio_Pct=('Portfolio_Pct', 'max'),
             Avg_Portfolio_Pct=('Portfolio_Pct', 'mean'),
             Buyer_Count=('is_buyer', 'sum'),
@@ -107,32 +128,6 @@ def stock_analysis(ticker, quarter):
         pd.DataFrame: A DataFrame with fund-level details for the specified stock.
     """
     df_quarter = _load_quarter_data(quarter)
-    df_quarter = df_quarter[df_quarter['Ticker'] == ticker]
 
     # Aggregates data for Ticker that may have multiple CUSIPs in the same hedge fund report
-    df_analysis = (
-        df_quarter.groupby(['Fund', 'Ticker'])
-        .agg(
-            Company=('Company', 'first'),
-            Value=('Value_Num', 'sum'),
-            Delta_Value=('Delta_Value_Num', 'sum'),
-            Portfolio_Pct=('Portfolio_Pct', 'sum'),
-        )
-        .reset_index()
-    )
-
-    # If the sum of Portfolio_Pct is 0 but the value is positive, it means the position is composed of <0.01% holdings
-    # We assign a small non-zero value to represent this.
-    df_analysis.loc[(df_analysis['Portfolio_Pct'] == 0) & (df_analysis['Value'] > 0), 'Portfolio_Pct'] = 0.009
-
-    # Recalculate 'Delta' based on aggregated values
-    df_analysis['Delta'] = df_analysis.apply(
-        lambda row:
-        'CLOSE' if row['Value'] == 0
-        else 'NO CHANGE' if row['Delta_Value'] == 0
-        else 'NEW' if row['Value'] > 0 and row['Value'] == row['Delta_Value']
-        else format_percentage(row['Delta_Value'] / (row['Value'] - row['Delta_Value']) * 100, True),
-        axis=1
-    )
-
-    return df_analysis
+    return _aggregate_quarter_by_fund(df_quarter[df_quarter['Ticker'] == ticker])

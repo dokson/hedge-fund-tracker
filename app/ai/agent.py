@@ -151,7 +151,6 @@ TASK: Design optimal weights for a "Promise Score" algorithm that identifies sto
 AVAILABLE METRICS:
 • Total_Value: Total dollar value of the stock held by all institutions (measures overall institutional ownership and popularity).
 • Total_Delta_Value: Net dollar flow across all institutions (measures raw capital allocation).
-• Total_Weighted_Delta_Pct: Sum of percentage portfolio increases by buyers (measures conviction intensity).
 • Max_Portfolio_Pct: Largest single fund allocation to the stock (measures individual conviction).
 • Buyer_Count: Number of funds increasing positions (measures buying breadth).
 • Seller_Count: Number of funds decreasing positions (measures selling pressure).
@@ -177,11 +176,11 @@ Return ONLY a valid JSON object with metric names as keys and weights as values.
 Weights must be decimal numbers that sum to 1.0.
 
 EXAMPLE FORMATS:
-{{"Total_Delta_Value": 0.4, "Total_Weighted_Delta_Pct": 0.35, "Max_Portfolio_Pct": 0.25}}
+{{"Total_Delta_Value": 0.4, "New_Holder_Count": 0.35, "Max_Portfolio_Pct": 0.25}}
 
 OR
 
-{{"New_Holder_Count": 0.3, "Net_Buyers": 0.25, "Total_Weighted_Delta_Pct": 0.2, "Max_Portfolio_Pct": 0.15, "Buyer_Count": 0.1}}
+{{"New_Holder_Count": 0.3, "Net_Buyers": 0.25, "Close_Count": -0.2, "Max_Portfolio_Pct": 0.15, "Buyer_Count": 0.1}}
 
 OUTPUT (JSON only):"""
 
@@ -218,7 +217,7 @@ OUTPUT (JSON only):"""
                 return {}
 
             # Validate that metrics exist in our analysis
-            available_metrics = ['Total_Value', 'Total_Delta_Value', 'Total_Weighted_Delta_Pct', 'Max_Portfolio_Pct', 'Buyer_Count', 'Seller_Count', 'Holder_Count', 'New_Holder_Count', 'Net_Buyers', 'Close_Count']
+            available_metrics = ['Total_Value', 'Total_Delta_Value', 'Max_Portfolio_Pct', 'Buyer_Count', 'Seller_Count', 'Holder_Count', 'New_Holder_Count', 'Net_Buyers', 'Close_Count']
 
             invalid_metrics = [m for m in parsed_weights.keys() if m not in available_metrics]
             if invalid_metrics:

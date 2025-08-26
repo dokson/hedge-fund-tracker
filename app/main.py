@@ -5,7 +5,7 @@ from app.scraper.sec_scraper import fetch_latest_two_13f_filings
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
 from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, save_comparison, sort_stocks
-from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_value_formatter
+from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
 import numpy as np
 
 
@@ -145,12 +145,10 @@ def run_quarter_analysis():
         horizontal_rule('-')
 
         top_n = 15
-        print_dataframe(df_analysis, top_n, f'Top {top_n} Consensus Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Delta', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Holder_Count', 'Total_Delta_Value', 'Total_Value'], {'Delta': get_percentage_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
-        print_dataframe(df_analysis[df_analysis['Total_Weighted_Delta_Pct'] > 0], top_n, f'Top {top_n} Money Flow (by Total Delta)', 'Total_Delta_Value', ['Ticker', 'Company', 'Delta', 'Buyer_Count', 'Seller_Count', 'Holder_Count', 'Total_Delta_Value', 'Total_Value'], {'Delta': get_percentage_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
-        print_dataframe(df_analysis[df_analysis['Total_Delta_Value'] > 0], top_n, f'Top {top_n} Impacting Buys (by Portfolio Impact %)', 'Total_Weighted_Delta_Pct', ['Ticker', 'Company', 'Total_Weighted_Delta_Pct', 'Net_Buyers', 'Holder_Count', 'Total_Delta_Value', 'Total_Value'], {'Total_Weighted_Delta_Pct': get_percentage_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
-        print_dataframe(df_analysis[(df_analysis['Buyer_Seller_Ratio'] != np.inf) & (df_analysis['Total_Delta_Value'] > 100_000_000)], top_n, f'Top {top_n} New Consensus (by # of New Holders)', ['New_Holder_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'New_Holder_Count', 'Holder_Count', 'Total_Delta_Value', 'Total_Weighted_Delta_Pct'], {'Total_Delta_Value': get_value_formatter(), 'Total_Weighted_Delta_Pct': get_percentage_formatter()})
-        print_dataframe(df_analysis, top_n, f'Top {top_n} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Avg_Portfolio_Pct', 'Delta', 'Total_Weighted_Delta_Pct', 'Total_Delta_Value'], {'Max_Portfolio_Pct': get_percentage_formatter(), 'Avg_Portfolio_Pct': get_percentage_formatter(), 'Delta': get_percentage_formatter(), 'Total_Weighted_Delta_Pct': get_percentage_formatter(), 'Total_Delta_Value': get_value_formatter()})
-        print_dataframe(df_analysis[(df_analysis['Holder_Count'] >= round(len(load_hedge_funds())/10))], top_n, f'Average {top_n} Stocks Portfolio', 'Avg_Portfolio_Pct', ['Ticker', 'Company', 'Avg_Portfolio_Pct', 'Max_Portfolio_Pct', 'Holder_Count', 'Total_Weighted_Delta_Pct'], {'Avg_Portfolio_Pct': get_percentage_formatter(), 'Max_Portfolio_Pct': get_percentage_formatter(), 'Total_Weighted_Delta_Pct': get_percentage_formatter()})
+        print_dataframe(df_analysis, top_n, f'Top {top_n} Consensus Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Delta', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Holder_Count', 'Total_Delta_Value', 'Total_Value'], {'Delta': get_signed_perc_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
+        print_dataframe(df_analysis[(df_analysis['Buyer_Seller_Ratio'] != np.inf) & (df_analysis['Total_Delta_Value'] > 100_000_000)], top_n, f'Top {top_n} New Consensus (by # of New Holders)', ['New_Holder_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'New_Holder_Count', 'Holder_Count', 'Delta', 'Total_Delta_Value', 'Total_Value'], {'Delta': get_signed_perc_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
+        print_dataframe(df_analysis, top_n, f'Top {top_n} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Avg_Portfolio_Pct', 'Delta', 'Total_Delta_Value', 'Total_Value'], {'Max_Portfolio_Pct': get_percentage_formatter(), 'Avg_Portfolio_Pct': get_percentage_formatter(), 'Delta': get_signed_perc_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
+        print_dataframe(df_analysis[(df_analysis['Holder_Count'] >= round(len(load_hedge_funds())/10))], top_n, f'Average {top_n} Stocks Portfolio', 'Avg_Portfolio_Pct', ['Ticker', 'Company', 'Avg_Portfolio_Pct', 'Max_Portfolio_Pct', 'Holder_Count', 'Delta'], {'Avg_Portfolio_Pct': get_percentage_formatter(), 'Max_Portfolio_Pct': get_percentage_formatter(), 'Delta': get_signed_perc_formatter()})
         print("\n")
 
 
