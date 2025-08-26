@@ -19,7 +19,7 @@ def _load_quarter_data(quarter):
     for file_path in get_all_quarter_files(quarter):
         df = pd.read_csv(file_path)
 
-        df_stocks = df[df['CUSIP'] != 'Total']
+        df_stocks = df[df['CUSIP'] != 'Total'].copy()
 
         df_stocks.loc[:, 'Delta_Value_Num'] = df_stocks['Delta_Value'].apply(get_numeric)
         df_stocks.loc[:, 'Value_Num'] = df_stocks['Value'].apply(get_numeric)
