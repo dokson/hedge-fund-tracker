@@ -5,9 +5,9 @@ name = "pypi"
 
 [packages]
 requests = ">=2.32.5"
-beautifulsoup4 = ">=4.13.4"
-lxml = ">=5.4.0"
-pandas = ">=2.3.1"
+beautifulsoup4 = ">=4.13.5"
+lxml = ">=6.0.1"
+pandas = ">=2.3.2"
 urllib3 = "==2.5.0"
 six = ">=1.17.0"
 python-dotenv = ">=1.1.1"
