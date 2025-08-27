@@ -60,6 +60,19 @@ def _get_filing_date(report_page_soup):
     return None
 
 
+def _get_report_date(report_page_soup):
+    """
+    Extracts the report date from the report page's soup.
+    """
+    try:
+        report_date_tag = report_page_soup.find('div', string=re.compile(r'Period of Report'))
+        if report_date_tag:
+            return report_date_tag.find_next().text.strip()
+    except Exception as e:
+        print(f"Error extracting report date: {e}")
+    return None
+
+
 def _get_primary_xml_url(report_page_soup, filing_type):
     """
     Finds the link to the primary XML data file from the report page's soup.
@@ -95,6 +108,7 @@ def _scrape_filing(document_tag, filing_type):
 
     report_page_soup = BeautifulSoup(report_page_response.text, "html.parser")
     filing_date = _get_filing_date(report_page_soup)
+    report_date = _get_report_date(report_page_soup)
     xml_url = _get_primary_xml_url(report_page_soup, filing_type)
 
     if not (filing_date and xml_url):
@@ -106,9 +120,10 @@ def _scrape_filing(document_tag, filing_type):
         print(f"Failed to download XML from {xml_url}")
         return None
 
-    print(f"Successfully scraped {filing_type} report for {filing_date}")
+    print(f"Successfully scraped {filing_type} report published on {filing_date} (refering {report_date})")
     return {
         'date': filing_date,
+        'reference_date': report_date,
         'xml_content': xml_response.content
     }
 

@@ -59,16 +59,28 @@ def select_quarter():
 
 def process_fund(fund_info, offset=0):
     """
-    Processes a single fund: fetches filings and generates comparison.
+    Processes a single fund: fetches filings and generates a comparison report.
+    It ensures the comparison is between two different reporting periods, skipping over any amendments for the same period.
     """
     cik = fund_info.get('CIK')
     fund_name = fund_info.get('Fund') or fund_info.get('CIK')
 
     try:
+        # Step 1: Fetch the primary filing for the given offset.
         filings = fetch_latest_two_13f_filings(cik, offset)
-        latest_date = filings[0]['date']
+        latest_date = filings[0]['reference_date']
         dataframe_latest = xml_to_dataframe_13f(filings[0]['xml_content'])
-        dataframe_previous = xml_to_dataframe_13f(filings[1]['xml_content']) if len(filings) == 2 else None
+
+        # Step 2: Find the first valid preceding filing for comparison.
+        # This loop correctly is needed to handle amendments (13F-HR/A) with earlier reference dates.
+        previous_filing = filings[1] if len(filings) == 2 else None
+        
+        while previous_filing and latest_date <= previous_filing['reference_date']:
+            offset += 1
+            filings = fetch_latest_two_13f_filings(cik, offset)
+            previous_filing = filings[1] if len(filings) == 2 else None
+
+        dataframe_previous = xml_to_dataframe_13f(previous_filing['xml_content']) if previous_filing else None
         dataframe_comparison = generate_comparison(dataframe_latest, dataframe_previous)
         save_comparison(dataframe_comparison, latest_date, fund_name)
     except Exception as e:

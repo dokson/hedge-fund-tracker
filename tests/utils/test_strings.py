@@ -57,12 +57,18 @@ class TestStrings(unittest.TestCase):
 
 
     def test_get_quarter(self):
-        self.assertEqual(get_quarter("2023-03-15"), "2023Q1")
-        self.assertEqual(get_quarter("2023-08-05"), "2023Q2")
-        self.assertEqual(get_quarter("2023-09-30"), "2023Q3")
-        self.assertEqual(get_quarter("2023-11-10"), "2023Q3")
-        self.assertEqual(get_quarter("2024-01-15"), "2023Q4")
-        self.assertEqual(get_quarter("2024-04-28"), "2024Q1")
+        # Test Q1 boundaries
+        self.assertEqual(get_quarter("2023-01-01"), "2023Q1")
+        self.assertEqual(get_quarter("2023-03-31"), "2023Q1")
+        # Test Q2 boundaries
+        self.assertEqual(get_quarter("2024-04-01"), "2024Q2")
+        self.assertEqual(get_quarter("2024-06-30"), "2024Q2")
+        # Test Q3 boundaries
+        self.assertEqual(get_quarter("2020-07-01"), "2020Q3")
+        self.assertEqual(get_quarter("2020-09-30"), "2020Q3")
+        # Test Q4 boundaries
+        self.assertEqual(get_quarter("2022-10-01"), "2022Q4")
+        self.assertEqual(get_quarter("2022-12-31"), "2022Q4")
 
 
     def test_get_quarter_date(self):

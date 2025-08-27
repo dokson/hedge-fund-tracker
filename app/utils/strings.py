@@ -172,14 +172,13 @@ def get_percentage_number(formatted_percentage: str) -> float:
 
 def get_quarter(date_str):
     """
-    Converts a date string (YYYY-MM-DD) into a quarter string (YYYYQQ)
-    based on the filing date, without using the datetime module.
+    Converts a date string (YYYY-MM-DD) into a calendar quarter string (YYYYQQ).
 
     Logic:
-    - Apr 1 to Jun 30 -> '<Year>Q1'
-    - Jul 1 to Sep 30 -> '<Year>Q2'
-    - Oct 1 to Dec 31 -> '<Year>Q3'
-    - Jan 1 to Mar 31 -> '<PreviousYear>Q4'
+    - Jan 1 to Mar 31 -> '<Year>Q1'
+    - Apr 1 to Jun 30 -> '<Year>Q2'
+    - Jul 1 to Sep 30 -> '<Year>Q3'
+    - Oct 1 to Dec 31 -> '<Year>Q4'
 
     Args:
         date_str (str): The date string in 'YYYY-MM-DD' format.
@@ -188,15 +187,8 @@ def get_quarter(date_str):
         str: The formatted quarter string 'YYYYQQ'.
     """
     year, month, _ = map(int, date_str.split('-'))
-
-    if 3 <= month <= 5:
-        return f"{year}Q1"
-    elif 6 <= month <= 8:
-        return f"{year}Q2"
-    elif 9 <= month <= 11:
-        return f"{year}Q3"
-    else:
-        return f"{year - 1}Q4"
+    quarter = (month - 1) // 3 + 1
+    return f"{year}Q{quarter}"
 
 
 def get_quarter_date(quarter: str) -> str:
