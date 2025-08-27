@@ -1,10 +1,11 @@
 from app.ai.agent import AnalystAgent
-from app.analysis.report import generate_comparison
+from app.analysis.quarterly_report import generate_comparison
+from app.analysis.schedules import get_latest_schedule_filings_dataframe
 from app.analysis.stocks import quarter_analysis, stock_analysis
-from app.scraper.sec_scraper import fetch_latest_two_13f_filings
+from app.scraper.sec_scraper import get_latest_13f_filing_date, fetch_latest_two_13f_filings, fetch_schedule_filings_after_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
-from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, save_comparison, sort_stocks
+from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, save_comparison, save_latest_schedule_filings, sort_stocks
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
 import numpy as np
 
@@ -65,23 +66,8 @@ def process_fund(fund_info, offset=0):
 
     try:
         filings = fetch_latest_two_13f_filings(cik, offset)
-
-        dataframe_latest = xml_to_dataframe_13f(filings[0]['xml_content'])
         latest_date = filings[0]['date']
-
-        # TODO
-        # If processing the latest report, check for futher 13D/G filings
-        # if offset == 0:
-        #    print("Checking for more recent 13D/G filings...")
-        #    schedule_filings = fetch_schedule_filings_after_date(cik, latest_date)
-        #    
-        #    if schedule_filings:
-        #        schedule_filings_dataframe = get_latest_schedule_filings_dataframe(schedule_filings, fund_name, cik)
-        #        original_rows = len(dataframe_latest)
-        #        dataframe_latest = update_dataframe_with_schedule(dataframe_latest, schedule_filings_dataframe)
-        #        new_rows = len(dataframe_latest)
-        #        print(f"✅ Holdings updated with {new_rows - original_rows} changes from schedule filings.")
-
+        dataframe_latest = xml_to_dataframe_13f(filings[0]['xml_content'])
         dataframe_previous = xml_to_dataframe_13f(filings[1]['xml_content']) if len(filings) == 2 else None
         dataframe_comparison = generate_comparison(dataframe_latest, dataframe_previous)
         save_comparison(dataframe_comparison, latest_date, fund_name)
@@ -125,9 +111,35 @@ def run_historical_fund_report():
         process_fund(selected_fund, offset=selected_period[0])
 
 
+def run_fetch_latest_schedules():
+    """
+    4. Fetch latest schedule filings for all known hedge funds and save to database.
+    """
+    hedge_funds = load_hedge_funds()
+    total_funds = len(hedge_funds)
+    print(f"Starting updating reports for all {total_funds} funds...")
+    latest_schedules = []
+
+    for i, fund in enumerate(hedge_funds):
+        print_centered(f"Processing {i + 1:2}/{total_funds}: {fund['Fund']}", "-")
+        cik = fund.get('CIK')
+        fund_denomination = fund.get('Denomination')
+
+        schedule_filings = fetch_schedule_filings_after_date(cik, get_latest_13f_filing_date(cik))
+
+        if schedule_filings:
+            schedule_filings_dataframe = get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, cik)
+            if schedule_filings_dataframe is not None and not schedule_filings_dataframe.empty:
+                schedule_filings_dataframe.insert(0, 'Fund', fund.get('Fund'))
+                latest_schedules.append(schedule_filings_dataframe)
+    
+    save_latest_schedule_filings(latest_schedules)
+    print_centered(f"All funds processed", "=")
+
+
 def run_manual_cik_report():
     """
-    4. Manually enter a hedge fund CIK to generate latest report.
+    5. Manually enter a hedge fund CIK to generate latest report.
     """
     cik = input("Enter 10-digit CIK number: ").strip()
     process_fund({'CIK': cik})
@@ -135,7 +147,7 @@ def run_manual_cik_report():
 
 def run_quarter_analysis():
     """
-    5. Analyze stock trends for a quarter.
+    6. Analyze stock trends for a quarter.
     """
     selected_quarter = select_quarter()
     if selected_quarter:
@@ -155,7 +167,7 @@ def run_quarter_analysis():
 
 def run_single_stock_analysis():
     """
-    6. Analyze a single stock for a specific quarter.
+    7. Analyze a single stock for a specific quarter.
     """
     selected_quarter = select_quarter()
     if selected_quarter:
@@ -199,7 +211,7 @@ def run_single_stock_analysis():
 
 def run_ai_analyst():
     """
-    7. Run AI Analyst
+    8. Run AI Analyst
     """
     try:
         top_n = 30
@@ -212,7 +224,7 @@ def run_ai_analyst():
 
 def exit():
     """
-    8. Exit the application (after sorting stocks).
+    9. Exit the application (after sorting stocks).
     """
     sort_stocks()
     print("Bye! 👋 Exited.")
@@ -224,11 +236,12 @@ if __name__ == "__main__":
         '1': run_all_funds_report,
         '2': run_single_fund_report,
         '3': run_historical_fund_report,
-        '4': run_manual_cik_report,
-        '5': run_quarter_analysis,
-        '6': run_single_stock_analysis,
-        '7': run_ai_analyst,
-        '8': exit
+        '4': run_fetch_latest_schedules,
+        '5': run_manual_cik_report,
+        '6': run_quarter_analysis,
+        '7': run_single_stock_analysis,
+        '8': run_ai_analyst,
+        '9': exit
     }
 
     while True:
@@ -239,14 +252,15 @@ if __name__ == "__main__":
             print("1. Generate latest reports for all known hedge funds (hedge_funds.csv)")
             print("2. Generate latest report for a known hedge fund (hedge_funds.csv)")
             print("3. Generate historical report for a known hedge fund (hedge_funds.csv)")
-            print("4. Manually enter a hedge fund CIK number to generate latest report")
-            print("5. Analyze stock trends for a quarter")
-            print("6. Analyze a single stock for a quarter")
-            print("7. Run AI Analyst for most promising stocks")
-            print("8. Exit")
+            print("4. Fetch latest schedule filings for a known hedge fund (hedge_funds.csv)")
+            print("5. Manually enter a hedge fund CIK number to generate latest report")
+            print("6. Analyze stock trends for a quarter")
+            print("7. Analyze a single stock for a quarter")
+            print("8. Run AI Analyst for most promising stocks")
+            print("9. Exit")
             horizontal_rule()
 
-            main_choice = input("Choose an option (1-8): ")
+            main_choice = input("Choose an option (1-9): ")
             action = actions.get(main_choice)
             if action:
                 if action() is False:

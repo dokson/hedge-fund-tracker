@@ -1,11 +1,11 @@
-from app.analysis.report import generate_comparison
+from app.analysis.quarterly_report import generate_comparison
 from app.utils.strings import format_percentage, format_value
 from unittest.mock import patch
 import pandas as pd
 import unittest
 
 
-@patch("app.analysis.report.resolve_ticker")
+@patch("app.analysis.quarterly_report.resolve_ticker")
 class TestReport(unittest.TestCase):
 
     def test_generate_comparison(self, mock_resolve_ticker):

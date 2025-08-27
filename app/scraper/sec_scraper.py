@@ -18,7 +18,9 @@ FILING_SPECS = {
 
 
 def _get_request(url):
-    """Sends a GET request to the specified URL with custom headers."""
+    """
+    Sends a GET request to the specified URL with custom headers.
+    """
     headers = {
         'User-Agent': USER_AGENT,
         'Accept-Encoding': 'gzip, deflate, br',
@@ -162,3 +164,22 @@ def fetch_schedule_filings_after_date(cik, start_date):
             filings.append(filing_data)
 
     return filings
+
+
+def get_latest_13f_filing_date(cik):
+    """
+    Fetches and gets only the filing date of the most recent 13F-HR filing for a given CIK.
+
+    Args:
+        cik (str): The CIK of the hedge fund.
+
+    Returns:
+        str: The filing date in 'YYYY-MM-DD' format
+    """
+    search_url = _create_search_url(cik, '13F-HR')
+    response = _get_request(search_url)
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    # The filing date is in the 4th <td> of the same <tr> as the button
+    return soup.find('a', id="documentsbutton").find_parent('tr').find_all('td')[3].text.strip()

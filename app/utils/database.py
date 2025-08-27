@@ -7,6 +7,7 @@ import re
 DB_FOLDER = './database'
 HEDGE_FUNDS_FILE = 'hedge_funds.csv'
 STOCKS_FILE = 'stocks.csv'
+LATEST_SCHEDULE_FILINGS_FILE = 'latest_filings.csv'
 
 
 def get_all_quarters():
@@ -55,8 +56,8 @@ def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}"):
     Loads hedge funds from file (hedge_funds.csv)
     """
     try:
-        df = pd.read_csv(filepath, dtype={'cik': str})
-        return df[['CIK', 'Fund', 'Manager']].to_dict('records')
+        df = pd.read_csv(filepath, dtype={'CIK': str})
+        return df.to_dict('records')
     except Exception as e:
         print(f"Errore while reading '{filepath}': {e}")
         return []
@@ -88,6 +89,27 @@ def save_comparison(comparison_dataframe, date, fund_name):
         print(f"Created {filename}")
     except Exception as e:
         print(f"An error occurred while writing comparison file from dataframe: {e}")
+
+
+def save_latest_schedule_filings(schedule_filings, filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}"):
+    """
+    Combines the list of schedule filing DataFrames and saves them to a single CSV file.
+
+    Args:
+        schedule_filings (list): A list of pandas DataFrames, each representing schedule filings.
+        filepath (str, optional): The path to the output CSV file. Defaults to './database/latest_filings.csv'.
+    """
+    if not schedule_filings:
+        print("No schedule filings found to process.")
+        return
+
+    try:
+        combined_schedules_df = pd.concat(schedule_filings, ignore_index=True)
+        combined_schedules_df.sort_values(by='Date', ascending=False, inplace=True)
+        combined_schedules_df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
+        print(f"Latest schedule filings saved to {filepath}")
+    except Exception as e:
+        print(f"An error occurred while saving latest schedule filings to '{filepath}': {e}")
 
 
 def save_stock(cusip, ticker, company):
