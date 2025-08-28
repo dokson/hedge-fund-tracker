@@ -22,7 +22,7 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
             filtered_df = schedule_df[schedule_df['Owner'] == cik].copy()
 
         if not filtered_df.empty:
-            filtered_df['Date'] = pd.to_datetime(filing['date'])
+            filtered_df['Filing_Date'] = pd.to_datetime(filing['date'])
             schedule_list.append(filtered_df)
         else:
             print(schedule_df)
@@ -31,7 +31,7 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
 
     schedule_filings_df = pd.concat(schedule_list, ignore_index=True)
     # Keep only the most recent entry for each CUSIP
-    schedule_filings_df = schedule_filings_df.sort_values(by=['CUSIP', 'Date'], ascending=[True, False]).drop_duplicates(subset='CUSIP', keep='first')
+    schedule_filings_df = schedule_filings_df.sort_values(by=['CUSIP', 'Filing_Date', 'Date'], ascending=False).drop_duplicates(subset='CUSIP', keep='first')
     schedule_filings_df = resolve_ticker(schedule_filings_df)
 
     return schedule_filings_df[['CUSIP', 'Ticker', 'Company', 'Shares', 'Date']]

@@ -84,7 +84,8 @@ def xml_to_dataframe_schedule(xml_content):
         "Company",
         "CUSIP",
         "Shares",
-        "Owner"
+        "Owner",
+        "Date"
     ]
 
     data = []
@@ -92,13 +93,16 @@ def xml_to_dataframe_schedule(xml_content):
     form_data = soup_xml.find('formdata')
     company = form_data.find(lambda tag: tag.name.endswith('issuername')).text
     cusip = form_data.find(lambda tag: tag.name.endswith('issuercusip')).text
+    date_tag = form_data.find(lambda tag: tag.name.endswith('dateofevent'))
+    date = date_tag.text if date_tag else date_tag = form_data.find(lambda tag: tag.name.endswith('eventdaterequiresfilingthisstatement'))
 
     for reporting_person in soup_xml.find_all('coverpageheaderreportingpersondetails') or soup_xml.find_all('reportingpersoninfo'):
-        shares = reporting_person.find(lambda tag: tag.name.endswith('sharedvotingpower')).text.strip()
+        shares_tag = reporting_person.find(lambda tag: tag.name.endswith('aggregateamountowned'))
+        shares = shares_tag.text.strip() if shares_tag else reporting_person.find(lambda tag: tag.name.endswith('reportingpersonbeneficiallyownedaggregatenumberofshares'))
         cik_tag = reporting_person.find(lambda tag: tag.name.endswith('reportingpersoncik'))
         owner = cik_tag.text.strip() if cik_tag else reporting_person.find(lambda tag: tag.name.endswith('reportingpersonname')).text.strip()
 
-        data.append([company, cusip, shares, owner])
+        data.append([company, cusip, shares, owner, date])
 
     df = pd.DataFrame(data, columns=columns)
     
@@ -107,5 +111,6 @@ def xml_to_dataframe_schedule(xml_content):
     df['Company'] = df['Company'].str.replace(r'\s+', ' ', regex=True)
     df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce').astype(int)
     df['Owner'] = df['Owner'].str.upper()
+    df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y', errors='coerce')
 
     return df

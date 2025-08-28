@@ -120,7 +120,7 @@ def _scrape_filing(document_tag, filing_type):
         print(f"Failed to download XML from {xml_url}")
         return None
 
-    print(f"Successfully scraped {filing_type} report published on {filing_date} (refering {report_date})")
+    print(f"Successfully scraped {filing_type} report published on {filing_date}" + (f" (refering {report_date})" if filing_type == '13F-HR' else ""))
     return {
         'date': filing_date,
         'reference_date': report_date,
