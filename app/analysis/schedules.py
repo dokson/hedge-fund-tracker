@@ -1,7 +1,7 @@
 from app.scraper.xml_processor import xml_to_dataframe_schedule
 from app.tickers.resolver import resolve_ticker
+from app.utils.database import load_schedules_data
 from app.utils.pd import coalesce
-import numpy as np
 import pandas as pd
 
 
@@ -37,37 +37,41 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
     return schedule_filings_df[['CUSIP', 'Ticker', 'Company', 'Shares', 'Date']]
 
 
-def update_dataframe_with_schedule(quarter_13f_df, schedule_df):
+def update_last_quarter_with_schedules(last_quarter_df):
     """
     Updates the 13F holdings dataframe with more recent data from schedule filings.
+
     - For existing CUSIPs, it updates 'Shares' and recalculates 'Value' based on the original price.
     - For new CUSIPs, it adds the row with 'Value' as N/A.
     """
+    schedule_df = load_schedules_data()
 
-    quarter_13f_df['Price_per_Share'] = (quarter_13f_df['Value'] / quarter_13f_df['Shares']).round(2)
+    total_portfolio_value = last_quarter_df['Value_Num'].sum()
+    last_quarter_df['Price_per_Share'] = coalesce(last_quarter_df['Value_Num'] / last_quarter_df['Shares'], 0)
 
     updated_df = pd.merge(
-        quarter_13f_df,
-        schedule_df[['CUSIP', 'Shares', 'Company']],
-        on='CUSIP',
+        last_quarter_df,
+        schedule_df,
+        on=['Fund', 'CUSIP'],
         how='outer',
         suffixes=('_13f', '_schedule'),
         indicator=True
     )
 
+    updated_df['Ticker'] = coalesce(updated_df['Ticker_13f'], updated_df['Ticker_schedule'])
+    updated_df['Company'] = coalesce(updated_df['Company_13f'], updated_df['Company_schedule'].str.upper())
     updated_df['Shares'] = coalesce(updated_df['Shares_schedule'], updated_df['Shares_13f']).astype('int64')
-    updated_df['Company'] = coalesce(updated_df['Company_13f'], updated_df['Company_schedule'])
+    updated_df['Delta_Value_Num'] = coalesce((updated_df['Shares_13f'] - updated_df['Shares_schedule']) * updated_df['Price_per_Share'], updated_df['Delta_Value_Num'])
+    
+    updated_df['Delta'] = updated_df.apply(
+        lambda row:
+        'NEW (13D/G)' if pd.isna(row['Shares_13f'])
+        else 'CLOSE' if row['Shares'] == 0
+        else row['Delta'],
+        axis=1
+    )
 
-    conditions = [
-        updated_df['_merge'] == 'both',          # Updated position
-        updated_df['_merge'] == 'left_only',     # Unchanged 13F position
-        updated_df['_merge'] == 'right_only'     # New position from schedule
-    ]
-    choices = [
-        updated_df['Shares_schedule'] * updated_df['Price_per_Share'],  # Compute value for updates
-        updated_df['Value'],                                            # Unchanged 13F position
-        pd.NA                                                           # NA for new positions
-    ]
-    updated_df['Value'] = np.select(conditions, choices)
+    updated_df['Value_Num'] = updated_df['Shares'] * updated_df['Price_per_Share']
+    updated_df['Portfolio_Pct'] = (updated_df['Value_Num'] / total_portfolio_value) * 100
 
-    return updated_df[['CUSIP', 'Company', 'Shares', 'Value']]
+    return updated_df[['Fund', 'CUSIP', 'Ticker', 'Company', 'Shares', 'Value_Num', 'Delta_Value_Num', 'Delta', 'Portfolio_Pct']]

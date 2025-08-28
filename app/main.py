@@ -205,7 +205,7 @@ def run_single_stock_analysis():
         num_buyers = (df_analysis['Delta_Value'] > 0).sum()
         num_sellers = (df_analysis['Delta_Value'] < 0).sum()
         holder_count = (df_analysis['Delta'] != 'CLOSE').sum()
-        new_holder_count = (df_analysis['Delta'] == 'NEW').sum()
+        new_holder_count = (df_analysis['Delta'].str.startswith('NEW')).sum()
         close_count = (df_analysis['Delta'] == 'CLOSE').sum()
         delta = total_delta_value / total_value * 100
 
@@ -217,7 +217,7 @@ def run_single_stock_analysis():
         print_centered(f"BUYERS: {num_buyers} ({new_holder_count} new) / SELLERS: {num_sellers} ({close_count} sold out)")
         print_centered(f"BUYER/SELLER RATIO: {format_value(num_buyers / num_sellers if num_sellers > 0 else float('inf'))}")
 
-        print_dataframe(df_analysis, len(df_analysis), f'Holders by Delta Value', 'Delta_Value', ['Fund', 'Portfolio_Pct', 'Value', 'Delta', 'Delta_Value'], {'Portfolio_Pct': get_percentage_formatter(), 'Value': get_value_formatter(), 'Delta_Value': get_value_formatter()})
+        print_dataframe(df_analysis, len(df_analysis), f'Holders by Shares', 'Shares', ['Fund', 'Portfolio_Pct', 'Shares', 'Value', 'Delta', 'Delta_Value'], {'Portfolio_Pct': get_percentage_formatter(), 'Shares': get_value_formatter(), 'Value': get_value_formatter(), 'Delta_Value': get_value_formatter()})
         print("\n")
 
 

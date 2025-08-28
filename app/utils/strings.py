@@ -1,4 +1,7 @@
 from datetime import datetime, timedelta
+from typing import Union
+import pandas as pd
+import numpy as np
 
 
 def add_days_to_yyyymmdd(yyyymmdd_str, days):
@@ -22,22 +25,26 @@ def get_next_yyyymmdd_day(yyyymmdd_str):
     return add_days_to_yyyymmdd(yyyymmdd_str, 1)
 
 
-def format_percentage(value, show_sign=False, decimal_places=1):
+def format_percentage(value: float, show_sign: bool = False, decimal_places: int = 1) -> str:
     """
     Formats a numeric value as a percentage string:
-    - Returns 'N/A' for infinite values.
+    - Returns 'N/A' for null/NaN values.
+    - Returns '∞' for infinite values.
     - Returns '<.01%' for values between 0 and 0.01 (exclusive).
     - Rounds to specified decimal_places and trims unnecessary zeros.
     - Optionally prepends sign when show_sign is True.
 
     Args:
-        value (float): The percentage value to format.
-        show_sign (bool, optional): Whether to prepend sign. Default is False.
-        decimal_places (int, optional): Number of decimal places to show. Default is 1.
+        value (float): The percentage value to format. Can be NaN.
+        show_sign (bool): Whether to prepend sign. Default is False.
+        decimal_places (int): Number of decimal places to show. Default is 1.
 
     Returns:
         str: Formatted percentage string.
     """
+    if pd.isnull(value):
+        return 'N/A'
+
     sign = '+' if show_sign else ''
 
     if value == float('inf'):
@@ -49,16 +56,20 @@ def format_percentage(value, show_sign=False, decimal_places=1):
         return f"{formatted}%"
 
 
-def format_value(value: int) -> str:
+def format_value(value: Union[int, float]) -> str:
     """
     Formats a numeric value into a human-readable short scale string, up to 2 decimal places (e.g., 1.23B, 45.67M, 8.9K).
+    Handles NA/NaN values by returning 'N/A'.
 
     Args:
-        value (int): The numeric value to format.
+        value (int or float): The numeric value to format.
 
     Returns:
         str: Formatted string.
     """
+    if pd.isnull(value):
+        return 'N/A'
+
     abs_value = abs(value)
 
     if abs_value == float('inf'):
@@ -86,14 +97,13 @@ def get_value_formatter():
     """
     Creates a formatter function for converting numbers to a short scale string (e.g., 1.2M).
 
-    This is a factory function that returns a lambda. The lambda expects a value,
-    converts it to an integer, and then formats it using the `format_value` utility.
+    This is a factory function that returns a lambda. The lambda expects a value, and then formats it using the `format_value` utility.
     Useful for applying consistent formatting to data columns (e.g., in pandas).
 
     Returns:
         callable: A function that takes a numeric value and returns its formatted string representation.
     """
-    return lambda x: format_value(int(x))
+    return lambda x: format_value(x)
 
 
 def get_percentage_formatter():
@@ -157,14 +167,17 @@ def get_numeric(formatted_value: str) -> int:
 def get_percentage_number(formatted_percentage: str) -> float:
     """
     Parses a formatted percentage string (e.g., '12.3%', '100%', '<.01%') back into a numeric float value.
+    Handles 'N/A' by returning np.nan.
 
     Args:
         formatted_percentage (str): The formatted percentage string to parse.
 
     Returns:
-        float: The numeric value of the percentage. Returns 0.0 for '<.01%'.
+        float: The numeric value of the percentage. Returns np.nan for 'N/A', 0.0 for '<.01%'.
     """
-    if formatted_percentage == '<.01%':
+    if formatted_percentage == 'N/A':
+        return np.nan
+    elif formatted_percentage == '<.01%':
         return 0.0
     else:
         return float(formatted_percentage.replace('%', ''))
