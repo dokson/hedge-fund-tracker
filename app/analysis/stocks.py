@@ -103,7 +103,6 @@ def quarter_analysis(quarter):
     df_analysis['Net_Buyers'] = df_analysis['Buyer_Count'] - df_analysis['Seller_Count']
     df_analysis['Delta'] = np.where((df_analysis['New_Holder_Count'] == df_analysis['Holder_Count']) & (df_analysis['Close_Count'] == 0), np.inf, df_analysis['Total_Delta_Value'] / (df_analysis['Total_Value'] - df_analysis['Total_Delta_Value']) * 100)
     df_analysis['Buyer_Seller_Ratio'] = np.where(df_analysis['Seller_Count'] > 0, df_analysis['Buyer_Count'] / df_analysis['Seller_Count'],  np.inf)
-    print(df_fund_quarter[df_fund_quarter['Ticker'] == 'NVDA'])
     return df_analysis
 
 
