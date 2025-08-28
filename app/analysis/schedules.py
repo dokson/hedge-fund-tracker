@@ -2,6 +2,7 @@ from app.scraper.xml_processor import xml_to_dataframe_schedule
 from app.tickers.resolver import resolve_ticker
 from app.utils.database import load_schedules_data
 from app.utils.pd import coalesce
+import numpy as np
 import pandas as pd
 
 
@@ -46,8 +47,7 @@ def update_last_quarter_with_schedules(last_quarter_df):
     """
     schedule_df = load_schedules_data()
 
-    total_portfolio_value = last_quarter_df['Value_Num'].sum()
-    last_quarter_df['Price_per_Share'] = coalesce(last_quarter_df['Value_Num'] / last_quarter_df['Shares'], 0)
+    last_quarter_df['Price_per_Share'] = np.where(last_quarter_df['Shares'] > 0, last_quarter_df['Value_Num'] / last_quarter_df['Shares'], 0)
 
     updated_df = pd.merge(
         last_quarter_df,
@@ -72,6 +72,7 @@ def update_last_quarter_with_schedules(last_quarter_df):
     )
 
     updated_df['Value_Num'] = updated_df['Shares'] * updated_df['Price_per_Share']
-    updated_df['Portfolio_Pct'] = (updated_df['Value_Num'] / total_portfolio_value) * 100
+    total_value_per_fund = updated_df.groupby('Fund')['Value_Num'].transform('sum')
+    updated_df['Portfolio_Pct'] = (updated_df['Value_Num'] / total_value_per_fund) * 100
 
     return updated_df[['Fund', 'CUSIP', 'Ticker', 'Company', 'Shares', 'Value_Num', 'Delta_Value_Num', 'Delta', 'Portfolio_Pct']]
