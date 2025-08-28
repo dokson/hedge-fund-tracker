@@ -94,7 +94,7 @@ def xml_to_dataframe_schedule(xml_content):
     company = form_data.find(lambda tag: tag.name.endswith('issuername')).text
     cusip = form_data.find(lambda tag: tag.name.endswith('issuercusip')).text
     date_tag = form_data.find(lambda tag: tag.name.endswith('dateofevent'))
-    date = date_tag.text if date_tag else date_tag = form_data.find(lambda tag: tag.name.endswith('eventdaterequiresfilingthisstatement'))
+    date = date_tag.text if date_tag else form_data.find(lambda tag: tag.name.endswith('eventdaterequiresfilingthisstatement'))
 
     for reporting_person in soup_xml.find_all('coverpageheaderreportingpersondetails') or soup_xml.find_all('reportingpersoninfo'):
         shares_tag = reporting_person.find(lambda tag: tag.name.endswith('aggregateamountowned'))
