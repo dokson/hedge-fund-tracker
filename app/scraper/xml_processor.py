@@ -4,6 +4,13 @@ import warnings
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
+def _get_tag_text(element, tag_suffix):
+    """
+    Safely find a tag by its suffix and return its stripped text, or None.
+    """
+    tag = element.find(lambda t: t.name.endswith(tag_suffix))
+    return tag.text.strip() if tag else None
+
 
 def xml_to_dataframe_13f(xml_content):
     """
@@ -22,20 +29,13 @@ def xml_to_dataframe_13f(xml_content):
     data = []
 
     for info_table in soup_xml.find_all(lambda tag: tag.name.endswith('infotable')):
-        company = info_table.find(lambda tag: tag.name.endswith('nameofissuer')).text
-        cusip = info_table.find(lambda tag: tag.name.endswith('cusip')).text
-        value = info_table.find(lambda tag: tag.name.endswith('value')).text
-        shares = info_table.find(lambda tag: tag.name.endswith('sshprnamt')).text
-        put_call_tag = info_table.find(lambda tag: tag.name.endswith('putcall'))
-        put_call = put_call_tag.text if put_call_tag else ''
+        company = _get_tag_text(info_table, 'nameofissuer')
+        cusip = _get_tag_text(info_table, 'cusip')
+        value = _get_tag_text(info_table, 'value')
+        shares = _get_tag_text(info_table, 'sshprnamt')
+        put_call = _get_tag_text(info_table, 'putcall') or ''
 
-        data.append([
-            company,
-            cusip,
-            value,
-            shares,
-            put_call
-        ])
+        data.append([company, cusip, value, shares, put_call])
 
     df = pd.DataFrame(data, columns=columns)
 
@@ -48,7 +48,7 @@ def xml_to_dataframe_13f(xml_content):
     # Data cleaning
     df['CUSIP'] = df['CUSIP'].str.upper()
     df['Company'] = df['Company'].str.strip().str.replace(r'\s+', ' ', regex=True)
-    df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce')
+    df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce').astype(int)
     df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
     
     # --- Smart Value Scaling ---
@@ -91,16 +91,15 @@ def xml_to_dataframe_schedule(xml_content):
     data = []
 
     form_data = soup_xml.find('formdata')
-    company = form_data.find(lambda tag: tag.name.endswith('issuername')).text
-    cusip = form_data.find(lambda tag: tag.name.endswith('issuercusip')).text
-    date_tag = form_data.find(lambda tag: tag.name.endswith('dateofevent'))
-    date = date_tag.text if date_tag else form_data.find(lambda tag: tag.name.endswith('eventdaterequiresfilingthisstatement'))
+    company = _get_tag_text(form_data, 'issuername')
+    cusip = _get_tag_text(form_data, 'issuercusip')
+    date = _get_tag_text(form_data, 'dateofevent') or _get_tag_text(form_data, 'eventdaterequiresfilingthisstatement')
 
     for reporting_person in soup_xml.find_all('coverpageheaderreportingpersondetails') or soup_xml.find_all('reportingpersoninfo'):
-        shares_tag = reporting_person.find(lambda tag: tag.name.endswith('aggregateamountowned'))
-        shares = shares_tag.text.strip() if shares_tag else reporting_person.find(lambda tag: tag.name.endswith('reportingpersonbeneficiallyownedaggregatenumberofshares'))
-        cik_tag = reporting_person.find(lambda tag: tag.name.endswith('reportingpersoncik'))
-        owner = cik_tag.text.strip() if cik_tag else reporting_person.find(lambda tag: tag.name.endswith('reportingpersonname')).text.strip()
+        shares = _get_tag_text(reporting_person, 'aggregateamountowned') or \
+                 _get_tag_text(reporting_person, 'reportingpersonbeneficiallyownedaggregatenumberofshares')
+        owner = _get_tag_text(reporting_person, 'reportingpersoncik') or \
+                _get_tag_text(reporting_person, 'reportingpersonname')
 
         data.append([company, cusip, shares, owner, date])
 

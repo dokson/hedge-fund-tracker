@@ -170,7 +170,7 @@ def save_latest_schedule_filings(schedule_filings, filepath=f"./{DB_FOLDER}/{LAT
 
     try:
         combined_schedules_df = pd.concat(schedule_filings, ignore_index=True)
-        combined_schedules_df.sort_values(by='Date', ascending=False, inplace=True)
+        combined_schedules_df.sort_values(by=['Date', 'Fund', 'Ticker'], ascending=[False, True, True], inplace=True)
         combined_schedules_df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
         print(f"Latest schedule filings saved to {filepath}")
     except Exception as e:
