@@ -2,10 +2,9 @@ from app.utils.strings import get_next_yyyymmdd_day
 from bs4 import BeautifulSoup
 import requests
 import re
-
 # SEC EDGAR requires a custom User-Agent that identifies the application and provides a contact email.
-# See: https://www.sec.gov/about/webmaster-frequently-asked-questions#code-support
-USER_AGENT = 'Hedge Fund Tracker github-actions@users.noreply.github.com'
+# See: https://www.sec.gov/os/developer-support-policy
+USER_AGENT = 'Hedge Fund Tracker dok.son@msn.com'
 SEC_HOST = 'www.sec.gov'
 SEC_URL = 'https://' + SEC_HOST
 
