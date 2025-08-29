@@ -46,10 +46,10 @@ def xml_to_dataframe_13f(xml_content):
     df = df[(df['Value'] != "0") & (df['Shares'] != "0")]
 
     # Data cleaning
-    df['CUSIP'] = df['CUSIP'].str.upper()
     df['Company'] = df['Company'].str.strip().str.replace(r'\s+', ' ', regex=True)
-    df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce').astype(int)
+    df['CUSIP'] = df['CUSIP'].str.upper()
     df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
+    df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce').astype(int)
     
     # --- Smart Value Scaling ---
     # SEC 13F-HR rules state values are in full dollar amount. Some filings, however, report the thousands.
@@ -83,6 +83,7 @@ def xml_to_dataframe_schedule(xml_content):
     columns = [
         "Company",
         "CUSIP",
+        "CIK",
         "Shares",
         "Owner",
         "Date"
@@ -93,6 +94,7 @@ def xml_to_dataframe_schedule(xml_content):
     form_data = soup_xml.find('formdata')
     company = _get_tag_text(form_data, 'issuername')
     cusip = _get_tag_text(form_data, 'issuercusip')
+    cik = _get_tag_text(form_data, 'issuercik')
     date = _get_tag_text(form_data, 'dateofevent') or _get_tag_text(form_data, 'eventdaterequiresfilingthisstatement')
 
     for reporting_person in soup_xml.find_all('coverpageheaderreportingpersondetails') or soup_xml.find_all('reportingpersoninfo'):
@@ -101,13 +103,14 @@ def xml_to_dataframe_schedule(xml_content):
         owner = _get_tag_text(reporting_person, 'reportingpersoncik') or \
                 _get_tag_text(reporting_person, 'reportingpersonname')
 
-        data.append([company, cusip, shares, owner, date])
+        data.append([company, cusip, cik, shares, owner, date])
 
     df = pd.DataFrame(data, columns=columns)
     
     # Data cleaning
-    df['CUSIP'] = df['CUSIP'].str.upper()
     df['Company'] = df['Company'].str.replace(r'\s+', ' ', regex=True)
+    df['CUSIP'] = df['CUSIP'].str.upper()
+    df['CIK'] = df['CIK'].str.strip()
     df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce').astype(int)
     df['Owner'] = df['Owner'].str.upper()
     df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y', errors='coerce')
