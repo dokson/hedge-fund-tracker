@@ -3,7 +3,9 @@ from bs4 import BeautifulSoup
 import requests
 import re
 
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36'
+# SEC EDGAR requires a custom User-Agent that identifies the application and provides a contact email.
+# See: https://www.sec.gov/about/webmaster-frequently-asked-questions#code-support
+USER_AGENT = 'Hedge Fund Tracker github-actions@users.noreply.github.com'
 SEC_HOST = 'www.sec.gov'
 SEC_URL = 'https://' + SEC_HOST
 
@@ -23,7 +25,7 @@ def _get_request(url):
     """
     headers = {
         'User-Agent': USER_AGENT,
-        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Encoding': 'gzip, deflate',
         'HOST': SEC_HOST,
     }
     try:
@@ -193,8 +195,20 @@ def get_latest_13f_filing_date(cik):
     """
     search_url = _create_search_url(cik, '13F-HR')
     response = _get_request(search_url)
+    if not response:
+        print(f"Failed to get latest filing date for CIK {cik} because request failed.")
+        return None
 
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    # The filing date is in the 4th <td> of the same <tr> as the button
-    return soup.find('a', id="documentsbutton").find_parent('tr').find_all('td')[3].text.strip()
+    try:
+        soup = BeautifulSoup(response.text, "html.parser")
+        button = soup.find('a', id="documentsbutton")
+        if not button:
+            print(f"No 'documentsbutton' found for CIK {cik} on page {search_url}")
+            return None
+        
+        # The filing date is in the 4th <td> of the same <tr> as the button
+        filing_date = button.find_parent('tr').find_all('td')[3].text.strip()
+        return filing_date
+    except (AttributeError, IndexError) as e:
+        print(f"Error parsing filing date for CIK {cik}: {e}. Page structure may have changed.")
+        return None
