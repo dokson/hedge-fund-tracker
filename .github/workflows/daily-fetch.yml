@@ -1,14 +1,14 @@
-name: Daily Schedule Filings Fetch
+name: Daily Filings Fetch
 
 on:
   workflow_dispatch: # Allows manual triggering
   schedule:
-  - cron: '0 18 * * *'
+  - cron: '0 22 * * *'
 
 jobs:
-  daily-schedule-fetch:
+  daily-fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     
     permissions:
       contents: write
@@ -37,8 +37,8 @@ jobs:
         python -m pip install pipenv
         pipenv install --dev
 
-    - name: Run schedule fetcher script
-      run: pipenv run python -m app.jobs.schedule_fetcher
+    - name: Run fetcher script
+      run: pipenv run python .github/scripts/fetcher.py
       env:
         FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
 
@@ -54,26 +54,26 @@ jobs:
           echo "No changes detected in the data files"
         else
           echo "no_changes=false" >> $GITHUB_OUTPUT
-          echo "Changes detected, will commit to automated/daily-schedules branch"
+          echo "Changes detected, will commit to update/daily-fetch branch"
           git status --porcelain
         fi
 
-    - name: Commit and push changes to daily-schedules branch
+    - name: Commit and push changes to daily-fetch branch
       if: steps.changes.outputs.no_changes == 'false'
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git checkout -b automated/daily-schedules
+        git checkout -b automated/daily-fetch
         git add .
-        git commit -m "chore: Update schedule filings data (${{ steps.date.outputs.today }})"
-        git push --set-upstream origin automated/daily-schedules --force
+        git commit -m "chore: Update filings data (${{ steps.date.outputs.today }})"
+        git push --set-upstream origin automated/daily-fetch --force
 
     - name: Log completion
       run: |
         if [[ "${{ steps.changes.outputs.no_changes }}" == "true" ]]; then
           echo "✅ Workflow completed - No changes detected"
         else
-          echo "✅ Workflow completed - Changes committed to automated/daily-schedules branch"
-          echo "📌 Branch: automated/daily-schedules"
-          echo "🔗 View changes: https://github.com/${{ github.repository }}/tree/automated/daily-schedules"
+          echo "✅ Workflow completed - Changes committed to automated/daily-fetch branch"
+          echo "📌 Branch: automated/daily-fetch"
+          echo "🔗 View changes: https://github.com/${{ github.repository }}/tree/automated/daily-fetch"
         fi
