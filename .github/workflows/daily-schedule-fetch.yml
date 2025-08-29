@@ -6,7 +6,7 @@ on:
   - cron: '0 18 * * *'
 
 jobs:
-  daily-fetch-and-pr:
+  daily-schedule-fetch:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     
@@ -54,7 +54,7 @@ jobs:
           echo "No changes detected in the data files"
         else
           echo "no_changes=false" >> $GITHUB_OUTPUT
-          echo "Changes detected, will create PR"
+          echo "Changes detected, will commit to automated/daily-schedules branch"
           git status --porcelain
         fi
 
@@ -73,5 +73,7 @@ jobs:
         if [[ "${{ steps.changes.outputs.no_changes }}" == "true" ]]; then
           echo "✅ Workflow completed - No changes detected"
         else
-          echo "✅ Workflow completed - PR created for data changes"
+          echo "✅ Workflow completed - Changes committed to automated/daily-schedules branch"
+          echo "📌 Branch: automated/daily-schedules"
+          echo "🔗 View changes: https://github.com/${{ github.repository }}/tree/automated/daily-schedules"
         fi
