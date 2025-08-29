@@ -37,12 +37,10 @@ def _aggregate_quarter_by_fund(df_quarter):
     df_fund_quarter = (
         df_quarter.groupby(['Fund', 'Ticker', 'Company'])
         .agg(
-            # If all values in a group are NaN, the sum will be infinity.
-            # Otherwise, it's the standard sum where NaNs are treated as 0.
             Shares=('Shares', 'sum'),
             Value=('Value_Num', lambda x: np.nan if x.isnull().all() else x.sum()),
             Delta_Value=('Delta_Value_Num', lambda x: np.nan if x.isnull().all() else x.sum()),
-            Portfolio_Pct=('Portfolio_Pct', 'sum'),
+            Portfolio_Pct=('Portfolio_Pct', lambda x: np.nan if x.isnull().all() else x.sum()),
         )
         .reset_index()
     )
