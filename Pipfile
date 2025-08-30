@@ -14,7 +14,7 @@ python-dotenv = "~=1.1"
 finnhub-python = "~=2.4"
 financedatabase = "~=2.3"
 tabulate = "~=0.9"
-google-genai = "~=1.31"
+google-genai = "~=1.32"
 
 [dev-packages]
 
