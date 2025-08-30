@@ -60,11 +60,7 @@ pipenv run python -m app.main
     pipenv install
     ```
 
-    *On Windows, if the above fails: (e.g., with a "command not found" error), you can use the following alternative.*
-
-    ```bash
-    python -m pipenv install
-    ```
+    > **💡 Tip:** If `pipenv` is not found, you might need to use `python -m pipenv install`. This can happen if the user scripts directory is not in your system's PATH.
 
 3. **🛠️ Configure environment:** Create a `.env` file in the root directory of the project and add your keys (Finnhub and Google API)
 
@@ -83,12 +79,6 @@ pipenv run python -m app.main
     pipenv run python -m app.main
     ```
 
-    *or on Windows, if the above fails:*
-
-    ```bash
-    python -m pipenv run python -m app.main
-    ```
-
 5. **📜 Choose an action:** Once the script starts, you'll see the following interactive menu:
 
     ```txt
@@ -98,7 +88,7 @@ pipenv run python -m app.main
     │  1. Generate latest reports for all known hedge funds (hedge_funds.csv)       │
     │  2. Generate latest report for a known hedge fund (hedge_funds.csv)           │
     │  3. Generate historical report for a known hedge fund (hedge_funds.csv)       │
-    │  4. Fetch latest schedule filings for a known hedge fund (hedge_funds.csv)    |
+    │  4. Fetch latest schedule filings for a known hedge fund (hedge_funds.csv)    │
     │  5. Manually enter a hedge fund CIK number to generate latest report          │
     │  6. Analyze stock trends for a quarter                                        │
     │  7. Analyze a single stock for a quarter                                      │
@@ -112,8 +102,8 @@ The tool requires API keys for full functionality:
 
 | Service | Purpose | Required | Get API Key |
 |---------|---------|----------|-------------|
-| **☁️ [Finnhub](https://finnhub.io/)** | CUSIP to stock ticker conversion | **Optional**: for fetching new filings and updating data | [Get Free API Key](https://finnhub.io/dashboard) |
-| **🤖 [Google AI Studio](https://aistudio.google.com/)** | AI-powered analysis | **Optional**: enables advanced AI financial analyst features | [Get Free API Key](https://aistudio.google.com/app/apikey) |
+| **☁️ [Finnhub](https://finnhub.io/)** | CUSIP to stock ticker conversion | Optional | [Get Free API Key](https://finnhub.io/dashboard) |
+| **🤖 [Google AI Studio](https://aistudio.google.com/)** | AI-powered analysis and insights | Optional | [Get Free API Key](https://aistudio.google.com/app/apikey) |
 
 > **💡 Note:** Without [Finnhub](https://finnhub.io/) API Key, it falls back to the local [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/) for ticker resolution (though this may be less accurate for some securities).
 
@@ -152,7 +142,7 @@ hedge-fund-tracker/
 └── 📄 README.md                    # Project documentation (this file)
 ```
 
-> **📝 Hedge Funds Configuration File:** `database/hedge_funds.csv` contains the list of hedge funds to monitor (CIK, name, manager) and can be also edited at runtime.
+> **📝 Hedge Funds Configuration File:** `database/hedge_funds.csv` contains the list of hedge funds to monitor (CIK, name, manager) and can also be edited at runtime.
 
 ## 👨🏻‍💻 How This Tool Tracks Hedge Funds
 
@@ -189,7 +179,7 @@ Some famous names have to be excluded by design to enhance analysis quality:
 - *Carl Icahn*'s [Icahn Enterprises](https://www.ielp.com/)
 - *Lewis Sanders*'s [Sanders Capital](https://www.sanderscapital.com/)
 - *Brad Gerstner*'s [Altimeter Capital Management](https://www.altimeter.com/)
-- *Andreas Halvorsen*s [Viking Global Investors](https://vikingglobal.com/)
+- *Andreas Halvorsen*'s [Viking Global Investors](https://vikingglobal.com/)
 - *David Lane*'s [Geode Capital Management](https://www.geodecapital.com/)
 - *Robert Robotti*'s [Robotti Value Investors](https://www.robotti.com/)
 - *Li Lu*'s [Himalaya Capital Management](https://www.himcap.com/)
@@ -198,7 +188,7 @@ Some famous names have to be excluded by design to enhance analysis quality:
 - *Bill Nygren*'s [Harris Associates](https://harrisassoc.com/)
 - *David Booth*'s [Dimensional Fund Advisors](https://www.dimensional.com/)
 - *Chris Hohn*'s [The Children's Investment](https://ciff.org/)
-- *Robert Atchinson & Phillip Gross*' [Adage Capital Partners](https://www.adagecapital.com/)
+- *Robert Atchison & Phillip Gross*'s [Adage Capital Partners](https://www.adagecapital.com/)
 - [BlackRock](https://www.blackrock.com/)
 - [State Street](https://statestreet.com/)
 - [Jane Street](https://www.janestreet.com/)
@@ -247,7 +237,7 @@ It's crucial to understand the inherent limitations of tracking investment strat
 
 ### ✍🏻 Feedback
 
-I am continuously developing and trying to expand the functionalities and features to add to this tool.
+I am continuously developing this tool and adding new features.
 I welcome all feedback, so feel free to [contact me](https://github.com/dokson).
 
 ## 📚 References
@@ -258,7 +248,7 @@ I welcome all feedback, so feel free to [contact me](https://github.com/dokson).
 
 ## 🙏🏼 Acknowledgments
 
-This project started as a fork of the [sec-web-scraper-13f](https://github.com/CodeWritingCow/sec-web-scraper-13f) by [Gary Pang](https://github.com/CodeWritingCow) that is a Python script to scrape the most recent 13F filing for a given CIK from the [SEC](http://sec.gov/)'s [EDGAR](https://www.sec.gov/edgar/searchedgar/companysearch.html) database. It has since evolved significantly into a comprehensive hedge fund tracker.
+This project started as a fork of the [sec-web-scraper-13f](https://github.com/CodeWritingCow/sec-web-scraper-13f) by [Gary Pang](https://github.com/CodeWritingCow). The original tool was a Python script to scrape the most recent 13F filing for a given CIK from the [SEC](http://sec.gov/)'s [EDGAR](https://www.sec.gov/edgar/searchedgar/companysearch.html) database. It has since evolved significantly into a comprehensive hedge fund tracker.
 
 ## 📄 License
 
