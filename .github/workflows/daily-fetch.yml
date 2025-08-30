@@ -9,6 +9,9 @@ jobs:
   daily-fetch:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    env:
+      COMMIT_BRANCH: automated/daily-fetch
     
     permissions:
       contents: write
@@ -17,6 +20,20 @@ jobs:
     steps:
     - name: Check out repository code
       uses: actions/checkout@v5
+      with:
+        # Fetch all history so we can switch to the branch
+        fetch-depth: 0
+
+    - name: Switch to the daily-fetch branch
+      run: |
+        # If the branch exists remotely, check it out. Otherwise, create it from the default branch.
+        if git ls-remote --exit-code --heads origin ${{ env.COMMIT_BRANCH }}; then
+          echo "::notice::Found existing '${{ env.COMMIT_BRANCH }}' branch. Checking it out to add new commits."
+          git checkout ${{ env.COMMIT_BRANCH }}
+        else
+          echo "::notice::'${{ env.COMMIT_BRANCH }}' not found. A new branch will be created."
+          git checkout -b ${{ env.COMMIT_BRANCH }}
+        fi
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -50,13 +67,18 @@ jobs:
     - name: Check for changes
       id: changes
       run: |
-        if git diff --quiet; then
+        if git status --porcelain | grep .; then
+          echo "no_changes=false" >> $GITHUB_OUTPUT
+          echo "Changes detected, will commit to ${{ env.COMMIT_BRANCH }} branch"
+          
+          files_changed=$(git status --porcelain | wc -l)
+          echo "files_changed=$files_changed" >> $GITHUB_OUTPUT
+          echo "📊 Files changed: $files_changed"
+          
+          git status --porcelain
+        else
           echo "no_changes=true" >> $GITHUB_OUTPUT
           echo "No changes detected in the data files"
-        else
-          echo "no_changes=false" >> $GITHUB_OUTPUT
-          echo "Changes detected, will commit to update/daily-fetch branch"
-          git status --porcelain
         fi
 
     - name: Commit and push changes to daily-fetch branch
@@ -64,17 +86,18 @@ jobs:
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git checkout -b automated/daily-fetch
         git add .
         git commit -m "chore: Update filings data (${{ steps.date.outputs.today }})"
-        git push --set-upstream origin automated/daily-fetch --force
+        git push --set-upstream origin ${{ env.COMMIT_BRANCH }}
 
     - name: Log completion
       run: |
         if [[ "${{ steps.changes.outputs.no_changes }}" == "true" ]]; then
           echo "✅ Workflow completed - No changes detected"
         else
-          echo "✅ Workflow completed - Changes committed to automated/daily-fetch branch"
-          echo "📌 Branch: automated/daily-fetch"
-          echo "🔗 View changes: https://github.com/${{ github.repository }}/tree/automated/daily-fetch"
+          echo "✅ Workflow completed - Changes committed and pushed to ${{ env.COMMIT_BRANCH }} branch"
+          echo "📊 Files changed: ${{ steps.changes.outputs.files_changed || 'N/A' }}"
+          echo "📌 Branch: ${{ env.COMMIT_BRANCH }}"
+          echo "🔗 View commit history: https://github.com/${{ github.repository }}/commits/${{ env.COMMIT_BRANCH }}"
+          echo "📅 Run date: ${{ steps.date.outputs.today }}"
         fi
