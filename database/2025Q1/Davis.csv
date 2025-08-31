@@ -5,7 +5,7 @@ CUSIP,Ticker,Company,Shares,Value,Delta_Value,Delta,Portfolio%
 03831W108,APP,"AppLovin Corp., Class A",163011,43.19M,43.19M,NEW,0.25%
 038222105,AMAT,"Applied Materials, Inc.",4993172,724.61M,40.77M,+6%,4.2%
 35969L108,YMM,Full Truck Alliance Co. Ltd.,7819344,99.85M,30.89M,+44.8%,0.58%
-91912E105,VLO,"Vale S.A., ADR",2733513,27.28M,27.28M,NEW,0.16%
+91912E105,VALE,"Vale S.A., ADR",2733513,27.28M,27.28M,NEW,0.16%
 552953101,MGM,MGM Resorts International,20815057,616.96M,26.51M,+4.5%,3.6%
 902973304,USB,U.S. Bancorp,14889014,628.61M,21.7M,+3.6%,3.6%
 92556V106,VTRS,Viatris Inc.,64948236,565.7M,20.68M,+3.8%,3.3%
@@ -51,7 +51,7 @@ G51502105,JCI,Johnson Controls International plc,404164,32.38M,50.47K,+0.2%,0.19
 830566105,SKX,"Skechers U.S.A., Inc., Class A",6000,340.68K,0,NO CHANGE,<.01%
 431284108,HIW,Highwoods Properties Inc.,129180,3.83M,-25.79K,-0.7%,0.02%
 22822V101,CCI,"Crown Castle, Inc.",41000,4.27M,-27.1K,-0.6%,0.02%
-42250P103,PEAK,"Healthpeak Properties, Inc.",246806,4.99M,-31.54K,-0.6%,0.03%
+42250P103,DOC,"Healthpeak Properties, Inc.",246806,4.99M,-31.54K,-0.6%,0.03%
 02079K107,GOOG,"Alphabet Inc., Class C",646697,101.03M,-40.46K,-0%,0.58%
 88146M101,TRNO,Terreno Realty Corp.,100827,6.37M,-41.09K,-0.6%,0.04%
 29476L107,EQR,Equity Residential,99855,7.15M,-42.95K,-0.6%,0.04%

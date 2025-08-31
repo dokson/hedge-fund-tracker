@@ -18,9 +18,9 @@ CUSIP,Ticker,Company,Shares,Value,Delta_Value,Delta,Portfolio%
 76131D103,QSR,"Restaurant Brands International, Inc.",3419715,226.69M,3.13M,+1.4%,1.2%
 756109104,O,Realty Income Corp.,48870,2.82M,2.82M,NEW,0.02%
 126650100,CVS,CVS Health Corporation,11586790,799.26M,2.6M,+0.3%,4.3%
-42250P103,PEAK,"Healthpeak Properties, Inc.",389186,6.81M,2.49M,+57.7%,0.04%
+42250P103,DOC,"Healthpeak Properties, Inc.",389186,6.81M,2.49M,+57.7%,0.04%
 316773100,FITB,Fifth Third Bancorp,2512856,103.35M,2.13M,+2.1%,0.55%
-91912E105,VLO,"Vale S.A., ADR",2948514,28.63M,2.09M,+7.9%,0.15%
+91912E105,VALE,"Vale S.A., ADR",2948514,28.63M,2.09M,+7.9%,0.15%
 64119V303,NTST,NetSTREIT Corp.,220510,3.73M,1.79M,+91.8%,0.02%
 866674104,SUI,"Sun Communities, Inc.",38370,4.85M,1.69M,+53.2%,0.03%
 874039100,TSM,Taiwan Semiconductor Manufacturing,7200,1.63M,1.63M,NEW,<.01%
