@@ -144,6 +144,8 @@ def get_numeric(formatted_value: str) -> int:
     Returns:
         int: The number represented by the formatted string.
     """
+    if formatted_value == 'N/A':
+        return np.nan
 
     units = {
         'T': 1_000_000_000_000,
@@ -152,7 +154,7 @@ def get_numeric(formatted_value: str) -> int:
         'K': 1_000
     }
 
-    unit = formatted_value[-1]
+    unit = formatted_value[-1]  # last char (T, B, M, K)
 
     if unit in units:
         number = formatted_value[:-1]

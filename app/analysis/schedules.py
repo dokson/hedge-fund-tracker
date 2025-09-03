@@ -2,9 +2,8 @@ from app.scraper.xml_processor import xml_to_dataframe_schedule
 from app.tickers.resolver import resolve_ticker
 from app.utils.database import load_schedules_data
 from app.utils.pd import coalesce
-from app.utils.strings import format_value
+from app.utils.strings import format_value, get_numeric
 import datetime
-import numpy as np
 import pandas as pd
 import yfinance as yf
 
@@ -57,7 +56,7 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
         else:
             print(f"⚠️\u3000Could not find price for {ticker} on {date}.")
 
-    schedule_filings_df['Value'] = format_value(schedule_filings_df['Value'])
+    schedule_filings_df['Value'] = schedule_filings_df['Value'].apply(format_value)
 
     return schedule_filings_df[['CUSIP', 'Ticker', 'Company', 'Shares', 'Value', 'Date']]
 
@@ -70,8 +69,7 @@ def update_last_quarter_with_schedules(last_quarter_df):
     - For new CUSIPs, it adds the row with 'Value' as N/A.
     """
     schedule_df = load_schedules_data()
-
-    last_quarter_df['Price_per_Share'] = np.where(last_quarter_df['Shares'] > 0, last_quarter_df['Value_Num'] / last_quarter_df['Shares'], 0)
+    schedule_df.loc[:, 'Value_Num'] = schedule_df['Value'].apply(get_numeric)
 
     updated_df = pd.merge(
         last_quarter_df,
@@ -81,22 +79,21 @@ def update_last_quarter_with_schedules(last_quarter_df):
         suffixes=('_13f', '_schedule'),
         indicator=True
     )
-
     updated_df['Ticker'] = coalesce(updated_df['Ticker_13f'], updated_df['Ticker_schedule'])
     updated_df['Company'] = coalesce(updated_df['Company_13f'], updated_df['Company_schedule'].str.upper())
     updated_df['Shares'] = coalesce(updated_df['Shares_schedule'], updated_df['Shares_13f']).astype('int64')
-    updated_df['Delta_Value_Num'] = coalesce((updated_df['Shares_schedule'] - updated_df['Shares_13f']) * updated_df['Price_per_Share'], updated_df['Delta_Value_Num'])
+    updated_df['Delta_Value_Num'] = coalesce(updated_df['Value_Num_schedule'] - coalesce(updated_df['Value_Num_13f'], 0), updated_df['Delta_Value_Num'])
     
     updated_df['Delta'] = updated_df.apply(
         lambda row:
-        'NEW (13D/G)' if pd.isna(row['Shares_13f'])
+        'NEW' if pd.isna(row['Shares_13f'])
         else 'CLOSE' if row['Shares_schedule'] == 0
         else (row['Shares_schedule'] - row['Shares_13f']) / row['Shares_13f'] * 100 if not pd.isna(row['Shares_schedule'])
         else row['Delta'],
         axis=1
     )
 
-    updated_df['Value_Num'] = updated_df['Shares'] * updated_df['Price_per_Share']
+    updated_df['Value_Num'] = coalesce(updated_df['Value_Num_schedule'], updated_df['Value_Num_13f'])
     total_value_per_fund = updated_df.groupby('Fund')['Value_Num'].transform('sum')
     updated_df['Portfolio_Pct'] = (updated_df['Value_Num'] / total_value_per_fund) * 100
 

@@ -54,7 +54,6 @@ def _aggregate_quarter_by_fund(df_quarter):
         lambda row:
         'CLOSE' if row['Shares'] == 0
         else 'NO CHANGE' if row['Delta_Value'] == 0
-        else 'NEW (13D/G)' if pd.isna(row['Value'])
         else 'NEW' if row['Shares'] > 0 and format_value(row['Value']) == format_value(row['Delta_Value'])
         else format_percentage(row['Delta_Value'] / (row['Value'] - row['Delta_Value']) * 100, True),
         axis=1
@@ -78,7 +77,7 @@ def quarter_analysis(quarter):
     df_fund_quarter['is_buyer'] = df_fund_quarter['Delta_Value'] > 0
     df_fund_quarter['is_seller'] = df_fund_quarter['Delta_Value'] < 0
     df_fund_quarter['is_holder'] = df_fund_quarter['Shares'] > 0
-    df_fund_quarter['is_new'] = df_fund_quarter['Delta'].str.startswith('NEW')
+    df_fund_quarter['is_new'] = df_fund_quarter['Delta'] == 'NEW'
     df_fund_quarter['is_closed'] = df_fund_quarter['Delta'] == 'CLOSE'
     
     # Stock level calculation
