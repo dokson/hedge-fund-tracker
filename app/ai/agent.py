@@ -4,6 +4,7 @@ from app.analysis.stocks import quarter_analysis
 from app.utils.strings import get_quarter_date
 from dotenv import load_dotenv
 from google import genai
+from tenacity import retry, stop_after_attempt, wait_exponential
 import json
 import pandas as pd
 import re
@@ -36,16 +37,29 @@ class AnalystAgent:
             json_match = re.search(r'\{.*\}', clean_text, re.DOTALL)
             
             if not json_match:
-                print(f"Warning: Could not find JSON in response: {response_text[:200]}...")
+                print(f"⚠️\u3000Warning: Could not find JSON in response: {response_text[:200]}...")
                 return {}
 
             json_string = json_match.group(0)
             return json.loads(json_string)
             
         except Exception as e:
-            print(f"Error parsing JSON: {e}")
+            print(f"❌ ERROR: Invalid JSON structure: {e}")
             return {}
         
+    @retry(
+        wait=wait_exponential(multiplier=2, min=1, max=3),
+        stop=stop_after_attempt(3),
+        before_sleep=lambda rs: print(f"Service unavailable, retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})")
+    )
+    def _call_ai_api(self, prompt):
+        """
+        Calls the Google AI API with a given prompt and includes robust retry logic.
+        """
+        return self.client.models.generate_content(
+            model=self.model,
+            contents=prompt
+        )
 
     def _get_ai_scores(self, stocks: list[dict]) -> dict:
         """
@@ -56,29 +70,22 @@ class AnalystAgent:
         prompt = quantivative_scores_prompt(stocks, self.filing_date)
 
         try:
-            print("Sending request to Google AI API for thematic scores...")
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=prompt
-            )
-            
+            print(f"Sending request to Google AI ({self.model}) for thematic scores...")
+            response = self._call_ai_api(prompt)
             parsed_data = self._extract_json_from_response(response.text)
-            
-            if not parsed_data:
-                return {}
             
             # Validate the structure
             required_keys = ['sub_industry', 'momentum_score', 'low_volatility_score', 'risk_score', 'growth_potential_score']
             for ticker, data in parsed_data.items():
                 if not all(key in data for key in required_keys):
-                    print(f"Warning: Missing required keys for {ticker}")
+                    print(f"⚠️\u3000Warning: Missing required keys for {ticker}")
                     return {}
             
             print(f"Successfully parsed AI scores for {len(parsed_data)} tickers")
             return parsed_data
 
         except Exception as e:
-            print(f"Could not get AI scores from LLM: {e}")
+            print(f"❌ ERROR: Could not get scores from LLM: {e}")
             return {}
 
 
@@ -86,26 +93,22 @@ class AnalystAgent:
         """
         Uses the LLM to determine the optimal weights for calculating the Promise Score.
         """
-        print("Asking AI for Promise Score weighting strategy...")
+        print(f"Sending request to Google AI ({self.model}) for Promise Score weighting strategy...")
 
         prompt = promise_score_weights_prompt(self.quarter)
 
         try:
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=prompt
-            )
-
+            response = self._call_ai_api(prompt)
             parsed_weights = self._extract_json_from_response(response.text)
 
             # Validation
             if not isinstance(parsed_weights, dict) or not parsed_weights:
-                print("ERROR: AI returned an invalid weights structure.")
+                print("❌ ERROR: AI returned an invalid weights structure.")
                 return {}
 
             total_weight = sum(parsed_weights.values())
             if not (0.95 <= total_weight <= 1.05):  # Allow small errors
-                print(f"ERROR: AI returned weights that sum to {total_weight:.3f}, not 1.0.")
+                print(f"❌ ERROR: AI returned weights that sum to {total_weight:.1f}, not 1.0.")
                 return {}
 
             # Validate that metrics exist in our analysis
@@ -113,14 +116,14 @@ class AnalystAgent:
 
             invalid_metrics = [m for m in parsed_weights.keys() if m not in available_metrics]
             if invalid_metrics:
-                print(f"ERROR: AI Agent returned invalid metrics: {invalid_metrics}.")
+                print(f"❌ ERROR: AI Agent returned invalid metrics: {invalid_metrics}.")
                 return {}
 
             print(f"AI Agent selected weights: {parsed_weights} (sum: {total_weight:.3f})")
             return parsed_weights
 
         except Exception as e:
-            print(f"ERROR: Failed to get weights from AI Agent: {e}.")
+            print(f"❌ ERROR: Failed to get weights from AI Agent: {e}.")
             return {}        
 
 
@@ -134,7 +137,7 @@ class AnalystAgent:
         promise_weights = self._get_promise_score_weights()
 
         if not promise_weights:
-            print("Error: Could not determine promise score weights.")
+            print("❌ ERROR: Could not determine promise score weights.")
             return pd.DataFrame()
 
         df['Promise_Score'] = 0.0
@@ -146,7 +149,7 @@ class AnalystAgent:
                 df[rank_col] = df[metric].rank(pct=True)
                 df['Promise_Score'] += df[rank_col] * weight
             else:
-                print(f"Warning: Metric '{metric}' suggested by AI not found in analysis data. Skipping.")
+                print(f"⚠️\u3000Warning: Metric '{metric}' suggested by AI not found in analysis data. Skipping.")
 
         df['Promise_Score'] *= 100
 
