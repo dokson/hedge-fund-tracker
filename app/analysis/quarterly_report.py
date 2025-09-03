@@ -25,9 +25,9 @@ def generate_comparison(df_recent, df_previous):
     df_comparison['Value_previous'] = pd.to_numeric(df_comparison['Value_previous'], errors='coerce').fillna(0).astype('int64')
 
     df_comparison['Company'] = coalesce(df_comparison['Company_recent'], df_comparison['Company_previous'])
-    df_comparison['Price_per_Share'] = (coalesce(df_comparison['Value'] / df_comparison['Shares'], df_comparison['Value_previous'] / df_comparison['Shares_previous']))
+    df_comparison['Price_per_Share'] = coalesce(df_comparison['Value'] / df_comparison['Shares'], df_comparison['Value_previous'] / df_comparison['Shares_previous'])
     df_comparison['Delta_Shares'] = df_comparison['Shares'] - df_comparison['Shares_previous']
-    df_comparison['Delta_Value'] = (df_comparison['Delta_Shares'] * df_comparison['Price_per_Share']).fillna(0).astype(int)
+    df_comparison['Delta_Value'] = df_comparison['Delta_Shares'] * df_comparison['Price_per_Share']
     df_comparison['Delta%'] = (df_comparison['Delta_Shares'] / df_comparison['Shares_previous']) * 100
 
     df_comparison['Delta'] = df_comparison.apply(

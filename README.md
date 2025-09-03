@@ -117,10 +117,8 @@ hedge-fund-tracker/
 │   └── 📁 workflows/
 │       ├── 📄 daily-fetch.yml      # GitHub Actions: Daily fetching job
 │       └── 📄 python-tests.yml     # GitHub Actions: Unit tests
-│
 ├── 📁 app/                          # Main application package
 │   └── 📄 main.py                  # Entry point and CLI interface
-│
 ├── 📁 database/                     # Data storage
 │   ├── 📁 2025Q1/                  # Quarterly reports
 │   │   ├── 📄 fund_1.csv           # Individual fund quarterly report
@@ -131,9 +129,7 @@ hedge-fund-tracker/
 │   ├── 📄 hedge_funds.csv          # Curated hedge funds list
 │   ├── 📄 latest_filings.csv       # Latest schedule filings
 │   └── 📄 stocks.csv               # Stocks masterdata (CUSIP-Ticker-Name)
-│
 ├── 📁 tests/                        # Test suite
-│
 ├── 📄 .env.example                 # Environment variables template
 ├── 📄 .gitignore                   # Git ignore rules
 ├── 📄 LICENSE                      # MIT License

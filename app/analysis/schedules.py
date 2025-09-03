@@ -66,12 +66,13 @@ def update_last_quarter_with_schedules(last_quarter_df):
     updated_df['Ticker'] = coalesce(updated_df['Ticker_13f'], updated_df['Ticker_schedule'])
     updated_df['Company'] = coalesce(updated_df['Company_13f'], updated_df['Company_schedule'].str.upper())
     updated_df['Shares'] = coalesce(updated_df['Shares_schedule'], updated_df['Shares_13f']).astype('int64')
-    updated_df['Delta_Value_Num'] = coalesce((updated_df['Shares_13f'] - updated_df['Shares_schedule']) * updated_df['Price_per_Share'], updated_df['Delta_Value_Num'])
+    updated_df['Delta_Value_Num'] = coalesce((updated_df['Shares_schedule'] - updated_df['Shares_13f']) * updated_df['Price_per_Share'], updated_df['Delta_Value_Num'])
     
     updated_df['Delta'] = updated_df.apply(
         lambda row:
         'NEW (13D/G)' if pd.isna(row['Shares_13f'])
-        else 'CLOSE' if row['Shares'] == 0
+        else 'CLOSE' if row['Shares_schedule'] == 0
+        else (row['Shares_schedule'] - row['Shares_13f']) / row['Shares_13f'] * 100 if not pd.isna(row['Shares_schedule'])
         else row['Delta'],
         axis=1
     )
