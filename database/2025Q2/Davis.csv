@@ -42,11 +42,11 @@ CUSIP,Ticker,Company,Shares,Value,Delta_Value,Delta,Portfolio%
 59522J103,MAA,"Mid-America Apartment Communities, Inc.",53050,7.85M,236.82K,+3.1%,0.04%
 253868103,DLR,"Digital Realty Trust, Inc.",68460,11.93M,231.86K,+2%,0.06%
 29444U700,EQIX,"Equinix, Inc.",15663,12.46M,230.69K,+1.9%,0.07%
-277276101,EGP,"Eastgroup Properties, Inc.",46130,7.71M,230.62K,+3.1%,0.04%
+277276101,EGP,"Eastgroup Properties, Inc.",46130,7.71M,230.63K,+3.1%,0.04%
 297178105,ESS,"Essex Property Trust, Inc.",28541,8.09M,229.55K,+2.9%,0.04%
 30231G102,XOM,Exxon Mobil Corp.,2066,222.72K,222.72K,NEW,<.01%
 88146M101,TRNO,Terreno Realty Corp.,104197,5.84M,188.96K,+3.3%,0.03%
-902653104,UDR,"UDR, Inc.",161990,6.61M,138K,+2.1%,0.04%
+902653104,UDR,"UDR, Inc.",161990,6.61M,138.01K,+2.1%,0.04%
 22822V101,CCI,"Crown Castle, Inc.",42300,4.35M,133.55K,+3.2%,0.02%
 29476L107,EQR,Equity Residential,101725,6.87M,126.21K,+1.9%,0.04%
 25960P109,DEI,"Douglas Emmett, Inc",276750,4.16M,119.27K,+2.9%,0.02%
@@ -62,7 +62,7 @@ CUSIP,Ticker,Company,Shares,Value,Delta_Value,Delta,Portfolio%
 89832Q109,TFC,Truist Financial Corp.,155845,6.7M,-25.19K,-0.4%,0.04%
 55261F104,MTB,M & T Bank Corp,50948,9.88M,-45.98K,-0.5%,0.05%
 857477103,STT,State Street Corp.,72251,7.68M,-48.17K,-0.6%,0.04%
-G3223R108,EG,"Everest Group, Ltd.",39500,13.42M,-55.05K,-0.4%,0.07%
+G3223R108,EG,"Everest Group, Ltd.",39500,13.42M,-55.06K,-0.4%,0.07%
 47215P106,JD,"JD.com Inc., Class A, ADR",343487,11.21M,-64.43K,-0.6%,0.06%
 77311W101,RKT,"Rocket Companies, Inc., Class A",3132678,44.42M,-93.74K,-0.2%,0.24%
 808513105,SCHW,Charles Schwab Corp.,296438,27.05M,-106.57K,-0.4%,0.14%
