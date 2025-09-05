@@ -183,6 +183,7 @@ Some famous names have to be excluded by design to enhance analysis quality:
 - *David Katz*'s [Matrix Asset Advisors](https://matrixassetadvisors.com/)
 - *Joel Greenblatt*'s [Gotham Funds](https://www.gothamfunds.com/)
 - *Barry Ritholtz*'s [Ritholtz Wealth Management](https://www.ritholtzwealth.com/)
+- *Nathaniel August*'s [Mangrove Partners](https://mangrovepartners.com/)
 - *James Oshaughnessy*'s [O'Shaughnessy Asset Management](https://www.osam.com/)
 - *Jeremy Grantham*'s [GMO](https://www.gmo.com/)
 - *Bill Nygren*'s [Harris Associates](https://harrisassoc.com/)

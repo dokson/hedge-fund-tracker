@@ -1,8 +1,6 @@
-from app.utils.database import get_all_quarter_files, is_last_quarter, load_quarter_data, load_stocks
-from app.utils.strings import format_percentage, format_value, get_numeric, get_percentage_number
+from app.utils.database import is_last_quarter, load_quarter_data, load_stocks
+from app.utils.strings import format_percentage, get_numeric, get_percentage_number
 from app.analysis.schedules import update_last_quarter_with_schedules
-from pathlib import Path
-import pandas as pd
 import numpy as np
 
 def _quarter_data(quarter):
@@ -38,9 +36,10 @@ def _aggregate_quarter_by_fund(df_quarter):
         df_quarter.groupby(['Fund', 'Ticker', 'Company'])
         .agg(
             Shares=('Shares', 'sum'),
-            Value=('Value_Num', lambda x: np.nan if x.isnull().all() else x.sum()),
-            Delta_Value=('Delta_Value_Num', lambda x: np.nan if x.isnull().all() else x.sum()),
-            Portfolio_Pct=('Portfolio_Pct', lambda x: np.nan if x.isnull().all() else x.sum()),
+            Delta_Shares=('Delta_Shares', 'sum'),
+            Value=('Value_Num', 'sum'),
+            Delta_Value=('Delta_Value_Num', 'sum'),
+            Portfolio_Pct=('Portfolio_Pct', 'sum'),
         )
         .reset_index()
     )
@@ -53,9 +52,9 @@ def _aggregate_quarter_by_fund(df_quarter):
     df_fund_quarter['Delta'] = df_fund_quarter.apply(
         lambda row:
         'CLOSE' if row['Shares'] == 0
-        else 'NO CHANGE' if row['Delta_Value'] == 0
-        else 'NEW' if row['Shares'] > 0 and format_value(row['Value']) == format_value(row['Delta_Value'])
-        else format_percentage(row['Delta_Value'] / (row['Value'] - row['Delta_Value']) * 100, True),
+        else 'NO CHANGE' if row['Delta_Shares'] == 0
+        else 'NEW' if row['Shares'] > 0 and row['Shares'] == row['Delta_Shares']
+        else format_percentage(row['Delta_Shares'] / (row['Shares'] - row['Delta_Shares']) * 100, True),
         axis=1
     )
 

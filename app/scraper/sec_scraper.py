@@ -2,6 +2,7 @@ from app.utils.strings import get_next_yyyymmdd_day
 from bs4 import BeautifulSoup
 import requests
 import re
+
 # SEC EDGAR requires a custom User-Agent that identifies the application and provides a contact email.
 # See: https://www.sec.gov/os/developer-support-policy
 USER_AGENT = 'Hedge Fund Tracker dok.son@msn.com'
@@ -14,7 +15,10 @@ FILING_SPECS = {
     },
     'SCHEDULE': {
         'xml_link_index': 1
-    }
+    },
+    '4': {
+        'xml_link_index': 1
+    },
 }
 
 
@@ -40,7 +44,7 @@ def _create_search_url(cik, filing_type='13F-HR', start_date=None):
     """
     Creates the SEC EDGAR search URL for a given CIK and filing type.
     """
-    search_url = f'{SEC_URL}/cgi-bin/browse-edgar?CIK={cik}&owner=exclude&action=getcompany&type={filing_type}'
+    search_url = f'{SEC_URL}/cgi-bin/browse-edgar?CIK={cik}&action=getcompany&type={filing_type}'
 
     if start_date:
         search_url += f'&datea={start_date}'
@@ -121,9 +125,10 @@ def _scrape_filing(document_tag, filing_type):
         print(f"Failed to download XML from {xml_url}")
         return None
 
-    print(f"Successfully scraped {filing_type} report published on {filing_date}" + (f" (refering {report_date})" if filing_type == '13F-HR' else ""))
+    print(f"Successfully scraped {filing_type} filing published on {filing_date}" + (f" (refering {report_date})" if filing_type == '13F-HR' else ""))
     return {
         'date': filing_date,
+        'type': filing_type,
         'reference_date': report_date,
         'xml_content': xml_response.content
     }
@@ -143,7 +148,7 @@ def fetch_latest_two_13f_filings(cik, offset=0):
     document_tags = soup.find_all('a', id="documentsbutton")
 
     if not document_tags:
-        print(f"No 13F-HR documents found for CIK: {cik}")
+        print(f"No 13F-HR filings found for CIK: {cik}")
         return None
 
     filings = []
@@ -157,25 +162,34 @@ def fetch_latest_two_13f_filings(cik, offset=0):
 
 def fetch_schedule_filings_after_date(cik, start_date):
     """
-    Fetches the raw content and filing dates for the latest schedule filings for a given CIK.
+    Fetches the raw content and filing dates for the latest schedule (13D/G) and Form 4 filings for a given CIK.
     Returns a list of dictionaries, or None if an error occurs.
     """
+    filings = []
     yyyymmdd_date = start_date.replace('-', '')
-    search_url = _create_search_url(cik, 'SCHEDULE', get_next_yyyymmdd_day(yyyymmdd_date))
-    response = _get_request(search_url)
-    if not response:
-        return None
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    search_url_schedule = _create_search_url(cik, 'SCHEDULE', get_next_yyyymmdd_day(yyyymmdd_date))
+    response_schedule = _get_request(search_url_schedule)
+    soup = BeautifulSoup(response_schedule.text, "html.parser")
     document_tags = soup.find_all('a', id="documentsbutton")
 
     if not document_tags:
-        print(f"No schedule documents found for CIK: {cik}")
-        return None
-
-    filings = []
+        print(f"No schedule filings found for CIK: {cik}")
     for tag in document_tags:
         filing_data = _scrape_filing(tag, 'SCHEDULE')
+        if filing_data:
+            filings.append(filing_data)
+
+    search_url_4 = _create_search_url(cik, '4', get_next_yyyymmdd_day(yyyymmdd_date))
+    response_4 = _get_request(search_url_4)
+    soup = BeautifulSoup(response_4.text, "html.parser")
+    document_tags = soup.find_all('a', id="documentsbutton")
+
+    if not document_tags:
+        print(f"No 4 filings filings found for CIK: {cik}")
+        return filings
+    for tag in document_tags:
+        filing_data = _scrape_filing(tag, '4')
         if filing_data:
             filings.append(filing_data)
 

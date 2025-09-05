@@ -1,15 +1,23 @@
+from app.tickers.resolver import assign_cusip
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 import pandas as pd
 import warnings
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
+
 def _get_tag_text(element, tag_suffix):
     """
     Safely find a tag by its suffix and return its stripped text, or None.
     """
     tag = element.find(lambda t: t.name.endswith(tag_suffix))
-    return tag.text.strip() if tag else None
+    if tag:
+        value_tag = tag.find('value')
+        if value_tag:
+            return value_tag.text.strip()
+        else:
+            return tag.text.strip()
+    return None
 
 
 def xml_to_dataframe_13f(xml_content):
@@ -116,3 +124,60 @@ def xml_to_dataframe_schedule(xml_content):
     df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y', errors='coerce')
 
     return df
+
+
+def xml_to_dataframe_4(xml_content):
+    """
+    Parses the XML content of a 4 filing and returns the data as a Pandas DataFrame.
+    """
+    soup_xml = BeautifulSoup(xml_content, "lxml")
+
+    columns = [
+        "Company",
+        "Ticker",
+        "CIK",
+        "Shares",
+        "Owner",
+        "Date"
+    ]
+
+    data = []
+
+    issuer = soup_xml.find('issuer')
+    company = _get_tag_text(issuer, 'issuername')
+    ticker = _get_tag_text(issuer, 'issuertradingsymbol')
+    cik = _get_tag_text(issuer, 'issuercik')
+    date = _get_tag_text(soup_xml, 'periodofreport')
+
+    owner_shares = {}
+
+    for reporting_person in soup_xml.find_all('reportingowner'):
+        owner_cik = _get_tag_text(reporting_person, 'rptownercik')
+        owner_name = _get_tag_text(reporting_person, 'rptownername')
+        
+        # Initialize owner's shares if not already present
+        if owner_cik not in owner_shares:
+            owner_shares[owner_cik] = {'name': owner_name, 'shares': 0}
+
+        # Extract shares from nonDerivativeTransaction
+        non_derivative_table = soup_xml.find('nonderivativetable')
+        if non_derivative_table:
+            for transaction in non_derivative_table.find_all('nonderivativetransaction'):
+                owner_shares[owner_cik]['shares'] += int(float(_get_tag_text(transaction, 'sharesownedfollowingtransaction')))
+            for holding in non_derivative_table.find_all('nonderivativeholding'):
+                owner_shares[owner_cik]['shares'] += int(float(_get_tag_text(holding, 'sharesownedfollowingtransaction')))
+
+    for owner_cik, info in owner_shares.items():
+        data.append([company, ticker, cik, info['shares'], owner_cik, date])
+
+    df = pd.DataFrame(data, columns=columns)
+    
+    # Data cleaning
+    df['Company'] = df['Company'].str.replace(r'\s+', ' ', regex=True)
+    df['Ticker'] = df['Ticker'].str.upper()
+    df['CIK'] = df['CIK'].str.strip()
+    df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce').astype(int)
+    df['Owner'] = df['Owner'].str.upper()
+    df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d', errors='coerce')
+
+    return assign_cusip(df)

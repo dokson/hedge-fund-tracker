@@ -37,6 +37,18 @@ def _get_company_from_fd(cusip):
         return ''
 
 
+def assign_cusip(df):
+    """
+    Assigns the first corresponding CUSIP to Tickers using the local stocks database.
+    This is needed for Form 4 filings that don't expose CUSIP information.
+    """
+    # Create a mapping from Ticker to the first CUSIP found (because we can have multiple CUSIPs for the same Ticker)
+    ticker_to_cusip_map = load_stocks().reset_index().drop_duplicates(subset='Ticker', keep='first').set_index('Ticker')['CUSIP'].to_dict()
+
+    df['CUSIP'] = [ticker_to_cusip_map.get(ticker, '') for ticker in df['Ticker']]
+    return df
+
+
 def resolve_ticker(df):
     """
     Maps CUSIPs to tickers using Finnhub (first choice) or Finance Database if Finnhub fails.

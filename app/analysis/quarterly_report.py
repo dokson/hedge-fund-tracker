@@ -56,7 +56,7 @@ def generate_comparison(df_recent, df_previous):
     df_comparison['Value'] = df_comparison['Value'].apply(format_value)
     df_comparison['Delta_Value'] = df_comparison['Delta_Value'].apply(format_value)
 
-    df_comparison = df_comparison[['CUSIP', 'Ticker', 'Company', 'Shares', 'Value', 'Delta_Value', 'Delta', 'Portfolio%']]
+    df_comparison = df_comparison[['CUSIP', 'Ticker', 'Company', 'Shares', 'Delta_Shares', 'Value', 'Delta_Value', 'Delta', 'Portfolio%']]
 
     # Final Total row
     total_row = pd.DataFrame([{
@@ -64,6 +64,7 @@ def generate_comparison(df_recent, df_previous):
         'Ticker': '', 
         'Company': '',
         'Shares': '',
+        'Delta_Shares': '',
         'Value': format_value(total_portfolio_value),
         'Delta_Value': format_value(total_delta_value),
         'Delta': format_percentage(total_delta, True),

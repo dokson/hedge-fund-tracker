@@ -1,4 +1,4 @@
-from app.scraper.xml_processor import xml_to_dataframe_schedule
+from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
 from app.tickers.resolver import resolve_ticker
 from app.utils.database import load_schedules_data
 from app.utils.pd import coalesce
@@ -10,7 +10,7 @@ import yfinance as yf
 
 def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, cik):
     """
-    Processes raw schedule filings (13D/G) and returns a DataFrame with the most recent holding for each CUSIP.
+    Processes all raw schedule filings (13D/G + 4) and returns a DataFrame with the most recent holding for each CUSIP.
 
     - Iterates through a list of filings, converting XML content to a DataFrame.
     - Filters the data to find holdings associated with the fund, trying by denomination first, then by CIK.
@@ -19,7 +19,11 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
     schedule_list = []
     
     for filing in schedule_filings:
-        schedule_df = xml_to_dataframe_schedule(filing['xml_content'])
+        if filing['type'] == 'SCHEDULE':
+            schedule_df = xml_to_dataframe_schedule(filing['xml_content'])
+        else:
+            schedule_df = xml_to_dataframe_4(filing['xml_content'])
+        
         schedule_df = schedule_df[schedule_df['CIK'] != cik]
         if schedule_df.empty:
             print(f"Filing is referring to {fund_denomination} ({cik}) shares itself: skipping because it is not relevant.")
@@ -38,9 +42,10 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
             return None
 
     schedule_filings_df = pd.concat(schedule_list, ignore_index=True)
-    # Keep only the most recent entry for each CUSIP
-    schedule_filings_df = schedule_filings_df.sort_values(by=['CUSIP', 'Filing_Date', 'Date'], ascending=False).drop_duplicates(subset='CUSIP', keep='first')
     schedule_filings_df = resolve_ticker(schedule_filings_df)
+
+    # Keep only the most recent entry for each Ticker
+    schedule_filings_df = schedule_filings_df.sort_values(by=['Ticker', 'Filing_Date', 'Date'], ascending=False).drop_duplicates(subset='Ticker', keep='first')
 
     # Initialize 'Value' column before the loop to prevent KeyError
     schedule_filings_df['Value'] = pd.NA
@@ -82,6 +87,7 @@ def update_last_quarter_with_schedules(last_quarter_df):
     updated_df['Ticker'] = coalesce(updated_df['Ticker_13f'], updated_df['Ticker_schedule'])
     updated_df['Company'] = coalesce(updated_df['Company_13f'], updated_df['Company_schedule'].str.upper())
     updated_df['Shares'] = coalesce(updated_df['Shares_schedule'], updated_df['Shares_13f']).astype('int64')
+    updated_df['Delta_Shares'] = coalesce(updated_df['Shares_schedule'] - coalesce(updated_df['Shares_13f'], 0), updated_df['Delta_Shares'])
     updated_df['Delta_Value_Num'] = coalesce(updated_df['Value_Num_schedule'] - coalesce(updated_df['Value_Num_13f'], 0), updated_df['Delta_Value_Num'])
     
     updated_df['Delta'] = updated_df.apply(
@@ -97,4 +103,4 @@ def update_last_quarter_with_schedules(last_quarter_df):
     total_value_per_fund = updated_df.groupby('Fund')['Value_Num'].transform('sum')
     updated_df['Portfolio_Pct'] = (updated_df['Value_Num'] / total_value_per_fund) * 100
 
-    return updated_df[['Fund', 'CUSIP', 'Ticker', 'Company', 'Shares', 'Value_Num', 'Delta_Value_Num', 'Delta', 'Portfolio_Pct']]
+    return updated_df[['Fund', 'CUSIP', 'Ticker', 'Company', 'Shares', 'Delta_Shares', 'Value_Num', 'Delta_Value_Num', 'Delta', 'Portfolio_Pct']]
