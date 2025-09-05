@@ -142,17 +142,22 @@ hedge-fund-tracker/
 
 ## 👨🏻‍💻 How This Tool Tracks Hedge Funds
 
-This tracker leverages two key SEC filing types:
+This tracker leverages the following types of SEC filings to provide a comprehensive view of institutional activity.
 
 - **📅 Quarterly 13F Filings**
   - Required for funds managing $100M+
-  - Filed within 45 days of quarter-end
-  - Shows portfolio snapshot on last day of quarter
+  - Filed ***within 45 days*** of quarter-end
+  - Shows ***portfolio snapshot*** on last day of quarter
 
-- **📝 Schedules (Non-Quarterly) 13D/G Filings**
+- **📝 Non-Quarterly 13D/G Filings**
   - Required when acquiring 5%+ of company shares
-  - Filed within 10 days of transaction
-  - Provides timely view of significant investments
+  - Filed ***within 10 days*** of the transaction
+  - Provides a ***timely view*** of significant investments
+
+- **✍🏻 Non-Quarterly SEC Form 4 Insider Filings**
+  - Filed by insiders (executives, directors) or large shareholders (>10%) when they trade company stocks
+  - Must be filed ***within 2 business days*** of the transaction
+  - Offers ***real-time insight*** into the actions of key individuals and institutions
 
 ### 🏢 A Note on Fund Selection
 
