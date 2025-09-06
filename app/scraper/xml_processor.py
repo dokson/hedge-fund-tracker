@@ -17,7 +17,8 @@ def _get_tag_text(element, tag_suffix):
             return value_tag.text.strip()
         else:
             return tag.text.strip()
-    return None
+    else:
+        return None
 
 
 def xml_to_dataframe_13f(xml_content):
@@ -150,11 +151,12 @@ def xml_to_dataframe_4(xml_content):
     date = _get_tag_text(soup_xml, 'periodofreport')
 
     owner_shares = {}
+    transaction_dates = []
 
     for reporting_person in soup_xml.find_all('reportingowner'):
         owner_cik = _get_tag_text(reporting_person, 'rptownercik')
         owner_name = _get_tag_text(reporting_person, 'rptownername')
-        
+
         # Initialize owner's shares if not already present
         if owner_cik not in owner_shares:
             owner_shares[owner_cik] = {'name': owner_name, 'shares': 0}
@@ -171,7 +173,7 @@ def xml_to_dataframe_4(xml_content):
         data.append([company, ticker, cik, info['shares'], owner_cik, date])
 
     df = pd.DataFrame(data, columns=columns)
-    
+
     # Data cleaning
     df['Company'] = df['Company'].str.replace(r'\s+', ' ', regex=True)
     df['Ticker'] = df['Ticker'].str.upper()

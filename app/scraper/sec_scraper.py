@@ -1,5 +1,6 @@
 from app.utils.strings import get_next_yyyymmdd_day
 from bs4 import BeautifulSoup
+from tenacity import retry, stop_after_attempt, retry_if_result
 import requests
 import re
 
@@ -22,9 +23,20 @@ FILING_SPECS = {
 }
 
 
+def _is_none(value):
+    """Return True if value is None, for tenacity retry."""
+    return value is None
+
+
+@retry(
+    retry=retry_if_result(_is_none),
+    stop=stop_after_attempt(3),
+    before_sleep=lambda rs: print(f"Retrying request for '{rs.args[0]}' in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})")
+)
 def _get_request(url):
     """
     Sends a GET request to the specified URL with custom headers.
+    Retries on failure.
     """
     headers = {
         'User-Agent': USER_AGENT,
@@ -141,6 +153,7 @@ def fetch_latest_two_13f_filings(cik, offset=0):
     """
     search_url = _create_search_url(cik, '13F-HR')
     response = _get_request(search_url)
+
     if not response:
         return None
 
@@ -175,6 +188,7 @@ def fetch_schedule_filings_after_date(cik, start_date):
 
     if not document_tags:
         print(f"No schedule filings found for CIK: {cik}")
+
     for tag in document_tags:
         filing_data = _scrape_filing(tag, 'SCHEDULE')
         if filing_data:
@@ -186,8 +200,9 @@ def fetch_schedule_filings_after_date(cik, start_date):
     document_tags = soup.find_all('a', id="documentsbutton")
 
     if not document_tags:
-        print(f"No 4 filings filings found for CIK: {cik}")
+        print(f"No 4 filings found for CIK: {cik}")
         return filings
+
     for tag in document_tags:
         filing_data = _scrape_filing(tag, '4')
         if filing_data:
@@ -208,6 +223,7 @@ def get_latest_13f_filing_date(cik):
     """
     search_url = _create_search_url(cik, '13F-HR')
     response = _get_request(search_url)
+
     if not response:
         print(f"Failed to get latest filing date for CIK {cik} because request failed.")
         return None
