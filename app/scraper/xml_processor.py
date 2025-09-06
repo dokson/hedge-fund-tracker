@@ -151,7 +151,6 @@ def xml_to_dataframe_4(xml_content):
     date = _get_tag_text(soup_xml, 'periodofreport')
 
     owner_shares = {}
-    transaction_dates = []
 
     for reporting_person in soup_xml.find_all('reportingowner'):
         owner_cik = _get_tag_text(reporting_person, 'rptownercik')

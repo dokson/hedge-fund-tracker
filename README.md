@@ -159,9 +159,28 @@ This tracker leverages the following types of SEC filings to provide a comprehen
   - Must be filed ***within 2 business days*** of the transaction
   - Offers ***real-time insight*** into the actions of key individuals and institutions
 
-### 🏢 A Note on Fund Selection
+## 🏢 Hedge Fund Selection
 
-This tool is configured to monitor a **curated list of top-performing investment funds, identified based on their performance over the last 3-5 years**. The goal is to focus on a select group representing what I consider the **top percentile of institutional investors**.
+This tool tracks a curated list of the **150 of what I found to be the top-performing US hedge funds**, selected based on their performance over the last 3-5 years. This **selection** is the result of my own **methodology** designed to identify the **top percentile of institutional investors**. My *selection methodology* is detailed below.
+
+### Selection Methodology
+
+[Modern portfolio theory (MPT)](https://en.wikipedia.org/wiki/Modern_portfolio_theory) offers many methods for quantifying the [risk-return trade-off](https://en.wikipedia.org/wiki/Risk%E2%80%93return_spectrum), but they are often ill-suited for analyzing the limited data available in public filings. Consequently, the `hedge_funds.csv` was therefore generated using my own custom *selection algorithm* designed to identify top-performing funds while managing for [volatility](https://en.wikipedia.org/wiki/Volatility_(finance)).
+
+> **Note**: The selection algorithm is external to this project and was used only to produce the curated `hedge_funds.csv` list.
+
+My approach prioritizes high [cumulative returns](https://en.wikipedia.org/wiki/Rate_of_return) but also analyzes the path taken to achieve them: it penalizes [volatility](https://en.wikipedia.org/wiki/Volatility_(finance)), similar to the [Sharpe Ratio](https://en.wikipedia.org/wiki/Sharpe_ratio), but this penalty is dynamically adjusted based on performance consistency; likewise, [drawdowns](https://en.wikipedia.org/wiki/Drawdown_(economics)) are penalized, echoing the principle of the [Sterling Ratio](https://en.wikipedia.org/wiki/Sterling_ratio), but the penalty is intentionally dampened to avoid overly punishing funds that recover effectively from temporary downturns.
+
+### List Management
+
+The list of funds is dynamic. If a selected fund begins to underperform, I will consider replacing it. Similarly, I plan to eventually expand the list.
+
+A good example of this selection process in action is *Liu Yijun*'s **Prime Capital Management** *(CIK: `0001448793`)*. Despite boasting a **3-Year Cumulative Return** of over **+165%** (as of the 2nd quarter of 2025), it was ultimately excluded for now due to the following *two factors*:
+
+- **Inconsistent Path of Returns**: Most of its significant outperformance is concentrated in the last two years, which doesn't align with the methodology's preference for a more consistent, long-term track record.
+- **Extreme Portfolio Concentration**: The portfolio consistently holds only 2-3 positions, making its performance statistically less relevant for aggregate analysis and potentially more volatile.
+
+However, should it continue to significantly outperform the market in the coming quarters, its inclusion in the `hedge_funds.csv` will be reconsidered.
 
 #### Notable Exclusions
 
@@ -190,10 +209,13 @@ Some famous names have to be excluded by design to enhance analysis quality:
 - *Barry Ritholtz*'s [Ritholtz Wealth Management](https://www.ritholtzwealth.com/)
 - *Nathaniel August*'s [Mangrove Partners](https://mangrovepartners.com/)
 - *James Oshaughnessy*'s [O'Shaughnessy Asset Management](https://www.osam.com/)
+- *John Paulson*'s [Paulson & Co.](https://paulsonco.com/)
+- *Pat Dorsey*'s [Dorsey Asset Management](https://dorseyasset.com/)
 - *Jeremy Grantham*'s [GMO](https://www.gmo.com/)
 - *Bill Nygren*'s [Harris Associates](https://harrisassoc.com/)
 - *David Booth*'s [Dimensional Fund Advisors](https://www.dimensional.com/)
 - *Chris Hohn*'s [The Children's Investment](https://ciff.org/)
+- *Stan Moss*'s [Polen Capital](https://www.polencapital.com/)
 - *Sander Gerber*'s [Hudson Bay Capital Management](https://www.hudsonbaycapital.com/)
 - *Bill Peckford*'s [Polar Asset Management](https://polaramp.com/)
 - *Robert Atchison & Phillip Gross*'s [Adage Capital Partners](https://www.adagecapital.com/)
@@ -224,6 +246,12 @@ It's crucial to understand the inherent limitations of tracking investment strat
 | **🧩 Incomplete Picture** | Only US long positions shown | Use as part of broader analysis |
 | **📉 No Short Positions** | Missing hedge information | Consider reported positions carefully |
 | **🌎 Limited Scope** | No non-US stocks or other assets | Supplement with additional data |
+
+### A Truly Up-to-Date View
+
+Many tracking websites rely solely on quarterly 13F filings, which means their data can be over 45 days old and miss many significant trades. Non-quarterly filings like 13D/G and Form 4 are often ignored because they are more complex to process and merge.
+
+This tracker tries to overcome that limitation by **tracking and integrating multiple filing types**. Instead of just aggregating 13F snapshots, it creates a synthesized view that incorporates the latest trades from 13D/G and Form 4 filings. This process ensures you have a more current and complete picture of institutional activity.
 
 ## 🗃️ Technical Stack
 

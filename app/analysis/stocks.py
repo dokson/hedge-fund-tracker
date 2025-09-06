@@ -1,7 +1,8 @@
+from app.analysis.schedules import update_last_quarter_with_schedules
 from app.utils.database import is_last_quarter, load_quarter_data, load_stocks
 from app.utils.strings import format_percentage, get_numeric, get_percentage_number
-from app.analysis.schedules import update_last_quarter_with_schedules
 import numpy as np
+
 
 def _quarter_data(quarter):
     df_quarter = load_quarter_data(quarter)
