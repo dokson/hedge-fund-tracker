@@ -28,22 +28,36 @@ class TestStrings(unittest.TestCase):
 
     def test_format_value(self):
         self.assertEqual(format_value(210), "210")
+        self.assertEqual(format_value(-210), "-210")
         self.assertEqual(format_value(1234), "1.23K")
+        self.assertEqual(format_value(-1234), "-1.23K")
         self.assertEqual(format_value(1234567), "1.23M")
+        self.assertEqual(format_value(-1234567), "-1.23M")
         self.assertEqual(format_value(9870123456), "9.87B")
+        self.assertEqual(format_value(-9870123456), "-9.87B")
         self.assertEqual(format_value(9876543210), "9.88B")
+        self.assertEqual(format_value(-9876543210), "-9.88B")
         self.assertEqual(format_value(1234567891011), "1.23T")
+        self.assertEqual(format_value(-1234567891011), "-1.23T")
         self.assertEqual(format_value(9999999999999), "10T")
+        self.assertEqual(format_value(-9999999999999), "-10T")
 
 
     def test_get_numeric(self):
         self.assertEqual(get_numeric("500"), 500)
+        self.assertEqual(get_numeric("-500"), -500)
         self.assertEqual(get_numeric("1.23K"), 1230)
+        self.assertEqual(get_numeric("-1.23K"), -1230)
         self.assertEqual(get_numeric("1.23M"), 1230000)
+        self.assertEqual(get_numeric("-1.23M"), -1230000)
         self.assertEqual(get_numeric("9.87B"), 9870000000)
+        self.assertEqual(get_numeric("-9.87B"), -9870000000)
         self.assertEqual(get_numeric("9.88B"), 9880000000)
+        self.assertEqual(get_numeric("-9.88B"), -9880000000)
         self.assertEqual(get_numeric("1.23T"), 1230000000000)
+        self.assertEqual(get_numeric("-1.23T"), -1230000000000)
         self.assertEqual(get_numeric("1.00M"), 1000000)
+        self.assertEqual(get_numeric("-1.00M"), -1000000)
 
     
     def test_get_percentage_number(self):

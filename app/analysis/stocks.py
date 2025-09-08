@@ -1,20 +1,7 @@
 from app.analysis.schedules import update_last_quarter_with_schedules
-from app.utils.database import is_last_quarter, load_quarter_data, load_stocks
+from app.utils.database import get_last_quarter, is_last_quarter, load_quarter_data, load_stocks
 from app.utils.strings import format_percentage, get_numeric, get_percentage_number
 import numpy as np
-
-
-def _quarter_data(quarter):
-    df_quarter = load_quarter_data(quarter)
-
-    df_quarter.loc[:, 'Delta_Value_Num'] = df_quarter['Delta_Value'].apply(get_numeric)
-    df_quarter.loc[:, 'Value_Num'] = df_quarter['Value'].apply(get_numeric)
-    df_quarter.loc[:, 'Portfolio_Pct'] = df_quarter['Portfolio%'].apply(get_percentage_number)
-
-    if is_last_quarter(quarter):
-        df_quarter = update_last_quarter_with_schedules(df_quarter)
-
-    return df_quarter
 
 
 def _aggregate_quarter_by_fund(df_quarter):
@@ -61,6 +48,20 @@ def _aggregate_quarter_by_fund(df_quarter):
 
     return df_fund_quarter
 
+
+def get_quarter_data(quarter=get_last_quarter()):
+    df_quarter = load_quarter_data(quarter)
+
+    df_quarter.loc[:, 'Delta_Value_Num'] = df_quarter['Delta_Value'].apply(get_numeric)
+    df_quarter.loc[:, 'Value_Num'] = df_quarter['Value'].apply(get_numeric)
+    df_quarter.loc[:, 'Portfolio_Pct'] = df_quarter['Portfolio%'].apply(get_percentage_number)
+
+    if is_last_quarter(quarter):
+        df_quarter = update_last_quarter_with_schedules(df_quarter)
+
+    return df_quarter
+
+
 def quarter_analysis(quarter):
     """
     Analyzes stock data for a given quarter to find the most popular, bought, and sold stocks.
@@ -72,7 +73,7 @@ def quarter_analysis(quarter):
         pd.DataFrame: A DataFrame with aggregated stock analysis for the quarter
     """
     # Fund level calculation
-    df_fund_quarter = _aggregate_quarter_by_fund(_quarter_data(quarter))
+    df_fund_quarter = _aggregate_quarter_by_fund(get_quarter_data(quarter))
 
     df_fund_quarter['is_buyer'] = df_fund_quarter['Delta_Value'] > 0
     df_fund_quarter['is_seller'] = df_fund_quarter['Delta_Value'] < 0
@@ -114,7 +115,7 @@ def stock_analysis(ticker, quarter):
     Returns:
         pd.DataFrame: A DataFrame with fund-level details for the specified stock.
     """
-    df_quarter = _quarter_data(quarter)
+    df_quarter = get_quarter_data(quarter)
 
     # Aggregates data for Ticker that may have multiple CUSIPs in the same hedge fund report
     return _aggregate_quarter_by_fund(df_quarter[df_quarter['Ticker'] == ticker])

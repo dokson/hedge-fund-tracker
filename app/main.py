@@ -1,7 +1,7 @@
 from app.ai.agent import AnalystAgent
 from app.analysis.quarterly_report import generate_comparison
-from app.analysis.schedules import get_latest_schedule_filings_dataframe
-from app.analysis.stocks import quarter_analysis, stock_analysis
+from app.analysis.schedules import get_latest_filings_info, get_latest_schedule_filings_dataframe
+from app.analysis.stocks import get_quarter_data, quarter_analysis, stock_analysis
 from app.scraper.sec_scraper import get_latest_13f_filing_date, fetch_latest_two_13f_filings, fetch_schedule_filings_after_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
@@ -87,6 +87,15 @@ def process_fund(fund_info, offset=0):
         print(f"❌ An unexpected error occurred while processing {fund_name} (CIK = {cik}): {e}")
 
 
+def exit():
+    """
+    0. Exit the application (after sorting stocks).
+    """
+    sort_stocks()
+    print("Bye! 👋 Exited.")
+    return False
+
+
 def run_all_funds_report():
     """
     1. Generate latest reports for all known hedge funds.
@@ -157,9 +166,23 @@ def run_manual_cik_report():
     process_fund({'CIK': cik})
 
 
+def run_view_latest_filings():
+    """
+    6. View latest filings activity from Schedules 13D/G and Form 4.
+    """
+    latest_filings_df = get_latest_filings_info(get_quarter_data())
+    latest_n = 20
+
+    print_dataframe(
+        latest_filings_df, latest_n, title=f"LATEST {latest_n} 13D/G AND FORM 4 FILINGS", sort_by='Date',
+        cols=['Date', 'Fund', 'Ticker', 'Shares', 'Delta_Shares', 'Delta', 'Avg_Price', 'Value', 'Portfolio_Pct'],
+        formatters={'Delta': get_signed_perc_formatter(), 'Shares': get_value_formatter(), 'Delta_Shares': get_value_formatter(), 'Portfolio_Pct': get_percentage_formatter(),}
+    )
+
+
 def run_quarter_analysis():
     """
-    6. Analyze stock trends for a quarter.
+    7. Analyze stock trends for a quarter.
     """
     selected_quarter = select_quarter()
     if selected_quarter:
@@ -179,7 +202,7 @@ def run_quarter_analysis():
 
 def run_single_stock_analysis():
     """
-    7. Analyze a single stock for a specific quarter.
+    8. Analyze a single stock for a specific quarter.
     """
     selected_quarter = select_quarter()
     if selected_quarter:
@@ -217,13 +240,17 @@ def run_single_stock_analysis():
         print_centered(f"BUYERS: {num_buyers} ({new_holder_count} new) / SELLERS: {num_sellers} ({close_count} sold out)")
         print_centered(f"BUYER/SELLER RATIO: {format_value(num_buyers / num_sellers if num_sellers > 0 else float('inf'))}")
 
-        print_dataframe(df_analysis, len(df_analysis), f'Holders by Shares', 'Shares', ['Fund', 'Portfolio_Pct', 'Shares', 'Value', 'Delta', 'Delta_Value'], {'Portfolio_Pct': get_percentage_formatter(), 'Shares': get_value_formatter(), 'Value': get_value_formatter(), 'Delta_Value': get_value_formatter()})
+        print_dataframe(
+            df_analysis, len(df_analysis), title=f'Holders by Shares', sort_by='Shares', 
+            cols=['Fund', 'Portfolio_Pct', 'Shares', 'Value', 'Delta', 'Delta_Value'], 
+            formatters={'Portfolio_Pct': get_percentage_formatter(), 'Shares': get_value_formatter(), 'Value': get_value_formatter(), 'Delta_Value': get_value_formatter()}
+        )
         print("\n")
 
 
 def run_ai_analyst():
     """
-    8. Run AI Analyst
+    9. Run AI Analyst
     """
     try:
         top_n = 30
@@ -234,26 +261,18 @@ def run_ai_analyst():
         print(f"❌ An unexpected error occurred while running AI Financial Agent: {e}")
 
 
-def exit():
-    """
-    9. Exit the application (after sorting stocks).
-    """
-    sort_stocks()
-    print("Bye! 👋 Exited.")
-    return False
-
-
 if __name__ == "__main__":
     actions = {
+        '0': exit,
         '1': run_all_funds_report,
         '2': run_single_fund_report,
         '3': run_historical_fund_report,
         '4': run_fetch_latest_schedules,
         '5': run_manual_cik_report,
-        '6': run_quarter_analysis,
-        '7': run_single_stock_analysis,
-        '8': run_ai_analyst,
-        '9': exit
+        '6': run_view_latest_filings,
+        '7': run_quarter_analysis,
+        '8': run_single_stock_analysis,
+        '9': run_ai_analyst,
     }
 
     while True:
@@ -261,18 +280,19 @@ if __name__ == "__main__":
             horizontal_rule()
             print_centered(APP_NAME)
             horizontal_rule()
+            print("0. Exit")
             print("1. Generate latest reports for all known hedge funds (hedge_funds.csv)")
             print("2. Generate latest report for a known hedge fund (hedge_funds.csv)")
             print("3. Generate historical report for a known hedge fund (hedge_funds.csv)")
             print("4. Fetch latest schedule filings for a known hedge fund (hedge_funds.csv)")
             print("5. Manually enter a hedge fund CIK number to generate latest report")
-            print("6. Analyze stock trends for a quarter")
-            print("7. Analyze a single stock for a quarter")
-            print("8. Run AI Analyst for most promising stocks")
-            print("9. Exit")
+            print("6. View latest filings activity (from Schedules 13D/G and Form 4)")
+            print("7. Analyze stock trends for a quarter")
+            print("8. Analyze a single stock for a quarter")
+            print("9. Run AI Analyst for most promising stocks")
             horizontal_rule()
 
-            main_choice = input("Choose an option (1-9): ")
+            main_choice = input("Choose an option (0-9): ")
             action = actions.get(main_choice)
             if action:
                 if action() is False:

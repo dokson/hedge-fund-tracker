@@ -44,6 +44,9 @@ def format_percentage(value: float, show_sign: bool = False, decimal_places: int
     """
     if pd.isnull(value):
         return 'N/A'
+    elif isinstance(value, str):
+        if not value.isnumeric():
+            return value
 
     sign = '+' if show_sign else ''
 

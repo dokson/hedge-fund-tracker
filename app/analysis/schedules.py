@@ -2,7 +2,7 @@ from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_sched
 from app.tickers.resolver import resolve_ticker
 from app.utils.database import load_schedules_data
 from app.utils.pd import coalesce
-from app.utils.strings import format_value, get_numeric
+from app.utils.strings import format_percentage, format_value, get_numeric
 import datetime
 import pandas as pd
 import yfinance as yf
@@ -56,14 +56,16 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
         price_data = yf.download(tickers=ticker, start=date, end=date+datetime.timedelta(days=1), auto_adjust=False, progress=False)
         if not price_data.empty:
             # Considering daily price as the average of daily high and daily low
-            price_per_share = (price_data['High'].iloc[0].item() + price_data['Low'].iloc[0].item()) / 2
-            schedule_filings_df.at[index, 'Value'] = price_per_share * row['Shares']
+            average_price = (price_data['High'].iloc[0].item() + price_data['Low'].iloc[0].item()) / 2
+            schedule_filings_df.at[index, 'Avg_Price'] = round(average_price, 2)
+            schedule_filings_df.at[index, 'Value'] = average_price * row['Shares']
         else:
+            schedule_filings_df.at[index, 'Avg_Price'] = 'N/A'
             print(f"⚠️\u3000Could not find price for {ticker} on {date}.")
 
     schedule_filings_df['Value'] = schedule_filings_df['Value'].apply(format_value)
 
-    return schedule_filings_df[['CUSIP', 'Ticker', 'Company', 'Shares', 'Value', 'Date']]
+    return schedule_filings_df[['CUSIP', 'Ticker', 'Company', 'Shares', 'Value', 'Avg_Price', 'Date']]
 
 
 def update_last_quarter_with_schedules(last_quarter_df):
@@ -95,7 +97,7 @@ def update_last_quarter_with_schedules(last_quarter_df):
         'NEW' if pd.isna(row['Shares_13f'])
         else 'CLOSE' if row['Shares_schedule'] == 0
         else (row['Shares_schedule'] - row['Shares_13f']) / row['Shares_13f'] * 100 if not pd.isna(row['Shares_schedule'])
-        else row['Delta'],
+        else format_percentage(row['Delta']),
         axis=1
     )
 
@@ -104,3 +106,11 @@ def update_last_quarter_with_schedules(last_quarter_df):
     updated_df['Portfolio_Pct'] = (updated_df['Value_Num'] / total_value_per_fund) * 100
 
     return updated_df[['Fund', 'CUSIP', 'Ticker', 'Company', 'Shares', 'Delta_Shares', 'Value_Num', 'Delta_Value_Num', 'Delta', 'Portfolio_Pct']]
+
+
+def get_latest_filings_info(quarter_data):
+    # Filter quarter_data for rows present in schedules_df (latest filings) and enrich with quarterly data.
+    schedules_df = load_schedules_data().reset_index().set_index(['Fund', 'Ticker'])
+    filings_df = schedules_df.join(quarter_data.set_index(['Fund', 'Ticker']), how='inner', rsuffix='_quarter').reset_index()
+
+    return filings_df
