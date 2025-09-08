@@ -171,10 +171,10 @@ def run_view_latest_filings():
     6. View latest filings activity from Schedules 13D/G and Form 4.
     """
     latest_filings_df = get_latest_filings_info(get_quarter_data())
-    latest_n = 20
+    latest_n = 30
 
     print_dataframe(
-        latest_filings_df, latest_n, title=f"LATEST {latest_n} 13D/G AND FORM 4 FILINGS", sort_by='Date',
+        latest_filings_df, latest_n, title=f"LATEST {latest_n} 13D/G AND FORM 4 FILINGS", sort_by=['Date', 'Fund', 'Portfolio_Pct'],
         cols=['Date', 'Fund', 'Ticker', 'Shares', 'Delta_Shares', 'Delta', 'Avg_Price', 'Value', 'Portfolio_Pct'],
         formatters={'Delta': get_signed_perc_formatter(), 'Shares': get_value_formatter(), 'Delta_Shares': get_value_formatter(), 'Portfolio_Pct': get_percentage_formatter(),}
     )

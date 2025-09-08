@@ -1,5 +1,5 @@
-from app.tickers.finnhub_client import get_ticker_and_company
-from app.tickers.financedatabase import get_ticker, get_company
+from app.tickers.finance_database import FinanceDatabase
+from app.tickers.finnhub import Finnhub
 from app.utils.database import load_stocks, save_stock
 import pandas as pd
 import time
@@ -30,16 +30,16 @@ def resolve_ticker(df):
 
         if cusip not in stocks.index:
             if company == '':
-                ticker, company = get_ticker_and_company(cusip, company)
+                ticker, company = Finnhub.get_ticker_and_company(cusip, company)
                 if pd.isna(ticker):
-                    ticker = get_ticker(cusip)
+                    ticker = FinanceDatabase.get_ticker(cusip)
                     if pd.notna(ticker):
-                        company = get_company(cusip)
+                        company = FinanceDatabase.get_company(cusip)
                         stocks.loc[cusip, 'Company'] = company
             else:
-                ticker, _ = get_ticker_and_company(cusip, company)
+                ticker, _ = Finnhub.get_ticker_and_company(cusip, company)
                 if pd.isna(ticker):
-                    ticker = get_ticker(cusip)
+                    ticker = FinanceDatabase.get_ticker(cusip)
 
             if pd.notna(ticker):
                 stocks.loc[cusip, 'Ticker'] = ticker

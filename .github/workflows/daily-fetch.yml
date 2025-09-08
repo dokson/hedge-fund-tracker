@@ -3,7 +3,7 @@ name: Daily Filings Fetch
 on:
   workflow_dispatch: # Allows manual triggering
   schedule:
-  - cron: '0 20 * * *' # 20:00 UTC => 22:00 CEST
+  - cron: '0 */4 * * 1-5'
 
 jobs:
   daily-fetch:
