@@ -26,7 +26,7 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
         
         schedule_df = schedule_df[schedule_df['CIK'] != cik]
         if schedule_df.empty:
-            print(f"Filing is referring to {fund_denomination} ({cik}) shares itself: skipping because it is not relevant.")
+            print(f"Filing ({filing['date']}) is referring to {fund_denomination} ({cik}) shares itself: skipping because it is not relevant.")
             return None
 
         filtered_df = schedule_df[schedule_df['Owner'].str.upper() == fund_denomination.upper()].copy()
