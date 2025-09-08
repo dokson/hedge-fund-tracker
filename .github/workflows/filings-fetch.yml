@@ -1,17 +1,17 @@
-name: Daily Filings Fetch
+name: Scheduled Filings Fetch
 
 on:
   workflow_dispatch: # Allows manual triggering
   schedule:
-  - cron: '0 */4 * * 1-5'
+  - cron: '0 */4 * * 1-5' # Runs every 4 hours on weekdays (Mon-Fri)
 
 jobs:
-  daily-fetch:
+  filings-fetch:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     env:
-      COMMIT_BRANCH: automated/daily-fetch
+      COMMIT_BRANCH: automated/filings-fetch
     
     permissions:
       contents: write
@@ -24,7 +24,7 @@ jobs:
         # Fetch all history so we can switch to the branch
         fetch-depth: 0
 
-    - name: Switch to the daily-fetch branch
+    - name: Switch to the filings-fetch branch
       run: |
         # If the branch exists remotely, check it out. Otherwise, create it from the default branch.
         if git ls-remote --exit-code --heads origin ${{ env.COMMIT_BRANCH }}; then
@@ -81,7 +81,7 @@ jobs:
           echo "No changes detected in the data files"
         fi
 
-    - name: Commit and push changes to daily-fetch branch
+    - name: Commit and push changes to filings-fetch branch
       if: steps.changes.outputs.no_changes == 'false'
       run: |
         git config --global user.name "github-actions[bot]"
