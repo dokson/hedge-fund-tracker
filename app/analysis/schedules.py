@@ -47,8 +47,10 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
     # Keep only the most recent entry for each Ticker
     schedule_filings_df = schedule_filings_df.sort_values(by=['Ticker', 'Filing_Date', 'Date'], ascending=False).drop_duplicates(subset='Ticker', keep='first')
 
-    # Initialize 'Value' column before the loop to prevent KeyError
+    # Initialize columns before the loop to prevent KeyError
     schedule_filings_df['Value'] = pd.NA
+    schedule_filings_df['Avg_Price'] = pd.NA
+
     for index, row in schedule_filings_df.iterrows():
         ticker = row['Ticker']
         date = row['Date'].date()
@@ -60,10 +62,11 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
             schedule_filings_df.at[index, 'Avg_Price'] = round(average_price, 2)
             schedule_filings_df.at[index, 'Value'] = average_price * row['Shares']
         else:
-            schedule_filings_df.at[index, 'Avg_Price'] = 'N/A'
             print(f"⚠️\u3000Could not find price for {ticker} on {date}.")
 
+    # Numerics to String format
     schedule_filings_df['Value'] = schedule_filings_df['Value'].apply(format_value)
+    schedule_filings_df['Avg_Price'] = schedule_filings_df['Avg_Price'].apply(format_value)
 
     return schedule_filings_df[['CUSIP', 'Ticker', 'Company', 'Shares', 'Value', 'Avg_Price', 'Date']]
 

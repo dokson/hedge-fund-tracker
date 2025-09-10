@@ -82,18 +82,20 @@ pipenv run python -m app.main
 5. **📜 Choose an action:** Once the script starts, you'll see the following interactive menu:
 
     ```txt
-    ┌───────────────────────────────────────────────────────────────────────────────┐
-    │                               Hedge Fund Tracker                              │
-    │                                                                               │
-    │  1. Generate latest reports for all known hedge funds (hedge_funds.csv)       │
-    │  2. Generate latest report for a known hedge fund (hedge_funds.csv)           │
-    │  3. Generate historical report for a known hedge fund (hedge_funds.csv)       │
-    │  4. Fetch latest schedule filings for a known hedge fund (hedge_funds.csv)    │
-    │  5. Manually enter a hedge fund CIK number to generate latest report          │
-    │  6. Analyze stock trends for a quarter                                        │
-    │  7. Analyze a single stock for a quarter                                      │
-    │  8. Run AI Analyst for most promising stocks                                  │
-    └───────────────────────────────────────────────────────────────────────────────┘
+    ┌───────────────────────────────────────────────────────────────────────────────────┐
+    │                               Hedge Fund Tracker                                  │
+    │                                                                                   │
+    │  0. Exit                                                                          │
+    │  1. Generate latest reports for all known hedge funds (hedge_funds.csv)           │
+    │  2. Generate latest report for a known hedge fund (hedge_funds.csv)               │
+    │  3. Generate historical report for a known hedge fund (hedge_funds.csv)           │
+    │  4. Fetch latest non-quarterly filings for all known hedge fund (hedge_funds.csv) │
+    │  5. Manually enter a hedge fund CIK number to generate latest report              │
+    │  6. View latest non-quarterly filings activity (from Schedules 13D/G and Form 4)  │
+    │  7. Analyze stock trends for a quarter                                            │
+    │  8. Analyze a single stock for a quarter                                          │
+    │  9. Run AI Analyst for the actual most promising stocks                           │
+    └───────────────────────────────────────────────────────────────────────────────────┘
     ```
 
 ### API Configuration
