@@ -26,8 +26,8 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
         
         schedule_df = schedule_df[schedule_df['CIK'] != cik]
         if schedule_df.empty:
-            print(f"Filing ({filing['date']}) is referring to {fund_denomination} ({cik}) shares itself: skipping because it is not relevant.")
-            return None
+            print(f"{filing['type']} filing ({filing['date']}) is referring to {fund_denomination} ({cik}) shares itself: skipping because it is not relevant.")
+            continue
 
         filtered_df = schedule_df[schedule_df['Owner'].str.upper() == fund_denomination.upper()].copy()
         if filtered_df.empty:
@@ -39,7 +39,9 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
         else:
             print(schedule_df)
             print("⚠️\u3000Hedge fund denomination or CIK not found inside filing.")
-            return None
+
+    if not schedule_list:
+        return None
 
     schedule_filings_df = pd.concat(schedule_list, ignore_index=True)
     schedule_filings_df = resolve_ticker(schedule_filings_df)
