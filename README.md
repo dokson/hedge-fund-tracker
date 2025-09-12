@@ -2,7 +2,7 @@
 
 ![repo size](https://img.shields.io/github/repo-size/dokson/hedge-fund-tracker)
 [![last commit](https://img.shields.io/github/last-commit/dokson/hedge-fund-tracker)](https://github.com/dokson/hedge-fund-tracker/commits/master/)
-[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/release/python-3130/)
 [![License: MIT](https://img.shields.io/github/license/dokson/hedge-fund-tracker)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dokson/hedge-fund-tracker/pulls)
 ![GitHub stars](https://img.shields.io/github/stars/dokson/hedge-fund-tracker.svg?style=social&label=Star)
@@ -44,7 +44,7 @@ pipenv run python -m app.main
 
 ### Prerequisites
 
-- [Python 3.12](https://www.python.org/downloads/release/python-3120/)+
+- [Python 3.13](https://www.python.org/downloads/release/python-3130/)+
 - [pipenv](https://pipenv.pypa.io/) (install with `pip install pipenv`)
 
 1. **📥 Clone and navigate:**
@@ -259,7 +259,7 @@ This tracker tries to overcome that limitation by **tracking and integrating mul
 
 | 🗂️ Category | 🦾 Technology |
 |----------|------------|
-| **Core** | [Python 3.12](https://www.python.org/downloads/release/python-3120/)+, [pipenv](https://pipenv.pypa.io/) |
+| **Core** | [Python 3.13](https://www.python.org/downloads/release/python-3130/)+, [pipenv](https://pipenv.pypa.io/) |
 | **Web Scraping** | [Requests](https://2.python-requests.org/en/master/), [Beautiful Soup](https://pypi.org/project/beautifulsoup4/), [lxml](https://lxml.de/) |
 | **Config** | [python-dotenv](https://github.com/theskumar/python-dotenv) |
 | **Data Processing** | [pandas](https://pandas.pydata.org/), [csv](https://docs.python.org/3/library/csv.html) |
