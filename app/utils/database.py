@@ -72,7 +72,7 @@ def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}"):
         df = pd.read_csv(filepath, dtype={'CIK': str})
         return df.to_dict('records')
     except Exception as e:
-        print(f"Errore while reading '{filepath}': {e}")
+        print(f"Error while reading '{filepath}': {e}")
         return []
 
 

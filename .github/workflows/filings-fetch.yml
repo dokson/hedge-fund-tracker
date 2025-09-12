@@ -58,6 +58,8 @@ jobs:
     - name: Run fetcher script
       run: pipenv run python .github/scripts/fetcher.py
       env:
+        GITHUB_ACTIONS: true
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
 
     - name: Get current date

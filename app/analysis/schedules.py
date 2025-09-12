@@ -1,6 +1,7 @@
 from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
 from app.tickers.resolver import resolve_ticker
 from app.utils.database import load_schedules_data
+from app.utils.github import open_issue
 from app.utils.pd import coalesce
 from app.utils.strings import format_percentage, format_value, get_numeric
 import datetime
@@ -37,8 +38,15 @@ def get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, c
             filtered_df['Filing_Date'] = pd.to_datetime(filing['date'])
             schedule_list.append(filtered_df)
         else:
-            print(schedule_df)
-            print("⚠️\u3000Hedge fund denomination or CIK not found inside filing.")
+            # If no match is found, open an issue on GitHub to investigate `hedge_funds.csv` file
+            subject = f"Hedge Fund Tracker Alert: CIK/Denomination not found in filing on {filing['date']}."
+            body = (
+                f"CIK:'{cik}' / Denomination '{fund_denomination}'\n"
+                f"Filing Type: {filing['type']}\n"
+                f"Filing Date: {filing['date']}\n\n"
+                f"Filing Content:\n{schedule_df}"
+            )
+            open_issue(subject, body)
 
     if not schedule_list:
         return None
