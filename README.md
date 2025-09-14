@@ -129,7 +129,7 @@ hedge-fund-tracker/
 │   ├── 📁 2025Q2/
 │   ├── 📁 YYYYQN/
 │   ├── 📄 hedge_funds.csv          # Curated hedge funds list
-│   ├── 📄 latest_filings.csv       # Latest schedule filings
+│   ├── 📄 non_quarterly.csv        # Non quarterly filings after last available quarter
 │   └── 📄 stocks.csv               # Stocks masterdata (CUSIP-Ticker-Name)
 ├── 📁 tests/                        # Test suite
 ├── 📄 .env.example                 # Environment variables template

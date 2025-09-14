@@ -7,7 +7,7 @@ import re
 DB_FOLDER = './database'
 HEDGE_FUNDS_FILE = 'hedge_funds.csv'
 STOCKS_FILE = 'stocks.csv'
-LATEST_SCHEDULE_FILINGS_FILE = 'latest_filings.csv'
+LATEST_SCHEDULE_FILINGS_FILE = 'non_quarterly.csv'
 
 
 def get_all_quarters():
@@ -82,7 +82,7 @@ def load_non_quarterly_data(filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FI
 
     Args:
         filepath (str, optional): The path to the CSV file.
-                                  Defaults to './database/latest_filings.csv'.
+                                  Defaults to './database/non_quarterly.csv'.
 
     Returns:
         pd.DataFrame: A DataFrame containing the most recent filing for each Fund-Ticker combination.
@@ -164,7 +164,7 @@ def save_non_quarterly_filings(schedule_filings, filepath=f"./{DB_FOLDER}/{LATES
 
     Args:
         schedule_filings (list): A list of pandas DataFrames, each representing schedule filings.
-        filepath (str, optional): The path to the output CSV file. Defaults to './database/latest_filings.csv'.
+        filepath (str, optional): The path to the output CSV file. Defaults to './database/non_quarterly.csv'.
     """
     if not schedule_filings:
         print("No schedule filings found to process.")
@@ -206,7 +206,7 @@ def sort_stocks(filepath=f'./database/{STOCKS_FILE}'):
 
     This function ensures the stocks file is clean, sorted, and consistently formatted.
     It sorts entries primarily by 'Ticker' and secondarily by 'CUSIP'.
-    Duplicates are removed based on 'CUSIP', keeping the first occurrence.
+    Any duplicates are removed keeping 'CUSIP' as the primary key.
 
     Args:
         filepath (str, optional): The path to the stocks CSV file.
@@ -214,6 +214,7 @@ def sort_stocks(filepath=f'./database/{STOCKS_FILE}'):
     """
     try:
         df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna('')
+        df.drop_duplicates(subset=['CUSIP'], keep='first', inplace=True)
         df.sort_values(by=['Ticker', 'CUSIP'], inplace=True)
         df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
     except Exception as e:

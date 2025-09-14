@@ -1,6 +1,6 @@
 from app.ai.agent import AnalystAgent
 from app.analysis.quarterly_report import generate_comparison
-from app.analysis.non_quarterly import get_latest_filings_info, get_non_quarterly_filings_dataframe
+from app.analysis.non_quarterly import get_nq_filings_info, get_non_quarterly_filings_dataframe
 from app.analysis.stocks import aggregate_quarter_by_fund, get_quarter_data, quarter_analysis, stock_analysis
 from app.scraper.sec_scraper import get_latest_13f_filing_date, fetch_latest_two_13f_filings, fetch_non_quarterly_after_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
@@ -132,14 +132,14 @@ def run_historical_fund_report():
         process_fund(selected_fund, offset=selected_period[0])
 
 
-def run_fetch_latest_filings():
+def run_fetch_nq_filings():
     """
     4. Fetch latest non-quarterly filings for all known hedge funds and save to database.
     """
     hedge_funds = load_hedge_funds()
     total_funds = len(hedge_funds)
     print(f"Starting updating reports for all {total_funds} funds...")
-    latest_filings = []
+    nq_filings = []
 
     for i, fund in enumerate(hedge_funds):
         print_centered(f"Processing {i + 1:2}/{total_funds}: {fund['Fund']}", "-")
@@ -152,9 +152,9 @@ def run_fetch_latest_filings():
             filings_dataframe = get_non_quarterly_filings_dataframe(filings, fund_denomination, cik)
             if filings_dataframe is not None:
                 filings_dataframe.insert(0, 'Fund', fund.get('Fund'))
-                latest_filings.append(filings_dataframe)
+                nq_filings.append(filings_dataframe)
     
-    save_non_quarterly_filings(latest_filings)
+    save_non_quarterly_filings(nq_filings)
     print_centered(f"All funds processed", "=")
 
 
@@ -166,15 +166,15 @@ def run_manual_cik_report():
     process_fund({'CIK': cik})
 
 
-def run_view_latest_filings():
+def run_view_nq_filings():
     """
     6. View latest filings activity from Schedules 13D/G and Form 4 filings.
     """
-    latest_filings_df = get_latest_filings_info(aggregate_quarter_by_fund(get_quarter_data()))
+    nq_filings_df = get_nq_filings_info(aggregate_quarter_by_fund(get_quarter_data()))
     latest_n = 30
 
     print_dataframe(
-        latest_filings_df, latest_n, title=f"LATEST {latest_n} 13D/G AND FORM 4 FILINGS", sort_by=['Date', 'Fund', 'Portfolio_Pct'],
+        nq_filings_df, latest_n, title=f"LATEST {latest_n} 13D/G AND FORM 4 FILINGS", sort_by=['Date', 'Fund', 'Portfolio_Pct'],
         cols=['Date', 'Fund', 'Ticker', 'Shares', 'Delta_Shares', 'Delta', 'Avg_Price', 'Value', 'Portfolio_Pct'],
         formatters={'Delta': get_signed_perc_formatter(), 'Shares': get_value_formatter(), 'Delta_Shares': get_value_formatter(), 'Portfolio_Pct': get_percentage_formatter(),}
     )
@@ -267,9 +267,9 @@ if __name__ == "__main__":
         '1': run_all_funds_report,
         '2': run_single_fund_report,
         '3': run_historical_fund_report,
-        '4': run_fetch_latest_filings,
+        '4': run_fetch_nq_filings,
         '5': run_manual_cik_report,
-        '6': run_view_latest_filings,
+        '6': run_view_nq_filings,
         '7': run_quarter_analysis,
         '8': run_single_stock_analysis,
         '9': run_ai_analyst,

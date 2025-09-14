@@ -122,7 +122,7 @@ def update_last_quarter_with_nq_filings(last_quarter_df):
     return updated_df[['Fund', 'CUSIP', 'Ticker', 'Company', 'Shares', 'Delta_Shares', 'Value_Num', 'Delta_Value_Num', 'Delta', 'Portfolio_Pct']]
 
 
-def get_latest_filings_info(quarter_data):
+def get_nq_filings_info(quarter_data):
     """
     Load latest non quarterly filings (load_non_quarterly_data) and enrich with quarterly data.
     """
