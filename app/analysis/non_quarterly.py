@@ -129,4 +129,4 @@ def get_latest_filings_info(quarter_data):
     non_quarterly_filings_df = load_non_quarterly_data().set_index(['Fund', 'Ticker'])
     quarter_data = quarter_data.set_index(['Fund', 'Ticker'])
 
-    return non_quarterly_filings_df.join(quarter_data, how='inner')
+    return non_quarterly_filings_df.join(quarter_data, how='inner', rsuffix='_quarter').reset_index()
