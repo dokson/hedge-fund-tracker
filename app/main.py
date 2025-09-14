@@ -1,11 +1,11 @@
 from app.ai.agent import AnalystAgent
 from app.analysis.quarterly_report import generate_comparison
-from app.analysis.schedules import get_latest_filings_info, get_latest_schedule_filings_dataframe
+from app.analysis.non_quarterly import get_latest_filings_info, get_non_quarterly_filings_dataframe
 from app.analysis.stocks import get_quarter_data, quarter_analysis, stock_analysis
-from app.scraper.sec_scraper import get_latest_13f_filing_date, fetch_latest_two_13f_filings, fetch_schedule_filings_after_date
+from app.scraper.sec_scraper import get_latest_13f_filing_date, fetch_latest_two_13f_filings, fetch_non_quarterly_after_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
-from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, save_comparison, save_latest_schedule_filings, sort_stocks
+from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
 import numpy as np
 
@@ -132,29 +132,29 @@ def run_historical_fund_report():
         process_fund(selected_fund, offset=selected_period[0])
 
 
-def run_fetch_latest_schedules():
+def run_fetch_latest_filings():
     """
-    4. Fetch latest schedule filings for all known hedge funds and save to database.
+    4. Fetch latest non-quarterly filings for all known hedge funds and save to database.
     """
     hedge_funds = load_hedge_funds()
     total_funds = len(hedge_funds)
     print(f"Starting updating reports for all {total_funds} funds...")
-    latest_schedules = []
+    latest_filings = []
 
     for i, fund in enumerate(hedge_funds):
         print_centered(f"Processing {i + 1:2}/{total_funds}: {fund['Fund']}", "-")
         cik = fund.get('CIK')
         fund_denomination = fund.get('Denomination')
 
-        schedule_filings = fetch_schedule_filings_after_date(cik, get_latest_13f_filing_date(cik))
+        filings = fetch_non_quarterly_after_date(cik, get_latest_13f_filing_date(cik))
 
-        if schedule_filings:
-            schedule_filings_dataframe = get_latest_schedule_filings_dataframe(schedule_filings, fund_denomination, cik)
-            if schedule_filings_dataframe is not None and not schedule_filings_dataframe.empty:
-                schedule_filings_dataframe.insert(0, 'Fund', fund.get('Fund'))
-                latest_schedules.append(schedule_filings_dataframe)
+        if filings:
+            filings_dataframe = get_non_quarterly_filings_dataframe(filings, fund_denomination, cik)
+            if filings_dataframe is not None:
+                filings_dataframe.insert(0, 'Fund', fund.get('Fund'))
+                latest_filings.append(filings_dataframe)
     
-    save_latest_schedule_filings(latest_schedules)
+    save_non_quarterly_filings(latest_filings)
     print_centered(f"All funds processed", "=")
 
 
@@ -168,7 +168,7 @@ def run_manual_cik_report():
 
 def run_view_latest_filings():
     """
-    6. View latest filings activity from Schedules 13D/G and Form 4.
+    6. View latest filings activity from Schedules 13D/G and Form 4 filings.
     """
     latest_filings_df = get_latest_filings_info(get_quarter_data())
     latest_n = 30
@@ -267,7 +267,7 @@ if __name__ == "__main__":
         '1': run_all_funds_report,
         '2': run_single_fund_report,
         '3': run_historical_fund_report,
-        '4': run_fetch_latest_schedules,
+        '4': run_fetch_latest_filings,
         '5': run_manual_cik_report,
         '6': run_view_latest_filings,
         '7': run_quarter_analysis,

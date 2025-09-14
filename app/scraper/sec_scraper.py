@@ -64,6 +64,19 @@ def _create_search_url(cik, filing_type='13F-HR', start_date=None):
     return search_url
 
 
+def _get_accepted(report_page_soup):
+    """
+    Extracts the accepted time from the report page's soup.
+    """
+    try:
+        filing_date_tag = report_page_soup.find('div', string=re.compile(r'Accepted'))
+        if filing_date_tag:
+            return filing_date_tag.find_next().text.strip()
+    except Exception as e:
+        print(f"Error extracting filing accepted time: {e}")
+    return None
+
+
 def _get_filing_date(report_page_soup):
     """
     Extracts the filing date from the report page's soup.
@@ -126,6 +139,7 @@ def _scrape_filing(document_tag, filing_type):
     report_page_soup = BeautifulSoup(report_page_response.text, "html.parser")
     filing_date = _get_filing_date(report_page_soup)
     report_date = _get_report_date(report_page_soup)
+    accepted = _get_accepted(report_page_soup)
     xml_url = _get_primary_xml_url(report_page_soup, filing_type)
 
     if not (filing_date and xml_url):
@@ -140,6 +154,7 @@ def _scrape_filing(document_tag, filing_type):
     print(f"Successfully scraped {filing_type} filing published on {filing_date}" + (f" (refering {report_date})" if filing_type == '13F-HR' else ""))
     return {
         'date': filing_date,
+        'accepted_on': accepted,
         'type': filing_type,
         'reference_date': report_date,
         'xml_content': xml_response.content
@@ -173,7 +188,7 @@ def fetch_latest_two_13f_filings(cik, offset=0):
     return filings
 
 
-def fetch_schedule_filings_after_date(cik, start_date):
+def fetch_non_quarterly_after_date(cik, start_date):
     """
     Fetches the raw content and filing dates for the latest schedule (13D/G) and Form 4 filings for a given CIK.
     Returns a list of dictionaries, or None if an error occurs.

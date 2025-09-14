@@ -91,7 +91,7 @@ pipenv run python -m app.main
     │  3. Generate historical report for a known hedge fund (hedge_funds.csv)           │
     │  4. Fetch latest non-quarterly filings for all known hedge fund (hedge_funds.csv) │
     │  5. Manually enter a hedge fund CIK number to generate latest report              │
-    │  6. View latest non-quarterly filings activity (from Schedules 13D/G and Form 4)  │
+    │  6. View latest non-quarterly filings activity (from 13D/G and Form 4)            │
     │  7. Analyze stock trends for a quarter                                            │
     │  8. Analyze a single stock for a quarter                                          │
     │  9. Run AI Analyst for the actual most promising stocks                           │

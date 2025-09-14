@@ -76,7 +76,27 @@ def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}"):
         return []
 
 
-def load_quarter_data(quarter):
+def load_non_quarterly_data(filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}"):
+    """
+    Loads the latest non-quarterly (13D/G and 4) filings from the CSV file.
+
+    Args:
+        filepath (str, optional): The path to the CSV file.
+                                  Defaults to './database/latest_filings.csv'.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the most recent filing for each Fund-Ticker combination.
+    """
+    try:
+        df = pd.read_csv(filepath, dtype={'Fund': str, 'CUSIP': str}, keep_default_na=False)
+        # Keep only the most recent entry for each Ticker
+        return df.sort_values(by=['Ticker', 'Filing_Date', 'Date'], ascending=False).drop_duplicates(subset='Ticker', keep='first')
+    except Exception as e:
+        print(f"Error while reading schedule filings from '{filepath}': {e}")
+        return pd.DataFrame()
+
+
+def load_quarterly_data(quarter):
     """
     Loads all fund comparison data for a given quarter (e.g., '2025Q1').
 
@@ -94,24 +114,6 @@ def load_quarter_data(quarter):
         all_fund_data.append(fund_df[fund_df['CUSIP'] != 'Total'])
 
     return pd.concat(all_fund_data, ignore_index=True)
-
-
-def load_schedules_data(filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}"):
-    """
-    Loads the latest schedule filings (13D/G) from the CSV file.
-
-    Args:
-        filepath (str, optional): The path to the CSV file. Defaults to './database/latest_filings.csv'.
-
-    Returns:
-        pd.DataFrame: A DataFrame with a ['Fund', 'CUSIP'] MultiIndex, or an empty DataFrame if the file is not found or an error occurs.
-    """
-    try:
-        df = pd.read_csv(filepath, dtype={'Fund': str, 'CUSIP': str}, keep_default_na=False)
-        return df.set_index(['Fund', 'CUSIP'])
-    except Exception as e:
-        print(f"Error while reading schedule filings from '{filepath}': {e}")
-        return pd.DataFrame()
 
 
 def load_stocks(filepath=f"./{DB_FOLDER}/{STOCKS_FILE}"):
@@ -156,7 +158,7 @@ def save_comparison(comparison_dataframe, date, fund_name):
         print(f"An error occurred while writing comparison file for '{fund_name}': {e}")
 
 
-def save_latest_schedule_filings(schedule_filings, filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}"):
+def save_non_quarterly_filings(schedule_filings, filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}"):
     """
     Combines the list of schedule filing DataFrames and saves them to a single CSV file.
 
@@ -170,7 +172,7 @@ def save_latest_schedule_filings(schedule_filings, filepath=f"./{DB_FOLDER}/{LAT
 
     try:
         combined_schedules_df = pd.concat(schedule_filings, ignore_index=True)
-        combined_schedules_df.sort_values(by=['Date', 'Fund', 'Ticker'], ascending=[False, True, True], inplace=True)
+        combined_schedules_df.sort_values(by=['Date', 'Filing_Date', 'Fund', 'Ticker'], ascending=[False, False, True, True], inplace=True)
         combined_schedules_df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
         print(f"Latest schedule filings saved to {filepath}")
     except Exception as e:
