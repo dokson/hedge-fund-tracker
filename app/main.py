@@ -1,7 +1,7 @@
 from app.ai.agent import AnalystAgent
 from app.analysis.quarterly_report import generate_comparison
 from app.analysis.non_quarterly import get_latest_filings_info, get_non_quarterly_filings_dataframe
-from app.analysis.stocks import get_quarter_data, quarter_analysis, stock_analysis
+from app.analysis.stocks import aggregate_quarter_by_fund, get_quarter_data, quarter_analysis, stock_analysis
 from app.scraper.sec_scraper import get_latest_13f_filing_date, fetch_latest_two_13f_filings, fetch_non_quarterly_after_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
@@ -170,7 +170,7 @@ def run_view_latest_filings():
     """
     6. View latest filings activity from Schedules 13D/G and Form 4 filings.
     """
-    latest_filings_df = get_latest_filings_info(get_quarter_data())
+    latest_filings_df = get_latest_filings_info(aggregate_quarter_by_fund(get_quarter_data()))
     latest_n = 30
 
     print_dataframe(

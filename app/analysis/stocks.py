@@ -4,7 +4,7 @@ from app.utils.strings import format_percentage, get_numeric, get_percentage_num
 import numpy as np
 
 
-def _aggregate_quarter_by_fund(df_quarter):
+def aggregate_quarter_by_fund(df_quarter):
     """
     Aggregates quarter fund holdings at the Ticker level.
 
@@ -73,7 +73,7 @@ def quarter_analysis(quarter):
         pd.DataFrame: A DataFrame with aggregated stock analysis for the quarter
     """
     # Fund level calculation
-    df_fund_quarter = _aggregate_quarter_by_fund(get_quarter_data(quarter))
+    df_fund_quarter = aggregate_quarter_by_fund(get_quarter_data(quarter))
 
     df_fund_quarter['is_buyer'] = df_fund_quarter['Delta_Value'] > 0
     df_fund_quarter['is_seller'] = df_fund_quarter['Delta_Value'] < 0
@@ -118,4 +118,4 @@ def stock_analysis(ticker, quarter):
     df_quarter = get_quarter_data(quarter)
 
     # Aggregates data for Ticker that may have multiple CUSIPs in the same hedge fund report
-    return _aggregate_quarter_by_fund(df_quarter[df_quarter['Ticker'] == ticker])
+    return aggregate_quarter_by_fund(df_quarter[df_quarter['Ticker'] == ticker])
