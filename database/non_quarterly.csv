@@ -1,6 +1,7 @@
 "Fund","CUSIP","Ticker","Company","Shares","Value","Avg_Price","Date","Filing_Date"
 "Point72","252828108","DNTH","Dianthus Therapeutics, Inc. /DE/","2121140","79.28M","37.38","2025-09-11","2025-09-12"
 "Magnetar","21873S108","CRWV","CoreWeave, Inc.","91746619","10.59B","115.39","2025-09-11","2025-09-11"
+"Millennium","F21107101","CSTM","Constellium SE","7453770","104.87M","14.07","2025-09-10","2025-09-16"
 "Magnetar","21873S108","CRWV","CoreWeave, Inc.","0","0","116.96","2025-09-10","2025-09-11"
 "Magnetar","21873S108","CRWV","CoreWeave, Inc.","92762835","9.32B","100.47","2025-09-09","2025-09-11"
 "Magnetar","46005L101","IMXI","International Money Express Inc.","1790158","25.9M","14.47","2025-09-09","2025-09-11"
