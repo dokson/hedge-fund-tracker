@@ -190,10 +190,12 @@ Some famous names have to be excluded by design to enhance analysis quality:
 
 - *Warren Buffett*'s [Berkshire Hathaway](https://www.berkshirehathaway.com/)
 - *Ray Dalio*'s [Bridgewater Associates](https://www.bridgewater.com/)
+- *Michael Burry*'s [Scion Asset Management](https://www.scionasset.com/)
 - *Cathie Wood*'s [ARK Invest](https://www.ark-invest.com/)
 - *Bill Ackman*'s [Pershing Square](https://pershingsquareholdings.com/)
 - *Cliff Asness*'s [Aqr Capital Management](https://www.aqr.com/)
 - *Murray Stahl*'s [Horizon Kinetics](https://horizonkinetics.com/)
+- *Edward Mule*'s [Silver Point Capital](https://www.silverpointcapital.com/)
 - *Paul Singer*'s [Elliot Investment](https://www.elliottmgmt.com/)
 - *Daniel Loeb*'s [Third Point](https://www.thirdpoint.com/)
 - *George Soros*'s [Soros Fund Management](https://sorosfundmgmt.com/)
