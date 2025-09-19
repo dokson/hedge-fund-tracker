@@ -69,7 +69,7 @@ def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}"):
     Loads hedge funds from file (hedge_funds.csv)
     """
     try:
-        df = pd.read_csv(filepath, dtype={'CIK': str})
+        df = pd.read_csv(filepath, dtype={'CIK': str, 'CIKs': str}, keep_default_na=False)
         return df.to_dict('records')
     except Exception as e:
         print(f"Error while reading '{filepath}': {e}")

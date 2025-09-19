@@ -32,7 +32,7 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings, fund_denomination
 
         filtered_df = filing_df[filing_df['Owner'].str.upper() == fund_denomination.upper()].copy()
         if filtered_df.empty:
-            filtered_df = filing_df[filing_df['Owner'] == cik].copy()
+            filtered_df = filing_df[filing_df['Owner_CIK'] == cik].copy()
 
         if not filtered_df.empty:
             filtered_df['Filing_Date'] = pd.to_datetime(filing['date'])

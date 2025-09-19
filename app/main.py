@@ -144,9 +144,11 @@ def run_fetch_nq_filings():
     for i, fund in enumerate(hedge_funds):
         print_centered(f"Processing {i + 1:2}/{total_funds}: {fund['Fund']}", "-")
         cik = fund.get('CIK')
+        latest_13f_date = get_latest_13f_filing_date(cik)
         fund_denomination = fund.get('Denomination')
+        alternative_cik = fund.get('CIKs')
 
-        filings = fetch_non_quarterly_after_date(cik, get_latest_13f_filing_date(cik))
+        filings = fetch_non_quarterly_after_date(cik, latest_13f_date) if alternative_cik == "" else fetch_non_quarterly_after_date(alternative_cik, latest_13f_date)
 
         if filings:
             filings_dataframe = get_non_quarterly_filings_dataframe(filings, fund_denomination, cik)

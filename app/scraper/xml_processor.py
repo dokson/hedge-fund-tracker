@@ -94,6 +94,7 @@ def xml_to_dataframe_schedule(xml_content):
         "CUSIP",
         "CIK",
         "Shares",
+        "Owner_CIK",
         "Owner",
         "Date"
     ]
@@ -109,10 +110,10 @@ def xml_to_dataframe_schedule(xml_content):
     for reporting_person in soup_xml.find_all('coverpageheaderreportingpersondetails') or soup_xml.find_all('reportingpersoninfo'):
         shares = _get_tag_text(reporting_person, 'aggregateamountowned') or \
                  _get_tag_text(reporting_person, 'reportingpersonbeneficiallyownedaggregatenumberofshares')
-        owner = _get_tag_text(reporting_person, 'reportingpersoncik') or \
-                _get_tag_text(reporting_person, 'reportingpersonname')
+        owner_cik = _get_tag_text(reporting_person, 'rptownercik')
+        owner_name = _get_tag_text(reporting_person, 'reportingpersonname')
 
-        data.append([company, cusip, cik, shares, owner, date])
+        data.append([company, cusip, cik, shares, owner_cik, owner_name, date])
 
     df = pd.DataFrame(data, columns=columns)
     
@@ -121,6 +122,7 @@ def xml_to_dataframe_schedule(xml_content):
     df['CUSIP'] = df['CUSIP'].str.upper()
     df['CIK'] = df['CIK'].str.strip()
     df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce').astype(int)
+    df['Owner_CIK'] = df['Owner_CIK'].str.strip()
     df['Owner'] = df['Owner'].str.upper()
     df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y', errors='coerce')
 
@@ -129,7 +131,8 @@ def xml_to_dataframe_schedule(xml_content):
 
 def xml_to_dataframe_4(xml_content):
     """
-    Parses the XML content of a 4 filing and returns the data as a Pandas DataFrame.
+    Parses the XML content of a Form 4 filing and returns the data as a Pandas DataFrame.
+    It correctly extracts the final share ownership for each reporting owner.
     """
     soup_xml = BeautifulSoup(xml_content, "lxml")
 
@@ -138,10 +141,10 @@ def xml_to_dataframe_4(xml_content):
         "Ticker",
         "CIK",
         "Shares",
+        "Owner_CIK",
         "Owner",
         "Date"
     ]
-
     data = []
 
     issuer = soup_xml.find('issuer')
@@ -169,7 +172,7 @@ def xml_to_dataframe_4(xml_content):
                 owner_shares[owner_cik]['shares'] += int(float(_get_tag_text(holding, 'sharesownedfollowingtransaction')))
 
     for owner_cik, info in owner_shares.items():
-        data.append([company, ticker, cik, info['shares'], owner_cik, date])
+        data.append([company, ticker, cik, info['shares'], owner_cik, info['name'], date])
 
     df = pd.DataFrame(data, columns=columns)
 
@@ -178,6 +181,7 @@ def xml_to_dataframe_4(xml_content):
     df['Ticker'] = df['Ticker'].str.upper()
     df['CIK'] = df['CIK'].str.strip()
     df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce').astype(int)
+    df['Owner_CIK'] = df['Owner_CIK'].str.strip()
     df['Owner'] = df['Owner'].str.upper()
     df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d', errors='coerce')
 
