@@ -6,7 +6,7 @@ CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
 90353T100,UBER,Uber Technologies Inc,119261,44825,8.69M,3.27M,+60.2%,2.5%
 874039100,TSM,Taiwan Semiconductor Mfg Ltd,11159,11159,1.85M,1.85M,NEW,0.54%
 235851102,DHR,Danaher Corporation,64498,9001,13.22M,1.85M,+16.2%,3.9%
-46438F101,IBIT,Ishares Bitcoin Trust Etf,37476,37476,1.75M,1.75M,NEW,0.51%
+46438F101,IBIT,iShares Bitcoin Trust ETF,37476,37476,1.75M,1.75M,NEW,0.51%
 052769106,ADSK,Autodesk Inc,17346,6380,4.54M,1.67M,+58.2%,1.3%
 040413205,ANET,Arista Networks Inc,60214,18430,4.67M,1.43M,+44.1%,1.4%
 518415104,LSCC,Lattice Semiconductor Corp,93689,18518,4.91M,971.27K,+24.6%,1.4%
