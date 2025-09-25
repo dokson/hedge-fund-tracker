@@ -1,8 +1,7 @@
 from app.tickers.finance_database import FinanceDatabase
 from app.tickers.finnhub import Finnhub
+from app.tickers.yfinance import YFinance
 from app.utils.database import load_stocks, save_stock
-import pandas as pd
-import time
 
 
 def assign_cusip(df):
@@ -19,8 +18,9 @@ def assign_cusip(df):
 
 def resolve_ticker(df):
     """
-    Maps CUSIPs to tickers using Finnhub (first choice) or Finance Database if Finnhub fails.
-    Takes the entire comparison DataFrame as input to access both CUSIP and Company name (needed for Finnhub).
+    Maps CUSIPs to tickers and company names by querying multiple sources in a specific order.
+    It prioritizes YFinance first, then Finnhub and finally FinanceDatabase.
+    It takes the entire comparison DataFrame as input to access both CUSIP and Company name (needed for Finnhub).
     """
     stocks = load_stocks().copy()
 
@@ -29,23 +29,22 @@ def resolve_ticker(df):
         company = row['Company']
 
         if cusip not in stocks.index:
-            if company == '':
-                ticker, company = Finnhub.get_ticker_and_company(cusip, company)
-                if pd.isna(ticker):
-                    ticker = FinanceDatabase.get_ticker(cusip)
-                    if pd.notna(ticker):
-                        company = FinanceDatabase.get_company(cusip)
-                        stocks.loc[cusip, 'Company'] = company
-            else:
-                ticker, _ = Finnhub.get_ticker_and_company(cusip, company)
-                if pd.isna(ticker):
-                    ticker = FinanceDatabase.get_ticker(cusip)
-
-            if pd.notna(ticker):
-                stocks.loc[cusip, 'Ticker'] = ticker
-                save_stock(cusip, ticker, company.title())
+            ticker = YFinance.get_ticker(cusip)
+            if not ticker:
+                ticker = Finnhub.get_ticker(cusip, company)
+            if not ticker:
+                ticker = FinanceDatabase.get_ticker(cusip)
             
-            time.sleep(1)
+            if ticker:
+                company_name = YFinance.get_company(ticker)
+                if not company_name:
+                    company_name = Finnhub.get_company(cusip)
+                if not company_name:
+                    company_name = FinanceDatabase.get_company(cusip)
+
+                stocks.loc[cusip, 'Ticker'] = ticker
+                stocks.loc[cusip, 'Company'] = company_name
+                save_stock(cusip, ticker, company_name)
 
         df.at[index, 'Ticker'] = stocks.loc[cusip, 'Ticker']
         if company == '':

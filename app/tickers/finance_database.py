@@ -48,7 +48,7 @@ class FinanceDatabase:
 
 
     @staticmethod
-    def get_company(cusip: str) -> str:
+    def get_company(cusip: str) -> str | None:
         """
         Searches for a company name for a given CUSIP using financedatabase.
 
@@ -63,7 +63,7 @@ class FinanceDatabase:
         sorted_result = FinanceDatabase._search_and_sort(cusip)
 
         if sorted_result is not None:
-            return sorted_result.iloc[0]['name']
+            return sorted_result.iloc[0]['name'].title()
 
         print(f"⚠️\u3000Finance Database: No company found for CUSIP {cusip}")
-        return ''
+        return None
