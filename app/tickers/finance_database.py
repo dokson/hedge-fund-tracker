@@ -18,7 +18,7 @@ class FinanceDatabase:
         Returns:
             pd.DataFrame | None: A sorted DataFrame if results are found, otherwise None.
         """
-        result = fd.Equities().search(cusip=cusip)
+        result = fd.Equities().search(cusip=cusip).copy()
         if not result.empty:
             result['ticker_length'] = [len(idx) for idx in result.index]
             return result.sort_values(by='ticker_length')

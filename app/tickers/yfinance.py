@@ -1,36 +1,28 @@
-import yfinance as yf
+from datetime import date, timedelta
 import requests
+import yfinance as yf
 
-TICKER_NOT_FOUND_MSG = 'No data found, symbol may be delisted'
 
 class YFinance:
     """
     Client for searching stock information using the yfinance library.
     This class provides a method to find company names based on tickers.
     """
-    _COMPANY_CACHE = {}
-    _TICKER_CACHE = {}
-
 
     @staticmethod
     def get_company(ticker: str) -> str | None:
         """
-        Searches for a company name for a given ticker using yfinance.
-        It uses a simple in-memory cache to avoid redundant API calls.
+        Searches for a company name for a given ticker using the yfinance library.
 
         Args:
             ticker (str): The stock ticker.
 
         Returns:
-            str: The company name if found, otherwise an empty string.
+            str | None: The company name if found, otherwise None.
         """
-        if ticker in YFinance._COMPANY_CACHE:
-            return YFinance._COMPANY_CACHE[ticker]
-
         try:
             stock_info = yf.Ticker(ticker).info
             company_name = stock_info.get('longName') or stock_info.get('shortName', '')
-            YFinance._COMPANY_CACHE[ticker] = company_name
             return company_name
         except Exception as e:
             print(f"❌ ERROR: Failed to get company for Ticker {ticker} using YFinance: {e}")
@@ -41,7 +33,6 @@ class YFinance:
     def get_ticker(cusip: str) -> str | None:
         """
         Searches for a ticker for a given CUSIP by querying the Yahoo Finance search API.
-        It uses a simple in-memory cache to avoid redundant API calls.
 
         Args:
             cusip (str): The CUSIP of the stock.
@@ -49,9 +40,6 @@ class YFinance:
         Returns:
             str | None: The ticker symbol if found, otherwise None.
         """
-        if cusip in YFinance._TICKER_CACHE:
-            return YFinance._TICKER_CACHE[cusip]
-
         url = f"https://query1.finance.yahoo.com/v1/finance/search?q={cusip}"
         headers = {'User-Agent': 'Mozilla/5.0'}
         try:
@@ -61,10 +49,31 @@ class YFinance:
 
             quotes = data.get('quotes', [])
             for quote in quotes:
-                YFinance._TICKER_CACHE[cusip] = quote['symbol']
                 return quote['symbol']
         except (requests.RequestException, ValueError) as e:
             print(f"❌ ERROR: Failed to get ticker for CUSIP {cusip} using YFinance: {e}")
         
-        YFinance._TICKER_CACHE[cusip] = None
         return None
+
+
+    @staticmethod
+    def get_avg_price(ticker: str, date: date) -> float | None:
+        """
+        Gets the average daily price for a ticker on a specific date using the yfinance library.
+        The average price is calculated as (High + Low) / 2.
+
+        Args:
+            ticker (str): The stock ticker.
+            date (date): The date for which to fetch the price.
+
+        Returns:
+            float | None: The average price if found, otherwise None.
+        """
+        try:
+            # 'end' parameter is exclusive: To get a single day, we need the next day as the end.
+            price_data = yf.download(tickers=ticker, start=date, end=date+timedelta(days=1), auto_adjust=False, progress=False)
+            if not price_data.empty:
+                return round((price_data['High'].iloc[0].item() + price_data['Low'].iloc[0].item()) / 2, 2)
+        except Exception as e:
+            print(f"❌ ERROR: Failed to get price for Ticker {ticker} on {date} using YFinance: {e}")
+            return None

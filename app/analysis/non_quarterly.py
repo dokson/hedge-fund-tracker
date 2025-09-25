@@ -1,12 +1,11 @@
 from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
 from app.tickers.resolver import resolve_ticker
+from app.tickers.yfinance import YFinance
 from app.utils.database import load_non_quarterly_data
 from app.utils.github import open_issue
 from app.utils.pd import coalesce
 from app.utils.strings import format_percentage, format_value, get_numeric
-import datetime
 import pandas as pd
-import yfinance as yf
 
 
 def get_non_quarterly_filings_dataframe(non_quarterly_filings, fund_denomination, cik):
@@ -65,13 +64,10 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings, fund_denomination
     for index, row in non_quarterly_filings_df.iterrows():
         ticker = row['Ticker']
         date = row['Date'].date()
-        # yfinance 'end' parameter is exclusive. To get a single day, we need the next day as the end.
-        price_data = yf.download(tickers=ticker, start=date, end=date+datetime.timedelta(days=1), auto_adjust=False, progress=False)
-        if not price_data.empty:
-            # Considering daily price as the average of daily high and daily low
-            average_price = (price_data['High'].iloc[0].item() + price_data['Low'].iloc[0].item()) / 2
-            non_quarterly_filings_df.at[index, 'Avg_Price'] = round(average_price, 2)
-            non_quarterly_filings_df.at[index, 'Value'] = average_price * row['Shares']
+        price = YFinance.get_avg_price(ticker, date)
+        if price:
+            non_quarterly_filings_df.at[index, 'Avg_Price'] = price
+            non_quarterly_filings_df.at[index, 'Value'] = price * row['Shares']
         else:
             print(f"⚠️\u3000Could not find price for {ticker} on {date}.")
 
