@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ca3d505184e5d670cbf8bebf951f1cdb8e96c176e2ecfefbc79b9402409840f6"
+            "sha256": "1cb8a5c227093e5f825b583e094785a6f79e1b164372f03bffce033fd0fac0cf"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -433,11 +433,11 @@
         },
         "finnhub-python": {
             "hashes": [
-                "sha256:beebd4c31d0792a4b30fb5d2c81176072fa8638a89dd152fc0676f507e594789",
-                "sha256:cc505a344b8e73a7ba8174fe9646340493b028c94c6ad4bfe15ae9c078aa2458"
+                "sha256:00da4249ddf598188da9e0ae5f561e3db922cf8a9073d406792b0917cbe99b87",
+                "sha256:b6a73e7cf8fc0859430c647a0c7c9487b036be33c77ecb019ecc422227204083"
             ],
             "index": "pypi",
-            "version": "==2.4.24"
+            "version": "==2.4.25"
         },
         "fonttools": {
             "hashes": [
@@ -558,12 +558,12 @@
         },
         "google-genai": {
             "hashes": [
-                "sha256:363272fc4f677d0be6a1aed7ebabe8adf45e1626a7011a7886a587e9464ca9ec",
-                "sha256:95407425132d42b3fa11bc92b3f5cf61a0fbd8d9add1f0e89aac52c46fbba090"
+                "sha256:4721704b43d170fc3f1b1cb5494bee1a7f7aae20de3a5383cdf6a129139df80b",
+                "sha256:6ca36c7e40db6fcba7049dfdd102c86da326804f34403bd7d90fa613a45e5a78"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==1.38.0"
+            "version": "==1.39.1"
         },
         "h11": {
             "hashes": [
