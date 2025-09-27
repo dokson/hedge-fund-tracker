@@ -3,7 +3,7 @@ name: Scheduled Filings Fetch
 on:
   workflow_dispatch: # Allows manual triggering
   schedule:
-  - cron: '0 */5 * * 1-5' # Runs every 5 hours on weekdays (Mon-Fri)
+  - cron: '0 */5 * * 1-6' # Runs every 5 hours everyday except Sundays
 
 jobs:
   filings-fetch:
