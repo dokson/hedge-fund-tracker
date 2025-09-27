@@ -44,7 +44,7 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings, fund_denomination
                 f"CIK:'{cik}' / Denomination '{fund_denomination}'\n"
                 f"Filing Type: {filing['type']}\n"
                 f"Filing Date: {filing['date']}\n\n"
-                f"Filing Content:\n{filing_df}"
+                f"Filing Content:\n{filing_df.to_string()}"
             )
             open_issue(subject, body)
 
@@ -104,7 +104,7 @@ def update_last_quarter_with_nq_filings(last_quarter_df):
     
     updated_df['Delta'] = updated_df.apply(
         lambda row:
-        'NEW' if pd.isna(row['Shares_13f'])
+        'NEW' if pd.isna(row['Shares_13f']) or row['Shares_13f'] == 0
         else 'CLOSE' if row['Shares_schedule'] == 0
         else (row['Shares_schedule'] - row['Shares_13f']) / row['Shares_13f'] * 100 if not pd.isna(row['Shares_schedule'])
         else format_percentage(row['Delta']),
