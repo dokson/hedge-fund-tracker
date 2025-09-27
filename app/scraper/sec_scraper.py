@@ -188,7 +188,7 @@ def fetch_latest_two_13f_filings(cik, offset=0):
     return filings
 
 
-def fetch_non_quarterly_after_date(cik, start_date):
+def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | None:
     """
     Fetches the raw content and filing dates for the latest schedule (13D/G) and Form 4 filings for a given CIK.
     Returns a list of dictionaries, or None if an error occurs.
@@ -226,7 +226,7 @@ def fetch_non_quarterly_after_date(cik, start_date):
     return filings
 
 
-def get_latest_13f_filing_date(cik):
+def get_latest_13f_filing_date(cik: str) -> str:
     """
     Fetches and gets only the filing date of the most recent 13F-HR filing for a given CIK.
 

@@ -8,7 +8,7 @@ from app.utils.strings import format_percentage, format_value, get_numeric
 import pandas as pd
 
 
-def get_non_quarterly_filings_dataframe(non_quarterly_filings, fund_denomination, cik):
+def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_denomination: str, cik: str) -> pd.DataFrame | None:
     """
     Processes all raw schedule filings (13D/G + 4) and returns a DataFrame with the most recent holding for each CUSIP.
 
@@ -78,7 +78,7 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings, fund_denomination
     return non_quarterly_filings_df[['CUSIP', 'Ticker', 'Company', 'Shares', 'Value', 'Avg_Price', 'Date', 'Filing_Date']]
 
 
-def update_last_quarter_with_nq_filings(last_quarter_df):
+def update_last_quarter_with_nq_filings(last_quarter_df: pd.DataFrame) -> pd.DataFrame:
     """
     Updates the 13F holdings dataframe with more recent data from non quarterly filings.
 
@@ -118,7 +118,7 @@ def update_last_quarter_with_nq_filings(last_quarter_df):
     return updated_df[['Fund', 'CUSIP', 'Ticker', 'Company', 'Shares', 'Delta_Shares', 'Value_Num', 'Delta_Value_Num', 'Delta', 'Portfolio_Pct']]
 
 
-def get_nq_filings_info(quarter_data):
+def get_nq_filings_info(quarter_data: pd.DataFrame) -> pd.DataFrame:
     """
     Load latest non quarterly filings (load_non_quarterly_data) and enrich with quarterly data.
     """

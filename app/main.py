@@ -138,24 +138,25 @@ def run_fetch_nq_filings():
     """
     hedge_funds = load_hedge_funds()
     total_funds = len(hedge_funds)
-    print(f"Starting updating reports for all {total_funds} funds...")
+    print(f"Fetching Non Quarterly filings for all {total_funds} funds...")
     nq_filings = []
+
+    def _fetch_nq(cik_to_process, fund_name, fund_denomination, latest_date):
+        if not cik_to_process.strip():
+            return
+        filings = fetch_non_quarterly_after_date(cik_to_process, latest_date)
+        if filings:
+            filings_df = get_non_quarterly_filings_dataframe(filings, fund_denomination, cik_to_process)
+            if filings_df is not None:
+                filings_df.insert(0, 'Fund', fund_name)
+                nq_filings.append(filings_df)
 
     for i, fund in enumerate(hedge_funds):
         print_centered(f"Processing {i + 1:2}/{total_funds}: {fund['Fund']}", "-")
-        cik = fund.get('CIK')
-        latest_13f_date = get_latest_13f_filing_date(cik)
-        fund_denomination = fund.get('Denomination')
-        alternative_cik = fund.get('CIKs')
+        latest_13f_date = get_latest_13f_filing_date(fund['CIK'])
+        _fetch_nq(fund['CIK'], fund['Fund'], fund['Denomination'], latest_13f_date)
+        _fetch_nq(fund['CIKs'], fund['Fund'], fund['Denomination'], latest_13f_date)
 
-        filings = fetch_non_quarterly_after_date(cik, latest_13f_date) if alternative_cik == "" else fetch_non_quarterly_after_date(alternative_cik, latest_13f_date)
-
-        if filings:
-            filings_dataframe = get_non_quarterly_filings_dataframe(filings, fund_denomination, cik)
-            if filings_dataframe is not None:
-                filings_dataframe.insert(0, 'Fund', fund.get('Fund'))
-                nq_filings.append(filings_dataframe)
-    
     save_non_quarterly_filings(nq_filings)
     print_centered(f"All funds processed", "=")
 
