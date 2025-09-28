@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+import re
 import requests
 import yfinance as yf
 
@@ -23,7 +24,7 @@ class YFinance:
         try:
             stock_info = yf.Ticker(ticker).info
             company_name = stock_info.get('longName') or stock_info.get('shortName', '')
-            return company_name
+            return re.sub(r'[.,]', '', company_name) if company_name else None
         except Exception as e:
             print(f"❌ ERROR: Failed to get company for Ticker {ticker} using YFinance: {e}")
             return None
@@ -52,8 +53,7 @@ class YFinance:
                 return quote['symbol']
         except (requests.RequestException, ValueError) as e:
             print(f"❌ ERROR: Failed to get ticker for CUSIP {cusip} using YFinance: {e}")
-        
-        return None
+            return None
 
 
     @staticmethod
