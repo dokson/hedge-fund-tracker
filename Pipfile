@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 requests = "~=2.32"
-beautifulsoup4 = "~=4.13"
+beautifulsoup4 = "~=4.14"
 lxml = "~=6.0"
 tabulate = "~=0.9"
 pandas = "~=2.3"
