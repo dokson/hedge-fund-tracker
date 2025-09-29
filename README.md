@@ -23,7 +23,7 @@ pipenv install
 
 # Set up environment variables
 cp .env.example .env
-# Add your FINNHUB_API_KEY and GOOGLE_API_KEY to the .env file
+# Add your API keys (FINNHUB, GOOGLE, GROQ) to the .env file
 
 # Run the application
 pipenv run python -m app.main
@@ -71,6 +71,7 @@ pipenv run python -m app.main
    # Edit .env file and add your API keys:
    # FINNHUB_API_KEY="your_finnhub_key"
    # GOOGLE_API_KEY="your_google_key"
+   # GROQ_API_KEY="your_groq_key"
    ```
 
 4. **▶️ Run the script:** Execute within the project's virtual environment:
@@ -106,8 +107,9 @@ The tool requires API keys for full functionality:
 |---------|---------|----------|-------------|
 | **☁️ [Finnhub](https://finnhub.io/)** | CUSIP to stock ticker conversion | Optional | [Get Free API Key](https://finnhub.io/dashboard) |
 | **🤖 [Google AI Studio](https://aistudio.google.com/)** | AI-powered analysis and insights | Optional | [Get Free API Key](https://aistudio.google.com/app/apikey) |
+| **⚡️ [Groq](https://console.groq.com/)** | AI-powered analysis, OpenAI-compatible | Optional | [Get Free API Key](https://console.groq.com/keys) |
 
-> **💡 Note:** Without [Finnhub](https://finnhub.io/) API Key, it falls back to the local [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/) for ticker resolution (though this may be less accurate for some securities).
+> **💡 Note:** Ticker resolution primarily uses [yfinance](https://github.com/ranaroussi/yfinance), which is free and requires no API key. If that fails, the system falls back to [Finnhub](https://finnhub.io/) (if an API key is provided), with the final fallback being [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/) fallback.
 
 ## 📁 Project Structure
 
@@ -117,7 +119,7 @@ hedge-fund-tracker/
 │   ├── 📁 scripts/
 │   │   └── 📄 fetcher.py           # Daily fetching job (scheduled by workflows/daily-fetch.yml)
 │   └── 📁 workflows/
-│       ├── 📄 daily-fetch.yml      # GitHub Actions: Daily fetching job
+│       ├── 📄 filings-fetch.yml    # GitHub Actions: Filings fetching job
 │       └── 📄 python-tests.yml     # GitHub Actions: Unit tests
 ├── 📁 app/                          # Main application package
 │   └── 📄 main.py                  # Entry point and CLI interface
@@ -266,7 +268,7 @@ This tracker tries to overcome that limitation by **tracking and integrating mul
 | **Config** | [python-dotenv](https://github.com/theskumar/python-dotenv) |
 | **Data Processing** | [pandas](https://pandas.pydata.org/), [csv](https://docs.python.org/3/library/csv.html) |
 | **Stocks Libraries** | [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/) |
-| **Gen AI** | [Google Gen AI SDK](https://googleapis.github.io/python-genai/) |
+| **Gen AI** | [Google Gen AI SDK](https://googleapis.github.io/python-genai/), [Groq](https://github.com/groq/groq-python) |
 
 ## 🤝🏼 Contributing & Support
 

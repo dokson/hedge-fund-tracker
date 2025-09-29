@@ -5,6 +5,9 @@ class AIClient(ABC):
     """
     Abstract base class for AI clients
     """
+    DEFAULT_MODEL: str | None = None
+
+
     @abstractmethod
     def generate_content(self, prompt: str) -> str:
         """

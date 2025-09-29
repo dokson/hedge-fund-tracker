@@ -10,6 +10,7 @@ class GoogleAIClient(AIClient):
     """
     DEFAULT_MODEL = 'gemini-2.5-flash'
 
+
     def __init__(self, model: str = DEFAULT_MODEL):
         load_dotenv()
         self.client = genai.Client()

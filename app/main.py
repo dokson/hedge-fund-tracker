@@ -1,11 +1,13 @@
 from app.ai.agent import AnalystAgent
+from app.ai.clients.google_client import GoogleAIClient
+from app.ai.clients.groq_client import GroqClient
 from app.analysis.quarterly_report import generate_comparison
 from app.analysis.non_quarterly import get_nq_filings_info, get_non_quarterly_filings_dataframe
 from app.analysis.stocks import aggregate_quarter_by_fund, get_quarter_data, quarter_analysis, stock_analysis
 from app.scraper.sec_scraper import get_latest_13f_filing_date, fetch_latest_two_13f_filings, fetch_non_quarterly_after_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
-from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks
+from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, get_last_quarter
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
 import numpy as np
 
@@ -46,6 +48,25 @@ def select_period():
         "Select offset for historical period comparison:",
         display_func=lambda option: option[1],
         num_columns=2
+    )
+
+
+def select_ai_model():
+    """
+    Prompts the user to select an AI client for the analysis.
+    Returns the selected client class or None if cancelled.
+    """
+    model_options = [
+        ("Google gemini-2.5-flash (Powerful)", GoogleAIClient, 'gemini-2.5-flash'),
+        ("OpenAI gpt-oss-120b (Accurate)", GroqClient, 'openai/gpt-oss-120b'),
+        ("Meta llama-3.3-70b-versatile (Balanced)", GroqClient, 'llama-3.3-70b-versatile'),
+        ("OpenAI gpt-oss-20b (Fast)", GroqClient, 'openai/gpt-oss-20b'),
+    ]
+
+    return prompt_for_selection(
+        model_options,
+        "Select the AI client for the analysis:",
+        display_func=lambda option: option[0]
     )
 
 
@@ -255,11 +276,20 @@ def run_ai_analyst():
     """
     9. Run AI Analyst
     """
+    selected_model = select_ai_model()
+    if not selected_model:
+        return
+
     try:
+        _, client_class, model_id = selected_model
+        client = client_class(model=model_id)
+        print_centered(f"Starting AI Analysis using {model_id}", "-")
+
         top_n = 30
-        agent = AnalystAgent(get_last_quarter())
+        agent = AnalystAgent(get_last_quarter(), ai_client=client)
         scored_list = agent.generate_scored_list(top_n)
-        print_dataframe(scored_list, top_n, title=f'Best {top_n} Promising Stocks (according to the AI Analyst)', sort_by='Promise_Score', cols=['Ticker', 'Company', 'Industry', 'Promise_Score', 'Risk_Score', 'Low_Volatility_Score', 'Momentum_Score', 'Growth_Score'])
+        title = f'Best {top_n} Promising Stocks (Analyzed by {type(client).__name__})'
+        print_dataframe(scored_list, top_n, title=title, sort_by='Promise_Score', cols=['Ticker', 'Company', 'Industry', 'Promise_Score', 'Risk_Score', 'Low_Volatility_Score', 'Momentum_Score', 'Growth_Score'])
     except Exception as e:
         print(f"❌ An unexpected error occurred while running AI Financial Agent: {e}")
 

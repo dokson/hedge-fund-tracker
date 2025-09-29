@@ -1,5 +1,4 @@
 from app.ai.clients.base_client import AIClient
-from app.ai.clients.google_client import GoogleAIClient
 from app.ai.promise_score_validator import PromiseScoreValidator
 from app.ai.prompts.promise_score_weights import promise_score_weights_prompt
 from app.ai.prompts.quantitative_scores import quantivative_scores_prompt
@@ -15,7 +14,7 @@ class AnalystAgent:
     """
     def __init__(self, quarter: str, ai_client: AIClient = None):
         self.quarter = quarter
-        self.ai_client = ai_client or GoogleAIClient()
+        self.ai_client = ai_client
         self.filing_date = get_quarter_date(quarter)
         self.analysis_df = quarter_analysis(self.quarter)
 
