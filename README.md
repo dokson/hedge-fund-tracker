@@ -106,10 +106,10 @@ The tool requires API keys for full functionality:
 | Service | Purpose | Required | Get API Key |
 |---------|---------|----------|-------------|
 | **☁️ [Finnhub](https://finnhub.io/)** | CUSIP to stock ticker conversion | Optional | [Get Free API Key](https://finnhub.io/dashboard) |
-| **🤖 [Google AI Studio](https://aistudio.google.com/)** | AI-powered analysis and insights | Optional | [Get Free API Key](https://aistudio.google.com/app/apikey) |
-| **⚡️ [Groq](https://console.groq.com/)** | AI-powered analysis, OpenAI-compatible | Optional | [Get Free API Key](https://console.groq.com/keys) |
+| **🤖 [Google AI Studio](https://aistudio.google.com/)** | Access to [Google Gemini](https://gemini.google.com/) models | Optional | [Get Free API Key](https://aistudio.google.com/app/apikey) |
+| **🦾 [Groq AI](https://console.groq.com/)** | Access to various LLM ([openai/gpt-oss](https://github.com/openai/gpt-oss), [Llama](https://www.llama.com/), etc...) | Optional | [Get Free API Key](https://console.groq.com/keys) |
 
-> **💡 Note:** Ticker resolution primarily uses [yfinance](https://github.com/ranaroussi/yfinance), which is free and requires no API key. If that fails, the system falls back to [Finnhub](https://finnhub.io/) (if an API key is provided), with the final fallback being [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/) fallback.
+> **💡 Note:** Ticker resolution primarily uses [yfinance](https://github.com/ranaroussi/yfinance), which is free and requires no API key. If that fails, the system falls back to [Finnhub](https://finnhub.io/) (if an API key is provided), with the final fallback being [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/).
 
 ## 📁 Project Structure
 
