@@ -52,12 +52,12 @@ def select_period():
 
 def select_ai_model():
     """
-    Prompts the user to select an AI client for the analysis.
-    Returns the selected client class or None if cancelled.
+    Prompts the user to select an AI model for the analysis.
+    Returns the selected model or None if cancelled.
     """
     return prompt_for_selection(
         load_models(),
-        "Select the AI client for the analysis:",
+        "Select the AI model for the analysis:",
         display_func=lambda model: model['Description']
     )
 

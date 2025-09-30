@@ -104,12 +104,12 @@ pipenv run python -m app.main
 
 The tool can utilize API keys for enhanced functionality, but all are optional:
 
-| Service | Purpose | Get API Key |
+| Service | Purpose | Get Free API Key |
 |---------|---------|-------------|
-| **[![Finnhub](https://github.com/user-attachments/assets/94465a7f-75e0-4a21-827c-511540c80cb3)](https://finnhub.io/) [Finnhub](https://finnhub.io/)** | [CUSIP](https://en.wikipedia.org/wiki/CUSIP) to [stock ticker](https://en.wikipedia.org/wiki/Ticker_symbol) conversion | [Get Free Key](https://finnhub.io/dashboard) |
-| **[![Google AI Studio](https://github.com/user-attachments/assets/3b351d8e-d7f6-4337-9c2f-d2af77f30711)](https://aistudio.google.com/) [Google AI Studio](https://aistudio.google.com/)** | Access to [Google Gemini](https://gemini.google.com/) models | [Get Free Key](https://aistudio.google.com/app/apikey) |
-| **[![Groq AI](https://github.com/user-attachments/assets/c56394b5-79f8-4c25-a24a-2e2a8bde829c)](https://console.groq.com/) [Groq AI](https://console.groq.com/)** | Access to various LLMs (e.g., OpenAI [gpt-oss](https://github.com/openai/gpt-oss), Meta [Llama](https://www.llama.com/), etc...) | [Get Free Key](https://console.groq.com/keys) |
-| **[![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3)](https://openrouter.ai/) [OpenRouter](https://openrouter.ai/)** | Access to various LLMs (e.g., xAI [grok](https://x.ai/news/grok-4-fast), NVIDIA [nemotron](https://build.nvidia.com/nvidia/nvidia-nemotron-nano-9b-v2/modelcard), etc...) | [Get Free Key](https://openrouter.ai/settings/keys) |
+| **[![Finnhub](https://github.com/user-attachments/assets/94465a7f-75e0-4a21-827c-511540c80cb3)](https://finnhub.io/) [Finnhub](https://finnhub.io/)** | [CUSIP](https://en.wikipedia.org/wiki/CUSIP) to [stock ticker](https://en.wikipedia.org/wiki/Ticker_symbol) conversion | [Finnhub Keys](https://finnhub.io/dashboard) |
+| **[![Google AI Studio](https://github.com/user-attachments/assets/3b351d8e-d7f6-4337-9c2f-d2af77f30711)](https://aistudio.google.com/) [Google AI Studio](https://aistudio.google.com/)** | Access to [Google Gemini](https://gemini.google.com/) models | [AI Studio Keys](https://aistudio.google.com/app/apikey) |
+| **[![Groq AI](https://github.com/user-attachments/assets/c56394b5-79f8-4c25-a24a-2e2a8bde829c)](https://console.groq.com/) [Groq AI](https://console.groq.com/)** | Access to various LLMs (e.g., OpenAI [gpt-oss](https://github.com/openai/gpt-oss), Meta [Llama](https://www.llama.com/), etc...) | [Groq Keys](https://console.groq.com/keys) |
+| **[![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3)](https://openrouter.ai/) [OpenRouter](https://openrouter.ai/)** | Access to various LLMs (e.g., xAI [grok](https://x.ai/news/grok-4-fast), NVIDIA [nemotron](https://build.nvidia.com/nvidia/nvidia-nemotron-nano-9b-v2/modelcard), etc...) | [OpenRouter Keys](https://openrouter.ai/settings/keys) |
 
 > **💡 Note:** Ticker resolution primarily uses [yfinance](https://github.com/ranaroussi/yfinance), which is free and requires no API key. If that fails, the system falls back to [Finnhub](https://finnhub.io/) (if an API key is provided), with the final fallback being [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/).
 >
