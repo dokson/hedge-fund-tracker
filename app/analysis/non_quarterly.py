@@ -1,6 +1,6 @@
 from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
+from app.tickers.libraries import YFinance
 from app.tickers.resolver import resolve_ticker
-from app.tickers.yfinance import YFinance
 from app.utils.database import load_non_quarterly_data
 from app.utils.github import open_issue
 from app.utils.pd import coalesce

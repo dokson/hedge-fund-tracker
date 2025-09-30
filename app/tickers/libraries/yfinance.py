@@ -1,26 +1,30 @@
+from app.tickers.libraries.base_library import FinanceLibrary
 from datetime import date, timedelta
 import re
 import requests
 import yfinance as yf
 
 
-class YFinance:
+class YFinance(FinanceLibrary):
     """
-    Client for searching stock information using the yfinance library.
-    This class provides a method to find company names based on tickers.
+    Client for searching stock information using the yfinance library, implementing the FinanceLibrary interface.
     """
 
-    @staticmethod
-    def get_company(ticker: str) -> str | None:
+    def get_company(self, cusip: str, **kwargs) -> str | None:
         """
         Searches for a company name for a given ticker using the yfinance library.
 
         Args:
+            cusip (str): The CUSIP of the stock.
             ticker (str): The stock ticker.
 
         Returns:
             str | None: The company name if found, otherwise None.
         """
+        ticker = kwargs.get('ticker')
+        if not ticker:
+            ticker = self.get_ticker(cusip)
+
         try:
             stock_info = yf.Ticker(ticker).info
             company_name = stock_info.get('longName') or stock_info.get('shortName', '')
@@ -30,8 +34,7 @@ class YFinance:
             return None
 
 
-    @staticmethod
-    def get_ticker(cusip: str) -> str | None:
+    def get_ticker(self, cusip: str, **kwargs) -> str | None:
         """
         Searches for a ticker for a given CUSIP by querying the Yahoo Finance search API.
 

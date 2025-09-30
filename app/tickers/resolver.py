@@ -1,6 +1,4 @@
-from app.tickers.finance_database import FinanceDatabase
-from app.tickers.finnhub import Finnhub
-from app.tickers.yfinance import YFinance
+from app.tickers.libraries import FinanceLibrary, FinanceDatabase, Finnhub, YFinance
 from app.utils.database import load_stocks, save_stock
 
 
@@ -16,31 +14,39 @@ def assign_cusip(df):
     return df
 
 
+def get_libraries() -> list[FinanceLibrary]:
+    """
+    Returns an ordered (based on priority) list of FinanceLibrary instances.
+    """
+    return [YFinance(), Finnhub(), FinanceDatabase()]
+
+
 def resolve_ticker(df):
     """
     Maps CUSIPs to tickers and company names by querying multiple sources in a specific order.
-    It prioritizes YFinance first, then Finnhub and finally FinanceDatabase.
+    It prioritizes YFinance first, then Finnhub and finally FinanceDatabase to find the information (refering to get_libraries() order).
     It takes the entire comparison DataFrame as input to access both CUSIP and Company name (needed for Finnhub).
     """
     stocks = load_stocks().copy()
+    libraries = get_libraries()
 
     for index, row in df.iterrows():
         cusip = row['CUSIP']
         company = row['Company']
 
         if cusip not in stocks.index:
-            ticker = YFinance.get_ticker(cusip)
-            if not ticker:
-                ticker = Finnhub.get_ticker(cusip, company)
-            if not ticker:
-                ticker = FinanceDatabase.get_ticker(cusip)
-            
+            ticker = None
+            for library in libraries:
+                ticker = library.get_ticker(cusip, company_name=company)
+                if ticker:
+                    break
+
             if ticker:
-                company_name = YFinance.get_company(ticker)
-                if not company_name:
-                    company_name = Finnhub.get_company(cusip)
-                if not company_name:
-                    company_name = FinanceDatabase.get_company(cusip)
+                company_name = None
+                for library in libraries:
+                    company_name = library.get_company(cusip, ticker=ticker)
+                    if company_name:
+                        break
 
                 stocks.loc[cusip, 'Ticker'] = ticker
                 stocks.loc[cusip, 'Company'] = company_name
