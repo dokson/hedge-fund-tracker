@@ -16,3 +16,11 @@ updates:
   commit-message:
     prefix: "chore(deps)"
     include: "scope"
+  groups:
+    all-dependencies:
+      patterns:
+      - "*"
+      update-types:
+      - "major"
+      - "minor"
+      - "patch"
