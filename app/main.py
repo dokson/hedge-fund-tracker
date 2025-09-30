@@ -6,7 +6,7 @@ from app.analysis.stocks import aggregate_quarter_by_fund, get_quarter_data, qua
 from app.scraper.sec_scraper import get_latest_13f_filing_date, fetch_latest_two_13f_filings, fetch_non_quarterly_after_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
-from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, get_last_quarter
+from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, load_models, save_comparison, save_non_quarterly_filings, sort_stocks, get_last_quarter
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
 import numpy as np
 
@@ -55,20 +55,10 @@ def select_ai_model():
     Prompts the user to select an AI client for the analysis.
     Returns the selected client class or None if cancelled.
     """
-    model_options = [
-        ("xAI grok-4-fast (Best)", OpenRouterClient, 'x-ai/grok-4-fast'),
-        ("Google gemini-2.5-pro (Powerful)", GoogleAIClient, 'gemini-2.5-pro'),
-        ("Google gemini-2.5-flash (Balanced)", GoogleAIClient, 'gemini-2.5-flash'),
-        ("OpenAI gpt-oss-120b (Accurate)", GroqClient, 'openai/gpt-oss-120b'),
-        ("OpenAI gpt-oss-20b (Lightweight)", GroqClient, 'openai/gpt-oss-20b'),
-        ("Meta llama-3.3-70b-versatile (Fast)", GroqClient, 'llama-3.3-70b-versatile'),
-        ("NVIDIA nemotron-nano-9b-v2 (Newest)", OpenRouterClient, 'nvidia/nemotron-nano-9b-v2'),
-    ]
-
     return prompt_for_selection(
-        model_options,
+        load_models(),
         "Select the AI client for the analysis:",
-        display_func=lambda option: option[0]
+        display_func=lambda model: model['Description']
     )
 
 
@@ -283,14 +273,14 @@ def run_ai_analyst():
         return
 
     try:
-        _, client_class, model_id = selected_model
-        client = client_class(model=model_id)
-        print_centered(f"Starting AI Analysis using {model_id}", "-")
+        client_class = selected_model['Client']
+        client = client_class(model=selected_model['ID'])
+        print_centered(f"Starting AI Analysis using {selected_model['Description']}", "-")
 
         top_n = 30
         agent = AnalystAgent(get_last_quarter(), ai_client=client)
         scored_list = agent.generate_scored_list(top_n)
-        title = f'Best {top_n} Promising Stocks (Analyzed by {type(client).__name__})'
+        title = f'Best {top_n} Promising Stocks according to {selected_model['Description']}'
         print_dataframe(scored_list, top_n, title=title, sort_by='Promise_Score', cols=['Ticker', 'Company', 'Industry', 'Promise_Score', 'Risk_Score', 'Low_Volatility_Score', 'Momentum_Score', 'Growth_Score'])
     except Exception as e:
         print(f"❌ An unexpected error occurred while running AI Financial Agent: {e}")

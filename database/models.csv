@@ -1,0 +1,8 @@
+"ID","Description","Client"
+"x-ai/grok-4-fast","xAI Grok 4 Fast (best)","OpenRouter"
+"llama-3.3-70b-versatile","Meta Llama 3.3 70B (fastest)","Groq"
+"gemini-2.5-pro","Google Gemini 2.5 Pro","Google"
+"gemini-2.5-flash","Google Gemini 2.5 Flash","Google"
+"openai/gpt-oss-120b","OpenAI gpt-oss-120b","Groq"
+"openai/gpt-oss-20b","OpenAI gpt-oss-20b","Groq"
+"groq/compound","Groq Compound","Groq"

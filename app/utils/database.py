@@ -1,3 +1,4 @@
+from app.ai.clients import GoogleAIClient, GroqClient, OpenRouterClient
 from app.utils.strings import get_quarter
 from pathlib import Path
 import pandas as pd
@@ -6,6 +7,7 @@ import re
 
 DB_FOLDER = './database'
 HEDGE_FUNDS_FILE = 'hedge_funds.csv'
+MODELS_FILE = 'models.csv'
 STOCKS_FILE = 'stocks.csv'
 LATEST_SCHEDULE_FILINGS_FILE = 'non_quarterly.csv'
 
@@ -73,6 +75,27 @@ def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}"):
         return df.to_dict('records')
     except Exception as e:
         print(f"Error while reading '{filepath}': {e}")
+        return []
+
+
+def load_models(filepath=f"./{DB_FOLDER}/{MODELS_FILE}"):
+    """
+    Loads AI models from the file (models.csv).
+
+    Returns:
+        list: A list of dictionaries, each representing an AI model with the 'client' key holding the corresponding client class.
+    """
+    client_map = {
+        "Google": GoogleAIClient,
+        "Groq": GroqClient,
+        "OpenRouter": OpenRouterClient,
+    }
+    try:
+        df = pd.read_csv(filepath, keep_default_na=False)
+        df['Client'] = df['Client'].map(client_map)
+        return df.to_dict('records')
+    except Exception as e:
+        print(f"Error while reading models from '{filepath}': {e}")
         return []
 
 
