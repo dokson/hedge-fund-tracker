@@ -23,7 +23,7 @@ pipenv install
 
 # Set up environment variables
 cp .env.example .env
-# Add your API keys (FINNHUB, GOOGLE, GROQ) to the .env file
+# Add your API keys (FINNHUB, GOOGLE, GROQ, OPENROUTER) to the .env file
 
 # Run the application
 pipenv run python -m app.main
@@ -70,8 +70,9 @@ pipenv run python -m app.main
    
    # Edit .env file and add your API keys:
    # FINNHUB_API_KEY="your_finnhub_key"
-   # GOOGLE_API_KEY="your_google_key"
-   # GROQ_API_KEY="your_groq_key"
+   # GOOGLE_API_KEY="your_google_api_key"
+   # GROQ_API_KEY="your_groq_api_key"
+   # OPENROUTER_API_KEY="your_openrouter_api_key"
    ```
 
 4. **▶️ Run the script:** Execute within the project's virtual environment:
@@ -105,11 +106,14 @@ The tool requires API keys for full functionality:
 
 | Service | Purpose | Required | Get API Key |
 |---------|---------|----------|-------------|
-| **☁️ [Finnhub](https://finnhub.io/)** | CUSIP to stock ticker conversion | Optional | [Get Free API Key](https://finnhub.io/dashboard) |
-| **🤖 [Google AI Studio](https://aistudio.google.com/)** | Access to [Google Gemini](https://gemini.google.com/) models | Optional | [Get Free API Key](https://aistudio.google.com/app/apikey) |
-| **🦾 [Groq AI](https://console.groq.com/)** | Access to various LLM ([openai/gpt-oss](https://github.com/openai/gpt-oss), [Llama](https://www.llama.com/), etc...) | Optional | [Get Free API Key](https://console.groq.com/keys) |
+| **![Finnhub](https://github.com/user-attachments/assets/94465a7f-75e0-4a21-827c-511540c80cb3) [Finnhub](https://finnhub.io/)** | CUSIP to stock ticker conversion | Optional | [Get Free API Key](https://finnhub.io/dashboard) |
+| **![Google AI Studio](https://github.com/user-attachments/assets/3b351d8e-d7f6-4337-9c2f-d2af77f30711) [Google AI Studio](https://aistudio.google.com/)** | Access to [Google Gemini](https://gemini.google.com/) models | Optional | [Get Free API Key](https://aistudio.google.com/app/apikey) |
+| **![Groq](https://github.com/user-attachments/assets/c56394b5-79f8-4c25-a24a-2e2a8bde829c) [Groq AI](https://console.groq.com/)** | Access to various LLMs (e.g., OpenAI [gpt-oss](https://github.com/openai/gpt-oss), Meta [Llama](https://www.llama.com/), etc...) | Optional | [Get Free API Key](https://console.groq.com/keys) |
+| **![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3) [OpenRouter](https://openrouter.ai/)** | Access to various LLMs (e.g., xAI [grok](https://x.ai/news/grok-4-fast), NVIDIA [nemotron](https://build.nvidia.com/nvidia/nvidia-nemotron-nano-9b-v2/modelcard), etc...) | Optional | [Get Free API Key](https://openrouter.ai/settings/keys) |
 
 > **💡 Note:** Ticker resolution primarily uses [yfinance](https://github.com/ranaroussi/yfinance), which is free and requires no API key. If that fails, the system falls back to [Finnhub](https://finnhub.io/) (if an API key is provided), with the final fallback being [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/).
+>
+> **💡 Note:** You do not need to use all the APIs. For the generative AI models ([Google AI Studio](https://aistudio.google.com/), [Groq AI](https://console.groq.com/), and [OpenRouter](https://openrouter.ai/)), you only need to create and use the API keys for the services you are interested in. For example, if you only want to use [xAI](https://x.ai/)'s models, you just need an [OpenRouter API key](https://openrouter.ai/settings/keys). It's also interesting to experiment with different models, as the heuristic results for selecting the top stocks each quarter can vary, although most top-performing stocks are consistently identified across all tested models. **All APIs used in this project are currently free.**
 
 ## 📁 Project Structure
 
@@ -256,8 +260,7 @@ It's crucial to understand the inherent limitations of tracking investment strat
 ### A Truly Up-to-Date View
 
 Many tracking websites rely solely on quarterly 13F filings, which means their data can be over 45 days old and miss many significant trades. Non-quarterly filings like 13D/G and Form 4 are often ignored because they are more complex to process and merge.
-
-This tracker tries to overcome that limitation by **tracking and integrating multiple filing types**. Instead of just aggregating 13F snapshots, it creates a synthesized view that incorporates the latest trades from 13D/G and Form 4 filings. This process ensures you have a more current and complete picture of institutional activity.
+This tracker helps overcome that limitation by **fetching and displaying multiple filing types**. Instead of just aggregating 13F snapshots, the tool also provides a separate, up-to-date view of the latest trades from 13D/G and Form 4 filings (Option 6 in the menu). This ensures you have a more current and complete picture of institutional activity.
 
 ## 🗃️ Technical Stack
 
@@ -268,7 +271,7 @@ This tracker tries to overcome that limitation by **tracking and integrating mul
 | **Config** | [python-dotenv](https://github.com/theskumar/python-dotenv) |
 | **Data Processing** | [pandas](https://pandas.pydata.org/), [csv](https://docs.python.org/3/library/csv.html) |
 | **Stocks Libraries** | [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/) |
-| **Gen AI** | [Google Gen AI SDK](https://googleapis.github.io/python-genai/), [Groq](https://github.com/groq/groq-python) |
+| **Gen AI** | [Google Gen AI SDK](https://googleapis.github.io/python-genai/), [Groq](https://github.com/groq/groq-python), [OpenAI](https://github.com/openai/openai-python) |
 
 ## 🤝🏼 Contributing & Support
 

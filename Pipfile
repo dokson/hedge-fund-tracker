@@ -14,6 +14,7 @@ finnhub-python = "~=2.4"
 financedatabase = "~=2.3"
 google-genai = "~=1.39"
 groq = "~=0.32"
+openai = "~=1.109"
 
 [dev-packages]
 

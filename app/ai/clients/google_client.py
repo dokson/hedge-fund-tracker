@@ -1,4 +1,4 @@
-from app.ai.clients.base_client import AIClient
+from app.ai.clients import AIClient
 from dotenv import load_dotenv
 from google import genai
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -21,7 +21,7 @@ class GoogleAIClient(AIClient):
         """
         Get the current Gemini model name
         """
-        return self.model
+        return f"google/{self.model}"
 
 
     @retry(

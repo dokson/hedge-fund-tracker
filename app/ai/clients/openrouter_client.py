@@ -1,29 +1,33 @@
 from app.ai.clients import AIClient
 from dotenv import load_dotenv
-from groq import Groq
+from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
+import os
 
 
-class GroqClient(AIClient):
+class OpenRouterClient(AIClient):
     """
-    Groq AI client implementation using available models (e.g., Llama)
+    OpenRouter client implementation using various available models.
     """
-    DEFAULT_MODEL = "llama-3.3-70b-versatile"
+    DEFAULT_MODEL = "x-ai/grok-4-fast"
 
 
     def __init__(self, model: str = DEFAULT_MODEL):
         """
-        Initializes the Groq client.
-        Requires GROQ_API_KEY to be set in the environment.
+        Initializes the OpenRouter client.
+        Requires OPENROUTER_API_KEY to be set in the environment.
         """
         load_dotenv()
-        self.client = Groq()
+        self.client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+        )
         self.model = model
 
 
     def get_model_name(self) -> str:
         """
-        Get the current Groq model name
+        Get the current OpenRouter model name
         """
         return self.model
 
@@ -31,24 +35,15 @@ class GroqClient(AIClient):
     @retry(
         wait=wait_exponential(multiplier=2, min=1, max=3),
         stop=stop_after_attempt(3),
-        before_sleep=lambda rs: print(f"Groq service unavailable, retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})")
+        before_sleep=lambda rs: print(f"OpenRouter service unavailable, retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})")
     )
     def generate_content(self, prompt: str) -> str:
         """
-        Generate content using Groq API
-
-        Args:
-            prompt: The input prompt for content generation
-
-        Returns:
-            Generated content as string
-
-        Raises:
-            Exception: If the Groq API call fails after retries
+        Generate content using OpenRouter API
         """
         try:
             response = self.client.chat.completions.create(
-                model=self.model,
+                model=self.model, 
                 messages=[
                     {
                         "role": "user", 
@@ -58,5 +53,5 @@ class GroqClient(AIClient):
             )
             return response.choices[0].message.content or ""
         except Exception as e:
-            print(f"❌ ERROR: Groq API call failed: {e}")
+            print(f"❌ ERROR: OpenRouter API call failed: {e}")
             raise

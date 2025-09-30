@@ -6,9 +6,6 @@ import os
 import time
 
 
-# Load variables from .env file
-load_dotenv()
-
 class Finnhub(FinanceLibrary):
     """
     Client for interacting with the Finnhub API.
@@ -17,7 +14,8 @@ class Finnhub(FinanceLibrary):
     COMMON_COMPANY_WORDS = {'the', 'corp', 'inc', 'group', 'ltd', 'co', 'plc', 'hldgs'}
     MAX_QUERY_LENGTH = 20
 
-    # Initialize API Key and Client at class level
+
+    load_dotenv()
     API_KEY = os.getenv("FINNHUB_API_KEY")
     CLIENT = finnhub.Client(api_key=API_KEY) if API_KEY else None
 

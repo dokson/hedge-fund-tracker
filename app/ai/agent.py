@@ -1,7 +1,6 @@
-from app.ai.clients.base_client import AIClient
+from app.ai.clients import AIClient
 from app.ai.promise_score_validator import PromiseScoreValidator
-from app.ai.prompts.promise_score_weights import promise_score_weights_prompt
-from app.ai.prompts.quantitative_scores import quantivative_scores_prompt
+from app.ai.prompts import promise_score_weights_prompt, quantivative_scores_prompt
 from app.ai.response_parser import ResponseParser
 from app.analysis.stocks import quarter_analysis
 from app.utils.strings import get_quarter_date

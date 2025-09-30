@@ -1,6 +1,5 @@
 from app.ai.agent import AnalystAgent
-from app.ai.clients.google_client import GoogleAIClient
-from app.ai.clients.groq_client import GroqClient
+from app.ai.clients import GoogleAIClient, GroqClient, OpenRouterClient
 from app.analysis.quarterly_report import generate_comparison
 from app.analysis.non_quarterly import get_nq_filings_info, get_non_quarterly_filings_dataframe
 from app.analysis.stocks import aggregate_quarter_by_fund, get_quarter_data, quarter_analysis, stock_analysis
@@ -57,10 +56,13 @@ def select_ai_model():
     Returns the selected client class or None if cancelled.
     """
     model_options = [
-        ("Google gemini-2.5-flash (Powerful)", GoogleAIClient, 'gemini-2.5-flash'),
+        ("xAI grok-4-fast (Best)", OpenRouterClient, 'x-ai/grok-4-fast'),
+        ("Google gemini-2.5-pro (Powerful)", GoogleAIClient, 'gemini-2.5-pro'),
+        ("Google gemini-2.5-flash (Balanced)", GoogleAIClient, 'gemini-2.5-flash'),
         ("OpenAI gpt-oss-120b (Accurate)", GroqClient, 'openai/gpt-oss-120b'),
-        ("Meta llama-3.3-70b-versatile (Balanced)", GroqClient, 'llama-3.3-70b-versatile'),
-        ("OpenAI gpt-oss-20b (Fast)", GroqClient, 'openai/gpt-oss-20b'),
+        ("OpenAI gpt-oss-20b (Lightweight)", GroqClient, 'openai/gpt-oss-20b'),
+        ("Meta llama-3.3-70b-versatile (Fast)", GroqClient, 'llama-3.3-70b-versatile'),
+        ("NVIDIA nemotron-nano-9b-v2 (Newest)", OpenRouterClient, 'nvidia/nemotron-nano-9b-v2'),
     ]
 
     return prompt_for_selection(
