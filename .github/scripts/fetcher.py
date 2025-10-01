@@ -3,8 +3,8 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from app.main import run_all_funds_report, run_fetch_nq_filings
 from app.utils.database import sort_stocks
+from database.updater import run_all_funds_report, run_fetch_nq_filings
 
 
 if __name__ == "__main__":

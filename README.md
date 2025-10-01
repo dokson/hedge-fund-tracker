@@ -81,24 +81,44 @@ pipenv run python -m app.main
     pipenv run python -m app.main
     ```
 
-5. **📜 Choose an action:** Once the script starts, you'll see the following interactive menu:
+5. **📜 Choose an action:** Once the script starts, you'll see the main interactive menu for data analysis:
 
     ```txt
     ┌───────────────────────────────────────────────────────────────────────────────────┐
-    │                               Hedge Fund Tracker                                  │
-    │                                                                                   │
+    │                                 Hedge Fund Tracker                                │
+    ├───────────────────────────────────────────────────────────────────────────────────┤
     │  0. Exit                                                                          │
-    │  1. Generate latest reports for all known hedge funds (hedge_funds.csv)           │
-    │  2. Generate latest report for a known hedge fund (hedge_funds.csv)               │
-    │  3. Generate historical report for a known hedge fund (hedge_funds.csv)           │
-    │  4. Fetch latest non-quarterly filings for all known hedge fund (hedge_funds.csv) │
-    │  5. Manually enter a hedge fund CIK number to generate latest report              │
-    │  6. View latest non-quarterly filings activity (from 13D/G and Form 4)            │
-    │  7. Analyze stock trends for a quarter                                            │
-    │  8. Analyze a single stock for a quarter                                          │
-    │  9. Run AI Analyst for the actual most promising stocks                           │
+    │  1. View latest non-quarterly filings activity (from Schedules 13D/G and Form 4)  │
+    │  2. Analyze stock trends for a quarter                                            │
+    │  3. Analyze a single stock for a quarter                                          │
+    │  4. Run AI Analyst for most promising stocks                                      │
     └───────────────────────────────────────────────────────────────────────────────────┘
     ```
+
+### Data Management
+
+The data update operations (downloading and processing filings) are inside a dedicated script. This keeps the main application focused on analysis, while the updater handles populating and refreshing the database.
+
+To run the data update operations, you need to use the `updater.py` script from the project root:
+
+```bash
+pipenv run python -m database.updater
+```
+
+This will open a separate menu for data management:
+
+  ```txt
+  ┌───────────────────────────────────────────────────────────────────────────────┐
+  │                     Hedge Fund Tracker - Database Updater                     │
+  ├───────────────────────────────────────────────────────────────────────────────┤
+  │  0. Exit                                                                      │
+  │  1. Generate latest 13F reports for all known hedge funds                     │
+  │  2. Fetch latest non-quarterly filings for all known hedge funds              │
+  │  3. Generate latest 13F report for a known hedge fund                         │
+  │  4. Generate historical 13F report for a known hedge fund                     │
+  │  5. Manually enter a hedge fund CIK to generate latest 13F report             │
+  └───────────────────────────────────────────────────────────────────────────────┘
+  ```
 
 ### API Configuration
 
@@ -125,8 +145,8 @@ hedge-fund-tracker/
 │   └── 📁 workflows/
 │       ├── 📄 filings-fetch.yml    # GitHub Actions: Filings fetching job
 │       └── 📄 python-tests.yml     # GitHub Actions: Unit tests
-├── 📁 app/                          # Main application package
-│   └── 📄 main.py                  # Entry point and CLI interface
+├── 📁 app/                          # Main application logic
+│   └── 📄 main.py                  # Entry point for Data&AI analyses
 ├── 📁 database/                     # Data storage
 │   ├── 📁 2025Q1/                  # Quarterly reports
 │   │   ├── 📄 fund_1.csv           # Individual fund quarterly report
@@ -135,8 +155,10 @@ hedge-fund-tracker/
 │   ├── 📁 2025Q2/
 │   ├── 📁 YYYYQN/
 │   ├── 📄 hedge_funds.csv          # Curated hedge funds list
+│   ├── 📄 models.csv               # LLMs list to use for AI Financial Analyst
 │   ├── 📄 non_quarterly.csv        # Non quarterly filings after last available quarter
-│   └── 📄 stocks.csv               # Stocks masterdata (CUSIP-Ticker-Name)
+│   ├── 📄 stocks.csv               # Stocks masterdata (CUSIP-Ticker-Name)
+│   └── 📄 updater.py               # Entry point for updating the database
 ├── 📁 tests/                        # Test suite
 ├── 📄 .env.example                 # Environment variables template
 ├── 📄 .gitignore                   # Git ignore rules
@@ -147,6 +169,8 @@ hedge-fund-tracker/
 ```
 
 > **📝 Hedge Funds Configuration File:** `database/hedge_funds.csv` contains the list of hedge funds to monitor (CIK, name, manager) and can also be edited at runtime.
+>
+> **🧠 LLMs Configuration File:** `database/models.csv` contains the list of available LLMs for AI analysis and can also be edited at runtime.
 
 ## 👨🏻‍💻 How This Tool Tracks Hedge Funds
 
@@ -235,7 +259,7 @@ Some famous names have to be excluded by design to enhance analysis quality:
 
 #### Adding Custom Funds
 
-Want to track additional funds? Simply edit `hedge_funds.csv` and add your preferred institutional investors. For example, to add [Berkshire Hathaway](https://www.berkshirehathaway.com/), [Pershing Square](https://pershingsquareholdings.com/) and [ARK-Invest](https://www.ark-invest.com/), you would add the following lines:
+Want to track additional funds? Simply edit `database/hedge_funds.csv` and add your preferred institutional investors. For example, to add [Berkshire Hathaway](https://www.berkshirehathaway.com/), [Pershing Square](https://pershingsquareholdings.com/) and [ARK-Invest](https://www.ark-invest.com/), you would add the following lines:
 
 ```csv
 "CIK","Fund","Manager","Denomination"
@@ -245,6 +269,22 @@ Want to track additional funds? Simply edit `hedge_funds.csv` and add your prefe
 ```
 
 > **💡 Note**: `hedge_funds.csv` currently includes **not only *traditional hedge funds*** but also **other institutional investors** *(private equity funds, large banks, VCs, pension funds, etc., that file 13F to the [SEC](http://sec.gov/))* selected from what I consider the **top 5%** of performers.
+
+### Adding Custom AI Models
+
+You can easily add or change the AI models used for analysis by editing the `database/models.csv` file. This allows you to experiment with different Large Language Models (LLMs) from supported providers.
+
+To add a new model, open `database/models.csv` and add a new row with the following columns:
+
+- **ID**: The specific model identifier as required by the provider's API.
+- **Description**: A brief, user-friendly description that will be displayed in the selection menu.
+- **Client**: The provider of the model. Must be one of `Google`, `Groq`, or `OpenRouter`.
+
+Here are the official model lists for each provider:
+
+- [Google Gemini Models](https://ai.google.dev/gemini-api/docs/models)
+- [Groq Available Models](https://console.groq.com/docs/models)
+- [OpenRouter Available Models](https://openrouter.ai/models?order=newest&max_price=0)
 
 ## ⚠️ Limitations & Considerations
 
@@ -261,6 +301,22 @@ It's crucial to understand the inherent limitations of tracking investment strat
 
 Many tracking websites rely solely on quarterly 13F filings, which means their data can be over 45 days old and miss many significant trades. Non-quarterly filings like 13D/G and Form 4 are often ignored because they are more complex to process and merge.
 This tracker helps overcome that limitation by **fetching and displaying multiple filing types**. Instead of just aggregating 13F snapshots, the tool also provides a separate, up-to-date view of the latest trades from 13D/G and Form 4 filings (Option 6 in the menu). This ensures you have a more current and complete picture of institutional activity.
+
+## ⚙️ Automation with GitHub Actions
+
+This repository includes a [GitHub Actions](https://github.com/features/actions) workflow (`.github/workflows/filings-fetch.yml`) to automatically fetch the latest SEC filings.
+
+### How It Works
+
+- **Scheduled Runs**: The workflow runs every 5 hours from Monday to Saturday to check for new filings.
+- **Automated Commits**: If new data is found, the workflow automatically commits the updated files to a dedicated branch (`automated/filings-fetch`).
+- **Manual Merge**: You can then review the changes on the dedicated branch and merge them into your main branch at your convenience.
+
+### How to Use It
+
+1. **Fork the Repository**: Create your own fork of this project on GitHub.
+2. **Enable Actions**: GitHub Actions should be enabled by default on your fork.
+3. **Configure Secrets**: To allow the workflow to run successfully, you must add your `FINNHUB_API_KEY` as a repository secret. Go to `Settings` > `Secrets and variables` > `Actions` in your forked repository to add it.
 
 ## 🗃️ Technical Stack
 

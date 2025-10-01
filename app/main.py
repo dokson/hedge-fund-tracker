@@ -1,12 +1,8 @@
 from app.ai.agent import AnalystAgent
-from app.ai.clients import GoogleAIClient, GroqClient, OpenRouterClient
-from app.analysis.quarterly_report import generate_comparison
-from app.analysis.non_quarterly import get_nq_filings_info, get_non_quarterly_filings_dataframe
+from app.analysis.non_quarterly import get_nq_filings_info
 from app.analysis.stocks import aggregate_quarter_by_fund, get_quarter_data, quarter_analysis, stock_analysis
-from app.scraper.sec_scraper import get_latest_13f_filing_date, fetch_latest_two_13f_filings, fetch_non_quarterly_after_date
-from app.scraper.xml_processor import xml_to_dataframe_13f
-from app.utils.console import horizontal_rule, print_centered, print_dataframe, prompt_for_selection
-from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, load_models, save_comparison, save_non_quarterly_filings, sort_stocks, get_last_quarter
+from app.utils.console import horizontal_rule, print_centered, print_dataframe, select_ai_model, select_quarter
+from app.utils.database import get_last_quarter, load_hedge_funds
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
 import numpy as np
 
@@ -14,177 +10,9 @@ import numpy as np
 APP_NAME = "HEDGE FUND TRACKER"
 
 
-def select_fund(text="Select the hedge fund:"):
-    """
-    Prompts the user to select a hedge fund, displaying them in columns.
-    Returns selected fund info or None if cancelled/invalid.
-    """
-    return prompt_for_selection(
-        load_hedge_funds(),
-        text,
-        display_func=lambda fund: f"{fund['Fund']} - {fund['Manager']}",
-        num_columns=-1
-    )
-
-
-def select_period():
-    """
-    Prompts the user to select a historical comparison period.
-    Returns the selected offset integer or None if cancelled/invalid.
-    """
-    period_options = [
-        (1, "Previous vs Two quarters back (Offset=1)"),
-        (2, "Two vs Three quarters back (Offset=2)"),
-        (3, "Three vs Four quarters back (Offset=3)"),
-        (4, "Four vs Five quarters back (Offset=4)"),
-        (5, "Five vs Six quarters back (Offset=5)"),
-        (6, "Six vs Seven quarters back (Offset=6)"),
-        (7, "Seven vs Eight quarters back (Offset=7: 2 years)")
-    ]
-
-    return prompt_for_selection(
-        period_options,
-        "Select offset for historical period comparison:",
-        display_func=lambda option: option[1],
-        num_columns=2
-    )
-
-
-def select_ai_model():
-    """
-    Prompts the user to select an AI model for the analysis.
-    Returns the selected model or None if cancelled.
-    """
-    return prompt_for_selection(
-        load_models(),
-        "Select the AI model for the analysis:",
-        display_func=lambda model: model['Description']
-    )
-
-
-def select_quarter():
-    """
-    Prompts the user to select an analysis quarter.
-    Returns the selected quarter string (e.g., '2025Q1') or None if cancelled/invalid.
-    """
-    return prompt_for_selection(get_all_quarters(), "Select the quarter you want to analyze:")
-
-
-def process_fund(fund_info, offset=0):
-    """
-    Processes a single fund: fetches filings and generates a comparison report.
-    It ensures the comparison is between two different reporting periods, skipping over any amendments for the same period.
-    """
-    cik = fund_info.get('CIK')
-    fund_name = fund_info.get('Fund') or fund_info.get('CIK')
-
-    try:
-        # Step 1: Fetch the primary filing for the given offset.
-        filings = fetch_latest_two_13f_filings(cik, offset)
-        latest_date = filings[0]['reference_date']
-        dataframe_latest = xml_to_dataframe_13f(filings[0]['xml_content'])
-
-        # Step 2: Find the first valid preceding filing for comparison.
-        # This loop correctly is needed to handle amendments (13F-HR/A) with earlier reference dates.
-        previous_filing = filings[1] if len(filings) == 2 else None
-        
-        while previous_filing and latest_date <= previous_filing['reference_date']:
-            offset += 1
-            filings = fetch_latest_two_13f_filings(cik, offset)
-            previous_filing = filings[1] if len(filings) == 2 else None
-
-        dataframe_previous = xml_to_dataframe_13f(previous_filing['xml_content']) if previous_filing else None
-        dataframe_comparison = generate_comparison(dataframe_latest, dataframe_previous)
-        save_comparison(dataframe_comparison, latest_date, fund_name)
-    except Exception as e:
-        print(f"❌ An unexpected error occurred while processing {fund_name} (CIK = {cik}): {e}")
-
-
-def exit():
-    """
-    0. Exit the application (after sorting stocks).
-    """
-    sort_stocks()
-    print("Bye! 👋 Exited.")
-    return False
-
-
-def run_all_funds_report():
-    """
-    1. Generate latest reports for all known hedge funds.
-    """
-    hedge_funds = load_hedge_funds()
-    total_funds = len(hedge_funds)
-    print(f"Starting updating reports for all {total_funds} funds...")
-    print("This will generate last vs previous quarter comparisons.")
-    for i, fund in enumerate(hedge_funds):
-        print_centered(f"Processing {i + 1:2}/{total_funds}: {fund['Fund']}", "-")
-        process_fund(fund)
-    print_centered(f"All funds processed", "=")
-
-
-def run_single_fund_report():
-    """
-    2. Generate latest report for a known hedge fund.
-    """
-    selected_fund = select_fund("Select the hedge fund for latest report generation:")
-    if selected_fund:
-        process_fund(selected_fund)
-
-
-def run_historical_fund_report():
-    """
-    3. Generate historical report for a known hedge fund.
-    """
-    selected_fund = select_fund("Select the hedge fund for historical report generation:")
-    if not selected_fund:
-        return
-
-    selected_period = select_period()
-    if selected_period is not None:
-        process_fund(selected_fund, offset=selected_period[0])
-
-
-def run_fetch_nq_filings():
-    """
-    4. Fetch latest non-quarterly filings for all known hedge funds and save to database.
-    """
-    hedge_funds = load_hedge_funds()
-    total_funds = len(hedge_funds)
-    print(f"Fetching Non Quarterly filings for all {total_funds} funds...")
-    nq_filings = []
-
-    def _fetch_nq(cik_to_process, fund_name, fund_denomination, latest_date):
-        if not cik_to_process.strip():
-            return
-        filings = fetch_non_quarterly_after_date(cik_to_process, latest_date)
-        if filings:
-            filings_df = get_non_quarterly_filings_dataframe(filings, fund_denomination, cik_to_process)
-            if filings_df is not None:
-                filings_df.insert(0, 'Fund', fund_name)
-                nq_filings.append(filings_df)
-
-    for i, fund in enumerate(hedge_funds):
-        print_centered(f"Processing {i + 1:2}/{total_funds}: {fund['Fund']}", "-")
-        latest_13f_date = get_latest_13f_filing_date(fund['CIK'])
-        _fetch_nq(fund['CIK'], fund['Fund'], fund['Denomination'], latest_13f_date)
-        _fetch_nq(fund['CIKs'], fund['Fund'], fund['Denomination'], latest_13f_date)
-
-    save_non_quarterly_filings(nq_filings)
-    print_centered(f"All funds processed", "=")
-
-
-def run_manual_cik_report():
-    """
-    5. Manually enter a hedge fund CIK to generate latest report.
-    """
-    cik = input("Enter 10-digit CIK number: ").strip()
-    process_fund({'CIK': cik})
-
-
 def run_view_nq_filings():
     """
-    6. View latest filings activity from Schedules 13D/G and Form 4 filings.
+    1. View latest filings activity from Schedules 13D/G and Form 4 filings.
     """
     nq_filings_df = get_nq_filings_info(aggregate_quarter_by_fund(get_quarter_data()))
     latest_n = 30
@@ -198,7 +26,7 @@ def run_view_nq_filings():
 
 def run_quarter_analysis():
     """
-    7. Analyze stock trends for a quarter.
+    2. Analyze stock trends for a quarter.
     """
     selected_quarter = select_quarter()
     if selected_quarter:
@@ -218,7 +46,7 @@ def run_quarter_analysis():
 
 def run_single_stock_analysis():
     """
-    8. Analyze a single stock for a specific quarter.
+    3. Analyze a single stock for a specific quarter.
     """
     selected_quarter = select_quarter()
     if selected_quarter:
@@ -266,7 +94,7 @@ def run_single_stock_analysis():
 
 def run_ai_analyst():
     """
-    9. Run AI Analyst
+    4. Run AI Analyst
     """
     selected_model = select_ai_model()
     if not selected_model:
@@ -288,16 +116,11 @@ def run_ai_analyst():
 
 if __name__ == "__main__":
     actions = {
-        '0': exit,
-        '1': run_all_funds_report,
-        '2': run_single_fund_report,
-        '3': run_historical_fund_report,
-        '4': run_fetch_nq_filings,
-        '5': run_manual_cik_report,
-        '6': run_view_nq_filings,
-        '7': run_quarter_analysis,
-        '8': run_single_stock_analysis,
-        '9': run_ai_analyst,
+        '0': lambda: False,
+        '1': run_view_nq_filings,
+        '2': run_quarter_analysis,
+        '3': run_single_stock_analysis,
+        '4': run_ai_analyst,
     }
 
     while True:
@@ -306,25 +129,20 @@ if __name__ == "__main__":
             print_centered(APP_NAME)
             horizontal_rule()
             print("0. Exit")
-            print("1. Generate latest reports for all known hedge funds (hedge_funds.csv)")
-            print("2. Generate latest report for a known hedge fund (hedge_funds.csv)")
-            print("3. Generate historical report for a known hedge fund (hedge_funds.csv)")
-            print("4. Fetch latest non-quarterly filings for all known hedge fund (hedge_funds.csv)")
-            print("5. Manually enter a hedge fund CIK number to generate latest report")
-            print("6. View latest non-quarterly filings activity (from Schedules 13D/G and Form 4)")
-            print("7. Analyze stock trends for a quarter")
-            print("8. Analyze a single stock for a quarter")
-            print("9. Run AI Analyst for most promising stocks")
+            print("1. View latest non-quarterly filings activity (from Schedules 13D/G and Form 4)")
+            print("2. Analyze stock trends for a quarter")
+            print("3. Analyze a single stock for a quarter")
+            print("4. Run AI Analyst for most promising stocks")
             horizontal_rule()
 
-            main_choice = input("Choose an option (0-9): ")
+            main_choice = input("Choose an option (0-4): ")
             action = actions.get(main_choice)
             if action:
                 if action() is False:
+                    print("Bye! 👋 Exited.")
                     break
             else:
                 print("❌ Invalid selection. Try again.")
-
         except KeyboardInterrupt:
             print("\nOperation cancelled by user. Bye! 👋")
             break

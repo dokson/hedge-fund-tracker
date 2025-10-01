@@ -1,3 +1,4 @@
+from app.utils.database import get_all_quarters, load_hedge_funds, load_models
 from tabulate import tabulate
 import math
 import shutil
@@ -15,6 +16,21 @@ def horizontal_rule(char='='):
     Prints a horizontal line of a given character.
     """
     print(char * get_terminal_width())
+
+
+def print_centered(title, fill_char=' '):
+    """
+    Prints a title centered within a line, padded with a fill character.
+    """
+    print(f" {title} ".center(get_terminal_width(), fill_char))
+
+
+def print_centered_table(table):
+    """
+    Prints a screen centered table
+    """
+    for line in table.splitlines():
+        print_centered(line)
 
 
 def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters={}):
@@ -44,21 +60,6 @@ def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters={}):
     # If 'cols' is not specified, use all columns from the dataframe
     columns_to_show = cols if cols is not None else display_df.columns
     print_centered_table(tabulate(display_df[columns_to_show], headers="keys", tablefmt="psql", showindex=False, stralign="center", numalign="center"))
-
-
-def print_centered(title, fill_char=' '):
-    """
-    Prints a title centered within a line, padded with a fill character.
-    """
-    print(f" {title} ".center(get_terminal_width(), fill_char))
-
-
-def print_centered_table(table):
-    """
-    Prints a screen centered table
-    """
-    for line in table.splitlines():
-        print_centered(line)
 
 
 def prompt_for_selection(items, text, display_func=None, num_columns=None):
@@ -114,3 +115,55 @@ def prompt_for_selection(items, text, display_func=None, num_columns=None):
     except ValueError:
         print(f"❌ Invalid input. Please enter a number between 1 and {len(items)}.")
         return None
+
+
+def select_ai_model(text="Select the AI model"):
+    """
+    Prompts the user to select an AI model for the analysis.
+    Returns the selected model.
+    """
+    return prompt_for_selection(load_models(), text, display_func=lambda model: model['Description'])
+
+
+def select_fund(text="Select the hedge fund:"):
+    """
+    Prompts the user to select a hedge fund, displaying them in columns.
+    Returns selected fund info.
+    """
+    return prompt_for_selection(
+        load_hedge_funds(),
+        text,
+        display_func=lambda fund: f"{fund['Fund']} - {fund['Manager']}",
+        num_columns=-1
+    )
+
+
+def select_period(text="Select offset:"):
+    """
+    Prompts the user to select a historical comparison period.
+    Returns the selected offset integer.
+    """
+    period_options = [
+        (1, "Previous vs Two quarters back (Offset=1)"),
+        (2, "Two vs Three quarters back (Offset=2)"),
+        (3, "Three vs Four quarters back (Offset=3)"),
+        (4, "Four vs Five quarters back (Offset=4)"),
+        (5, "Five vs Six quarters back (Offset=5)"),
+        (6, "Six vs Seven quarters back (Offset=6)"),
+        (7, "Seven vs Eight quarters back (Offset=7: 2 years)")
+    ]
+
+    return prompt_for_selection(
+        period_options,
+        text,
+        display_func=lambda option: option[1],
+        num_columns=2
+    )
+
+
+def select_quarter(text="Select the quarter"):
+    """
+    Prompts the user to select an analysis quarter.
+    Returns the selected quarter string (e.g., '2025Q1').
+    """
+    return prompt_for_selection(get_all_quarters(), text)
