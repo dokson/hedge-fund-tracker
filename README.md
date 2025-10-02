@@ -33,12 +33,13 @@ pipenv run python -m app.main
 
 | Feature | Description |
 |---------|-------------|
-| **🆚 Comparative Analysis** | Compare quarterly 13F filings to identify new positions, closures, and changes |
-| **📋 Detailed Reports** | Generate clean CSV reports with intuitive formatting |
-| **🗄️ Historical Database** | Maintain organized quarterly reports for trend analysis |
-| **🔍 Ticker Resolution** | Convert CUSIPs to stock tickers using Finnhub API with smart caching |
-| **🤖 AI-Powered Analysis** | Get insights using Google's Generative AI on latest filings |
-| **🔀 Flexible Management** | Analyze all funds, single funds, or custom CIKs |
+| **🆚 Comparative Analysis** | Combines quarterly (13F) and non-quarterly (13D/G, Form 4) filings for an up-to-date view |
+| **📋 Detailed Reports** | Generates clear, console-based reports with intuitive formatting |
+| **🗄️ Curated Database** | Includes list of top hedge funds and AI models, both easily editable via CSV files |
+| **🔍 Ticker Resolution** | Converts CUSIPs to tickers using a smart fallback system (yfinance, Finnhub, FinanceDatabase) |
+| **🤖 Multi-Provider AI Analysis** | Leverages different AI models to identify promising stocks based on filings |
+| **🔀 Flexible Management** | Offers multiple analysis modes: all funds, a single fund and also custom CIKs |
+| **⚙️ Automated Data Update** | Includes a GitHub Actions workflow to automatically fetch and commit the latest SEC filings |
 
 ## 📦 Installation
 
@@ -314,19 +315,20 @@ This tracker helps overcome that limitation by **integrating multiple filing typ
 
 ## ⚙️ Automation with GitHub Actions
 
-This repository includes a [GitHub Actions](https://github.com/features/actions) workflow (`.github/workflows/filings-fetch.yml`) to automatically fetch the latest SEC filings.
+This repository includes a [GitHub Actions](https://github.com/features/actions) workflow (`.github/workflows/filings-fetch.yml`) designed to keep your data effortlessly up-to-date by automatically fetching the latest SEC filings.
 
 ### How It Works
 
-- **Scheduled Runs**: The workflow runs every 5 hours from Monday to Saturday to check for new filings.
-- **Automated Commits**: If new data is found, the workflow automatically commits the updated files to a dedicated branch (`automated/filings-fetch`).
-- **Manual Merge**: You can then review the changes on the dedicated branch and merge them into your main branch at your convenience.
+- **Scheduled Runs**: The workflow runs automatically every 5 hours *(from Monday to Saturday)* to check for **new 13F, 13D/G, and Form 4 filings** from the funds you are tracking (`hedge_funds.csv`).
+- **Safe Branching Strategy**: Instead of committing directly to your main branch, the workflow pushes all new data to a dedicated branch named `automated/filings-fetch`.
+- **User-Controlled Merging**: This approach gives you full control. You can review the changes committed by the bot and then merge them into your main branch whenever you're ready. This prevents unexpected changes and allows you to manage updates at your own pace.
+- **Automated Alerts**: If the script encounters a non-quarterly filing where it cannot identify the fund owner based on your `hedge_funds.csv` configuration, it will automatically open a GitHub Issue in your repository, alerting you to a potential data mismatch that needs investigation.
 
-### How to Use It
+### How to Enable It
 
-1. **Fork the Repository**: Create your own fork of this project on GitHub.
-2. **Enable Actions**: GitHub Actions should be enabled by default on your fork.
-3. **Configure Secrets**: To allow the workflow to run successfully, you must add your `FINNHUB_API_KEY` as a repository secret. Go to `Settings` > `Secrets and variables` > `Actions` in your forked repository to add it.
+1. **Fork the Repository**: Create your own [fork of this project](https://github.com/dokson/hedge-fund-tracker/fork) on GitHub.
+2. **Enable Actions**: GitHub Actions are typically enabled by default on forked repositories. You can verify this under the *Actions* tab of your fork.
+3. **Configure Secrets**: For the workflow to resolve tickers and create issues, you need to add your API keys as repository secrets. In your forked repository, you must add your `FINNHUB_API_KEY` as a repository secret. Go to `Settings` > `Secrets and variables` > `Actions` in your forked repository to add it.
 
 ## 🗃️ Technical Stack
 
