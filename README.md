@@ -192,7 +192,7 @@ This tracker leverages the following types of SEC filings to provide a comprehen
   - Must be filed ***within 2 business days*** of the transaction
   - Offers ***real-time insight*** into the actions of key individuals and institutions
 
-## 🏢 Hedge Fund Selection
+## 🏢 Hedge Funds Selection
 
 This tool tracks a curated list of the **150 of what I found to be the top-performing US hedge funds**, selected based on their performance over the last 3-5 years. This **selection** is the result of my own **methodology** designed to identify the **top percentile of institutional investors**. My *selection methodology* is detailed below.
 
@@ -270,6 +270,14 @@ Want to track additional funds? Simply edit `database/hedge_funds.csv` and add y
 ```
 
 > **💡 Note**: `hedge_funds.csv` currently includes **not only *traditional hedge funds*** but also **other institutional investors** *(private equity funds, large banks, VCs, pension funds, etc., that file 13F to the [SEC](http://sec.gov/))* selected from what I consider the **top 5%** of performers.
+
+## 🧠 AI Models Selection
+
+The **AI Financial Analyst**'s primary goal is to identify stocks with the highest growth potential based on hedge fund activity. It achieves this by calculating a **"Promise Score"** for each stock. This score is a weighted average of various metrics derived from 13F filings. The AI's first critical task is to act as a strategist, dynamically defining the heuristic by assigning the optimal weights for these metrics based on the market conditions of the selected quarter. Its second task is to provide quantitative scores (e.g., momentum, risk) for the top-ranked stocks.
+
+The models included in `database/models.csv` have been selected because they have demonstrated the best performance and reliability for these specific tasks. Through experimentation, they have proven effective at interpreting the prompts and providing insightful, well-structured responses.
+
+> **💡 Note** on Meta's [`llama-3.3-70b-versatile`](https://github.com/meta-llama/llama-models/blob/main/models/llama3_3/MODEL_CARD.md): while it can occasionally be less precise in defining the heuristic for the "Promise Score" compared to other top-tier models, it remains a valuable option. Its exceptional speed and lightweight nature make it ideal for rapid experimentation and iterative analysis, providing a useful trade-off between accuracy and performance. As the AI landscape evolves, it is expected that this model will eventually be replaced by newer alternatives that offer similar or better speed and efficiency.
 
 ### Adding Custom AI Models
 
