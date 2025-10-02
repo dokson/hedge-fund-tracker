@@ -88,10 +88,11 @@ pipenv run python -m app.main
     │                                 Hedge Fund Tracker                                │
     ├───────────────────────────────────────────────────────────────────────────────────┤
     │  0. Exit                                                                          │
-    │  1. View latest non-quarterly filings activity (from Schedules 13D/G and Form 4)  │
-    │  2. Analyze stock trends for a quarter                                            │
-    │  3. Analyze a single stock for a quarter                                          │
-    │  4. Run AI Analyst for most promising stocks                                      │
+    │  1. View latest non-quarterly filings activity by funds (from 13D/G, Form 4)      │
+    │  2. Analyze overall stock trends for a quarter                                    │
+    │  3. Analyze a single fund's holdings for a quarter                                │
+    │  4. Analyze a single stock for a quarter                                          │
+    │  5. Find most promising stocks using an AI Analyst                                │
     └───────────────────────────────────────────────────────────────────────────────────┘
     ```
 
@@ -107,18 +108,18 @@ pipenv run python -m database.updater
 
 This will open a separate menu for data management:
 
-  ```txt
-  ┌───────────────────────────────────────────────────────────────────────────────┐
-  │                     Hedge Fund Tracker - Database Updater                     │
-  ├───────────────────────────────────────────────────────────────────────────────┤
-  │  0. Exit                                                                      │
-  │  1. Generate latest 13F reports for all known hedge funds                     │
-  │  2. Fetch latest non-quarterly filings for all known hedge funds              │
-  │  3. Generate latest 13F report for a known hedge fund                         │
-  │  4. Generate historical 13F report for a known hedge fund                     │
-  │  5. Manually enter a hedge fund CIK to generate latest 13F report             │
-  └───────────────────────────────────────────────────────────────────────────────┘
-  ```
+```txt
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                     Hedge Fund Tracker - Database Updater                     │
+├───────────────────────────────────────────────────────────────────────────────┤
+│  0. Exit                                                                      │
+│  1. Generate latest 13F reports for all known hedge funds                     │
+│  2. Fetch latest non-quarterly filings for all known hedge funds              │
+│  3. Generate latest 13F report for a known hedge fund                         │
+│  4. Generate historical 13F report for a known hedge fund                     │
+│  5. Manually enter a hedge fund CIK to generate latest 13F report             │
+└───────────────────────────────────────────────────────────────────────────────┘
+```
 
 ### API Configuration
 
@@ -141,12 +142,12 @@ The tool can utilize API keys for enhanced functionality, but all are optional:
 hedge-fund-tracker/
 ├── 📁 .github/
 │   ├── 📁 scripts/
-│   │   └── 📄 fetcher.py           # Daily fetching job (scheduled by workflows/daily-fetch.yml)
-│   └── 📁 workflows/
+│   │   └── 📄 fetcher.py           # Daily script for data fetching (scheduled by workflows/daily-fetch.yml)
+│   └── 📁 workflows/                # GitHub Actions for automation
 │       ├── 📄 filings-fetch.yml    # GitHub Actions: Filings fetching job
 │       └── 📄 python-tests.yml     # GitHub Actions: Unit tests
 ├── 📁 app/                          # Main application logic
-│   └── 📄 main.py                  # Entry point for Data&AI analyses
+│   └── 📄 main.py                  # Main entry point for Data&AI analysis
 ├── 📁 database/                     # Data storage
 │   ├── 📁 2025Q1/                  # Quarterly reports
 │   │   ├── 📄 fund_1.csv           # Individual fund quarterly report
@@ -154,16 +155,16 @@ hedge-fund-tracker/
 │   │   └── 📄 fund_n.csv
 │   ├── 📁 2025Q2/
 │   ├── 📁 YYYYQN/
-│   ├── 📄 hedge_funds.csv          # Curated hedge funds list
-│   ├── 📄 models.csv               # LLMs list to use for AI Financial Analyst
-│   ├── 📄 non_quarterly.csv        # Non quarterly filings after last available quarter
-│   ├── 📄 stocks.csv               # Stocks masterdata (CUSIP-Ticker-Name)
-│   └── 📄 updater.py               # Entry point for updating the database
+│   ├── 📄 hedge_funds.csv          # Curated hedge funds list -> EDIT THIS to add or remove funds to track
+│   ├── 📄 models.csv               # LLMs list to use for AI Financial Analyst -> EDIT THIS to add or remove AI models
+│   ├── 📄 non_quarterly.csv        # Stores latest 13D/G and Form 4 filings
+│   ├── 📄 stocks.csv               # Master data for stocks (CUSIP-Ticker-Name)
+│   └── 📄 updater.py               # Main entry point for updating the database
 ├── 📁 tests/                        # Test suite
-├── 📄 .env.example                 # Environment variables template
+├── 📄 .env.example                 # Template for your API keys
 ├── 📄 .gitignore                   # Git ignore rules
 ├── 📄 LICENSE                      # MIT License
-├── 📄 Pipfile                      # pipenv dependencies
+├── 📄 Pipfile                      # Project dependencies
 ├── 📄 Pipfile.lock                 # Locked dependency versions
 └── 📄 README.md                    # Project documentation (this file)
 ```
@@ -300,7 +301,8 @@ It's crucial to understand the inherent limitations of tracking investment strat
 ### A Truly Up-to-Date View
 
 Many tracking websites rely solely on quarterly 13F filings, which means their data can be over 45 days old and miss many significant trades. Non-quarterly filings like 13D/G and Form 4 are often ignored because they are more complex to process and merge.
-This tracker helps overcome that limitation by **fetching and displaying multiple filing types**. Instead of just aggregating 13F snapshots, the tool also provides a separate, up-to-date view of the latest trades from 13D/G and Form 4 filings (Option 6 in the menu). This ensures you have a more current and complete picture of institutional activity.
+
+This tracker helps overcome that limitation by **integrating multiple filing types**. When analyzing the most recent quarter, the tool automatically incorporates the latest data from 13D/G and Form 4 filings. This means that the holdings, deltas, and portfolio percentages you see for the last quarter reflect not just the 13F snapshot, but also any significant trades that have occurred since. This ensures you have the most current and complete picture of institutional activity.
 
 ## ⚙️ Automation with GitHub Actions
 
