@@ -119,3 +119,19 @@ def stock_analysis(ticker, quarter):
 
     # Aggregates data for Ticker that may have multiple CUSIPs in the same hedge fund report
     return aggregate_quarter_by_fund(df_quarter[df_quarter['Ticker'] == ticker])
+
+
+def fund_analysis(fund, quarter):
+    """
+    Analyzes a single fund for a given quarter, returning its holdings.
+
+    Args:
+        fund (str): The fund to analyze.
+        quarter (str): The quarter in 'YYYYQN' format.
+
+    Returns:
+        pd.DataFrame: A DataFrame with stock-level details for the specified fund.
+    """
+    df_quarter = get_quarter_data(quarter)
+    df_fund_quarter = aggregate_quarter_by_fund(df_quarter)
+    return df_fund_quarter[df_fund_quarter['Fund'] == fund]

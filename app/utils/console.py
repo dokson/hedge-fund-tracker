@@ -33,7 +33,7 @@ def print_centered_table(table):
         print_centered(line)
 
 
-def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters={}):
+def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters={}, ascending_sort=False):
     """
     Sorts, formats, and prints a DataFrame as a centered, responsive table in the console.
 
@@ -46,12 +46,14 @@ def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters={}):
                                If None, all columns are displayed. Defaults to None.
         formatters (dict, optional): A dictionary mapping column names to formatting functions.
                                      e.g., {'Value': format_value}
+        ascending_sort (bool, optional): Whether to sort in ascending order. Defaults to False.
     """
     print("\n")
     print_centered(title, "-")
     print("\n")
  
-    display_df = dataframe.sort_values(by=sort_by, ascending=False).head(top_n).copy()
+    ascending = ascending_sort if isinstance(sort_by, list) else [ascending_sort] * len(sort_by) if isinstance(sort_by, list) else ascending_sort
+    display_df = dataframe.sort_values(by=sort_by, ascending=ascending).head(top_n).copy()
  
     for col, formatter in formatters.items():
         if col in display_df.columns:

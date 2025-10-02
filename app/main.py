@@ -1,7 +1,7 @@
 from app.ai.agent import AnalystAgent
 from app.analysis.non_quarterly import get_nq_filings_info
-from app.analysis.stocks import aggregate_quarter_by_fund, get_quarter_data, quarter_analysis, stock_analysis
-from app.utils.console import horizontal_rule, print_centered, print_dataframe, select_ai_model, select_quarter
+from app.analysis.stocks import aggregate_quarter_by_fund, fund_analysis, get_quarter_data, quarter_analysis, stock_analysis
+from app.utils.console import horizontal_rule, print_centered, print_dataframe, select_ai_model, select_fund, select_quarter
 from app.utils.database import get_last_quarter, load_hedge_funds
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
 import numpy as np
@@ -44,9 +44,45 @@ def run_quarter_analysis():
         print("\n")
 
 
-def run_single_stock_analysis():
+def run_fund_analysis():
     """
-    3. Analyze a single stock for a specific quarter.
+    3. Analyze a single fund for a quarter.
+    """
+    selected_fund = select_fund()
+    if selected_fund:
+        selected_quarter = select_quarter()
+        if not selected_quarter:
+            return
+
+        fund = selected_fund['Fund']
+        manager = selected_fund['Manager']
+        df_fund = fund_analysis(fund, selected_quarter)
+
+        fund_text = f"{fund.upper()} ({manager.upper()})"
+
+        if df_fund.empty:
+            print(f"❌ No data found for fund {fund_text} in quarter {selected_quarter}.")
+            return
+
+        horizontal_rule('-')
+        print_centered(f"{fund_text} - {selected_quarter} QUARTER ANALYSIS")
+        horizontal_rule('-')
+
+        top_n = 10
+        columns = ['Ticker', 'Company', 'Portfolio_Pct', 'Value', 'Delta', 'Delta_Value']
+        formatters = {'Portfolio_Pct': get_percentage_formatter(), 'Value': get_value_formatter(), 'Delta_Value': get_value_formatter()}
+
+        if len(df_fund) >= 2 * top_n:
+            print_dataframe(df_fund, top_n, title=f'Top {top_n} Holdings by Portfolio %', sort_by='Portfolio_Pct', cols=columns, formatters=formatters)
+            print_dataframe(df_fund, top_n, title=f'Top {top_n} Value Increases', sort_by='Delta_Value', cols=columns, formatters=formatters)
+            print_dataframe(df_fund.sort_values(by='Delta_Value', ascending=True), top_n, title=f'Top {top_n} Value Decreases', sort_by='Delta_Value', cols=columns, formatters=formatters, ascending_sort=True)
+        else:
+            print_dataframe(df_fund, len(df_fund), title='Portfolio (sorted by %)', sort_by='Portfolio_Pct', cols=columns, formatters=formatters)
+
+
+def run_stock_analysis():
+    """
+    4. Analyze a single stock for a specific quarter.
     """
     selected_quarter = select_quarter()
     if selected_quarter:
@@ -94,7 +130,7 @@ def run_single_stock_analysis():
 
 def run_ai_analyst():
     """
-    4. Run AI Analyst
+    5. Run AI Analyst
     """
     selected_model = select_ai_model()
     if not selected_model:
@@ -119,8 +155,9 @@ if __name__ == "__main__":
         '0': lambda: False,
         '1': run_view_nq_filings,
         '2': run_quarter_analysis,
-        '3': run_single_stock_analysis,
-        '4': run_ai_analyst,
+        '3': run_fund_analysis,
+        '4': run_stock_analysis,
+        '5': run_ai_analyst,
     }
 
     while True:
@@ -129,13 +166,14 @@ if __name__ == "__main__":
             print_centered(APP_NAME)
             horizontal_rule()
             print("0. Exit")
-            print("1. View latest non-quarterly filings activity (from Schedules 13D/G and Form 4)")
-            print("2. Analyze stock trends for a quarter")
-            print("3. Analyze a single stock for a quarter")
-            print("4. Run AI Analyst for most promising stocks")
+            print("1. View latest non-quarterly filings activity by funds (from 13D/G, Form 4)")
+            print("2. Analyze overall stock trends for a quarter")
+            print("3. Analyze a single fund's holdings for a quarter")
+            print("4. Analyze a single stock for a quarter")
+            print("5. Find most promising stocks using an AI Analyst")
             horizontal_rule()
 
-            main_choice = input("Choose an option (0-4): ")
+            main_choice = input("Choose an option (0-5): ")
             action = actions.get(main_choice)
             if action:
                 if action() is False:
