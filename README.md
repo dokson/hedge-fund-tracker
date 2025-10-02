@@ -142,36 +142,36 @@ The tool can utilize API keys for enhanced functionality, but all are optional:
 hedge-fund-tracker/
 ├── 📁 .github/
 │   ├── 📁 scripts/
-│   │   └── 📄 fetcher.py           # Daily script for data fetching (scheduled by workflows/daily-fetch.yml)
+│   │   └── 🐍 fetcher.py           # Daily script for data fetching (scheduled by workflows/daily-fetch.yml)
 │   └── 📁 workflows/                # GitHub Actions for automation
-│       ├── 📄 filings-fetch.yml    # GitHub Actions: Filings fetching job
-│       └── 📄 python-tests.yml     # GitHub Actions: Unit tests
+│       ├── ⚙️ filings-fetch.yml    # GitHub Actions: Filings fetching job
+│       └── ⚙️ python-tests.yml     # GitHub Actions: Unit tests
 ├── 📁 app/                          # Main application logic
-│   └── 📄 main.py                  # Main entry point for Data&AI analysis
+│   └── ▶️ main.py                  # Main entry point for Data & AI analysis
 ├── 📁 database/                     # Data storage
 │   ├── 📁 2025Q1/                  # Quarterly reports
-│   │   ├── 📄 fund_1.csv           # Individual fund quarterly report
-│   │   ├── 📄 fund_2.csv
-│   │   └── 📄 fund_n.csv
+│   │   ├── 📊 fund_1.csv           # Individual fund quarterly report
+│   │   ├── 📊 fund_2.csv
+│   │   └── 📊 fund_n.csv
 │   ├── 📁 2025Q2/
 │   ├── 📁 YYYYQN/
-│   ├── 📄 hedge_funds.csv          # Curated hedge funds list -> EDIT THIS to add or remove funds to track
-│   ├── 📄 models.csv               # LLMs list to use for AI Financial Analyst -> EDIT THIS to add or remove AI models
-│   ├── 📄 non_quarterly.csv        # Stores latest 13D/G and Form 4 filings
-│   ├── 📄 stocks.csv               # Master data for stocks (CUSIP-Ticker-Name)
-│   └── 📄 updater.py               # Main entry point for updating the database
+│   ├── 📝 hedge_funds.csv          # Curated hedge funds list -> EDIT THIS to add or remove funds to track
+│   ├── 📝 models.csv               # LLMs list to use for AI Financial Analyst -> EDIT THIS to add or remove AI models
+│   ├── 📊 non_quarterly.csv        # Stores latest 13D/G and Form 4 filings
+│   ├── 📊 stocks.csv               # Master data for stocks (CUSIP-Ticker-Name)
+│   └── ▶️ updater.py               # Main entry point for updating the database
 ├── 📁 tests/                        # Test suite
-├── 📄 .env.example                 # Template for your API keys
-├── 📄 .gitignore                   # Git ignore rules
-├── 📄 LICENSE                      # MIT License
-├── 📄 Pipfile                      # Project dependencies
-├── 📄 Pipfile.lock                 # Locked dependency versions
-└── 📄 README.md                    # Project documentation (this file)
+├── 📝 .env.example                 # Template for your API keys
+├── ⛔ .gitignore                   # Git ignore rules
+├── 🧾 LICENSE                      # MIT License
+├── 🛠️ Pipfile                      # Project dependencies
+├── 🔏 Pipfile.lock                 # Locked dependency versions
+└── 📖 README.md                    # Project documentation (this file)
 ```
 
 > **📝 Hedge Funds Configuration File:** `database/hedge_funds.csv` contains the list of hedge funds to monitor (CIK, name, manager) and can also be edited at runtime.
 >
-> **🧠 LLMs Configuration File:** `database/models.csv` contains the list of available LLMs for AI analysis and can also be edited at runtime.
+> **📝 LLMs Configuration File:** `database/models.csv` contains the list of available LLMs for AI analysis and can also be edited at runtime.
 
 ## 👨🏻‍💻 How This Tool Tracks Hedge Funds
 
