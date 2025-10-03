@@ -12,9 +12,9 @@ pandas = "~=2.3"
 python-dotenv = "~=1.1"
 finnhub-python = "~=2.4"
 financedatabase = "~=2.3"
-google-genai = "~=1.40"
+google-genai = "~=1.41"
 groq = "~=0.32"
-openai = "~=2.0"
+openai = "~=2.1"
 
 [dev-packages]
 
