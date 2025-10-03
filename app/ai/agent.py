@@ -4,7 +4,7 @@ from app.ai.prompts import promise_score_weights_prompt, quantivative_scores_pro
 from app.ai.response_parser import ResponseParser
 from app.analysis.stocks import quarter_analysis
 from app.utils.strings import get_quarter_date
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError, wait_fixed
+from tenacity import retry, stop_after_attempt, retry_if_exception_type, RetryError, wait_fixed
 import pandas as pd
 
 
@@ -24,34 +24,6 @@ class AnalystAgent:
         self.ai_client = ai_client
         self.filing_date = get_quarter_date(quarter)
         self.analysis_df = quarter_analysis(self.quarter)
-
-
-    @retry(
-        retry=retry_if_exception_type(InvalidAIResponseError),
-        wait=wait_exponential(multiplier=2),
-        stop=stop_after_attempt(3),
-        before_sleep=lambda rs: print(f"⚠️\u3000Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
-    )
-    def _get_ai_scores(self, stocks: list[dict]) -> dict:
-        """
-        Uses the LLM to categorize stocks and generate AI scores.
-        Retries with tenacity if the response is invalid.
-        """
-        prompt = quantivative_scores_prompt(stocks, self.filing_date)
-        required_keys = ['sub_industry', 'momentum_score', 'low_volatility_score', 'risk_score', 'growth_potential_score']
-
-        print(f"Sending request to AI ({self.ai_client.get_model_name()}) for thematic scores...")
-        response_text = self.ai_client.generate_content(prompt)
-        parsed_data = ResponseParser().extract_and_parse(response_text)
-
-        if not parsed_data:
-            raise InvalidAIResponseError("AI returned no data")
-
-        if not all(all(key in data for key in required_keys) for data in parsed_data.values()):
-            raise InvalidAIResponseError("AI response was missing required keys")
-
-        print(f"Successfully parsed AI scores for {len(parsed_data)} tickers")
-        return parsed_data
 
 
     @retry(
@@ -80,7 +52,8 @@ class AnalystAgent:
         if invalid_metrics:
             raise InvalidAIResponseError(f"AI returned invalid metrics: {invalid_metrics}")
 
-        print(f"AI Agent selected weights: {parsed_weights} (sum: {total:.2f})")
+        weights_str = "\n\t" + "\n\t".join([f"{k:<20} = {v:5.2f}" for k, v in parsed_weights.items()])
+        print(f"✅ AI Agent selected weights (sum: {total:.2f}):{weights_str}")
         return parsed_weights
 
 
@@ -102,6 +75,34 @@ class AnalystAgent:
 
         df['Promise_Score'] *= 100
         return df
+
+
+    @retry(
+        retry=retry_if_exception_type(InvalidAIResponseError),
+        wait=wait_fixed(1),
+        stop=stop_after_attempt(5),
+        before_sleep=lambda rs: print(f"⚠️\u3000Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
+    )
+    def _get_ai_scores(self, stocks: list[dict]) -> dict:
+        """
+        Uses the LLM to categorize stocks and generate AI scores.
+        Retries with tenacity if the response is invalid.
+        """
+        prompt = quantivative_scores_prompt(stocks, self.filing_date)
+        required_keys = ['sub_industry', 'momentum_score', 'low_volatility_score', 'risk_score', 'growth_potential_score']
+
+        print(f"Sending request to AI ({self.ai_client.get_model_name()}) for thematic scores...")
+        response_text = self.ai_client.generate_content(prompt)
+        parsed_data = ResponseParser().extract_and_parse(response_text)
+
+        if not parsed_data:
+            raise InvalidAIResponseError("AI returned no data")
+
+        if not all(all(key in data for key in required_keys) for data in parsed_data.values()):
+            raise InvalidAIResponseError("AI response was missing required keys")
+
+        print(f"✅ Successfully parsed AI scores for {len(parsed_data)} tickers")
+        return parsed_data
 
 
     def _add_ai_scores_to_df(self, df: pd.DataFrame, ai_scores_data: dict) -> pd.DataFrame:

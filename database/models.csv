@@ -6,4 +6,4 @@
 "openai/gpt-oss-120b","OpenAI gpt-oss-120b","Groq"
 "openai/gpt-oss-20b","OpenAI gpt-oss-20b","Groq"
 "moonshotai/kimi-k2-instruct-0905","Moonshot AI Kimi K2","Groq"
-"qwen/qwen3-4b","Qwen3 4B","OpenRouter"
+"qwen/qwen3-4b:free","Qwen3 4B","OpenRouter"
