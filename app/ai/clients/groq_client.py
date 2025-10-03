@@ -31,7 +31,7 @@ class GroqClient(AIClient):
     @retry(
         wait=wait_exponential(multiplier=2, min=1, max=3),
         stop=stop_after_attempt(3),
-        before_sleep=lambda rs: print(f"Groq service unavailable, retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})")
+        before_sleep=lambda rs: print(f"⏳ Retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})")
     )
     def generate_content(self, prompt: str) -> str:
         """
@@ -58,5 +58,10 @@ class GroqClient(AIClient):
             )
             return response.choices[0].message.content or ""
         except Exception as e:
-            print(f"❌ ERROR: Groq API call failed: {e}")
-            raise
+            try:
+                message = e.body.get('error', {}).get('message', str(e))
+            except (AttributeError, KeyError):
+                message = str(e)
+
+            print(f"❌ ERROR - Groq API: {message}")
+            raise Exception(message) from e

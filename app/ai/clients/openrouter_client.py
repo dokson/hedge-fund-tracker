@@ -2,7 +2,9 @@ from app.ai.clients import AIClient
 from dotenv import load_dotenv
 from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
+import ast
 import os
+import re
 
 
 class OpenRouterClient(AIClient):
@@ -24,18 +26,17 @@ class OpenRouterClient(AIClient):
         )
         self.model = model
 
-
     def get_model_name(self) -> str:
         """
         Get the current OpenRouter model name
         """
         return self.model
 
-
     @retry(
-        wait=wait_exponential(multiplier=2, min=1, max=3),
+        wait=wait_exponential(multiplier=2, min=1, max=8),
         stop=stop_after_attempt(3),
-        before_sleep=lambda rs: print(f"OpenRouter service unavailable, retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})")
+        before_sleep=lambda rs: print(
+            f"⏳ Retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})")
     )
     def generate_content(self, prompt: str) -> str:
         """
@@ -43,15 +44,25 @@ class OpenRouterClient(AIClient):
         """
         try:
             response = self.client.chat.completions.create(
-                model=self.model, 
+                model=self.model,
                 messages=[
                     {
-                        "role": "user", 
+                        "role": "user",
                         "content": prompt
                     }
                 ]
             )
             return response.choices[0].message.content or ""
         except Exception as e:
-            print(f"❌ ERROR: OpenRouter API call failed: {e}")
-            raise
+            dict_match = re.search(r"\{.*\}", str(e))
+            if dict_match:
+                error_data = ast.literal_eval(dict_match.group(0))
+                if 'error' in error_data and isinstance(error_data['error'], dict):
+                    code = error_data['error'].get('code')
+                    message = error_data['error'].get('message')
+                    if code and message:
+                        error_message = f"error code {code}: {message}"
+                        print(f"❌ ERROR - OpenRouter API failed with {error_message}")
+                        raise Exception(error_message) from e
+                else:
+                    raise Exception(str(e))

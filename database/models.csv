@@ -5,4 +5,5 @@
 "gemini-2.5-flash","Google Gemini 2.5 Flash","Google"
 "openai/gpt-oss-120b","OpenAI gpt-oss-120b","Groq"
 "openai/gpt-oss-20b","OpenAI gpt-oss-20b","Groq"
-"groq/compound","Groq Compound","Groq"
+"moonshotai/kimi-k2-instruct-0905","Moonshot AI Kimi K2","Groq"
+"qwen/qwen3-4b","Qwen3 4B","OpenRouter"

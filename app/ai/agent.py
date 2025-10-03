@@ -4,7 +4,7 @@ from app.ai.prompts import promise_score_weights_prompt, quantivative_scores_pro
 from app.ai.response_parser import ResponseParser
 from app.analysis.stocks import quarter_analysis
 from app.utils.strings import get_quarter_date
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError, wait_fixed
 import pandas as pd
 
 
@@ -30,7 +30,7 @@ class AnalystAgent:
         retry=retry_if_exception_type(InvalidAIResponseError),
         wait=wait_exponential(multiplier=2),
         stop=stop_after_attempt(3),
-        before_sleep=lambda rs: print(f"⚠️  Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
+        before_sleep=lambda rs: print(f"⚠️\u3000Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
     )
     def _get_ai_scores(self, stocks: list[dict]) -> dict:
         """
@@ -56,9 +56,9 @@ class AnalystAgent:
 
     @retry(
         retry=retry_if_exception_type(InvalidAIResponseError),
-        wait=wait_exponential(multiplier=1),
-        stop=stop_after_attempt(5),
-        before_sleep=lambda rs: print(f"⚠️  Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
+        wait=wait_fixed(1),
+        stop=stop_after_attempt(7),
+        before_sleep=lambda rs: print(f"⚠️\u3000Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
     )
     def _get_promise_score_weights(self) -> dict:
         """
@@ -144,6 +144,7 @@ class AnalystAgent:
                 suggestions_df = self._add_ai_scores_to_df(suggestions_df, ai_scores_data)
             except RetryError as e:
                 print(f"❌ ERROR: Failed to get valid AI scores after multiple attempts: {e.last_attempt.exception()}")
+                return pd.DataFrame()
 
         else:
             # Add empty columns if no stocks
