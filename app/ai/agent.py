@@ -4,7 +4,7 @@ from app.ai.prompts import promise_score_weights_prompt, quantivative_scores_pro
 from app.ai.response_parser import ResponseParser
 from app.analysis.stocks import quarter_analysis
 from app.utils.strings import get_quarter_date
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
 import pandas as pd
 
 
@@ -126,8 +126,8 @@ class AnalystAgent:
         try:
             # Let the LLM define the weights for the Promise score
             promise_weights = self._get_promise_score_weights()
-        except Exception as e:
-            print(f"❌ ERROR: Failed to get valid promise score weights after multiple attempts: {e}")
+        except RetryError as e:
+            print(f"❌ ERROR: Failed to get valid promise score weights after multiple attempts: {e.last_attempt.exception()}")
             return pd.DataFrame()
 
         # Calculate Promise scores
@@ -142,8 +142,9 @@ class AnalystAgent:
             try:
                 ai_scores_data = self._get_ai_scores(top_stocks)
                 suggestions_df = self._add_ai_scores_to_df(suggestions_df, ai_scores_data)
-            except Exception as e:
-                print(f"❌ ERROR: Failed to get valid AI scores after multiple attempts: {e}")
+            except RetryError as e:
+                print(f"❌ ERROR: Failed to get valid AI scores after multiple attempts: {e.last_attempt.exception()}")
+
         else:
             # Add empty columns if no stocks
             suggestions_df['Industry'] = None

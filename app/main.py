@@ -144,8 +144,9 @@ def run_ai_analyst():
         top_n = 30
         agent = AnalystAgent(get_last_quarter(), ai_client=client)
         scored_list = agent.generate_scored_list(top_n)
-        title = f'Best {top_n} Promising Stocks according to {selected_model['Description']}'
-        print_dataframe(scored_list, top_n, title=title, sort_by='Promise_Score', cols=['Ticker', 'Company', 'Industry', 'Promise_Score', 'Risk_Score', 'Low_Volatility_Score', 'Momentum_Score', 'Growth_Score'])
+        if not scored_list.empty:
+            title = f'Best {top_n} Promising Stocks according to {selected_model['Description']}'
+            print_dataframe(scored_list, top_n, title=title, sort_by='Promise_Score', cols=['Ticker', 'Company', 'Industry', 'Promise_Score', 'Risk_Score', 'Low_Volatility_Score', 'Momentum_Score', 'Growth_Score'])
     except Exception as e:
         print(f"❌ An unexpected error occurred while running AI Financial Agent: {e}")
 
