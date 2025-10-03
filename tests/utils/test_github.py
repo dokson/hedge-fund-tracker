@@ -35,6 +35,7 @@ class TestGithub(unittest.TestCase):
         args, kwargs = mock_post.call_args
         self.assertEqual(args[0], "https://api.github.com/repos/repo/hedge-fund-tracker/issues")
         self.assertEqual(kwargs['json']['title'], subject)
+        self.assertEqual(kwargs['json']['assignees'], ['repo'])
 
         # Assert that the success message was printed and the fallback was not
         mock_print.assert_called_once_with("::notice::✅ Successfully created GitHub Issue: https://github.com/repo/hedge-fund-tracker/issues/1")

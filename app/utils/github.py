@@ -35,12 +35,20 @@ def open_issue(subject, body):
         print_error()
         return
 
+    # Extract owner from repo string (e.g., 'owner/repo_name')
+    repo_owner = repo.split('/')[0]
+
     url = f"https://api.github.com/repos/{repo}/issues"
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json",
     }
-    data = {"title": subject, "body": body, "labels": ["bug", "alert"]}
+    data = {
+        "title": subject,
+        "body": body,
+        "labels": ["bug", "alert"],
+        "assignees": [repo_owner]
+    }
 
     try:
         response = requests.post(url, json=data, headers=headers)
