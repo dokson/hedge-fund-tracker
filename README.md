@@ -250,6 +250,7 @@ Some famous names have to be excluded by design to enhance analysis quality:
 - *Jeremy Grantham*'s [GMO](https://www.gmo.com/)
 - *Bill Nygren*'s [Harris Associates](https://harrisassoc.com/)
 - *David Booth*'s [Dimensional Fund Advisors](https://www.dimensional.com/)
+- *Robert Citrone*'s [Discovery Capital Management](https://discoverycapitalmanagement.com/)
 - *Chris Hohn*'s [The Children's Investment](https://ciff.org/)
 - *Stan Moss*'s [Polen Capital](https://www.polencapital.com/)
 - *Sander Gerber*'s [Hudson Bay Capital Management](https://www.hudsonbaycapital.com/)
