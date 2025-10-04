@@ -9,8 +9,8 @@ class YFinance(FinanceLibrary):
     """
     Client for searching stock information using the yfinance library, implementing the FinanceLibrary interface.
     """
-
-    def get_company(self, cusip: str, **kwargs) -> str | None:
+    @staticmethod
+    def get_company(cusip: str, **kwargs) -> str | None:
         """
         Searches for a company name for a given ticker using the yfinance library.
 
@@ -23,7 +23,7 @@ class YFinance(FinanceLibrary):
         """
         ticker = kwargs.get('ticker')
         if not ticker:
-            ticker = self.get_ticker(cusip)
+            ticker = YFinance.get_ticker(cusip)
 
         try:
             stock_info = yf.Ticker(ticker).info
@@ -34,7 +34,8 @@ class YFinance(FinanceLibrary):
             return None
 
 
-    def get_ticker(self, cusip: str, **kwargs) -> str | None:
+    @staticmethod
+    def get_ticker(cusip: str, **kwargs) -> str | None:
         """
         Searches for a ticker for a given CUSIP by querying the Yahoo Finance search API.
 

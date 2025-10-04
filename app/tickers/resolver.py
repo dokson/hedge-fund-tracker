@@ -18,7 +18,7 @@ def get_libraries() -> list[FinanceLibrary]:
     """
     Returns an ordered (based on priority) list of FinanceLibrary instances.
     """
-    return [YFinance(), Finnhub(), FinanceDatabase()]
+    return [YFinance, Finnhub, FinanceDatabase]
 
 
 def resolve_ticker(df):

@@ -72,7 +72,7 @@ def xml_to_dataframe_13f(xml_content):
 
     if not df.empty and df['Value'].max() < MAX_POSITION_THRESHOLD and df['Value'].sum() < TOTAL_VALUE_THRESHOLD:
         df['Value'] = df['Value'] * 1000
-        
+
     # Dedup by CUSIP
     df = df.groupby(['CUSIP'], as_index=False).agg({
         'Company': 'max',

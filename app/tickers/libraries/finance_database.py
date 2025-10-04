@@ -8,7 +8,8 @@ class FinanceDatabase(FinanceLibrary):
     Client for searching stock information using the financedatabase library.
     This class provides static methods to find tickers and company names based on CUSIPs, encapsulating the logic for handling search results.
     """
-    def _search_and_sort(self, cusip: str) -> pd.DataFrame | None:
+    @staticmethod
+    def _search_and_sort(cusip: str) -> pd.DataFrame | None:
         """
         Searches for a CUSIP and returns a DataFrame sorted by ticker length.
 
@@ -25,7 +26,8 @@ class FinanceDatabase(FinanceLibrary):
         return None
 
 
-    def get_ticker(self, cusip: str, **kwargs) -> str | None:
+    @staticmethod
+    def get_ticker(cusip: str, **kwargs) -> str | None:
         """
         Searches for a ticker for a given CUSIP using financedatabase.
 
@@ -37,7 +39,7 @@ class FinanceDatabase(FinanceLibrary):
         Returns:
             str | None: The ticker symbol if found, otherwise None.
         """
-        sorted_result = self._search_and_sort(cusip)
+        sorted_result = FinanceDatabase._search_and_sort(cusip)
 
         if sorted_result is not None:
             return sorted_result.index[0]
@@ -46,7 +48,8 @@ class FinanceDatabase(FinanceLibrary):
         return None
 
 
-    def get_company(self, cusip: str, **kwargs) -> str | None:
+    @staticmethod
+    def get_company(cusip: str, **kwargs) -> str | None:
         """
         Searches for a company name for a given CUSIP using financedatabase.
 
@@ -58,7 +61,7 @@ class FinanceDatabase(FinanceLibrary):
         Returns:
             str: The company name if found, otherwise an empty string.
         """
-        sorted_result = self._search_and_sort(cusip)
+        sorted_result = FinanceDatabase._search_and_sort(cusip)
 
         if sorted_result is not None:
             return sorted_result.iloc[0]['name'].title()
