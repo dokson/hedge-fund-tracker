@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/release/python-3130/)
 [![License: MIT](https://img.shields.io/github/license/dokson/hedge-fund-tracker)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dokson/hedge-fund-tracker/pulls)
-[![GitHub stars](https://img.shields.io/github/stars/dokson/hedge-fund-tracker.svg?style=social&label=Star)(https://github.com/dokson/hedge-fund-tracker/stargazers)]
+[![GitHub stars](https://img.shields.io/github/stars/dokson/hedge-fund-tracker.svg?style=social&label=Star)](https://github.com/dokson/hedge-fund-tracker/stargazers)
 
 > **Track hedge fund portfolios and investment strategies using [SEC](http://sec.gov/) filings**
 
