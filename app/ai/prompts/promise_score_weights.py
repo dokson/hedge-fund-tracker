@@ -30,7 +30,8 @@ Focus on metrics that predict future outperformance (considering data is only av
 
 CONSTRAINTS:
 - Weights must sum to EXACTLY 1.
-- `Seller_Count` and `Close_Count` can only have a zero or negative weight.
+- `Seller_Count` and `Close_Count` must have a negative weight if included.
+- Do not include any metric with a weight of 0.
 
 OUTPUT REQUIREMENTS:
 Return ONLY a valid JSON object with metric names as keys and weights as values.
