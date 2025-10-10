@@ -85,7 +85,8 @@ def update_last_quarter_with_nq_filings(last_quarter_df: pd.DataFrame) -> pd.Dat
     - For existing CUSIPs, it updates 'Shares' and recalculates 'Value' based on the original price.
     - For new CUSIPs, it adds the row with 'Value' as N/A.
     """
-    schedule_df = load_non_quarterly_data().set_index(['Fund', 'CUSIP'])
+    schedule_df = load_non_quarterly_data()
+    schedule_df = schedule_df[schedule_df['Fund'].isin(last_quarter_df['Fund'].unique())].set_index(['Fund', 'CUSIP'])
     schedule_df.loc[:, 'Value_Num'] = schedule_df['Value'].apply(get_numeric)
 
     updated_df = pd.merge(
