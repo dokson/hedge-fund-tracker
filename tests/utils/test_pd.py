@@ -31,11 +31,24 @@ class TestPandas(unittest.TestCase):
         pd.testing.assert_series_equal(result3, expected3, check_names=False)
 
         # Scenario 4: Result still contains None values because no series can fill it
-        s4 = pd.Series([4, None, 5, None], dtype='Int64')
+        s4 = pd.Series([None, None, None, None], dtype='Int64')
         result4 = coalesce(s1, s4)
-        # The result should be a copy of the original series
         expected4 = s1.copy()
         pd.testing.assert_series_equal(result4, expected4, check_names=False)
+
+        # Scenario 5: Coalesce with string data
+        s_str1 = pd.Series(['A', None, 'C'])
+        s_str2 = pd.Series([None, 'B', None])
+        expected5 = pd.Series(['A', 'B', 'C'])
+        result5 = coalesce(s_str1, s_str2)
+        pd.testing.assert_series_equal(result5, expected5, check_names=False)
+
+        # Scenario 6: Mixed types (object dtype)
+        s_mix1 = pd.Series([1, None, 'hello', None])
+        s_mix2 = pd.Series([None, 2.5, None, True])
+        expected6 = pd.Series([1, 2.5, 'hello', True], dtype='object')
+        result6 = coalesce(s_mix1, s_mix2)
+        pd.testing.assert_series_equal(result6, expected6, check_names=False)
 
 
 if __name__ == '__main__':
