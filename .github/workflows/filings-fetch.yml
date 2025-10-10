@@ -3,7 +3,7 @@ name: Scheduled Filings Fetch
 on:
   workflow_dispatch: # Allows manual triggering
   schedule:
-  - cron: '0 2,10,16,22 * * 1-6'
+    - cron: "0 2,10,16,22 * * 1-6"
 
 jobs:
   filings-fetch:
@@ -11,95 +11,95 @@ jobs:
 
     env:
       COMMIT_BRANCH: automated/filings-fetch
-    
+
     permissions:
       contents: write
       pull-requests: write
       issues: write
 
     steps:
-    - name: Check out repository code
-      uses: actions/checkout@v5
-      with:
-        # Fetch all history so we can switch to the branch
-        fetch-depth: 0
+      - name: Check out repository code
+        uses: actions/checkout@v5
+        with:
+          # Fetch all history so we can switch to the branch
+          fetch-depth: 0
 
-    - name: Switch to the filings-fetch branch
-      run: |
-        # If the branch exists remotely, check it out. Otherwise, create it from the default branch.
-        if git ls-remote --exit-code --heads origin ${{ env.COMMIT_BRANCH }}; then
-          echo "::notice::Found existing '${{ env.COMMIT_BRANCH }}' branch. Checking it out to add new commits."
-          git checkout ${{ env.COMMIT_BRANCH }}
-        else
-          echo "::notice::'${{ env.COMMIT_BRANCH }}' not found. A new branch will be created."
-          git checkout -b ${{ env.COMMIT_BRANCH }}
-        fi
+      - name: Switch to the filings-fetch branch
+        run: |
+          # If the branch exists remotely, check it out. Otherwise, create it from the default branch.
+          if git ls-remote --exit-code --heads origin ${{ env.COMMIT_BRANCH }}; then
+            echo "::notice::Found existing '${{ env.COMMIT_BRANCH }}' branch. Checking it out to add new commits."
+            git checkout ${{ env.COMMIT_BRANCH }}
+          else
+            echo "::notice::'${{ env.COMMIT_BRANCH }}' not found. A new branch will be created."
+            git checkout -b ${{ env.COMMIT_BRANCH }}
+          fi
 
-    - name: Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.13'
-        cache: 'pipenv'
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: "pipenv"
 
-    - name: Cache pipenv dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.local/share/virtualenvs
-        key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pipenv-
+      - name: Cache pipenv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pipenv-
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install pipenv
-        pipenv install --dev
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pipenv
+          pipenv install --dev
 
-    - name: Run fetcher script
-      run: pipenv run python .github/scripts/fetcher.py
-      env:
-        GITHUB_ACTIONS: true
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      - name: Run fetcher script
+        run: pipenv run python .github/scripts/fetcher.py
+        env:
+          GITHUB_ACTIONS: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
 
-    - name: Get current date
-      id: date
-      run: echo "today=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      - name: Get current date
+        id: date
+        run: echo "today=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-    - name: Check for changes
-      id: changes
-      run: |
-        if git status --porcelain | grep .; then
-          echo "no_changes=false" >> $GITHUB_OUTPUT
-          echo "Changes detected, will commit to ${{ env.COMMIT_BRANCH }} branch"
-          
-          files_changed=$(git status --porcelain | wc -l)
-          echo "files_changed=$files_changed" >> $GITHUB_OUTPUT
-          echo "📊 Files changed: $files_changed"
-          
-          git status --porcelain
-        else
-          echo "no_changes=true" >> $GITHUB_OUTPUT
-          echo "No changes detected in the data files"
-        fi
+      - name: Check for changes
+        id: changes
+        run: |
+          if git status --porcelain | grep .; then
+            echo "no_changes=false" >> $GITHUB_OUTPUT
+            echo "Changes detected, will commit to ${{ env.COMMIT_BRANCH }} branch"
+            
+            files_changed=$(git status --porcelain | wc -l)
+            echo "files_changed=$files_changed" >> $GITHUB_OUTPUT
+            echo "📊 Files changed: $files_changed"
+            
+            git status --porcelain
+          else
+            echo "no_changes=true" >> $GITHUB_OUTPUT
+            echo "No changes detected in the data files"
+          fi
 
-    - name: Commit and push changes to filings-fetch branch
-      if: steps.changes.outputs.no_changes == 'false'
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git add .
-        git commit -m "chore: Update filings data (${{ steps.date.outputs.today }})"
-        git push --set-upstream origin ${{ env.COMMIT_BRANCH }}
+      - name: Commit and push changes to filings-fetch branch
+        if: steps.changes.outputs.no_changes == 'false'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "chore: Update filings data (${{ steps.date.outputs.today }})"
+          git push --set-upstream origin ${{ env.COMMIT_BRANCH }}
 
-    - name: Log completion
-      run: |
-        if [[ "${{ steps.changes.outputs.no_changes }}" == "true" ]]; then
-          echo "✅ Workflow completed - No changes detected"
-        else
-          echo "✅ Workflow completed - Changes committed and pushed to ${{ env.COMMIT_BRANCH }} branch"
-          echo "📊 Files changed: ${{ steps.changes.outputs.files_changed || 'N/A' }}"
-          echo "📌 Branch: ${{ env.COMMIT_BRANCH }}"
-          echo "🔗 View commit history: https://github.com/${{ github.repository }}/commits/${{ env.COMMIT_BRANCH }}"
-          echo "📅 Run date: ${{ steps.date.outputs.today }}"
-        fi
+      - name: Log completion
+        run: |
+          if [[ "${{ steps.changes.outputs.no_changes }}" == "true" ]]; then
+            echo "✅ Workflow completed - No changes detected"
+          else
+            echo "✅ Workflow completed - Changes committed and pushed to ${{ env.COMMIT_BRANCH }} branch"
+            echo "📊 Files changed: ${{ steps.changes.outputs.files_changed || 'N/A' }}"
+            echo "📌 Branch: ${{ env.COMMIT_BRANCH }}"
+            echo "🔗 View commit history: https://github.com/${{ github.repository }}/commits/${{ env.COMMIT_BRANCH }}"
+            echo "📅 Run date: ${{ steps.date.outputs.today }}"
+          fi
