@@ -122,8 +122,6 @@ class AnalystAgent:
         """
         Generates a scored and ranked list of the most promising stocks based on a heuristic model
         """
-        top_n = top_n or self.config.top_n_stocks
-        
         try:
             # Let the LLM define the weights for the Promise score
             promise_weights = self._get_promise_score_weights()

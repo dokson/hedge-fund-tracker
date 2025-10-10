@@ -2,9 +2,10 @@ from app.analysis.non_quarterly import update_last_quarter_with_nq_filings
 from app.utils.database import get_last_quarter, is_last_quarter, load_quarterly_data, load_stocks
 from app.utils.strings import format_percentage, get_numeric, get_percentage_number
 import numpy as np
+import pandas as pd
 
 
-def aggregate_quarter_by_fund(df_quarter):
+def aggregate_quarter_by_fund(df_quarter) -> pd.DataFrame:
     """
     Aggregates quarter fund holdings at the Ticker level.
 
@@ -49,7 +50,20 @@ def aggregate_quarter_by_fund(df_quarter):
     return df_fund_quarter
 
 
-def get_quarter_data(quarter=get_last_quarter()):
+def get_quarter_data(quarter=get_last_quarter()) -> pd.DataFrame:
+    """
+    Loads and prepares quarterly data for analysis.
+
+    - Loads raw quarterly data from CSV files.
+    - Converts string-based numeric columns ('Value', 'Delta_Value', 'Portfolio%') to numeric types.
+    - If the specified quarter is the most recent one, it integrates the latest non-quarterly filings (13D/G, Form 4) to provide an up-to-date view of holdings.
+
+    Args:
+        quarter (str, optional): The quarter to load, in 'YYYYQN' format. Defaults to the last available quarter.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the prepared quarterly data.
+    """
     df_quarter = load_quarterly_data(quarter)
 
     df_quarter.loc[:, 'Delta_Value_Num'] = df_quarter['Delta_Value'].apply(get_numeric)
@@ -62,7 +76,64 @@ def get_quarter_data(quarter=get_last_quarter()):
     return df_quarter
 
 
-def quarter_analysis(quarter):
+def _calculate_fund_level_flags(df_fund_quarter: pd.DataFrame) -> pd.DataFrame:
+    """
+    Adds boolean flags to the fund-level DataFrame to categorize fund activity for each stock.
+
+    Args:
+        df_fund_quarter (pd.DataFrame): DataFrame with fund-level holdings data.
+
+    Returns:
+        pd.DataFrame: The input DataFrame with added boolean columns for activity type (e.g., 'is_buyer', 'is_seller', 'is_new').
+    """
+    df = df_fund_quarter.copy()
+    df['is_buyer'] = df['Delta_Value'] > 0
+    df['is_seller'] = df['Delta_Value'] < 0
+    df['is_holder'] = df['Shares'] > 0
+    df['is_new'] = (df['Shares'] > 0) & (df['Shares'] == df['Delta_Shares'])
+    df['is_closed'] = df['Shares'] == 0
+    return df
+
+
+def _aggregate_stock_data(df_fund_quarter_with_flags: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aggregates fund-level data to the stock level.
+
+    This function groups the data by stock and calculates summary statistics, such as total value, total delta value, and counts of different fund activities.
+
+    Args:
+        df_fund_quarter_with_flags (pd.DataFrame): DataFrame with fund-level data and activity flags.
+
+    Returns:
+        pd.DataFrame: An aggregated DataFrame with one row per stock, summarizing institutional activity.
+    """
+    aggregation_rules = {
+        'Total_Value': ('Value', 'sum'),
+        'Total_Delta_Value': ('Delta_Value', 'sum'),
+        'Max_Portfolio_Pct': ('Portfolio_Pct', 'max'),
+        'Avg_Portfolio_Pct': ('Portfolio_Pct', 'mean'),
+        'Buyer_Count': ('is_buyer', 'sum'),
+        'Seller_Count': ('is_seller', 'sum'),
+        'Holder_Count': ('is_holder', 'sum'),
+        'New_Holder_Count': ('is_new', 'sum'),
+        'Close_Count': ('is_closed', 'sum'),
+    }
+    return df_fund_quarter_with_flags.groupby(['Ticker', 'Company']).agg(**aggregation_rules).reset_index()
+
+
+def _calculate_derived_metrics(df_analysis: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculates derived metrics like Net_Buyers, Delta, and Buyer_Seller_Ratio.
+    """
+    df = df_analysis.copy()
+    df['Net_Buyers'] = df['Buyer_Count'] - df['Seller_Count']
+    df['Buyer_Seller_Ratio'] = np.where(df['Seller_Count'] > 0, df['Buyer_Count'] / df['Seller_Count'], np.inf)
+    previous_total_value = np.where(df['Total_Value'] - df['Total_Delta_Value'] == 0, np.nan, df['Total_Value'] - df['Total_Delta_Value'])
+    df['Delta'] = np.where((df_analysis['New_Holder_Count'] == df_analysis['Holder_Count']) & (df_analysis['Close_Count'] == 0), np.inf, df_analysis['Total_Delta_Value'] / previous_total_value * 100)
+    return df
+
+
+def quarter_analysis(quarter) -> pd.DataFrame:
     """
     Analyzes stock data for a given quarter to find the most popular, bought, and sold stocks.
     
@@ -74,34 +145,10 @@ def quarter_analysis(quarter):
     """
     # Fund level calculation
     df_fund_quarter = aggregate_quarter_by_fund(get_quarter_data(quarter))
+    df_fund_quarter_with_flags = _calculate_fund_level_flags(df_fund_quarter)
+    df_analysis = _aggregate_stock_data(df_fund_quarter_with_flags)
 
-    df_fund_quarter['is_buyer'] = df_fund_quarter['Delta_Value'] > 0
-    df_fund_quarter['is_seller'] = df_fund_quarter['Delta_Value'] < 0
-    df_fund_quarter['is_holder'] = df_fund_quarter['Shares'] > 0
-    df_fund_quarter['is_new'] = df_fund_quarter['Delta'] == 'NEW'
-    df_fund_quarter['is_closed'] = df_fund_quarter['Delta'] == 'CLOSE'
-    
-    # Stock level calculation
-    df_analysis = (
-        df_fund_quarter.groupby(['Ticker', 'Company'])
-        .agg(
-            Total_Value=('Value', 'sum'),
-            Total_Delta_Value=('Delta_Value', 'sum'),
-            Max_Portfolio_Pct=('Portfolio_Pct', 'max'),
-            Avg_Portfolio_Pct=('Portfolio_Pct', 'mean'),
-            Buyer_Count=('is_buyer', 'sum'),
-            Seller_Count=('is_seller', 'sum'),
-            Holder_Count=('is_holder', 'sum'),
-            New_Holder_Count=('is_new', 'sum'),
-            Close_Count=('is_closed', 'sum'),
-        )
-        .reset_index()
-    )
-
-    df_analysis['Net_Buyers'] = df_analysis['Buyer_Count'] - df_analysis['Seller_Count']
-    df_analysis['Delta'] = np.where((df_analysis['New_Holder_Count'] == df_analysis['Holder_Count']) & (df_analysis['Close_Count'] == 0), np.inf, df_analysis['Total_Delta_Value'] / (df_analysis['Total_Value'] - df_analysis['Total_Delta_Value']) * 100)
-    df_analysis['Buyer_Seller_Ratio'] = np.where(df_analysis['Seller_Count'] > 0, df_analysis['Buyer_Count'] / df_analysis['Seller_Count'],  np.inf)
-    return df_analysis
+    return _calculate_derived_metrics(df_analysis)
 
 
 def stock_analysis(ticker, quarter):
@@ -121,7 +168,7 @@ def stock_analysis(ticker, quarter):
     return aggregate_quarter_by_fund(df_quarter[df_quarter['Ticker'] == ticker])
 
 
-def fund_analysis(fund, quarter):
+def fund_analysis(fund, quarter) -> pd.DataFrame:
     """
     Analyzes a single fund for a given quarter, returning its holdings.
 
