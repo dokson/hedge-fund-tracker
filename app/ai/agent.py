@@ -118,7 +118,7 @@ class AnalystAgent:
         return df
 
 
-    def generate_scored_list(self, top_n: int = None):
+    def generate_scored_list(self, top_n: int) -> pd.DataFrame:
         """
         Generates a scored and ranked list of the most promising stocks based on a heuristic model
         """
