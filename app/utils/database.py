@@ -105,7 +105,6 @@ def load_non_quarterly_data(filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FI
 
     Args:
         filepath (str, optional): The path to the CSV file.
-                                  Defaults to './database/non_quarterly.csv'.
 
     Returns:
         pd.DataFrame: A DataFrame containing the most recent filing for each Fund-Ticker combination.
@@ -145,7 +144,6 @@ def load_stocks(filepath=f"./{DB_FOLDER}/{STOCKS_FILE}"):
 
     Args:
         filepath (str, optional): The path to the stocks CSV file.
-                                  Defaults to './database/stocks.csv'.
 
     Returns:
         pd.DataFrame: A DataFrame with CUSIP as the index, or an empty DataFrame if the file is not found or an error occurs.
@@ -187,7 +185,7 @@ def save_non_quarterly_filings(schedule_filings, filepath=f"./{DB_FOLDER}/{LATES
 
     Args:
         schedule_filings (list): A list of pandas DataFrames, each representing schedule filings.
-        filepath (str, optional): The path to the output CSV file. Defaults to './database/non_quarterly.csv'.
+        filepath (str, optional): The path to the output CSV file.
     """
     if not schedule_filings:
         print("No schedule filings found to process.")
@@ -233,7 +231,6 @@ def sort_stocks(filepath=f'./database/{STOCKS_FILE}'):
 
     Args:
         filepath (str, optional): The path to the stocks CSV file.
-                                  Defaults to the standard path if None.
     """
     try:
         df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna('')
