@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "9b675627267bf483ba9f6fe8c0255e87abec181f036a9f4eb87e3d95c076877e"
+            "sha256": "c6462daf442dbb460b8cff2cda1e57852c26aa62cea434609cb840397285b542"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -566,12 +566,12 @@
         },
         "google-genai": {
             "hashes": [
-                "sha256:0cef624c725a358f182e6988632371205bed9be1b1dbcf4296dbbd4eb4a9fb5d",
-                "sha256:1e45c3ecc630a358c153a08b10d5b03d7c70cf3342fd116ac8a6cc4262cd81e8"
+                "sha256:84eb219d320759c5882bc2cdb4e2ac84544d00f5d12c7892c79fb03d71bfc9a4",
+                "sha256:be1d4b1acab268125d536fd81b73c38694a70cb08266759089154718924434fd"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==1.42.0"
+            "version": "==1.43.0"
         },
         "groq": {
             "hashes": [
