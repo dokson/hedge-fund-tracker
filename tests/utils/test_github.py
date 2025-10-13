@@ -1,7 +1,7 @@
-import unittest
-from unittest.mock import patch, MagicMock, call
 from app.utils.github import open_issue
 import requests
+import unittest
+from unittest.mock import patch, MagicMock, call
 
 
 class TestGithub(unittest.TestCase):
