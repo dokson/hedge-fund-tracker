@@ -3,46 +3,67 @@ def promise_score_weights_prompt(quarter: str) -> str:
     Build prompt for getting Promise Score weights.
     """
     return f"""
-ROLE: You are a quantitative portfolio manager specializing in 13F analysis and institutional flow strategies.
+# ROLE
+You are a quantitative portfolio manager specializing in 13F analysis and institutional flow-based strategies.
 
-CONTEXT: Quarter {quarter} - Analyzing institutional fund movements to identify emerging opportunities.
+# CONTEXT
+Analyzing institutional fund activity for Quarter {quarter} to uncover emerging equity opportunities. All data is sourced from top global hedge funds' public filings.
 
-TASK: Design optimal weights for a "Promise Score" algorithm that identifies stocks with the highest institutional conviction and momentum.
+# TASK
+Develop the optimal weights for a "Promise Score" algorithm designed to identify stocks demonstrating the highest levels of institutional conviction and momentum.
 
-AVAILABLE METRICS:
-• Total_Value: Total dollar value of the stock held by all institutions (measures overall institutional ownership and popularity).
-• Total_Delta_Value: Net dollar flow across all institutions (measures raw capital allocation).
-• Max_Portfolio_Pct: Largest single fund allocation to the stock (measures individual conviction).
-• Buyer_Count: Number of funds increasing positions (measures buying breadth).
-• Seller_Count: Number of funds decreasing positions (measures selling pressure).
-• Close_Count: Number of funds that completely sold out of their position (strong negative signal).
-• Holder_Count: Total number of funds holding the stock (measures popularity/consensus).
-• New_Holder_Count: Number of funds initiating new positions (measures emerging interest).
-• Net_Buyers: Buyer_Count - Seller_Count (measures net institutional sentiment).
+# PROCESS
+Begin with a concise checklist (3-7 bullets) of your conceptual weighting approach before calculating the final weights.
+After defining the weights, perform an internal validation step:
+1.  **Sum Check**: Verify that the sum of all weights is *exactly* 1.0.
+2.  **Constraint Check**: Ensure all other constraints (e.g., negative weights for `Seller_Count`) are met.
+3.  **Self-Correction**: If the sum is not 1.0, normalize the weights or adjust them until the sum is precisely 1.0 before generating the final JSON output.
 
-WEIGHTING PHILOSOPHY:
-Focus on metrics that predict future outperformance (considering data is only available from top world hedge funds):
-- High-conviction moves.
-- New institutional interest over existing holdings.
-- Quantity of buyers over quantity of sellers.
-- Forward-looking momentum indicators.
-- CAUTION: `New_Holder_Count` can be very high especially for recent IPOs. Balance this powerful but potentially noisy signal to avoid overweighting IPOs which have no particular need to be identified using this heuristic.
+# AVAILABLE METRICS
+- **Total_Value**: Aggregate dollar value held by all institutions (overall institutional ownership/popularity).
+- **Total_Delta_Value**: Net change in dollar holdings by all institutions (indicates raw capital allocation).
+- **Max_Portfolio_Pct**: Highest single-fund percentage allocation to the stock (shows individual conviction).
+- **Buyer_Count**: Number of institutions increasing positions (captures breadth of buying).
+- **Seller_Count**: Number of institutions reducing positions (measures selling activity).
+- **Close_Count**: Number of institutions fully exiting their positions (strong negative signal).
+- **Holder_Count**: Total number of institutions currently holding the stock (measures popularity/consensus).
+- **New_Holder_Count**: Number of institutions initiating new positions (captures emerging interest).
+- **Net_Buyers**: Buyer_Count minus Seller_Count (shows net institutional sentiment).
 
-CONSTRAINTS:
-- Weights must sum to EXACTLY 1.
-- `Seller_Count` and `Close_Count` must have a negative weight if included.
-- Do not include any metric with a weight of 0.
+# WEIGHTING PHILOSOPHY
+Emphasize input features that are most predictive of future outperformance:
+- Prefer signals of high-conviction capital flows.
+- Prioritize new institutional accumulation over consensus or existing popularity.
+- Favor breadth and scale of buying activity, and penalize strong negative flows.
+- Use forward-looking momentum proxies.
 
-OUTPUT REQUIREMENTS:
-Return ONLY a valid JSON object with metric names as keys and weights as values.
-Weights must be decimal numbers that sum to 1.0.
+**Caution:**
+`New_Holder_Count` can be large for recent IPOs or highly active stocks. Although a critical signal, avoid overweighting it to prevent skew towards IPOs.
+
+# CONSTRAINTS
+- **CRITICAL**: The sum of all weights *must* be exactly 1.0. This is a non-negotiable rule.
+- If included, `Seller_Count` and `Close_Count` must have *negative* weights.
+- Do not include any metric with a weight of 0 (omit metrics with zero weights).
+
+# OUTPUT REQUIREMENTS
+1.  **JSON Only**: The entire output must be a single, valid JSON object. Do not include any text, explanations, or markdown formatting like ` ```json ` before or after the JSON.
+2.  **Valid Structure**: The JSON must be a flat object where keys are metric names (strings) and values are their corresponding weights (numbers).
+
+**IMPORTANT**: Before outputting the JSON, double-check that the sum of all weight values equals exactly 1.00.
+
+# JSON SCHEMA
+The output must strictly conform to this structure:
+`{{ "METRIC_NAME_1": <weight_1>, "METRIC_NAME_2": <weight_2>, ... }}`
+- Keys must be strings from the "AVAILABLE METRICS" list.
+- Values must be floating-point numbers.
+
+# OUTPUT FORMAT
+A single, raw JSON object. No extra text.
 
 EXAMPLE FORMATS:
 {{"Total_Delta_Value": 0.4, "New_Holder_Count": 0.35, "Max_Portfolio_Pct": 0.25}}
 
 OR
 
-{{"New_Holder_Count": 0.3, "Net_Buyers": 0.25, "Close_Count": -0.2, "Max_Portfolio_Pct": 0.15, "Buyer_Count": 0.1}}
-
-OUTPUT (JSON only):
+{{"New_Holder_Count": 0.5, "Net_Buyers": 0.4, "Close_Count": -0.2, "Max_Portfolio_Pct": 0.2, "Buyer_Count": 0.1}}
 """
