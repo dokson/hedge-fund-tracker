@@ -76,7 +76,7 @@ class FinanceDatabase(FinanceLibrary):
         print(f"⚠️\u3000Finance Database: No company found for CUSIP {cusip}")
 
         subject = f"No company found for CUSIP '{cusip}'"
-        body = f"Could not find any company for the CUSIP **{cusip}**."
+        body = f"Could not find any company for the CUSIP: {cusip}."
         open_issue(subject, body)
         return None
 
@@ -100,7 +100,7 @@ class FinanceDatabase(FinanceLibrary):
         print(f"⚠️\u3000Finance Database: No CUSIP found for ticker {ticker}")
 
         subject = f"No CUSIP found for ticker '{ticker}'"
-        body = f"Could not find any CUSIP for the ticker **{ticker}**."
+        body = f"Could not find any CUSIP for the ticker: {ticker}."
         open_issue(subject, body)
         # A random CUSIP is generated to prevent the filing compilation from failing.
         return f"N/A {''.join(random.choices(string.ascii_uppercase + string.digits, k=5))}"
