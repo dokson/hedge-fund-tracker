@@ -223,3 +223,22 @@ def get_quarter_date(quarter: str) -> str:
     quarter = int(quarter[5])
     date_map = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}
     return f"{year}-{date_map[quarter]}"
+
+
+def isin_to_cusip(isin: str) -> str | None:
+    """
+    Converts a 12-character ISIN to a 9-character CUSIP.
+
+    This function checks if the identifier is a 12-character string. 
+    If so, it assumes it's an ISIN and extracts the central 9-character National Securities Identifying Number (NSIN), which corresponds to the CUSIP for US/Canadian securities or CINS for others.
+    If the input is not a 12-character string, it returns None.
+
+    Args:
+        isin (str): The security identifier, which could be an ISIN or a CUSIP.
+
+    Returns:
+        str | None: The 9-character CUSIP if the input is a valid ISIN, otherwise None.
+    """
+    if isin and len(isin) == 12:
+        return isin[2:11]
+    return None
