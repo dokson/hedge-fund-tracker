@@ -1,8 +1,9 @@
 from app.ai.clients import AIClient
 from app.ai.promise_score_validator import PromiseScoreValidator
-from app.ai.prompts import promise_score_weights_prompt, quantivative_scores_prompt
+from app.ai.prompts import promise_score_weights_prompt, quantivative_scores_prompt, stock_due_diligence_prompt
 from app.ai.response_parser import ResponseParser
-from app.analysis.stocks import quarter_analysis
+from app.tickers.libraries.yfinance import YFinance
+from app.analysis.stocks import quarter_analysis, stock_analysis
 from app.utils.strings import get_quarter_date
 from tenacity import retry, stop_after_attempt, retry_if_exception_type, RetryError, wait_fixed
 import pandas as pd
@@ -154,3 +155,54 @@ class AnalystAgent:
             suggestions_df['Growth_Score'] = None
 
         return suggestions_df
+
+
+    def run_stock_due_diligence(self, ticker: str) -> dict:
+        """
+        Performs AI-powered due diligence on a single stock.
+
+        Args:
+            ticker (str): The stock ticker to analyze.
+
+        Returns:
+            dict: A dictionary containing the AI's analysis, or an empty dict if an error occurs.
+        """
+        print(f"\nGathering institutional data for {ticker} for quarter {self.quarter}...")
+        stock_df = stock_analysis(ticker, self.quarter)
+
+        if stock_df.empty:
+            print(f"❌ No data found for ticker {ticker} in quarter {self.quarter}.")
+            return {}
+
+        company = stock_df['Company'].iloc[0]
+        total_value = stock_df['Value'].sum()
+
+        current_price = YFinance.get_current_price(ticker)
+        if current_price is None:
+            print(f"❌ Could not fetch current price for {ticker}. Aborting due diligence.")
+            return {}
+        print(f"💲 Current price for {ticker}: ${current_price:,.2f}")
+
+        total_delta_value = stock_df['Delta_Value'].sum()
+        num_buyers = (stock_df['Delta_Value'] > 0).sum()
+        num_sellers = (stock_df['Delta_Value'] < 0).sum()
+        new_holder_count = (stock_df['Delta'].str.startswith('NEW')).sum()
+        close_count = (stock_df['Delta'] == 'CLOSE').sum()
+
+        institutional_activity = (
+            f"- Total Value Held: ${total_value:,.0f}\n"
+            f"- Net Change in Value: ${total_delta_value:,.0f}\n"
+            f"- Buyers vs. Sellers: {num_buyers} buyers vs. {num_sellers} sellers\n"
+            f"- New Positions: {new_holder_count}\n"
+            f"- Closed Positions: {close_count}"
+        )
+
+        print(f"Sending request to AI ({self.ai_client.get_model_name()}) for due diligence on {ticker}...")
+        prompt = stock_due_diligence_prompt(ticker, company, self.filing_date, institutional_activity, current_price)
+        response_text = self.ai_client.generate_content(prompt)
+        parsed_data = ResponseParser().extract_and_parse(response_text)
+
+        if parsed_data:
+            parsed_data['current_price'] = current_price
+
+        return parsed_data

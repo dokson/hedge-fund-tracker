@@ -81,3 +81,23 @@ class YFinance(FinanceLibrary):
         except Exception as e:
             print(f"❌ ERROR: Failed to get price for Ticker {ticker} on {date} using YFinance: {e}")
             return None
+
+
+    @staticmethod
+    def get_current_price(ticker: str) -> float | None:
+        """
+        Gets the current market price for a ticker using the yfinance library.
+
+        Args:
+            ticker (str): The stock ticker.
+
+        Returns:
+            float | None: The current price if found, otherwise None.
+        """
+        try:
+            stock = yf.Ticker(ticker)
+            price = stock.info.get('currentPrice')
+            return float(price) if price is not None else None
+        except Exception as e:
+            print(f"❌ ERROR: Failed to get current price for Ticker {ticker} using YFinance: {e}")
+            return None

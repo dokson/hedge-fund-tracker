@@ -6,7 +6,7 @@ def quantivative_scores_prompt(stocks: list[dict], filing_date: str) -> str:
     
     return f"""
 # ROLE
-You are a senior equity research analyst with over 15 years of experience specializing in sector analysis, risk assessment, and price action analysis. You have access to real-time and historical market data.
+You are a senior equity research analyst with over 30 years of experience specializing in sector analysis, risk assessment, and price action analysis. You have access to real-time and historical market data.
 
 Begin with a concise checklist (3-7 bullets) of what you will do for each stock; keep checklist items conceptual, not implementation-level.
 

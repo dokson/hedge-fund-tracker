@@ -151,6 +151,74 @@ def run_ai_analyst():
         print(f"❌ An unexpected error occurred while running AI Financial Agent: {e}")
 
 
+def run_ai_due_diligence():
+    """
+    6. Run AI Due Diligence on a stock
+    """
+    selected_model = select_ai_model()
+    if not selected_model:
+        return
+
+    ticker = input("Enter stock ticker to analyze: ").strip().upper()
+    if not ticker:
+        print("❌ Ticker cannot be empty.")
+        return
+
+    try:
+        client_class = selected_model['Client']
+        client = client_class(model=selected_model['ID'])
+        print_centered(f"Starting AI Due Diligence using {selected_model['Description']}", "-")
+
+        agent = AnalystAgent(get_last_quarter(), ai_client=client)
+        analysis = agent.run_stock_due_diligence(ticker)
+
+        if analysis:
+            horizontal_rule()
+            print_centered(f"AI-POWERED DUE DILIGENCE: {analysis.get('ticker')} ({analysis.get('company')})")
+            horizontal_rule()
+
+            thesis_map = {"Bullish": "🟢", "Neutral": "🟡", "Bearish": "🔴"}
+            analysis_data = analysis.get('analysis', {})
+
+            # Define the order and content for display
+            display_sections = {
+                "Business Summary": (analysis_data.get("business_summary"), None),
+                "Financial Health": (analysis_data.get("financial_health"), analysis_data.get("financial_health_sentiment")),
+                "Valuation": (analysis_data.get("valuation"), analysis_data.get("valuation_sentiment")),
+                "Growth Catalysts": (analysis_data.get("growth_catalysts"), analysis_data.get("growth_catalysts_sentiment")),
+                "Headwinds (Risks)": (analysis_data.get("headwinds"), analysis_data.get("headwinds_sentiment")),
+                "Institutional Sentiment": (analysis_data.get("institutional_sentiment"), analysis_data.get("institutional_sentiment_sentiment")),
+            }
+
+            for title, (content, sentiment) in display_sections.items():
+                if content:
+                    indicator = thesis_map.get(sentiment, "📋")
+                    print(f"\n{indicator} {title.upper()}")
+                    print(content)
+
+            thesis_info = analysis.get('investment_thesis', {})
+            overall_sentiment = thesis_info.get("overall_sentiment")
+            print(f"\n{thesis_map.get(overall_sentiment)} OVERALL")
+            print(f"Sentiment: {overall_sentiment}")
+            print(f"Thesis: {thesis_info.get('thesis')}")
+
+            target_price_str = thesis_info.get('price_target', '').replace('$', '').replace(',', '')
+            current_price = analysis.get('current_price')
+
+            potential_upside_str = ""
+            if target_price_str and current_price:
+                try:
+                    target_price = float(target_price_str)
+                    potential_upside = ((target_price - current_price) / current_price) * 100
+                    potential_upside_str = f" ({format_percentage(potential_upside, True)})"
+                except (ValueError, TypeError):
+                    pass # Ignore if conversion fails
+            
+            print(f"Target Price (3 months): {thesis_info.get('price_target')}{potential_upside_str}")
+    except Exception as e:
+        print(f"❌ An unexpected error occurred while running AI Due Diligence: {e}")
+
+
 if __name__ == "__main__":
     actions = {
         '0': lambda: False,
@@ -159,6 +227,7 @@ if __name__ == "__main__":
         '3': run_fund_analysis,
         '4': run_stock_analysis,
         '5': run_ai_analyst,
+        '6': run_ai_due_diligence,
     }
 
     while True:
@@ -168,13 +237,14 @@ if __name__ == "__main__":
             horizontal_rule()
             print("0. Exit")
             print("1. View latest non-quarterly filings activity by funds (from 13D/G, Form 4)")
-            print("2. Analyze overall stock trends for a quarter")
-            print("3. Analyze a single fund's holdings for a quarter")
-            print("4. Analyze a single stock for a quarter")
-            print("5. Find most promising stocks using an AI Analyst")
+            print("2. Analyze overall hedge-funds stock trends for a quarter")
+            print("3. Analyze a specific fund's quarterly portfolio")
+            print("4. Analyze a specific stock's activity for a quarter")
+            print("5. Run AI Analyst to find most promising stocks")
+            print("6. Run AI Due Diligence on a stock")
             horizontal_rule()
 
-            main_choice = input("Choose an option (0-5): ")
+            main_choice = input("Choose an option (0-6): ")
             action = actions.get(main_choice)
             if action:
                 if action() is False:

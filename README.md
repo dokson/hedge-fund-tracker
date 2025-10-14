@@ -90,10 +90,11 @@ pipenv run python -m app.main
     ├───────────────────────────────────────────────────────────────────────────────────┤
     │  0. Exit                                                                          │
     │  1. View latest non-quarterly filings activity by funds (from 13D/G, Form 4)      │
-    │  2. Analyze overall stock trends for a quarter                                    │
-    │  3. Analyze a single fund's holdings for a quarter                                │
-    │  4. Analyze a single stock for a quarter                                          │
-    │  5. Find most promising stocks using an AI Analyst                                │
+    │  2. Analyze overall hedge-funds stock trends for a quarter                        │
+    │  3. Analyze a specific fund's quarterly portfolio                                 │
+    │  4. Analyze a specific stock's activity for a quarter                             │
+    │  5. Run AI Analyst to find most promising stocks                                  │
+    │  6. Run AI Due Diligence on a stock                                               │
     └───────────────────────────────────────────────────────────────────────────────────┘
     ```
 
