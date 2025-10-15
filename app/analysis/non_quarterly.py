@@ -1,8 +1,7 @@
-from app.analysis.stocks import aggregate_quarter_by_fund, get_quarter_data
 from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
 from app.tickers.libraries import YFinance
 from app.tickers.resolver import resolve_ticker
-from app.utils.database import get_all_quarters, load_non_quarterly_data
+from app.utils.database import load_non_quarterly_data
 from app.utils.github import open_issue
 from app.utils.pd import coalesce
 from app.utils.strings import format_percentage, format_value, get_numeric
@@ -122,20 +121,3 @@ def update_quarter_with_nq_filings(quarter_df: pd.DataFrame, funds_to_update: li
     updated_df['Portfolio_Pct'] = (updated_df['Value_Num'] / total_value_per_fund) * 100
 
     return updated_df[['Fund', 'CUSIP', 'Ticker', 'Company', 'Shares', 'Delta_Shares', 'Value_Num', 'Delta_Value_Num', 'Delta', 'Portfolio_Pct']]
-
-
-def get_nq_filings_info() -> pd.DataFrame:
-    """
-    Loads the latest non-quarterly filings and enriches them with data from each fund's most recent quarterly report.
-
-    This function ensures that each non-quarterly filing is compared against the most up-to-date
-    13F data available for that specific fund, rather than a single, global quarter.
-    """
-    non_quarterly_filings_df = load_non_quarterly_data().set_index(['Fund', 'Ticker'])
-
-    # Load the last two quarters is sufficient to find the most recent 13F for each fund
-    latest_quarter_data = [aggregate_quarter_by_fund(get_quarter_data(quarter)) for quarter in get_all_quarters()[:2]]
-    latest_quarter_data_per_fund = pd.concat(latest_quarter_data).drop_duplicates(subset=['Fund', 'Ticker'], keep='first')
-    latest_quarter_data_per_fund.set_index(['Fund', 'Ticker'], inplace=True)
-    
-    return non_quarterly_filings_df.join(latest_quarter_data_per_fund, how='inner', rsuffix='_quarter').reset_index()

@@ -1,10 +1,10 @@
 from app.ai.agent import AnalystAgent
-from app.analysis.non_quarterly import get_nq_filings_info
-from app.analysis.stocks import fund_analysis, quarter_analysis, stock_analysis
+from app.analysis.stocks import aggregate_quarter_by_fund, fund_analysis, get_quarter_data, quarter_analysis, stock_analysis
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, select_ai_model, select_fund, select_quarter
-from app.utils.database import get_last_quarter, load_hedge_funds
+from app.utils.database import get_all_quarters, get_last_quarter, load_hedge_funds, load_non_quarterly_data
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
 import numpy as np
+import pandas as pd
 
 
 APP_NAME = "HEDGE FUND TRACKER"
@@ -14,7 +14,14 @@ def run_view_nq_filings():
     """
     1. View latest filings activity from Schedules 13D/G and Form 4 filings.
     """
-    nq_filings_df = get_nq_filings_info()
+    non_quarterly_filings_df = load_non_quarterly_data().set_index(['Fund', 'Ticker'])
+
+    # Load the last two quarters is sufficient to find the most recent 13F for each fund
+    latest_quarter_data = [aggregate_quarter_by_fund(get_quarter_data(quarter)) for quarter in get_all_quarters()[:2]]
+    latest_quarter_data_per_fund = pd.concat(latest_quarter_data).drop_duplicates(subset=['Fund', 'Ticker'], keep='first')
+    latest_quarter_data_per_fund.set_index(['Fund', 'Ticker'], inplace=True)
+
+    nq_filings_df = non_quarterly_filings_df.join(latest_quarter_data_per_fund, how='inner', rsuffix='_quarter').reset_index()
     latest_n = 30
 
     print_dataframe(
