@@ -298,7 +298,7 @@ The models included in `database/models.csv` have been selected because they hav
 
 > **💡 Note** on Meta's [`llama-3.3-70b-versatile`](https://github.com/meta-llama/llama-models/blob/main/models/llama3_3/MODEL_CARD.md): while it can occasionally be less precise in defining the heuristic for the "Promise Score" compared to other top-tier models, it remains a valuable option. Its exceptional speed and lightweight nature make it ideal for rapid experimentation and iterative analysis, providing a useful trade-off between accuracy and performance. As the AI landscape evolves, it is expected that this model will eventually be replaced by newer alternatives that offer similar or better speed and efficiency.
 >
-> **💡 Note** on [xAI](https://x.ai)'s [Grok](https://x.ai/grok)**: [OpenRouter](https://openrouter.ai/) was initially included because it offered free access to top-tier models like [Grok 4 fast](https://x.ai/news/grok-4-fast); while this is no longer available for free, you can still use it with this tool if you have an existing API key. OpenRouter supports a [Bring Your Own Key (BYOK)](https://openrouter.ai/docs/use-cases/byok) feature, allowing you to use your personal xAI key (or keys from other providers) through their platform.
+> **💡 Note** on [xAI](https://x.ai)'s [Grok](https://x.ai/grok): [OpenRouter](https://openrouter.ai/) was initially included because it offered free access to top-tier models like [`x-ai/grok-4-fast`](https://x.ai/news/grok-4-fast); while this is no longer available for free, you can still use it with this tool if you have an existing API key. OpenRouter supports a [Bring Your Own Key (*BYOK*)](https://openrouter.ai/docs/use-cases/byok) feature, allowing you to use your personal xAI key (or keys from other providers) through their platform.
 
 ### Adding Custom AI Models
 
@@ -331,7 +331,7 @@ It's crucial to understand the inherent limitations of tracking investment strat
 
 Many tracking websites rely solely on quarterly 13F filings, which means their data can be over 45 days old and miss many significant trades. Non-quarterly filings like 13D/G and Form 4 are often ignored because they are more complex to process and merge.
 
-This tracker helps overcome that limitation by **integrating multiple filing types**. When analyzing the most recent quarter, the tool automatically incorporates the latest data from 13D/G and Form 4 filings. This means that the holdings, deltas, and portfolio percentages you see for the last quarter reflect not just the 13F snapshot, but also any significant trades that have occurred since. This ensures you have the most current and complete picture of institutional activity.
+This tracker helps overcome that limitation by **integrating multiple filing types**. When analyzing the most recent quarter, the tool automatically incorporates the latest data from 13D/G and Form 4 filings. As a result, the holdings, deltas, and portfolio percentages reflect not just the static 13F snapshot, but also any significant trades that have occurred since. This provides a more dynamic and complete picture of institutional activity.
 
 ## ⚙️ Automation with GitHub Actions
 
@@ -339,7 +339,7 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 ### How It Works
 
-- **Scheduled Runs**: The workflow runs automatically every 5 hours *(from Monday to Saturday)* to check for **new 13F, 13D/G, and Form 4 filings** from the funds you are tracking (`hedge_funds.csv`).
+- **Scheduled Runs**: The workflow runs automatically to check for **new 13F, 13D/G, and Form 4 filings** from the funds you are tracking (`hedge_funds.csv`). It runs four times a day from Monday to Friday (at 02:00, 14:00, 18:00, and 22:00 UTC) and once on Saturday (at 04:00 UTC).
 - **Safe Branching Strategy**: Instead of committing directly to your main branch, the workflow pushes all new data to a dedicated branch named `automated/filings-fetch`.
 - **User-Controlled Merging**: This approach gives you full control. You can review the changes committed by the bot and then merge them into your main branch whenever you're ready. This prevents unexpected changes and allows you to manage updates at your own pace.
 - **Automated Alerts**: If the script encounters a non-quarterly filing where it cannot identify the fund owner based on your `hedge_funds.csv` configuration, it will automatically open a GitHub Issue in your repository, alerting you to a potential data mismatch that needs investigation.
@@ -378,6 +378,7 @@ I welcome all feedback, so feel free to [contact me](https://github.com/dokson).
 - [SEC Developer Resources](https://www.sec.gov/about/developer-resources)
 - [SEC: Frequently Asked Questions About Form 13F](https://www.sec.gov/rules-regulations/staff-guidance/division-investment-management-frequently-asked-questions/frequently-asked-questions-about-form-13f)
 - [SEC: Guidance on Beneficial Ownership Reporting (Sections 13D/G)](https://www.sec.gov/rules-regulations/staff-guidance/compliance-disclosure-interpretations/exchange-act-sections-13d-13g-regulation-13d-g-beneficial-ownership-reporting)
+- [MSCI: Global Industry Classification Standard (GICS)](https://www.msci.com/our-solutions/indexes/gics)
 
 ## 🙏🏼 Acknowledgments
 
