@@ -219,7 +219,7 @@ However, should it continue to significantly outperform the market in the coming
 
 #### Notable Exclusions
 
-Some famous names have to be excluded by design to enhance analysis quality:
+The quality of the output analysis is directly tied to the quality of the input data. To enhance the accuracy of the insights and opportunities identified, many popular high-profile funds have been intentionally excluded by design:
 
 - *Warren Buffett*'s [Berkshire Hathaway](https://www.berkshirehathaway.com/)
 - *Ray Dalio*'s [Bridgewater Associates](https://www.bridgewater.com/)
@@ -230,6 +230,7 @@ Some famous names have to be excluded by design to enhance analysis quality:
 - *Murray Stahl*'s [Horizon Kinetics](https://horizonkinetics.com/)
 - *Edward Mule*'s [Silver Point Capital](https://www.silverpointcapital.com/)
 - *Paul Singer*'s [Elliot Investment](https://www.elliottmgmt.com/)
+- *Nancy Kukacka*'s [Avalon Global Asset Management](https://avalon-global.com/)
 - *Daniel Loeb*'s [Third Point](https://www.thirdpoint.com/)
 - *George Soros*'s [Soros Fund Management](https://sorosfundmgmt.com/)
 - *Bill Gates*'s [Gates Foundation Trust](https://www.gatesfoundation.org/about/financials/foundation-trust)
@@ -262,9 +263,16 @@ Some famous names have to be excluded by design to enhance analysis quality:
 - *Mario Gabelli*'s [GAMCO Investors](https://gabelli.com/)
 - *Boaz Weinstein*'s [Saba Capital](https://www.sabacapital.com/)
 - *Robert Atchison & Phillip Gross*'s [Adage Capital Partners](https://www.adagecapital.com/)
+- *Richard Pzena*'s [Pzena Investment Management](https://www.pzena.com/)
+- *Peter Kolchinsky*'s [RA Capital Management](https://www.racap.com/)
+- *Chuck Royce*'s [Royce Investment Partners](https://www.royceinvest.com/)
+- *Paul Tudor Jones*'s [Tudor Investment Corporation](https://www.tudorfunds.com/)
+- *Samuel Isaly*'s [Orbimed](https://www.orbimed.com/)
 - [BlackRock](https://www.blackrock.com/)
 - [State Street](https://statestreet.com/)
 - [Jane Street](https://www.janestreet.com/)
+
+> **💡 Note**: For convenience, key information for these funds, including their CIKs, is maintained in the `database/excluded_hedge_funds.csv` file.
 
 #### Adding Custom Funds
 
@@ -278,6 +286,7 @@ Want to track additional funds? Simply edit `database/hedge_funds.csv` and add y
 ```
 
 > **💡 Note**: `hedge_funds.csv` currently includes **not only *traditional hedge funds*** but also **other institutional investors** *(private equity funds, large banks, VCs, pension funds, etc., that file 13F to the [SEC](http://sec.gov/))* selected from what I consider the **top 5%** of performers.
+> If you wish to track any of the **Notable Exclusions** hedge funds, you can copy the relevant rows from `excluded_hedge_funds.csv` into `hedge_funds.csv`. You will need to add the `Denomination` column, which is crucial for accurately processing non-quarterly filings (13D/G, Form 4) as it helps identify the fund's specific transactions within the filing document.
 
 ## 🧠 AI Models Selection
 
