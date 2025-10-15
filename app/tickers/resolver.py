@@ -77,10 +77,9 @@ def resolve_ticker(df):
 
         if cusip in stocks.index:
             ticker = stocks.loc[cusip, 'Ticker']
-            company = stocks.loc[cusip, 'Company']
 
         df.at[index, 'Ticker'] = ticker.iloc[0] if isinstance(ticker, Series) else ticker
         if company == '':
-            df.at[index, 'Company'] = company.iloc[0] if isinstance(company, Series) else company
+            df.at[index, 'Company'] = stocks.loc[cusip, 'Company']
 
     return df
