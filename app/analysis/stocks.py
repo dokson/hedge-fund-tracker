@@ -1,5 +1,5 @@
-from app.analysis.non_quarterly import update_last_quarter_with_nq_filings
-from app.utils.database import get_last_quarter, is_last_quarter, load_quarterly_data, load_stocks
+from app.analysis.non_quarterly import update_quarter_with_nq_filings
+from app.utils.database import get_last_quarter, get_last_quarter_for_fund, load_quarterly_data, load_stocks
 from app.utils.strings import format_percentage, get_numeric, get_percentage_number
 import numpy as np
 import pandas as pd
@@ -70,8 +70,12 @@ def get_quarter_data(quarter=get_last_quarter()) -> pd.DataFrame:
     df_quarter.loc[:, 'Value_Num'] = df_quarter['Value'].apply(get_numeric)
     df_quarter.loc[:, 'Portfolio_Pct'] = df_quarter['Portfolio%'].apply(get_percentage_number)
 
-    if is_last_quarter(quarter):
-        df_quarter = update_last_quarter_with_nq_filings(df_quarter)
+    # Identify if there are funds in the current DataFrame at their most recent filing quarter.
+    # The update with non-quarterly data should only apply to them.
+    funds_to_update = [fund for fund in df_quarter['Fund'].unique() if get_last_quarter_for_fund(fund) == quarter]
+
+    if funds_to_update:
+        df_quarter = update_quarter_with_nq_filings(df_quarter, funds_to_update)
 
     return df_quarter
 

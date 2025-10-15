@@ -1,6 +1,6 @@
 from app.ai.agent import AnalystAgent
 from app.analysis.non_quarterly import get_nq_filings_info
-from app.analysis.stocks import aggregate_quarter_by_fund, fund_analysis, get_quarter_data, quarter_analysis, stock_analysis
+from app.analysis.stocks import fund_analysis, quarter_analysis, stock_analysis
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, select_ai_model, select_fund, select_quarter
 from app.utils.database import get_last_quarter, load_hedge_funds
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
@@ -14,7 +14,7 @@ def run_view_nq_filings():
     """
     1. View latest filings activity from Schedules 13D/G and Form 4 filings.
     """
-    nq_filings_df = get_nq_filings_info(aggregate_quarter_by_fund(get_quarter_data()))
+    nq_filings_df = get_nq_filings_info()
     latest_n = 30
 
     print_dataframe(

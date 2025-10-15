@@ -1,7 +1,8 @@
+from app.analysis.stocks import aggregate_quarter_by_fund, get_quarter_data
 from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
 from app.tickers.libraries import YFinance
 from app.tickers.resolver import resolve_ticker
-from app.utils.database import load_non_quarterly_data
+from app.utils.database import get_all_quarters, load_non_quarterly_data
 from app.utils.github import open_issue
 from app.utils.pd import coalesce
 from app.utils.strings import format_percentage, format_value, get_numeric
@@ -78,19 +79,23 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_
     return non_quarterly_filings_df[['CUSIP', 'Ticker', 'Company', 'Shares', 'Value', 'Avg_Price', 'Date', 'Filing_Date']]
 
 
-def update_last_quarter_with_nq_filings(last_quarter_df: pd.DataFrame) -> pd.DataFrame:
+def update_quarter_with_nq_filings(quarter_df: pd.DataFrame, funds_to_update: list[str]) -> pd.DataFrame:
     """
     Updates the 13F holdings dataframe with more recent data from non quarterly filings.
 
     - For existing CUSIPs, it updates 'Shares' and recalculates 'Value' based on the original price.
     - For new CUSIPs, it adds the row with 'Value' as N/A.
+
+    Args:
+        quarter_df (pd.DataFrame): The DataFrame with 13F data for a given quarter.
+        funds_to_update (list[str]): The list of fund whose data should be updated with non quarterly filings.
     """
     schedule_df = load_non_quarterly_data()
-    schedule_df = schedule_df[schedule_df['Fund'].isin(last_quarter_df['Fund'].unique())].set_index(['Fund', 'CUSIP'])
+    schedule_df = schedule_df[schedule_df['Fund'].isin(funds_to_update)].set_index(['Fund', 'CUSIP'])
     schedule_df.loc[:, 'Value_Num'] = schedule_df['Value'].apply(get_numeric)
 
     updated_df = pd.merge(
-        last_quarter_df,
+        quarter_df,
         schedule_df,
         on=['Fund', 'CUSIP'],
         how='outer',
@@ -119,11 +124,18 @@ def update_last_quarter_with_nq_filings(last_quarter_df: pd.DataFrame) -> pd.Dat
     return updated_df[['Fund', 'CUSIP', 'Ticker', 'Company', 'Shares', 'Delta_Shares', 'Value_Num', 'Delta_Value_Num', 'Delta', 'Portfolio_Pct']]
 
 
-def get_nq_filings_info(quarter_data: pd.DataFrame) -> pd.DataFrame:
+def get_nq_filings_info() -> pd.DataFrame:
     """
-    Load latest non quarterly filings (load_non_quarterly_data) and enrich with quarterly data.
+    Loads the latest non-quarterly filings and enriches them with data from each fund's most recent quarterly report.
+
+    This function ensures that each non-quarterly filing is compared against the most up-to-date
+    13F data available for that specific fund, rather than a single, global quarter.
     """
     non_quarterly_filings_df = load_non_quarterly_data().set_index(['Fund', 'Ticker'])
-    quarter_data = quarter_data.set_index(['Fund', 'Ticker'])
 
-    return non_quarterly_filings_df.join(quarter_data, how='inner', rsuffix='_quarter').reset_index()
+    # Load the last two quarters is sufficient to find the most recent 13F for each fund
+    latest_quarter_data = [aggregate_quarter_by_fund(get_quarter_data(quarter)) for quarter in get_all_quarters()[:2]]
+    latest_quarter_data_per_fund = pd.concat(latest_quarter_data).drop_duplicates(subset=['Fund', 'Ticker'], keep='first')
+    latest_quarter_data_per_fund.set_index(['Fund', 'Ticker'], inplace=True)
+    
+    return non_quarterly_filings_df.join(latest_quarter_data_per_fund, how='inner', rsuffix='_quarter').reset_index()

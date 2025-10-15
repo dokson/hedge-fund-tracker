@@ -33,17 +33,21 @@ def get_last_quarter():
     return get_all_quarters()[0]
 
 
-def is_last_quarter(quarter):
+def get_last_quarter_for_fund(fund_name: str) -> str | None:
     """
-    Checks if the given quarter is the most recent one available in the database.
+    Finds the most recent quarter for which a given fund has a filing.
 
     Args:
-        quarter (str): The quarter string to check, in 'YYYYQN' format.
+        fund_name (str): The name of the fund.
 
     Returns:
-        bool: True if the quarter is the last available one, False otherwise.
+        str | None: The most recent quarter string (e.g., '2025Q1'), or None if no filing is found.
     """
-    return quarter == get_last_quarter()
+    fund_filename = f"{fund_name.replace(' ', '_')}.csv"
+    for quarter in get_all_quarters():
+        if (Path(DB_FOLDER) / quarter / fund_filename).exists():
+            return quarter
+    return None
 
 
 def get_all_quarter_files(quarter):
