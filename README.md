@@ -132,11 +132,12 @@ The tool can utilize API keys for enhanced functionality, but all are optional:
 | **[![Finnhub](https://github.com/user-attachments/assets/94465a7f-75e0-4a21-827c-511540c80cb3)](https://finnhub.io/) [Finnhub](https://finnhub.io/)** | [CUSIP](https://en.wikipedia.org/wiki/CUSIP) to [stock ticker](https://en.wikipedia.org/wiki/Ticker_symbol) conversion | [Finnhub Keys](https://finnhub.io/dashboard) |
 | **[![Google AI Studio](https://github.com/user-attachments/assets/3b351d8e-d7f6-4337-9c2f-d2af77f30711)](https://aistudio.google.com/) [Google AI Studio](https://aistudio.google.com/)** | Access to [Google Gemini](https://gemini.google.com/) models | [AI Studio Keys](https://aistudio.google.com/app/apikey) |
 | **[![Groq AI](https://github.com/user-attachments/assets/c56394b5-79f8-4c25-a24a-2e2a8bde829c)](https://console.groq.com/) [Groq AI](https://console.groq.com/)** | Access to various LLMs (e.g., OpenAI [gpt-oss](https://github.com/openai/gpt-oss), Meta [Llama](https://www.llama.com/), etc...) | [Groq Keys](https://console.groq.com/keys) |
-| **[![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3)](https://openrouter.ai/) [OpenRouter](https://openrouter.ai/)** | Access to various LLMs (e.g., xAI [grok](https://x.ai/news/grok-4-fast), NVIDIA [nemotron](https://build.nvidia.com/nvidia/nvidia-nemotron-nano-9b-v2/modelcard), etc...) | [OpenRouter Keys](https://openrouter.ai/settings/keys) |
+| **[![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3)](https://openrouter.ai/) [OpenRouter](https://openrouter.ai/)** | Access to various LLMs (e.g., Alibaba [Tongyi DeepResearch](https://github.com/Alibaba-NLP/DeepResearch), TNGTech [Deepseek Chimera](https://www.tngtech.com/en/about-us/news/release-of-deepseek-tng-r1t2-chimera/), NVIDIA [nemotron](https://build.nvidia.com/nvidia/nvidia-nemotron-nano-9b-v2/modelcard), etc...) | [OpenRouter Keys](https://openrouter.ai/settings/keys) |
 
 > **💡 Note:** Ticker resolution primarily uses [yfinance](https://github.com/ranaroussi/yfinance), which is free and requires no API key. If that fails, the system falls back to [Finnhub](https://finnhub.io/) (if an API key is provided), with the final fallback being [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/).
 >
-> **💡 Note:** You do not need to use all the APIs. For the generative AI models ([Google AI Studio](https://aistudio.google.com/), [Groq AI](https://console.groq.com/), and [OpenRouter](https://openrouter.ai/)), you only need to create and use the API keys for the services you are interested in. For example, if you only want to use [xAI](https://x.ai/)'s models, you just need an [OpenRouter API key](https://openrouter.ai/settings/keys). It's also interesting to experiment with different models, as the heuristic results for selecting the top stocks each quarter can vary, although most top-performing stocks are consistently identified across all tested models. **All APIs used in this project are currently free.**
+> **💡 Note:** You don't need to use all the APIs. For the generative AI models ([Google AI Studio](https://aistudio.google.com/), [Groq AI](https://console.groq.com/), and [OpenRouter](https://openrouter.ai/)), you only need the API keys for the services you plan to use.
+> For instance, if you want to experiment with models like [OpenAI](https://openai.com/) [gpt-oss](https://github.com/openai/gpt-oss), you just need a [Groq AI Key](https://console.groq.com/keys). Experimenting with different models is encouraged, as the quality of AI-generated analysis, both for identifying promising stocks and for conducting due diligence, can vary. However, top-performing stocks are typically identified consistently across all tested models. **All APIs used in this project are currently free.**
 
 ## 📁 Project Structure
 
@@ -208,14 +209,14 @@ My approach prioritizes high [cumulative returns](https://en.wikipedia.org/wiki/
 
 ### List Management
 
-The list of funds is dynamic. If a selected fund begins to underperform, I will consider replacing it. Similarly, I plan to eventually expand the list.
+The list of hedge funds is actively managed to maintain its quality. Funds that begin to underperform may be replaced, and the list may be expanded over time to include new top performers.
 
-A good example of this selection process in action is *Liu Yijun*'s **Prime Capital Management** *(CIK: `0001448793`)*. Despite boasting a **3-Year Cumulative Return** of over **+165%** (as of the 2nd quarter of 2025), it was ultimately excluded for now due to the following *two factors*:
+A clear example of this selection process is the exclusion of **Prime Capital Management** (*CIK: `0001448793`*), managed by *Liu Yijun*. Despite an impressive **3-Year Cumulative Return** of over **+165%** (as of Q2 2025), the fund was ultimately not included for two key reasons:
 
-- **Inconsistent Path of Returns**: Most of its significant outperformance is concentrated in the last two years, which doesn't align with the methodology's preference for a more consistent, long-term track record.
-- **Extreme Portfolio Concentration**: The portfolio consistently holds only 2-3 positions, making its performance statistically less relevant for aggregate analysis and potentially more volatile.
+- **Inconsistent Path of Returns**: Its strong performance is concentrated in the last two years, lacking the long-term consistency favored by the selection methodology's preference for a more consistent, long-term track record.
+- **Extreme Portfolio Concentration**: The portfolio's reliance on only 2-3 positions makes its performance statistically less relevant for broader analysis and increases potential volatility.
 
-However, should it continue to significantly outperform the market in the coming quarters, its inclusion in the `hedge_funds.csv` will be reconsidered.
+However, its inclusion in the `hedge_funds.csv` will be reconsidered if it continues to deliver strong, consistent performance in the future.
 
 #### Notable Exclusions
 
@@ -286,6 +287,7 @@ Want to track additional funds? Simply edit `database/hedge_funds.csv` and add y
 ```
 
 > **💡 Note**: `hedge_funds.csv` currently includes **not only *traditional hedge funds*** but also **other institutional investors** *(private equity funds, large banks, VCs, pension funds, etc., that file 13F to the [SEC](http://sec.gov/))* selected from what I consider the **top 5%** of performers.
+>
 > If you wish to track any of the **Notable Exclusions** hedge funds, you can copy the relevant rows from `excluded_hedge_funds.csv` into `hedge_funds.csv`. You will need to add the `Denomination` column, which is crucial for accurately processing non-quarterly filings (13D/G, Form 4) as it helps identify the fund's specific transactions within the filing document.
 
 ## 🧠 AI Models Selection
@@ -295,6 +297,8 @@ The **AI Financial Analyst**'s primary goal is to identify stocks with the highe
 The models included in `database/models.csv` have been selected because they have demonstrated the best performance and reliability for these specific tasks. Through experimentation, they have proven effective at interpreting the prompts and providing insightful, well-structured responses.
 
 > **💡 Note** on Meta's [`llama-3.3-70b-versatile`](https://github.com/meta-llama/llama-models/blob/main/models/llama3_3/MODEL_CARD.md): while it can occasionally be less precise in defining the heuristic for the "Promise Score" compared to other top-tier models, it remains a valuable option. Its exceptional speed and lightweight nature make it ideal for rapid experimentation and iterative analysis, providing a useful trade-off between accuracy and performance. As the AI landscape evolves, it is expected that this model will eventually be replaced by newer alternatives that offer similar or better speed and efficiency.
+>
+> **💡 Note** on [xAI](https://x.ai)'s [Grok](https://x.ai/grok)**: [OpenRouter](https://openrouter.ai/) was initially included because it offered free access to top-tier models like [Grok 4 fast](https://x.ai/news/grok-4-fast); while this is no longer available for free, you can still use it with this tool if you have an existing API key. OpenRouter supports a [Bring Your Own Key (BYOK)](https://openrouter.ai/docs/use-cases/byok) feature, allowing you to use your personal xAI key (or keys from other providers) through their platform.
 
 ### Adding Custom AI Models
 
