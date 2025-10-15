@@ -178,7 +178,7 @@ def xml_to_dataframe_4(xml_content):
 
     # Data cleaning
     df['Company'] = df['Company'].str.replace(r'\s+', ' ', regex=True)
-    df['Ticker'] = df['Ticker'].str.upper()
+    df['Ticker'] = df['Ticker'].str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
     df['CIK'] = df['CIK'].str.strip()
     df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce').fillna(0).astype(int)
     df['Owner_CIK'] = df['Owner_CIK'].str.strip()

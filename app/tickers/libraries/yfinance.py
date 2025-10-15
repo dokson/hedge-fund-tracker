@@ -28,7 +28,9 @@ class YFinance(FinanceLibrary):
         try:
             stock_info = yf.Ticker(ticker).info
             company_name = stock_info.get('longName') or stock_info.get('shortName', '')
-            return re.sub(r'[.,]', '', company_name) if company_name else None
+            if company_name:
+                return re.sub(r'[.,]', '', company_name)
+            print(f"⚠️\u3000YFinance: No company found for CUSIP {cusip}.")
         except Exception as e:
             print(f"❌ ERROR: Failed to get company for Ticker {ticker} using YFinance: {e}")
             return None
@@ -55,6 +57,7 @@ class YFinance(FinanceLibrary):
             quotes = data.get('quotes', [])
             for quote in quotes:
                 return quote['symbol']
+            print(f"⚠️\u3000YFinance: No ticker found for CUSIP {cusip}.")
         except (requests.RequestException, ValueError) as e:
             print(f"❌ ERROR: Failed to get ticker for CUSIP {cusip} using YFinance: {e}")
             return None

@@ -1,5 +1,7 @@
 from app.tickers.libraries import FinanceLibrary, FinanceDatabase, Finnhub, YFinance
 from app.utils.database import load_stocks, save_stock
+from app.utils.github import open_issue
+from pandas import Series
 
 
 def assign_cusip(df):
@@ -68,9 +70,17 @@ def resolve_ticker(df):
                 stocks.loc[cusip, 'Ticker'] = ticker
                 stocks.loc[cusip, 'Company'] = company_name
                 save_stock(cusip, ticker, company_name)
+            else:
+                subject = f"Ticker not found for CUSIP '{cusip}'"
+                body = f"Could not resolve ticker for CUSIP: {cusip} / Company: '{company}'"
+                open_issue(subject, body)
 
-        df.at[index, 'Ticker'] = stocks.loc[cusip, 'Ticker']
+        if cusip in stocks.index:
+            ticker = stocks.loc[cusip, 'Ticker']
+            company = stocks.loc[cusip, 'Company']
+
+        df.at[index, 'Ticker'] = ticker.iloc[0] if isinstance(ticker, Series) else ticker
         if company == '':
-            df.at[index, 'Company'] = stocks.loc[cusip, 'Company']
+            df.at[index, 'Company'] = company.iloc[0] if isinstance(company, Series) else company
 
     return df
