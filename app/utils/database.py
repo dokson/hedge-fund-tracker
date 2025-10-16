@@ -12,7 +12,7 @@ STOCKS_FILE = 'stocks.csv'
 LATEST_SCHEDULE_FILINGS_FILE = 'non_quarterly.csv'
 
 
-def get_all_quarters():
+def get_all_quarters() -> list[str]:
     """
     Returns a sorted (descending order) list of all quarter directories (e.g., '2025Q1')
     found in the specified database folder.
@@ -26,11 +26,27 @@ def get_all_quarters():
     ], reverse=True)
 
 
-def get_last_quarter():
+def get_last_quarter() -> str:
     """
-    Return the last available quarter
+    Return the last available quarter.
+
+    Returns:
+        str | None: The most recent quarter string (e.g., '2025Q1').
     """
     return get_all_quarters()[0]
+
+
+def count_funds_in_quarter(quarter: str) -> int:
+    """
+    Counts the number of fund filings for a given quarter.
+
+    Args:
+        quarter (str): The quarter to count files for (e.g., '2025Q1').
+
+    Returns:
+        int: The number of funds with filings in the specified quarter.
+    """
+    return len(get_all_quarter_files(quarter))
 
 
 def get_last_quarter_for_fund(fund_name: str) -> str | None:
@@ -50,7 +66,7 @@ def get_last_quarter_for_fund(fund_name: str) -> str | None:
     return None
 
 
-def get_all_quarter_files(quarter):
+def get_all_quarter_files(quarter: str) -> list[str]:
     """
     Returns a list of full paths for all .csv files within a given quarter directory.
 
@@ -70,7 +86,7 @@ def get_all_quarter_files(quarter):
     ]
 
 
-def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}"):
+def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}") -> list:
     """
     Loads hedge funds from file (hedge_funds.csv)
     """
@@ -82,7 +98,7 @@ def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}"):
         return []
 
 
-def load_models(filepath=f"./{DB_FOLDER}/{MODELS_FILE}"):
+def load_models(filepath=f"./{DB_FOLDER}/{MODELS_FILE}") -> list:
     """
     Loads AI models from the file (models.csv).
 
@@ -103,7 +119,7 @@ def load_models(filepath=f"./{DB_FOLDER}/{MODELS_FILE}"):
         return []
 
 
-def load_non_quarterly_data(filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}"):
+def load_non_quarterly_data(filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}") -> pd.DataFrame:
     """
     Loads the latest non-quarterly (13D/G and 4) filings from the CSV file.
 
@@ -122,7 +138,7 @@ def load_non_quarterly_data(filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FI
         return pd.DataFrame()
 
 
-def load_quarterly_data(quarter):
+def load_quarterly_data(quarter: str) -> pd.DataFrame:
     """
     Loads all fund comparison data for a given quarter (e.g., '2025Q1').
 
@@ -142,7 +158,7 @@ def load_quarterly_data(quarter):
     return pd.concat(all_fund_data, ignore_index=True)
 
 
-def load_stocks(filepath=f"./{DB_FOLDER}/{STOCKS_FILE}"):
+def load_stocks(filepath=f"./{DB_FOLDER}/{STOCKS_FILE}") -> pd.DataFrame:
     """
     Loads the stock master data (CUSIP, Ticker, Company) from the CSV file.
 
@@ -160,7 +176,7 @@ def load_stocks(filepath=f"./{DB_FOLDER}/{STOCKS_FILE}"):
         return pd.DataFrame()
 
 
-def save_comparison(comparison_dataframe, date, fund_name):
+def save_comparison(comparison_dataframe: pd.DataFrame, date: str, fund_name: str) -> None:
     """
     Saves a fund's quarterly holdings comparison to a dedicated CSV file.
 
@@ -183,7 +199,7 @@ def save_comparison(comparison_dataframe, date, fund_name):
         print(f"An error occurred while writing comparison file for '{fund_name}': {e}")
 
 
-def save_non_quarterly_filings(schedule_filings, filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}"):
+def save_non_quarterly_filings(schedule_filings: list, filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}") -> None:
     """
     Combines the list of schedule filing DataFrames and saves them to a single CSV file.
 
@@ -204,7 +220,7 @@ def save_non_quarterly_filings(schedule_filings, filepath=f"./{DB_FOLDER}/{LATES
         print(f"An error occurred while saving latest schedule filings to '{filepath}': {e}")
 
 
-def save_stock(cusip, ticker, company):
+def save_stock(cusip: str, ticker: str, company: str) -> None:
     """Appends a new stock record to the master stocks CSV file.
 
     This function appends a new row without checking for duplicates.
@@ -218,14 +234,14 @@ def save_stock(cusip, ticker, company):
     """
     try:
         # Use csv.writer to properly handle quoting, ensuring all fields are enclosed in double quotes.
-        with open(f'./database/{STOCKS_FILE}', 'a', newline='', encoding='utf-8') as stocks_file:
+        with open(Path(DB_FOLDER) / STOCKS_FILE, 'a', newline='', encoding='utf-8') as stocks_file:
             writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
             writer.writerow([cusip, ticker, company])
     except Exception as e:
         print(f"An error occurred while writing to '{STOCKS_FILE}': {e}")
 
 
-def sort_stocks(filepath=f'./database/{STOCKS_FILE}'):
+def sort_stocks(filepath=f'./database/{STOCKS_FILE}') -> None:
     """
     Reads, sorts, and overwrites the master stocks CSV file.
 

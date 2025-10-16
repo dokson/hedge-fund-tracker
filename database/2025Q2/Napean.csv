@@ -3,7 +3,7 @@ CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
 461202103,INTU,Intuit,13203,13203,10.4M,10.4M,NEW,2.8%
 78410G104,SBAC,SBA Communications Corporation,41056,14342,9.64M,3.37M,+53.7%,2.6%
 594918104,MSFT,Microsoft Corp,17175,6020,8.54M,2.99M,+54%,2.3%
-874039100,TSM,Taiwan Semiconductor Manufacturing Company Limited,23532,12373,5.33M,2.8M,+110.9%,1.4%
+874039100,TSM,Taiwan Semiconductor Manufacturing,23532,12373,5.33M,2.8M,+110.9%,1.4%
 871607107,SNPS,Synopsys Inc,23683,3544,12.14M,1.82M,+17.6%,3.2%
 036752103,ELV,Elevance Health Inc,17167,3643,6.68M,1.42M,+26.9%,1.8%
 81764X103,TTAN,Servicetitan Inc,8025,8025,860.12K,860.12K,NEW,0.23%

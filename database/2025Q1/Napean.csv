@@ -4,7 +4,7 @@ CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
 57636Q104,MA,Mastercard Incorporated,21721,7187,11.91M,3.94M,+49.4%,3.5%
 055477103,BCAX,Bicara Therapeutics Inc,275942,275942,3.6M,3.6M,NEW,1%
 90353T100,UBER,Uber Technologies Inc,119261,44825,8.69M,3.27M,+60.2%,2.5%
-874039100,TSM,Taiwan Semiconductor Manufacturing Company Limited,11159,11159,1.85M,1.85M,NEW,0.54%
+874039100,TSM,Taiwan Semiconductor Manufacturing,11159,11159,1.85M,1.85M,NEW,0.54%
 235851102,DHR,Danaher Corporation,64498,9001,13.22M,1.85M,+16.2%,3.9%
 46438F101,IBIT,iShares Bitcoin Trust ETF,37476,37476,1.75M,1.75M,NEW,0.51%
 052769106,ADSK,Autodesk Inc,17346,6380,4.54M,1.67M,+58.2%,1.3%
