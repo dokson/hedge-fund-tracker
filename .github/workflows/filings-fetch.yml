@@ -3,7 +3,7 @@ name: Scheduled Filings Fetch
 on:
   workflow_dispatch: # Allows manual triggering
   schedule:
-    - cron: "0 2,14,18,22 * * 1-5"  # Four times a day (Mon-Fri)
+    - cron: "30 1,13,17,21 * * 1-5"  # Four times a day (Mon-Fri)
     - cron: "0 4 * * 6"             # Once on Saturday (at 4:00 UTC)
 
 jobs:

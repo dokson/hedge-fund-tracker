@@ -7,9 +7,9 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dokson/hedge-fund-tracker/pulls)
 [![GitHub stars](https://img.shields.io/github/stars/dokson/hedge-fund-tracker.svg?style=social&label=Star)](https://github.com/dokson/hedge-fund-tracker/stargazers)
 
-> **Track hedge fund portfolios and investment strategies using [SEC](http://sec.gov/) filings**
+> **Track hedge fund portfolios and unlock actionable insights.**
 
-A comprehensive Python tool for analyzing hedge fund portfolio changes, built for financial analysts, investors, and finance enthusiasts who want to monitor institutional investment strategies through public [SEC](http://sec.gov/) filings.
+A powerful Python tool designed to transform raw [SEC](http://sec.gov/) filing data into clear, actionable intelligence. It's built for anyone, from financial analysts to retail investors, seeking to understand the strategies of elite institutional investors by analyzing their quarterly and real-time portfolio changes.
 
 ## 🚀 Quick Start
 
@@ -280,15 +280,24 @@ The quality of the output analysis is directly tied to the quality of the input 
 Want to track additional funds? Simply edit `database/hedge_funds.csv` and add your preferred institutional investors. For example, to add [Berkshire Hathaway](https://www.berkshirehathaway.com/), [Pershing Square](https://pershingsquareholdings.com/) and [ARK-Invest](https://www.ark-invest.com/), you would add the following lines:
 
 ```csv
-"CIK","Fund","Manager","Denomination"
-"0001067983","Berkshire Hathaway","Warren Buffett","Berkshire Hathaway Inc."
-"0001336528","Pershing Square","Bill Ackman","Pershing Square Capital Management, L.P."
-"0001697748","ARK Invest","Cathie Wood","ARK Investment Management LLC"
+"CIK","Fund","Manager","Denomination","CIKs"
+...
+"0001067983","Berkshire Hathaway","Warren Buffett","Berkshire Hathaway Inc",""
+"0001336528","Pershing Square","Bill Ackman","Pershing Square Capital Management, L.P.",""
+"0001697748","ARK Invest","Cathie Wood","ARK Investment Management LLC",""
 ```
 
 > **💡 Note**: `hedge_funds.csv` currently includes **not only *traditional hedge funds*** but also **other institutional investors** *(private equity funds, large banks, VCs, pension funds, etc., that file 13F to the [SEC](http://sec.gov/))* selected from what I consider the **top 5%** of performers.
 >
 > If you wish to track any of the **Notable Exclusions** hedge funds, you can copy the relevant rows from `excluded_hedge_funds.csv` into `hedge_funds.csv`. You will need to add the `Denomination` column, which is crucial for accurately processing non-quarterly filings (13D/G, Form 4) as it helps identify the fund's specific transactions within the filing document.
+>
+> **💡 Note** on the `CIKs` column: This optional field is used to track filings from related entities or subsidiaries of a primary fund. Some investment firms have complex structures where different legal entities file separately.
+> For example, [Jeffrey Ubben](https://en.wikipedia.org/wiki/Jeffrey_W._Ubben)'s `ValueAct Holdings` (`CIK` = `0001418814`) also has filings under its management company, `ValueAct Capital Management` (`CIK` = `0001418812`). By adding `0001418812` to the CIKs column for [ValueAct](https://valueact.com/), the tool aggregates **non-quarterly filings (13D/G, Form 4)** data from both CIKs, ensuring a more complete and updated view of the fund's real-time trading activity.
+>
+> ```csv
+>"CIK","Fund","Manager","Denomination","CIKs"
+>"0001418814","ValueAct","Jeffrey Ubben","ValueAct Holdings, L.P.","0001418812"
+> ```
 
 ## 🧠 AI Models Selection
 
@@ -339,7 +348,7 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 ### How It Works
 
-- **Scheduled Runs**: The workflow runs automatically to check for **new 13F, 13D/G, and Form 4 filings** from the funds you are tracking (`hedge_funds.csv`). It runs four times a day from Monday to Friday (at 02:00, 14:00, 18:00, and 22:00 UTC) and once on Saturday (at 04:00 UTC).
+- **Scheduled Runs**: The workflow runs automatically to check for **new 13F, 13D/G, and Form 4 filings** from the funds you are tracking (`hedge_funds.csv`). It runs four times a day from Monday to Friday (at 01:30, 13:30, 17:30, and 21:30 UTC) and once on Saturday (at 04:00 UTC).
 - **Safe Branching Strategy**: Instead of committing directly to your main branch, the workflow pushes all new data to a dedicated branch named `automated/filings-fetch`.
 - **User-Controlled Merging**: This approach gives you full control. You can review the changes committed by the bot and then merge them into your main branch whenever you're ready. This prevents unexpected changes and allows you to manage updates at your own pace.
 - **Automated Alerts**: If the script encounters a non-quarterly filing where it cannot identify the fund owner based on your `hedge_funds.csv` configuration, it will automatically open a GitHub Issue in your repository, alerting you to a potential data mismatch that needs investigation.
@@ -370,8 +379,8 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 ### ✍🏻 Feedback
 
-I am continuously developing this tool and adding new features.
-I welcome all feedback, so feel free to [contact me](https://github.com/dokson).
+This tool is in active development, and your input is valuable.
+If you have any suggestions or ideas for new features, please feel free to [get in touch](https://github.com/dokson).
 
 ## 📚 References
 
@@ -379,11 +388,13 @@ I welcome all feedback, so feel free to [contact me](https://github.com/dokson).
 - [SEC: Frequently Asked Questions About Form 13F](https://www.sec.gov/rules-regulations/staff-guidance/division-investment-management-frequently-asked-questions/frequently-asked-questions-about-form-13f)
 - [SEC: Guidance on Beneficial Ownership Reporting (Sections 13D/G)](https://www.sec.gov/rules-regulations/staff-guidance/compliance-disclosure-interpretations/exchange-act-sections-13d-13g-regulation-13d-g-beneficial-ownership-reporting)
 - [MSCI: Global Industry Classification Standard (GICS)](https://www.msci.com/our-solutions/indexes/gics)
+- [CUSIP (Committee on Uniform Security Identification Procedures)](https://en.wikipedia.org/wiki/CUSIP)
+- [Modern Portfolio Theory (MPT)](https://en.wikipedia.org/wiki/Modern_portfolio_theory)
 
 ## 🙏🏼 Acknowledgments
 
-This project started as a fork of the [sec-web-scraper-13f](https://github.com/CodeWritingCow/sec-web-scraper-13f) by [Gary Pang](https://github.com/CodeWritingCow). The original tool was a Python script to scrape the most recent 13F filing for a given CIK from the [SEC](http://sec.gov/)'s [EDGAR](https://www.sec.gov/edgar/searchedgar/companysearch.html) database. It has since evolved significantly into a comprehensive hedge fund tracker.
+This project began as a fork of [sec-web-scraper-13f](https://github.com/CodeWritingCow/sec-web-scraper-13f) by [Gary Pang](https://github.com/CodeWritingCow). The original tool provided a solid foundation for scraping 13F filings from the [SEC](http://sec.gov/)'s [EDGAR](https://www.sec.gov/edgar/searchedgar/companysearch.html) database. It has since been significantly re-architected and expanded into a comprehensive analysis platform, incorporating multiple filing types, AI-driven insights, and automated data management.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is released under the MIT License, an open-source license that grants you the freedom to use, modify, and distribute the software. For the full terms, please see the [LICENSE](LICENSE) file.
