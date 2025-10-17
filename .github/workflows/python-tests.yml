@@ -35,9 +35,20 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install pipenv
-          pipenv install --dev
+          retry() {
+            local retries=3; local count=0;
+            until "$@"; do
+              count=$((count + 1));
+              if [ $count -lt $retries ]; then
+                echo "::warning::Attempt $count failed. Retrying in 15 seconds..." && sleep 15;
+              else
+                echo "::error::Command failed after $retries attempts." && return 1;
+              fi;
+            done
+          }
+          retry python -m pip install --upgrade pip
+          retry python -m pip install pipenv
+          retry pipenv install --dev
 
       - name: Run tests
         run: pipenv run python -m unittest discover
