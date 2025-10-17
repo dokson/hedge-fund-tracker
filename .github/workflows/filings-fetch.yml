@@ -63,8 +63,10 @@ jobs:
               fi;
             done
           }
-          retry python -m pip install --upgrade pip
-          retry python -m pip install pipenv
+          
+          python -m pip install --upgrade pip
+          python -m pip install pipenv
+          pipenv --python $(which python) # Ensure virtualenv is created before installing
           retry pipenv install --dev
 
       - name: Run fetcher script
