@@ -41,7 +41,7 @@ jobs:
           # Explicitly create the virtual environment first to avoid race conditions
           python -m virtualenv .venv
           export PIPENV_VENV_IN_PROJECT=1
-          python pipenv install --dev
+          pipenv install --dev
 
       - name: Run tests
         run: pipenv run python -m unittest discover
