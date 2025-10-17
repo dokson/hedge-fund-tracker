@@ -35,26 +35,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          retry() {
-            local retries=3; local count=0;
-            until "$@"; do
-              count=$((count + 1));
-              if [ $count -lt $retries ]; then
-                echo "::warning::Attempt $count failed. Retrying in 15 seconds..." && sleep 15;
-              else
-                echo "::error::Command failed after $retries attempts." && return 1;
-              fi;
-            done
-          }
-          
           python -m pip install --upgrade pip
           python -m pip install pipenv virtualenv
           
           # Explicitly create the virtual environment first to avoid race conditions
           python -m virtualenv .venv
           export PIPENV_VENV_IN_PROJECT=1
-          
-          retry pipenv install --dev
+          python pipenv install --dev
 
       - name: Run tests
         run: pipenv run python -m unittest discover
