@@ -1,7 +1,7 @@
 from app.ai.agent import AnalystAgent
 from app.analysis.stocks import aggregate_quarter_by_fund, fund_analysis, get_quarter_data, quarter_analysis, stock_analysis
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, select_ai_model, select_fund, select_quarter
-from app.utils.database import count_funds_in_quarter, get_all_quarters, get_last_quarter, load_non_quarterly_data
+from app.utils.database import count_funds_in_quarter, get_all_quarters, get_last_quarter, get_most_recent_quarter, load_non_quarterly_data
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
 import numpy as np
 import pandas as pd
@@ -177,7 +177,16 @@ def run_ai_due_diligence():
         client = client_class(model=selected_model['ID'])
         print_centered(f"Starting AI Due Diligence using {selected_model['Description']}", "-")
 
-        agent = AnalystAgent(get_last_quarter(), ai_client=client)
+        last_available_quarter = get_last_quarter()
+        analysis_quarter = get_most_recent_quarter(ticker)
+
+        if not analysis_quarter:
+            print(f"❌ No recente data found for ticker {ticker} (last two quarters).")
+            return
+        elif analysis_quarter != last_available_quarter:
+            print(f"⚠️  Warning: Data for {ticker} not found in the latest quarter ({last_available_quarter}). Using data from {analysis_quarter} instead.")
+
+        agent = AnalystAgent(analysis_quarter, ai_client=client)
         analysis = agent.run_stock_due_diligence(ticker)
 
         if analysis:

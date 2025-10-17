@@ -66,6 +66,28 @@ def get_last_quarter_for_fund(fund_name: str) -> str | None:
     return None
 
 
+def get_most_recent_quarter(ticker: str) -> str | None:
+    """
+    Finds the most recent quarter (within the last two available) for which a given ticker has data.
+ 
+    This function iterates through the last two available quarters in descending order.
+    It checks all filing files in each quarter to see if any of them contain the given ticker.
+ 
+    Args:
+        ticker (str): The stock ticker to search for.
+ 
+    Returns:
+        str | None: The most recent quarter string (e.g., '2025Q1'), or None if no recent data is found for the ticker.
+    """
+    for quarter in get_all_quarters()[:2]:
+        for file_path in get_all_quarter_files(quarter):
+            # Read Tickers in chunks for memory efficiency on large files
+            for chunk in pd.read_csv(file_path, usecols=['Ticker'], dtype={'Ticker': str}, chunksize=10000):
+                if ticker in chunk['Ticker'].values:
+                    return quarter
+    return None
+
+
 def get_all_quarter_files(quarter: str) -> list[str]:
     """
     Returns a list of full paths for all .csv files within a given quarter directory.
