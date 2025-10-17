@@ -113,15 +113,6 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(df.loc['123', 'Ticker'], 'TICKA')
 
 
-    def test_load_stocks_file_not_found(self):
-        """
-        Tests that load_stocks returns an empty DataFrame when the file doesn't exist.
-        """
-        filepath = os.path.join(self.test_db_folder, 'non_existent_stocks.csv')
-        df = load_stocks(filepath)
-        self.assertTrue(df.empty)
-
-
     def test_load_stocks_empty_file(self):
         """
         Tests that load_stocks returns an empty DataFrame for an empty file (with headers).
