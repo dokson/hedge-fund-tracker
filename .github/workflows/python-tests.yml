@@ -48,8 +48,12 @@ jobs:
           }
           
           python -m pip install --upgrade pip
-          python -m pip install pipenv
-          pipenv --python $(which python) # Ensure virtualenv is created before installing
+          python -m pip install pipenv virtualenv
+          
+          # Explicitly create the virtual environment first to avoid race conditions
+          python -m virtualenv .venv
+          export PIPENV_VENV_IN_PROJECT=1
+          
           retry pipenv install --dev
 
       - name: Run tests
