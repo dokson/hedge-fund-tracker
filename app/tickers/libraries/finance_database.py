@@ -51,7 +51,7 @@ class FinanceDatabase(FinanceLibrary):
         if result is not None:
             return result.index[0]
 
-        print(f"⚠️\u3000Finance Database: No ticker found for CUSIP {cusip}")
+        print(f"🚨 Finance Database: No ticker found for CUSIP {cusip}")
         return None
 
 
@@ -73,7 +73,7 @@ class FinanceDatabase(FinanceLibrary):
         if result is not None:
             return result.iloc[0]['name'].title()
 
-        print(f"⚠️\u3000Finance Database: No company found for CUSIP {cusip}")
+        print(f"🚨 Finance Database: No company found for CUSIP {cusip}")
 
         subject = f"No company found for CUSIP '{cusip}'"
         body = f"Could not find any company for the CUSIP: {cusip}."
@@ -97,7 +97,7 @@ class FinanceDatabase(FinanceLibrary):
         if result is not None:
             return result.iloc[0]['cusip']
     
-        print(f"⚠️\u3000Finance Database: No CUSIP found for ticker {ticker}")
+        print(f"🚨 Finance Database: No CUSIP found for ticker {ticker}")
 
         subject = f"No CUSIP found for ticker '{ticker}'"
         body = f"Could not find any CUSIP for the ticker: {ticker}."

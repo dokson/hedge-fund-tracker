@@ -18,7 +18,7 @@ class Finnhub(FinanceLibrary):
     MAX_QUERY_LENGTH = 20
 
     if not CLIENT:
-        print("⚠️\u3000FINNHUB_API_KEY not found: Finnhub will not be used. Falling back to FinanceDatabase for ticker resolution.")
+        print("🚨 FINNHUB_API_KEY not found: Finnhub will not be used. Falling back to FinanceDatabase for ticker resolution.")
 
 
     @staticmethod
@@ -34,7 +34,7 @@ class Finnhub(FinanceLibrary):
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=30, max=60),
         retry=retry_if_exception(_is_rate_limit_exception),
-        before_sleep=lambda rs: print(f"⚠️\u3000Finnhub API rate limit hit. Retrying in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})")
+        before_sleep=lambda rs: print(f"🚨 Finnhub API rate limit hit. Retrying in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})")
     )
     def _ticker_lookup(query):
         """
@@ -87,7 +87,7 @@ class Finnhub(FinanceLibrary):
                 best_match = Finnhub._lookup(first_word)
 
         if not best_match:
-            print(f"⚠️\u3000Finnhub: No ticker found for CUSIP {cusip} / Company '{company_name}'.")
+            print(f"🚨 Finnhub: No ticker found for CUSIP {cusip} / Company '{company_name}'.")
             return None
         
         return best_match.get('symbol')
@@ -102,5 +102,5 @@ class Finnhub(FinanceLibrary):
         if best_match:
             return best_match.get('description', '').title()
         
-        print(f"⚠️\u3000Finnhub: No company found for CUSIP {cusip}")
+        print(f"🚨 Finnhub: No company found for CUSIP {cusip}")
         return None

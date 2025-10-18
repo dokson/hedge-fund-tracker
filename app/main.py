@@ -184,7 +184,7 @@ def run_ai_due_diligence():
             print(f"❌ No recente data found for ticker {ticker} (last two quarters).")
             return
         elif analysis_quarter != last_available_quarter:
-            print(f"⚠️  Warning: Data for {ticker} not found in the latest quarter ({last_available_quarter}). Using data from {analysis_quarter} instead.")
+            print(f"🚨 Warning: Data for {ticker} not found in the latest quarter ({last_available_quarter}). Using data from {analysis_quarter} instead.")
 
         agent = AnalystAgent(analysis_quarter, ai_client=client)
         analysis = agent.run_stock_due_diligence(ticker)

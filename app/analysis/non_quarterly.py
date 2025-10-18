@@ -69,7 +69,7 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_
             non_quarterly_filings_df.at[index, 'Avg_Price'] = price
             non_quarterly_filings_df.at[index, 'Value'] = price * row['Shares']
         else:
-            print(f"⚠️\u3000Could not find price for {ticker} on {date}.")
+            print(f"🚨 Could not find price for {ticker} on {date}.")
 
     # Numerics to String format
     non_quarterly_filings_df['Value'] = non_quarterly_filings_df['Value'].apply(format_value)

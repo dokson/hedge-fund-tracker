@@ -18,7 +18,7 @@ def open_issue(subject, body):
         """
         Prints the error to the console.
         """
-        print(f"⚠️\u3000{subject}")
+        print(f"🚨 {subject}")
         print(body)
 
     # If not in a GitHub Action, just print to console and exit

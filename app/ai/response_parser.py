@@ -20,7 +20,7 @@ class ResponseParser:
             json_match = re.search(r'\{.*\}', text, re.DOTALL)
             
             if not json_match:
-                print(f"⚠️\u3000Warning: Could not find JSON in response: {response_text[:200]}...")
+                print(f"🚨 Warning: Could not find JSON in response: {response_text[:200]}...")
                 return {}
 
             json_string = json_match.group(0)

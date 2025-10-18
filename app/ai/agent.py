@@ -31,7 +31,7 @@ class AnalystAgent:
         retry=retry_if_exception_type(InvalidAIResponseError),
         wait=wait_fixed(1),
         stop=stop_after_attempt(7),
-        before_sleep=lambda rs: print(f"⚠️\u3000Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
+        before_sleep=lambda rs: print(f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
     )
     def _get_promise_score_weights(self) -> dict:
         """
@@ -72,7 +72,7 @@ class AnalystAgent:
                 df[rank_col] = df[metric].rank(pct=True)
                 df['Promise_Score'] += df[rank_col] * weight
             else:
-                print(f"⚠️\u3000Warning: Metric '{metric}' suggested by AI not found in analysis data. Skipping.")
+                print(f"🚨 Warning: Metric '{metric}' suggested by AI not found in analysis data. Skipping.")
 
         df['Promise_Score'] *= 100
         return df
@@ -82,7 +82,7 @@ class AnalystAgent:
         retry=retry_if_exception_type(InvalidAIResponseError),
         wait=wait_fixed(1),
         stop=stop_after_attempt(5),
-        before_sleep=lambda rs: print(f"⚠️\u3000Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
+        before_sleep=lambda rs: print(f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
     )
     def _get_ai_scores(self, stocks: list[dict]) -> dict:
         """
@@ -167,7 +167,7 @@ class AnalystAgent:
         Returns:
             dict: A dictionary containing the AI's analysis, or an empty dict if an error occurs.
         """
-        print(f"\nGathering institutional data for {ticker} for quarter {self.quarter}...")
+        print(f"Gathering institutional data for {ticker} for quarter {self.quarter}...")
         stock_df = stock_analysis(ticker, self.quarter)
 
         if stock_df.empty:

@@ -56,7 +56,7 @@ class TestGithub(unittest.TestCase):
 
         # Check that print was called with the subject and body
         expected_calls = [
-            call(f"⚠️\u3000{subject}"),
+            call(f"🚨 {subject}"),
             call(body)
         ]
         mock_print.assert_has_calls(expected_calls)
@@ -83,7 +83,7 @@ class TestGithub(unittest.TestCase):
         # Assert that an error message and the fallback alert were printed
         expected_calls = [
             call("::error::❌ GITHUB_TOKEN or GITHUB_REPOSITORY not set in the Action environment."),
-            call(f"⚠️\u3000{subject}"),
+            call(f"🚨 {subject}"),
             call(body)
         ]
         mock_print.assert_has_calls(expected_calls)
@@ -114,7 +114,7 @@ class TestGithub(unittest.TestCase):
         # Assert that an error message and the fallback alert were printed
         expected_calls = [
             call("::error::❌ An exception occurred while creating GitHub Issue: API is down"),
-            call(f"⚠️\u3000{subject}"),
+            call(f"🚨 {subject}"),
             call(body)
         ]
         mock_print.assert_has_calls(expected_calls, any_order=False)
