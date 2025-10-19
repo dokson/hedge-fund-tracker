@@ -36,9 +36,8 @@ Your analysis must cover the following key areas. Be concise but insightful. For
 1.  **Business Summary**: Describe the company's operations, business model, and market position.
 2.  **Financial Health**: Briefly assess its financial stability. Mention key metrics like revenue growth, profitability (e.g., net margins), and debt levels (e.g., Debt-to-Equity ratio).
 3.  **Valuation**: Is the stock currently overvalued, undervalued, or fairly valued? Reference at least one common valuation multiple (e.g., P/E, P/S, EV/EBITDA) compared to its industry peers.
-4.  **Growth Catalysts**: What are the primary factors that could drive the stock price up? (e.g., new products, market trends, competitive advantages).
-5.  **Headwinds (Risks)**: What are the primary risks that could drive the stock price down? (e.g., competition, regulatory changes, market shifts).
-5.  **Institutional-Sentiment Interpretation**: Based on the provided institutional activity, what is the "story"? Are smart money managers accumulating, distributing, or is it a mixed picture? How does this align with the company's fundamentals?
+4.  **Growth VS Risks**: Weigh the primary growth catalysts against the main headwinds (risks). Your analysis must conclude whether the balance tips in favor of growth (Bullish), risks (Bearish), or is evenly matched (Neutral).
+5.  **Institutional Sentiment Interpretation**: Based on the provided institutional activity, what is the "story"? Are smart money managers accumulating, distributing, or is it a mixed picture? How does this align with the company's fundamentals?
 6.  **Investment Thesis**:
     -   Synthesize all the above points into a final investment thesis.
     -   Provide a clear **Overall Sentiment**: `Bullish`, `Neutral`, or `Bearish`.
@@ -49,8 +48,6 @@ For each analysis section below, provide a sentiment indicator:
 - **Bullish**: Positive outlook / Favorable
 - **Neutral**: Mixed or neutral outlook
 - **Bearish**: Negative outlook / Unfavorable
-
-For **Headwinds**, the sentiment reflects the risk level: Bullish = Low Risk, Neutral = Moderate Risk, Bearish = High Risk.
 
 ## OUTPUT FORMAT
 Return a single valid JSON object adhering strictly to the following schema. All fields are required unless unavailable, in which case use `null`.
@@ -65,10 +62,8 @@ Return a single valid JSON object adhering strictly to the following schema. All
     "financial_health_sentiment": "Bullish/Neutral/Bearish",
     "valuation": "...",
     "valuation_sentiment": "Bullish/Neutral/Bearish",
-    "growth_catalysts": "...",
-    "growth_catalysts_sentiment": "Bullish/Neutral/Bearish",
-    "headwinds": "...",
-    "headwinds_sentiment": "Bullish/Neutral/Bearish",
+    "growth_vs_risks": "...",
+    "growth_vs_risks_sentiment": "Bullish/Neutral/Bearish",
     "institutional_sentiment": "...",
     "institutional_sentiment_sentiment": "Bullish/Neutral/Bearish"
   }},
@@ -97,10 +92,8 @@ After generating the JSON output, validate it against the schema for required fi
     "financial_health_sentiment": "Bullish",
     "valuation": "Trades at a premium P/E ratio, reflecting high growth expectations. While historically high, it is often considered justified by its market leadership in AI.",
     "valuation_sentiment": "Neutral",
-    "growth_catalysts": "Continued adoption of AI across industries, new product cycles (e.g., Blackwell architecture), and expansion into software and services.",
-    "growth_catalysts_sentiment": "Bullish",
-    "headwinds": "High valuation, geopolitical risks related to semiconductor supply chains, and increasing competition from other tech giants.",
-    "headwinds_sentiment": "Bearish",
+    "growth_vs_risks": "While catalysts like AI adoption and the Blackwell architecture are strong, the high valuation and geopolitical risks create significant headwinds. The balance currently appears slightly tilted towards risk.",
+    "growth_vs_risks_sentiment": "Bearish",
     "institutional_sentiment": "Despite some profit-taking, it remains a core holding for many growth-oriented funds, indicating continued long-term belief in its AI dominance.",
     "institutional_sentiment_sentiment": "Bullish"
   }},

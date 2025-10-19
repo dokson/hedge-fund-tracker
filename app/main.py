@@ -202,8 +202,7 @@ def run_ai_due_diligence():
                 "Business Summary": (analysis_data.get("business_summary"), None),
                 "Financial Health": (analysis_data.get("financial_health"), analysis_data.get("financial_health_sentiment")),
                 "Valuation": (analysis_data.get("valuation"), analysis_data.get("valuation_sentiment")),
-                "Growth Catalysts": (analysis_data.get("growth_catalysts"), analysis_data.get("growth_catalysts_sentiment")),
-                "Headwinds (Risks)": (analysis_data.get("headwinds"), analysis_data.get("headwinds_sentiment")),
+                "Growth VS Risks": (analysis_data.get("growth_vs_risks"), analysis_data.get("growth_vs_risks_sentiment")),
                 "Institutional Sentiment": (analysis_data.get("institutional_sentiment"), analysis_data.get("institutional_sentiment_sentiment")),
             }
 
