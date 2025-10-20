@@ -11,7 +11,7 @@ class OpenRouterClient(AIClient):
     """
     OpenRouter client implementation using various available models.
     """
-    DEFAULT_MODEL = "x-ai/grok-4-fast"
+    DEFAULT_MODEL = "deepseek/deepseek-chat-v3.1:free"
 
 
     def __init__(self, model: str = DEFAULT_MODEL):

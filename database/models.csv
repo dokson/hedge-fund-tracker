@@ -4,5 +4,6 @@
 "gemini-2.5-flash","Google Gemini 2.5 Flash","Google"
 "openai/gpt-oss-120b","OpenAI gpt-oss-120b","Groq"
 "openai/gpt-oss-20b","OpenAI gpt-oss-20b","Groq"
+"deepseek/deepseek-chat-v3.1:free","DeepSeek 3.1","OpenRouter"
+"nvidia/nemotron-nano-9b-v2:free","NVIDIA NemoTron Nano 2","OpenRouter"
 "alibaba/tongyi-deepresearch-30b-a3b:free","Tongyi DeepResearch 30B","OpenRouter"
-"tngtech/deepseek-r1t2-chimera:free","DeepSeek R1T2 Chimera","OpenRouter"

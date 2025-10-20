@@ -1,6 +1,6 @@
 from app.utils.strings import get_next_yyyymmdd_day
 from bs4 import BeautifulSoup
-from tenacity import retry, stop_after_attempt, retry_if_result
+from tenacity import retry, stop_after_attempt, retry_if_result, wait_exponential
 import requests
 import re
 
@@ -23,14 +23,10 @@ FILING_SPECS = {
 }
 
 
-def _is_none(value):
-    """Return True if value is None, for tenacity retry."""
-    return value is None
-
-
 @retry(
-    retry=retry_if_result(_is_none),
-    stop=stop_after_attempt(3),
+    retry=retry_if_result(lambda value: value is None),
+    wait=wait_exponential(multiplier=1, min=2, max=8),
+    stop=stop_after_attempt(5),
     before_sleep=lambda rs: print(f"Retrying request for '{rs.args[0]}' in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})")
 )
 def _get_request(url):

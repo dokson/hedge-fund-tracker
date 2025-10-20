@@ -29,7 +29,7 @@ class GroqClient(AIClient):
 
 
     @retry(
-        wait=wait_exponential(multiplier=2, min=1, max=3),
+        wait=wait_exponential(multiplier=2, min=1, max=8),
         stop=stop_after_attempt(3),
         before_sleep=lambda rs: print(f"⏳ Retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})")
     )
