@@ -1,6 +1,6 @@
 from app.utils.strings import get_next_yyyymmdd_day
 from bs4 import BeautifulSoup
-from tenacity import retry, stop_after_attempt, retry_if_result, wait_exponential
+from tenacity import retry, stop_after_attempt, retry_if_result, wait_exponential, RetryError
 import requests
 import re
 
@@ -128,8 +128,12 @@ def _scrape_filing(document_tag, filing_type):
         Dictionary with 'date' and 'xml_content' or None if processing fails
     """
     report_page_url = SEC_URL + document_tag['href']
-    report_page_response = _get_request(report_page_url)
-    if not report_page_response:
+    try:
+        report_page_response = _get_request(report_page_url)
+        if not report_page_response:
+            return None
+    except RetryError as e:
+        print(f"❌ Failed to fetch report page {report_page_url} after multiple retries.")
         return None
 
     report_page_soup = BeautifulSoup(report_page_response.text, "html.parser")
@@ -142,9 +146,13 @@ def _scrape_filing(document_tag, filing_type):
         print(f"Could not get metadata for report page {report_page_url}")
         return None
 
-    xml_response = _get_request(xml_url)
-    if not xml_response:
-        print(f"Failed to download XML from {xml_url}")
+    try:
+        xml_response = _get_request(xml_url)
+        if not xml_response:
+            print(f"Failed to download XML from {xml_url}")
+            return None
+    except RetryError as e:
+        print(f"❌ Failed to fetch XML file {xml_url} after multiple retries.")
         return None
 
     print(f"Successfully scraped {filing_type} filing published on {filing_date}" + (f" (refering {report_date})" if filing_type == '13F-HR' else ""))
