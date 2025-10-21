@@ -68,9 +68,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
 
-      - name: Get current date
+      - name: Get filings date
         id: date
-        run: echo "today=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        run: |
+          if [ $(date +'%H') -lt 10 ]; then
+            echo "filings_date=$(date -d 'yesterday' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          else
+            echo "filings_date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          fi
 
       - name: Check for changes
         id: changes
@@ -95,7 +100,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "chore: Update filings data (${{ steps.date.outputs.today }})"
+          git commit -m "chore: Update filings data (${{ steps.date.outputs.filings_date }})"
           git push --set-upstream origin ${{ env.COMMIT_BRANCH }}
 
       - name: Log completion
@@ -107,5 +112,5 @@ jobs:
             echo "📊 Files changed: ${{ steps.changes.outputs.files_changed || 'N/A' }}"
             echo "📌 Branch: ${{ env.COMMIT_BRANCH }}"
             echo "🔗 View commit history: https://github.com/${{ github.repository }}/commits/${{ env.COMMIT_BRANCH }}"
-            echo "📅 Run date: ${{ steps.date.outputs.today }}"
+            echo "📅 Filings date: ${{ steps.date.outputs.filings_date }}"
           fi
