@@ -2,23 +2,28 @@ name: Dependabot Auto-Merge
 on: pull_request
 
 permissions:
-    contents: write
-    pull-requests: write
+  contents: write
+  pull-requests: write
 
 jobs:
-    dependabot:
-        runs-on: ubuntu-latest
-        if: github.actor == 'dependabot[bot]'
-        steps:
-            - name: Dependabot metadata
-              id: metadata
-              uses: dependabot/fetch-metadata@v2
-              with:
-                  github-token: "${{ secrets.GITHUB_TOKEN }}"
+  dependabot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Auto-Merge patch updates
-              if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
-              run: gh pr merge --auto --squash "$PR_URL"
-              env:
-                  PR_URL: ${{github.event.pull_request.html_url}}
-                  GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      - name: Approve and auto-merge PR
+        run: |
+          gh pr review --approve "$PR_URL"
+          gh pr merge --auto --squash "$PR_URL" \
+            --subject "chore(deps): ${{ steps.metadata.outputs.dependency-names }}" \
+            --body "Auto-merged ${{ steps.metadata.outputs.update-type }} update" \
+            --delete-branch
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
