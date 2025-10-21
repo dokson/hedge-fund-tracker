@@ -71,6 +71,16 @@ def run_fund_analysis():
         print_centered(f"{print_fund(selected_fund).upper()} - {selected_quarter} QUARTER ANALYSIS")
         horizontal_rule('-')
 
+        total_value = df_fund['Value'].sum()
+        num_positions = (df_fund['Value'] > 0).sum()
+        new_positions = (df_fund['Delta'].str.startswith('NEW')).sum()
+        close_positions = (df_fund['Delta'] == 'CLOSE').sum()
+
+        print("\n")
+        print_centered(f"TOTAL VALUE: {format_value(total_value)}")
+        print_centered(f"POSITIONS: {num_positions}")
+        print_centered(f"NEW: {new_positions} / CLOSED: {close_positions}")
+
         top_n = 10
         columns = ['Ticker', 'Company', 'Portfolio_Pct', 'Value', 'Delta', 'Delta_Value']
         formatters = {'Portfolio_Pct': get_percentage_formatter(), 'Value': get_value_formatter(), 'Delta_Value': get_value_formatter()}
