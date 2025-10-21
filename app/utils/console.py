@@ -1,5 +1,6 @@
 from app.utils.database import get_all_quarters, load_hedge_funds, load_models
 from tabulate import tabulate
+from typing import Dict
 import math
 import shutil
 
@@ -64,7 +65,7 @@ def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters={}, 
     print_centered_table(tabulate(display_df[columns_to_show], headers="keys", tablefmt="psql", showindex=False, stralign="center", numalign="center"))
 
 
-def prompt_for_selection(items, text, display_func=None, num_columns=None):
+def prompt_for_selection(items, text, print_func=None, num_columns=None):
     """
     Prompts the user to select an item from a list, with optional multi-column display.
 
@@ -82,7 +83,7 @@ def prompt_for_selection(items, text, display_func=None, num_columns=None):
     """
     display_texts = []
     for i, item in enumerate(items):
-        base_text = display_func(item) if display_func else str(item)
+        base_text = print_func(item) if print_func else str(item)
         display_texts.append(f"{i + 1}. {base_text}")
 
     print(text + "\n")
@@ -124,7 +125,20 @@ def select_ai_model(text="Select the AI model"):
     Prompts the user to select an AI model for the analysis.
     Returns the selected model.
     """
-    return prompt_for_selection(load_models(), text, display_func=lambda model: model['Description'])
+    return prompt_for_selection(load_models(), text, print_func=lambda model: model['Description'])
+
+
+def print_fund(fund_info: Dict) -> str:
+    """
+    Formats fund information into a 'Fund (Manager)' string.
+
+    Args:
+        fund_info (Dict): A dictionary containing fund details like 'Fund' and 'Manager'.
+
+    Returns:
+        str: A formatted string, e.g., "Fund Name (Manager Name)".
+    """
+    return f"{fund_info.get('Fund')} ({fund_info.get('Manager')})"
 
 
 def select_fund(text="Select the hedge fund:"):
@@ -135,7 +149,7 @@ def select_fund(text="Select the hedge fund:"):
     return prompt_for_selection(
         load_hedge_funds(),
         text,
-        display_func=lambda fund: f"{fund['Fund']} - {fund['Manager']}",
+        print_func=print_fund,
         num_columns=-1
     )
 
@@ -158,7 +172,7 @@ def select_period(text="Select offset:"):
     return prompt_for_selection(
         period_options,
         text,
-        display_func=lambda option: option[1],
+        print_func=lambda option: option[1],
         num_columns=2
     )
 

@@ -59,7 +59,7 @@ def run_all_funds_report():
     for i, fund in enumerate(hedge_funds):
         print_centered(f"Processing {i + 1:2}/{total_funds}: {fund['Fund']}", "-")
         process_fund(fund)
-    print_centered(f"All funds processed", "=")
+    print_centered(f"All funds processed", "-")
 
 
 def run_fetch_nq_filings():
@@ -88,7 +88,7 @@ def run_fetch_nq_filings():
         _fetch_nq(fund['CIKs'], fund['Fund'], fund['Denomination'], latest_13f_date)
 
     save_non_quarterly_filings(nq_filings)
-    print_centered(f"All funds processed", "=")
+    print_centered(f"All funds processed", "-")
 
 
 def run_single_fund_report():

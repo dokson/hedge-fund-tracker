@@ -1,6 +1,6 @@
 # 📊 Hedge Fund Tracker
 
-![repo size](https://img.shields.io/github/repo-size/dokson/hedge-fund-tracker)
+[![repo size](https://img.shields.io/github/repo-size/dokson/hedge-fund-tracker)](https://github.com/dokson/hedge-fund-tracker/tree/master)
 [![last commit](https://img.shields.io/github/last-commit/dokson/hedge-fund-tracker)](https://github.com/dokson/hedge-fund-tracker/commits/master/)
 [![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/release/python-3130/)
 [![License: MIT](https://img.shields.io/github/license/dokson/hedge-fund-tracker)](https://opensource.org/licenses/MIT)
@@ -233,6 +233,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Paul Singer*'s [Elliott Investment](https://www.elliottmgmt.com/)
 - *Nancy Kukacka*'s [Avalon Global Asset Management](https://avalon-global.com/)
 - *Daniel Loeb*'s [Third Point](https://www.thirdpoint.com/)
+- *William Huffman*'s [Nuveen](https://www.nuveen.com/)
 - *George Soros*'s [Soros Fund Management](https://sorosfundmgmt.com/)
 - *Bill Gates*'s [Gates Foundation Trust](https://www.gatesfoundation.org/about/financials/foundation-trust)
 - *Carl Icahn*'s [Icahn Enterprises](https://www.ielp.com/)

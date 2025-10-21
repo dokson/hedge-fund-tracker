@@ -1,6 +1,6 @@
 from app.ai.agent import AnalystAgent
 from app.analysis.stocks import aggregate_quarter_by_fund, fund_analysis, get_quarter_data, quarter_analysis, stock_analysis
-from app.utils.console import horizontal_rule, print_centered, print_dataframe, select_ai_model, select_fund, select_quarter
+from app.utils.console import horizontal_rule, print_centered, print_dataframe, print_fund, select_ai_model, select_fund, select_quarter
 from app.utils.database import count_funds_in_quarter, get_all_quarters, get_last_quarter, get_most_recent_quarter, load_non_quarterly_data
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
 import numpy as np
@@ -62,18 +62,13 @@ def run_fund_analysis():
         if not selected_quarter:
             return
 
-        fund = selected_fund['Fund']
-        manager = selected_fund['Manager']
-        df_fund = fund_analysis(fund, selected_quarter)
-
-        fund_text = f"{fund.upper()} ({manager.upper()})"
-
+        df_fund = fund_analysis(selected_fund['Fund'], selected_quarter)
         if df_fund.empty:
-            print(f"❌ No data found for fund {fund_text} in quarter {selected_quarter}.")
+            print(f"❌ No data available for {print_fund(selected_fund)} in quarter {selected_quarter}.")
             return
 
         horizontal_rule('-')
-        print_centered(f"{fund_text} - {selected_quarter} QUARTER ANALYSIS")
+        print_centered(f"{print_fund(selected_fund).upper()} - {selected_quarter} QUARTER ANALYSIS")
         horizontal_rule('-')
 
         top_n = 10

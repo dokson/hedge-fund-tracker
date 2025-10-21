@@ -5,5 +5,6 @@
 "openai/gpt-oss-120b","OpenAI gpt-oss-120b","Groq"
 "openai/gpt-oss-20b","OpenAI gpt-oss-20b","Groq"
 "deepseek/deepseek-chat-v3.1:free","DeepSeek 3.1","OpenRouter"
+"cognitivecomputations/dolphin-mistral-24b-venice-edition:free","Dolphin Mistral Venice","OpenRouter"
 "nvidia/nemotron-nano-9b-v2:free","NVIDIA NemoTron Nano 2","OpenRouter"
 "alibaba/tongyi-deepresearch-30b-a3b:free","Tongyi DeepResearch 30B","OpenRouter"
