@@ -16,4 +16,4 @@ CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
 922475108,VEEV,Veeva Sys Inc,311345,-30000,89.66M,-8.64M,-8.8%,10.1%
 292812104,ENFN,Enfusion Inc,0,-868085,0,-9.68M,CLOSE,0%
 79466L302,CRM,Salesforce Inc,0,-75968,0,-20.39M,CLOSE,0%
-Total,,,,,891.97M,156.99M,+21.4%,100%
+Total,,,,,891.97M,-2.05M,-0.2%,100%
