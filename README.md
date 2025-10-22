@@ -197,7 +197,7 @@ This tracker leverages the following types of SEC filings to provide a comprehen
 
 ## 🏢 Hedge Funds Selection
 
-This tool tracks a curated list of the **150 of what I found to be the top-performing US hedge funds**, selected based on their performance over the last 3-5 years. This **selection** is the result of my own **methodology** designed to identify the **top percentile of institutional investors**. My *selection methodology* is detailed below.
+This tool tracks a curated list of **what I found to be the top-performing institutional investors that file with the U.S. SEC**, *identified* based on their performance over the last 3-5 years. This **curation** is the result of my own **methodology** designed to identify the **top percentile of global investment funds**. My *selection methodology* is detailed below.
 
 ### Selection Methodology
 
@@ -267,9 +267,11 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Robert Atchison & Phillip Gross*'s [Adage Capital Partners](https://www.adagecapital.com/)
 - *Richard Pzena*'s [Pzena Investment Management](https://www.pzena.com/)
 - *Peter Kolchinsky*'s [RA Capital Management](https://www.racap.com/)
+- *Mark Massey*'s [AltaRock Partners](https://www.altarockpartners.com/)
 - *Chuck Royce*'s [Royce Investment Partners](https://www.royceinvest.com/)
 - *Paul Tudor Jones*'s [Tudor Investment Corporation](https://www.tudorfunds.com/)
 - *Samuel Isaly*'s [OrbiMed](https://www.orbimed.com/)
+- *Robert Olstein*'s [Olstein Funds](https://www.olsteinfunds.com/)
 - [BlackRock](https://www.blackrock.com/)
 - [State Street](https://statestreet.com/)
 - [Jane Street](https://www.janestreet.com/)
