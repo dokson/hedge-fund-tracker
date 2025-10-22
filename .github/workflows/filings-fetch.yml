@@ -25,16 +25,8 @@ jobs:
           # Fetch all history so we can switch to the branch
           fetch-depth: 0
 
-      - name: Switch to the filings-fetch branch
-        run: |
-          # If the branch exists remotely, check it out. Otherwise, create it from the default branch.
-          if git ls-remote --exit-code --heads origin ${{ env.COMMIT_BRANCH }}; then
-            echo "::notice::Found existing '${{ env.COMMIT_BRANCH }}' branch. Checking it out to add new commits."
-            git checkout ${{ env.COMMIT_BRANCH }}
-          else
-            echo "::notice::'${{ env.COMMIT_BRANCH }}' not found. A new branch will be created."
-            git checkout -b ${{ env.COMMIT_BRANCH }}
-          fi
+      - name: Create or reset the commit branch
+        run: git checkout -B ${{ env.COMMIT_BRANCH }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
