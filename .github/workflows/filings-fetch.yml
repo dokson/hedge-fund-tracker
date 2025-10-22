@@ -26,7 +26,13 @@ jobs:
           fetch-depth: 0
 
       - name: Create or reset the commit branch
-        run: git checkout -B ${{ env.COMMIT_BRANCH }}
+        run: |
+          # If the branch exists remotely, delete it. Otherwise, create it from the default branch.
+          if git ls-remote --exit-code --heads origin ${{ env.COMMIT_BRANCH }}; then
+            echo "::notice::Deleting '${{ env.COMMIT_BRANCH }}' branch."
+            git push origin --delete ${{ env.COMMIT_BRANCH }} || true
+          fi
+          git checkout -B ${{ env.COMMIT_BRANCH }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
