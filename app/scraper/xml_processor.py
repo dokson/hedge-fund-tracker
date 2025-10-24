@@ -10,6 +10,8 @@ def _get_tag_text(element, tag_suffix):
     """
     Safely find a tag by its suffix and return its stripped text, or None.
     """
+    if not element:
+        return None
     tag = element.find(lambda t: t.name.endswith(tag_suffix))
     if tag:
         value_tag = tag.find('value')
