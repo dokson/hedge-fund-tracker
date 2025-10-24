@@ -269,6 +269,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Ryan Frick*'s [Dorsal Capital Management](https://www.linkedin.com/company/dorsal-capital-management-llc/)
 - *Peter Kolchinsky*'s [RA Capital Management](https://www.racap.com/)
 - *Mark Massey*'s [AltaRock Partners](https://www.altarockpartners.com/)
+- *Brian Yacktman*'s [YCG Investments](https://ycginvestments.com/)
 - *Chuck Royce*'s [Royce Investment Partners](https://www.royceinvest.com/)
 - *Paul Tudor Jones*'s [Tudor Investment Corporation](https://www.tudorfunds.com/)
 - *Samuel Isaly*'s [OrbiMed](https://www.orbimed.com/)
