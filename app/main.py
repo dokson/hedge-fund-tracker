@@ -223,19 +223,20 @@ def run_ai_due_diligence():
             print(f"Sentiment: {overall_sentiment}")
             print(f"Thesis: {thesis_info.get('thesis')}")
 
-            target_price_str = thesis_info.get('price_target', '').replace('$', '').replace(',', '')
+            target_price = thesis_info.get('price_target')
+            target_price = str(target_price).replace('$', '').replace(',', '') if target_price else None
             current_price = analysis.get('current_price')
 
             potential_upside_str = ""
-            if target_price_str and current_price:
+            if target_price and current_price:
                 try:
-                    target_price = float(target_price_str)
-                    potential_upside = ((target_price - current_price) / current_price) * 100
+                    target_price_val = float(target_price)
+                    potential_upside = ((target_price_val - current_price) / current_price) * 100
                     potential_upside_str = f" ({format_percentage(potential_upside, True)})"
                 except (ValueError, TypeError):
                     pass # Ignore if conversion fails
             
-            print(f"Target Price (3 months): {thesis_info.get('price_target')}{potential_upside_str}")
+            print(f"Target Price (3 months): {target_price or 'N/A'}{potential_upside_str}")
     except Exception as e:
         print(f"❌ An unexpected error occurred while running AI Due Diligence: {e}")
 
