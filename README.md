@@ -263,6 +263,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Bill Peckford*'s [Polar Asset Management](https://polaramp.com/)
 - *Joseph Edelman*'s [Perceptive Advisors](https://www.perceptivelife.com/)
 - *Mario Gabelli*'s [GAMCO Investors](https://gabelli.com/)
+- *Eric Bannasch*'s [Cadian Capital Management](https://www.cadiancap.com/)
 - *Boaz Weinstein*'s [Saba Capital](https://www.sabacapital.com/)
 - *Robert Atchison & Phillip Gross*'s [Adage Capital Partners](https://www.adagecapital.com/)
 - *Richard Pzena*'s [Pzena Investment Management](https://www.pzena.com/)

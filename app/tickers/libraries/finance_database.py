@@ -1,6 +1,7 @@
 
 from app.tickers.libraries.base_library import FinanceLibrary
 from app.utils.github import open_issue
+from app.utils.strings import format_string
 import financedatabase as fd
 import random
 import string
@@ -71,7 +72,7 @@ class FinanceDatabase(FinanceLibrary):
         result = FinanceDatabase._search_and_sort(cusip=cusip)
 
         if result is not None:
-            return result.iloc[0]['name'].title()
+            return format_string(result.iloc[0]['name'])
 
         print(f"🚨 Finance Database: No company found for CUSIP {cusip}")
 

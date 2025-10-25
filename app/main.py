@@ -2,7 +2,7 @@ from app.ai.agent import AnalystAgent
 from app.analysis.stocks import aggregate_quarter_by_fund, fund_analysis, get_quarter_data, quarter_analysis, stock_analysis
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, print_fund, select_ai_model, select_fund, select_quarter
 from app.utils.database import count_funds_in_quarter, get_all_quarters, get_last_quarter, get_most_recent_quarter, load_non_quarterly_data
-from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_value_formatter
+from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_string_formatter, get_value_formatter
 import numpy as np
 import pandas as pd
 
@@ -25,8 +25,8 @@ def run_view_nq_filings():
 
     print_dataframe(
         nq_filings_df, latest_n, title=f"LATEST {latest_n} 13D/G AND FORM 4 FILINGS", sort_by=['Date', 'Fund', 'Portfolio_Pct'],
-        cols=['Date', 'Fund', 'Ticker', 'Shares', 'Delta_Shares', 'Delta', 'Avg_Price', 'Value', 'Portfolio_Pct'],
-        formatters={'Delta': get_signed_perc_formatter(), 'Shares': get_value_formatter(), 'Delta_Shares': get_value_formatter(), 'Portfolio_Pct': get_percentage_formatter(),}
+        cols=['Date', 'Fund', 'Ticker', 'Company', 'Shares', 'Delta_Shares', 'Delta', 'Avg_Price', 'Value', 'Portfolio_Pct'],
+        formatters={'Delta': get_signed_perc_formatter(), 'Company': get_string_formatter(), 'Shares': get_value_formatter(), 'Delta_Shares': get_value_formatter(), 'Portfolio_Pct': get_percentage_formatter(),}
     )
 
 

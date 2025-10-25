@@ -1,4 +1,5 @@
 from app.tickers.libraries.base_library import FinanceLibrary
+from app.utils.strings import format_string
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 import finnhub
@@ -14,7 +15,7 @@ class Finnhub(FinanceLibrary):
     load_dotenv()
     API_KEY = os.getenv("FINNHUB_API_KEY")
     CLIENT = finnhub.Client(api_key=API_KEY) if API_KEY else None
-    COMMON_COMPANY_WORDS = {'the', 'corp', 'inc', 'group', 'ltd', 'co', 'plc', 'hldgs'}
+    COMMON_COMPANY_WORDS = {'the', 'corp', 'inc', 'group', 'ltd', 'co', 'plc', 'hldgs', 'sa', 'nv'}
     MAX_QUERY_LENGTH = 20
 
     if not CLIENT:
@@ -41,7 +42,8 @@ class Finnhub(FinanceLibrary):
         Performs the actual symbol lookup using the Finnhub client.
         This function is decorated for retries.
         """
-        time.sleep(1) # Pause to respect API rate limits        return Finnhub.CLIENT.symbol_lookup(query[:Finnhub.MAX_QUERY_LENGTH])
+        time.sleep(1) # Pause to respect API rate limits
+        return Finnhub.CLIENT.symbol_lookup(query[:Finnhub.MAX_QUERY_LENGTH])
 
 
     @staticmethod
@@ -100,7 +102,7 @@ class Finnhub(FinanceLibrary):
         """
         best_match = Finnhub._lookup(cusip)
         if best_match:
-            return best_match.get('description', '').title()
+            return format_string(best_match.get('description', ''))
         
         print(f"🚨 Finnhub: No company found for CUSIP {cusip}")
         return None

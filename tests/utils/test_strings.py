@@ -1,9 +1,12 @@
-from app.utils.strings import format_percentage, format_value, get_numeric, get_percentage_number, get_quarter, get_quarter_date
+from app.utils.strings import add_days_to_yyyymmdd, format_string, get_next_yyyymmdd_day, format_percentage, format_value, get_numeric, get_percentage_number, get_quarter, get_quarter_date
 import unittest
 
 class TestStrings(unittest.TestCase):
 
     def test_format_percentage(self):
+        """
+        Tests the format_percentage function.
+        """
         self.assertEqual(format_percentage(0.1), "0.1%")
         self.assertEqual(format_percentage(0.02), "0%")
         self.assertEqual(format_percentage(0.02, decimal_places=2), "0.02%")
@@ -27,6 +30,9 @@ class TestStrings(unittest.TestCase):
 
 
     def test_format_value(self):
+        """
+        Tests the format_value function.
+        """
         self.assertEqual(format_value(210), "210")
         self.assertEqual(format_value(-210), "-210")
         self.assertEqual(format_value(1234), "1.23K")
@@ -44,6 +50,9 @@ class TestStrings(unittest.TestCase):
 
 
     def test_get_numeric(self):
+        """
+        Tests the get_numeric function.
+        """
         self.assertEqual(get_numeric("500"), 500)
         self.assertEqual(get_numeric("-500"), -500)
         self.assertEqual(get_numeric("1.23K"), 1230)
@@ -61,6 +70,9 @@ class TestStrings(unittest.TestCase):
 
     
     def test_get_percentage_number(self):
+        """
+        Tests the get_percentage_number function.
+        """
         self.assertEqual(get_percentage_number("12.3%"), 12.3)
         self.assertEqual(get_percentage_number("100%"), 100.0)
         self.assertEqual(get_percentage_number("<.01%"), 0.0)
@@ -71,6 +83,9 @@ class TestStrings(unittest.TestCase):
 
 
     def test_get_quarter(self):
+        """
+        Tests the get_quarter function.
+        """
         # Test Q1 boundaries
         self.assertEqual(get_quarter("2023-01-01"), "2023Q1")
         self.assertEqual(get_quarter("2023-03-31"), "2023Q1")
@@ -86,10 +101,42 @@ class TestStrings(unittest.TestCase):
 
 
     def test_get_quarter_date(self):
+        """
+        Tests the get_quarter_date function.
+        """
         self.assertEqual(get_quarter_date("2024Q1"), "2024-03-31")
         self.assertEqual(get_quarter_date("2025Q2"), "2025-06-30")
         self.assertEqual(get_quarter_date("2023Q3"), "2023-09-30")
         self.assertEqual(get_quarter_date("2021Q4"), "2021-12-31")
+
+
+    def test_format_string(self):
+        """
+        Tests the format_string function.
+        """
+        self.assertEqual(format_string("ETSY INC"), "Etsy Inc")
+        self.assertEqual(format_string("NVIDIA Corporation"), "NVIDIA Corporation")
+        self.assertEqual(format_string("GE HealthCare"), "GE HealthCare")
+        self.assertEqual(format_string(""), "")
+        self.assertEqual(format_string(None), None)
+
+
+    def test_add_days_to_yyyymmdd(self):
+        """
+        Tests add_days_to_yyyymmdd function.
+        """
+        self.assertEqual(add_days_to_yyyymmdd("20240101", 5), "20240106")
+        self.assertEqual(add_days_to_yyyymmdd("20240228", 1), "20240229") # Leap year
+        self.assertEqual(add_days_to_yyyymmdd("20230228", 1), "20230301") # Non leap year
+        self.assertEqual(add_days_to_yyyymmdd("20240301", -2), "20240228")
+
+
+    def test_get_next_yyyymmdd_day(self):
+        """
+        Tests get_next_yyyymmdd_day function.
+        """
+        self.assertEqual(get_next_yyyymmdd_day("20241231"), "20250101")
+        self.assertEqual(get_next_yyyymmdd_day("20240228"), "20240229")
 
 
 if __name__ == '__main__':

@@ -59,6 +59,26 @@ def format_percentage(value: float, show_sign: bool = False, decimal_places: int
         return f"{formatted}%"
 
 
+def format_string(string: str) -> str:
+    """
+    Formats a string to title case only if it is entirely in uppercase.
+
+    - If the string consists only of uppercase letters and whitespace,
+      it is converted to title case (e.g., "ETSY INC" -> "Etsy Inc").
+    - If the string contains any lowercase letters or is already in a mixed case,
+      it is returned unchanged (e.g., "GE HealthCare" -> "GE HealthCare").
+
+    Args:
+        input_string (str): The string to process.
+
+    Returns:
+        str: The formatted string or the original string.
+    """
+    if string and string.isupper():
+        return string.title()
+    return string
+
+
 def format_value(value: Union[int, float]) -> str:
     """
     Formats a numeric value into a human-readable short scale string, up to 2 decimal places (e.g., 1.23B, 45.67M, 8.9K).
@@ -96,19 +116,6 @@ def format_value(value: Union[int, float]) -> str:
     return formatted.rstrip('0').rstrip('.') + suffix
 
 
-def get_value_formatter():
-    """
-    Creates a formatter function for converting numbers to a short scale string (e.g., 1.2M).
-
-    This is a factory function that returns a lambda. The lambda expects a value, and then formats it using the `format_value` utility.
-    Useful for applying consistent formatting to data columns (e.g., in pandas).
-
-    Returns:
-        callable: A function that takes a numeric value and returns its formatted string representation.
-    """
-    return lambda x: format_value(x)
-
-
 def get_percentage_formatter():
     """
     Creates a formatter function for converting numbers to a percentage string with 2 decimal places.
@@ -135,6 +142,33 @@ def get_signed_perc_formatter():
         callable: A function that takes a numeric value and returns its formatted percentage string.
     """
     return lambda x: format_percentage(x, True)
+
+
+def get_string_formatter():
+    """
+    Creates a formatter function that formats a string to title case only if it is entirely in uppercase.
+
+    This is a factory function that returns a lambda. The lambda expects a string value
+    and formats it using the `format_string` utility. Useful for applying consistent
+    string formatting to data columns (e.g., in pandas).
+
+    Returns:
+        callable: A function that takes a string value and returns its formatted string representation.
+    """
+    return lambda x: format_string(x)
+
+
+def get_value_formatter():
+    """
+    Creates a formatter function for converting numbers to a short scale string (e.g., 1.2M).
+
+    This is a factory function that returns a lambda. The lambda expects a value, and then formats it using the `format_value` utility.
+    Useful for applying consistent formatting to data columns (e.g., in pandas).
+
+    Returns:
+        callable: A function that takes a numeric value and returns its formatted string representation.
+    """
+    return lambda x: format_value(x)
 
 
 def get_numeric(formatted_value: str) -> int:
