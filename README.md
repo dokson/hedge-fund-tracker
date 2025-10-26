@@ -374,7 +374,7 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 | **Config** | [python-dotenv](https://github.com/theskumar/python-dotenv) |
 | **Data Processing** | [pandas](https://pandas.pydata.org/), [csv](https://docs.python.org/3/library/csv.html) |
 | **Stocks Libraries** | [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/) |
-| **Gen AI** | [Google Gen AI SDK](https://googleapis.github.io/python-genai/), [Groq](https://github.com/groq/groq-python), [OpenAI](https://github.com/openai/openai-python) |
+| **Gen AI** | [Google Gen AI SDK](https://googleapis.github.io/python-genai/), [OpenAI](https://github.com/openai/openai-python) |
 
 ## 🤝🏼 Contributing & Support
 

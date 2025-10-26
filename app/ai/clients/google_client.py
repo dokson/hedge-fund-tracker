@@ -6,7 +6,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 class GoogleAIClient(AIClient):
     """
-    Google AI client implementation using Gemini models
+    Google AI client implementation using Gemini models (e.g., Gemini 2.5)
     """
     DEFAULT_MODEL = 'gemini-2.5-flash'
 
