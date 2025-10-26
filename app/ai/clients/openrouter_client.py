@@ -16,6 +16,13 @@ class OpenRouterClient(OpenAIClient):
         super().__init__(model)
 
 
+    def get_model_name(self) -> str:
+        """
+        Get the current OpenRouter model name
+        """
+        return self.model.removesuffix(":free")
+
+
     def get_base_url(self) -> str:
         """
         Returns the base URL for the OpenRouter API.
