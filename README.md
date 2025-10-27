@@ -248,6 +248,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *David Katz*'s [Matrix Asset Advisors](https://matrixassetadvisors.com/)
 - *Joel Greenblatt*'s [Gotham Funds](https://www.gothamfunds.com/)
 - *Barry Ritholtz*'s [Ritholtz Wealth Management](https://www.ritholtzwealth.com/)
+- *John Overdeck*'s [Two Sigma](https://www.twosigma.com/)
 - *Nathaniel August*'s [Mangrove Partners](https://mangrovepartners.com/)
 - *James Oshaughnessy*'s [O'Shaughnessy Asset Management](https://www.osam.com/)
 - *John Paulson*'s [Paulson & Co.](https://paulsonco.com/)
