@@ -1,5 +1,5 @@
 from app.tickers.resolver import resolve_ticker
-from app.utils.pd import coalesce
+from app.utils.pd import coalesce, format_value_series
 from app.utils.strings import format_percentage, format_value
 import pandas as pd
 
@@ -52,8 +52,8 @@ def generate_comparison(df_recent, df_previous):
     df_comparison['Portfolio%'] = ((df_comparison['Value'] / total_portfolio_value) * 100).apply(
         lambda x: format_percentage(x, decimal_places=2) if 0.01 <= x < 1 else format_percentage(x)
     )
-    df_comparison['Value'] = df_comparison['Value'].apply(format_value)
-    df_comparison['Delta_Value'] = df_comparison['Delta_Value'].apply(format_value)
+    df_comparison['Value'] = format_value_series(df_comparison['Value'])
+    df_comparison['Delta_Value'] = format_value_series(df_comparison['Delta_Value'])
 
     df_comparison = df_comparison[['CUSIP', 'Ticker', 'Company', 'Shares', 'Delta_Shares', 'Value', 'Delta_Value', 'Delta', 'Portfolio%']]
 

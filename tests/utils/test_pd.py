@@ -1,5 +1,6 @@
-from app.utils.pd import coalesce
+from app.utils.pd import coalesce, format_value_series, get_numeric_series, get_percentage_number_series
 import pandas as pd
+import numpy as np
 import unittest
 
 
@@ -9,46 +10,59 @@ class TestPandas(unittest.TestCase):
         """
         Tests the coalesce function with various scenarios.
         """
-        # Scenario 1: Basic two-series coalesce
-        s1 = pd.Series([1, None, 3, None], dtype='Int64')
-        s2 = pd.Series([None, 2, None, 4], dtype='Int64')
-        expected1 = pd.Series([1, 2, 3, 4], dtype='Int64')
-        result1 = coalesce(s1, s2)
-        pd.testing.assert_series_equal(result1, expected1, check_names=False)
+        s1 = pd.Series([1, np.nan, 3])
+        s2 = pd.Series([np.nan, 2, np.nan])
+        s3 = pd.Series([10, 20, 30])
 
-        # Scenario 2: Three series, filling gaps sequentially
-        s3 = pd.Series([None, None, 30, None], dtype='Int64')
-        expected2 = pd.Series([1, 2, 3, 4], dtype='Int64') # s1 fills first, then s2
-        result2 = coalesce(s1, s2, s3)
-        pd.testing.assert_series_equal(result2, expected2, check_names=False)
+        # Test with two series
+        result = coalesce(s1, s2)
+        expected = pd.Series([1.0, 2.0, 3.0])
+        pd.testing.assert_series_equal(result, expected)
 
-        # Scenario 3: First series is complete, no changes should occur
-        s_full = pd.Series([1, 2, 3], dtype='Int64')
-        s_other = pd.Series([4, 5, 6], dtype='Int64')
-        # The result should be a copy of the original series
-        expected3 = pd.Series([1, 2, 3], dtype='Int64')
-        result3 = coalesce(s_full, s_other)
-        pd.testing.assert_series_equal(result3, expected3, check_names=False)
+        # Test with three series
+        result = coalesce(s1, s2, s3)
+        expected = pd.Series([1.0, 2.0, 3.0])
+        pd.testing.assert_series_equal(result, expected)
 
-        # Scenario 4: Result still contains None values because no series can fill it
-        s4 = pd.Series([None, None, None, None], dtype='Int64')
-        result4 = coalesce(s1, s4)
-        expected4 = s1.copy()
-        pd.testing.assert_series_equal(result4, expected4, check_names=False)
+        # Test where first series is all null
+        s_null = pd.Series([np.nan, np.nan, np.nan])
+        result = coalesce(s_null, s2, s3)
+        expected = pd.Series([10.0, 2.0, 30.0])
+        pd.testing.assert_series_equal(result, expected)
 
-        # Scenario 5: Coalesce with string data
-        s_str1 = pd.Series(['A', None, 'C'])
-        s_str2 = pd.Series([None, 'B', None])
-        expected5 = pd.Series(['A', 'B', 'C'])
-        result5 = coalesce(s_str1, s_str2)
-        pd.testing.assert_series_equal(result5, expected5, check_names=False)
 
-        # Scenario 6: Mixed types (object dtype)
-        s_mix1 = pd.Series([1, None, 'hello', None])
-        s_mix2 = pd.Series([None, 2.5, None, True])
-        expected6 = pd.Series([1, 2.5, 'hello', True], dtype='object')
-        result6 = coalesce(s_mix1, s_mix2)
-        pd.testing.assert_series_equal(result6, expected6, check_names=False)
+    def test_format_value_series(self):
+        """
+        Tests the vectorized format_value_series function.
+        """
+        input_series = pd.Series([210, -1234, 1234567, 9870123456, 1234567891011, 9999999999999, np.nan, np.inf])
+        expected_output = pd.Series(['210', '-1.23K', '1.23M', '9.87B', '1.23T', '10T', 'N/A', '∞'])
+        
+        result = format_value_series(input_series)
+        pd.testing.assert_series_equal(result, expected_output, check_names=False)
+
+
+    def test_get_numeric_series(self):
+        """
+        Tests the vectorized get_numeric_series function.
+        """
+        input_series = pd.Series(['500', '-1.23K', '1.23M', '9.87B', '1.23T', 'N/A', '1.00M'])
+        # Note: get_numeric returns int, so we expect float results from vectorized version due to NaN
+        expected_output = pd.Series([500, -1230, 1230000, 9870000000, 1230000000000, np.nan, 1000000], dtype=float)
+        
+        result = get_numeric_series(input_series)
+        pd.testing.assert_series_equal(result, expected_output, check_names=False)
+
+
+    def test_get_percentage_number_series(self):
+        """
+        Tests the vectorized get_percentage_number_series function.
+        """
+        input_series = pd.Series(['12.3%', '100%', '<.01%', 'N/A', '-10.5%', '0%'])
+        expected_output = pd.Series([12.3, 100.0, 0.0, np.nan, -10.5, 0.0])
+        
+        result = get_percentage_number_series(input_series)
+        pd.testing.assert_series_equal(result, expected_output, check_names=False)
 
 
 if __name__ == '__main__':

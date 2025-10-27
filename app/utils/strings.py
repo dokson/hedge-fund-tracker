@@ -3,6 +3,13 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
+VALUE_FORMAT_MAP = [
+    (1_000_000_000_000, 'T'),
+    (1_000_000_000, 'B'),
+    (1_000_000, 'M'),
+    (1_000, 'K'),
+]
+
 
 def add_days_to_yyyymmdd(yyyymmdd_str, days):
     """
@@ -93,27 +100,15 @@ def format_value(value: Union[int, float]) -> str:
     if pd.isnull(value):
         return 'N/A'
 
-    abs_value = abs(value)
-
-    if abs_value == float('inf'):
+    if value == float('inf'):
         return '∞'
-    elif abs_value >= 1_000_000_000_000:
-        formatted = f'{value / 1_000_000_000_000:.2f}'
-        suffix = 'T'
-    elif abs_value >= 1_000_000_000:
-        formatted = f'{value / 1_000_000_000:.2f}'
-        suffix = 'B'
-    elif abs_value >= 1_000_000:
-        formatted = f'{value / 1_000_000:.2f}'
-        suffix = 'M'
-    elif abs_value >= 1_000:
-        formatted = f'{value / 1_000:.2f}'
-        suffix = 'K'
-    else:
-        formatted = f'{value:.2f}'
-        suffix = ''
 
-    return formatted.rstrip('0').rstrip('.') + suffix
+    for threshold, suffix in VALUE_FORMAT_MAP:
+        if abs(value) >= threshold:
+            formatted = f'{value / threshold:.2f}'.rstrip('0').rstrip('.')
+            return f"{formatted}{suffix}"
+
+    return f'{value:.2f}'.rstrip('0').rstrip('.')
 
 
 def get_percentage_formatter():
@@ -184,23 +179,17 @@ def get_numeric(formatted_value: str) -> int:
     if formatted_value == 'N/A':
         return np.nan
 
-    units = {
-        'T': 1_000_000_000_000,
-        'B': 1_000_000_000,
-        'M': 1_000_000,
-        'K': 1_000
-    }
+    # Create a dictionary from the rules for easy lookup
+    units = {suffix: multiplier for multiplier, suffix in VALUE_FORMAT_MAP}
 
-    unit = formatted_value[-1]  # last char (T, B, M, K)
+    suffix = formatted_value[-1]
 
-    if unit in units:
-        number = formatted_value[:-1]
-        multiplier = units[unit]
-    else:
-        number = formatted_value
-        multiplier = 1
-
-    return int(float(number) * multiplier)
+    if suffix in units:
+        number_part = formatted_value[:-1]
+        multiplier = units[suffix]
+        return int(float(number_part) * multiplier)
+    
+    return int(float(formatted_value))
 
 
 def get_percentage_number(formatted_percentage: str) -> float:

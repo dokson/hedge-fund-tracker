@@ -3,8 +3,8 @@ from app.tickers.libraries import YFinance
 from app.tickers.resolver import resolve_ticker
 from app.utils.database import load_non_quarterly_data
 from app.utils.github import open_issue
-from app.utils.pd import coalesce
-from app.utils.strings import format_percentage, format_value, get_numeric
+from app.utils.pd import coalesce, format_value_series, get_numeric_series
+from app.utils.strings import format_percentage
 import pandas as pd
 
 
@@ -72,8 +72,8 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_
             print(f"🚨 Could not find price for {ticker} on {date}.")
 
     # Numerics to String format
-    non_quarterly_filings_df['Value'] = non_quarterly_filings_df['Value'].apply(format_value)
-    non_quarterly_filings_df['Avg_Price'] = non_quarterly_filings_df['Avg_Price'].apply(format_value)
+    non_quarterly_filings_df['Value'] = format_value_series(non_quarterly_filings_df['Value'])
+    non_quarterly_filings_df['Avg_Price'] = format_value_series(non_quarterly_filings_df['Avg_Price'])
 
     return non_quarterly_filings_df[['CUSIP', 'Ticker', 'Company', 'Shares', 'Value', 'Avg_Price', 'Date', 'Filing_Date']]
 
@@ -91,7 +91,7 @@ def update_quarter_with_nq_filings(quarter_df: pd.DataFrame, funds_to_update: li
     """
     schedule_df = load_non_quarterly_data()
     schedule_df = schedule_df[schedule_df['Fund'].isin(funds_to_update)].set_index(['Fund', 'CUSIP'])
-    schedule_df.loc[:, 'Value_Num'] = schedule_df['Value'].apply(get_numeric)
+    schedule_df['Value_Num'] = get_numeric_series(schedule_df['Value'])
 
     updated_df = pd.merge(
         quarter_df,
