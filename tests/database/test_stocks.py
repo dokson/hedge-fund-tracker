@@ -1,6 +1,6 @@
 from app.utils.database import DB_FOLDER, LATEST_SCHEDULE_FILINGS_FILE, get_all_quarters, load_quarterly_data, load_stocks
-import unittest
 import pandas as pd
+import unittest
 
 
 class TestStocksDatabase(unittest.TestCase):
