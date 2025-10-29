@@ -6,5 +6,5 @@
 "openai/gpt-oss-20b","OpenAI gpt-oss-20b","Groq"
 "deepseek/deepseek-chat-v3.1:free","DeepSeek 3.1","OpenRouter"
 "minimax/minimax-m2:free","MiniMax M2","OpenRouter"
-"nvidia/nemotron-nano-12b-v2-vl:free","NVIDIA NemoTron Nano 2","OpenRouter"
+"nvidia/nemotron-nano-9b-v2:free","NVIDIA NemoTron Nano 2","OpenRouter"
 "alibaba/tongyi-deepresearch-30b-a3b:free","Tongyi DeepResearch 30B","OpenRouter"
