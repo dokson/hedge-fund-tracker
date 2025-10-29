@@ -314,7 +314,6 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Marc Potters & Jacques Saulière*'s [Capital Fund Management](https://www.cfm.com/)
 - *Albert Saporta*'s [GAM Investments](https://www.gam.com/)
 - *Samuel Isaly*'s [OrbiMed](https://www.orbimed.com/)
-- *Jay Genzer*'s [Thames Capital Management](https://thamescapitalmanagement.com/)
 - *Robert Olstein*'s [Olstein Funds](https://www.olsteinfunds.com/)
 - *Mike Gitlin*'s [Capital Research Global Investors](https://www.capitalgroup.com/)
 - *Phil Swisher*'s [Trevian Wealth Management](https://www.trevianwealth.com/)

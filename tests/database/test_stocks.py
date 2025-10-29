@@ -45,12 +45,9 @@ class TestStocksDatabase(unittest.TestCase):
                 all_filing_cusips.update(quarter_df['CUSIP'].dropna().unique())
 
         # 2. Collect all CUSIPs from non-quarterly filings
-        try:
-            non_quarterly_path = f"{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}"
-            non_quarterly_cusips_df = pd.read_csv(non_quarterly_path, usecols=['CUSIP'], dtype={'CUSIP': str})
-            all_filing_cusips.update(non_quarterly_cusips_df['CUSIP'].dropna().unique())
-        except FileNotFoundError:
-            pass  # If the file doesn't exist, there's nothing to add.
+        non_quarterly_path = f"{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}"
+        non_quarterly_cusips_df = pd.read_csv(non_quarterly_path, usecols=['CUSIP'], dtype={'CUSIP': str})
+        all_filing_cusips.update(non_quarterly_cusips_df['CUSIP'].dropna().unique())
 
         # 3. Find orphan CUSIPs (present in stocks.csv but not in any filings)
         orphan_cusips = all_stock_cusips - all_filing_cusips
@@ -72,5 +69,40 @@ class TestStocksDatabase(unittest.TestCase):
                 f"Found {len(final_orphans_df)} orphan CUSIPs for tickers with multiple CUSIP entries in stocks.csv.\n"
                 "These CUSIPs are not found in any filings and are likely outdated. Review and consider removing them.\n\n"
                 f"{sorted_orphans_df.to_string(index=False)}"
+            )
+            self.fail(error_message)
+
+
+    def test_all_report_cusips_in_stocks_master(self):
+        """
+        Verifies that all CUSIPs found in quarterly and non-quarterly filings are present in stocks.csv.
+        If any CUSIP from a filing is not in stocks.csv, the test will fail, indicating a data integrity issue.
+        """
+        stocks_df = load_stocks().reset_index()
+        master_cusips = set(stocks_df['CUSIP'])
+        all_filing_cusips = set()
+
+        # 1. Collect all CUSIPs from all quarterly reports
+        for quarter in get_all_quarters():
+            quarter_df = load_quarterly_data(quarter)
+            if not quarter_df.empty:
+                all_filing_cusips.update(quarter_df['CUSIP'].dropna().unique())
+
+        # 2. Collect all CUSIPs from non-quarterly filings
+        non_quarterly_path = f"{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}"
+        non_quarterly_cusips_df = pd.read_csv(non_quarterly_path, usecols=['CUSIP'], dtype={'CUSIP': str})
+        all_filing_cusips.update(non_quarterly_cusips_df['CUSIP'].dropna().unique())
+
+        # 3. Find CUSIPs that are in reports but NOT in stocks.csv
+        missing_cusips_in_master = all_filing_cusips - master_cusips
+
+        if missing_cusips_in_master:
+            # Create a DataFrame for consistent output formatting
+            missing_df = pd.DataFrame({'CUSIP': sorted(list(missing_cusips_in_master))})
+            error_message = (
+                f"Found {len(missing_cusips_in_master)} CUSIPs in quarterly or non-quarterly filings "
+                f"that are NOT present in stocks.csv.\n"
+                "These CUSIPs should be added to stocks.csv to maintain data integrity.\n\n"
+                f"{missing_df.to_string(index=False)}"
             )
             self.fail(error_message)
