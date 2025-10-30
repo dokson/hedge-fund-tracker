@@ -35,14 +35,34 @@ def open_issue(subject, body):
         print_error()
         return
 
-    # Extract owner from repo string (e.g., 'owner/repo_name')
-    repo_owner = repo.split('/')[0]
-
-    url = f"https://api.github.com/repos/{repo}/issues"
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json",
     }
+
+    try:
+        # Check if an issue with the same title already exists
+        search_url = "https://api.github.com/search/issues"
+        query = f'repo:{repo} is:issue is:open in:title "{subject}"'
+        params = {"q": query}
+        search_response = requests.get(search_url, headers=headers, params=params)
+        search_response.raise_for_status()
+        search_results = search_response.json()
+
+        if search_results["total_count"] > 0:
+            issue_url = search_results["items"][0]["html_url"]
+            print(f"::notice::✅ Issue already exists: {issue_url}")
+            return
+
+        # If no existing issue is found, create a new one
+        repo_owner = repo.split('/')[0]
+        create_url = f"https://api.github.com/repos/{repo}/issues"
+
+    except requests.exceptions.RequestException as e:
+        print(f"::error::❌ An exception occurred while searching for GitHub Issue: {e}")
+        print_error()
+        return
+
     data = {
         "title": subject,
         "body": body,
@@ -51,7 +71,7 @@ def open_issue(subject, body):
     }
 
     try:
-        response = requests.post(url, json=data, headers=headers)
+        response = requests.post(create_url, json=data, headers=headers)
         response.raise_for_status()
 
         if response.status_code == 201:
