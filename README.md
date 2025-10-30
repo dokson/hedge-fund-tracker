@@ -288,6 +288,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Sander Gerber*'s [Hudson Bay Capital Management](https://www.hudsonbaycapital.com/)
 - *Bill Peckford*'s [Polar Asset Management](https://polaramp.com/)
 - *Joseph Edelman*'s [Perceptive Advisors](https://www.perceptivelife.com/)
+- *Michael Moody & Martin Lynn*'s [Moody, Lynn, Lieberson & Walker](https://moodylynn.com/)
 - *Mario Gabelli*'s [GAMCO Investors](https://gabelli.com/)
 - *Eric Bannasch*'s [Cadian Capital Management](https://www.cadiancap.com/)
 - *Daniel Sundheim*'s [D1 Capital Partners](https://portal.d1capital.com/)
