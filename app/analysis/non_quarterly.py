@@ -69,6 +69,9 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_
             non_quarterly_filings_df.at[index, 'Avg_Price'] = price
             non_quarterly_filings_df.at[index, 'Value'] = price * row['Shares']
         else:
+            # If shares are 0, value is 0 regardless of price availability
+            if row['Shares'] == 0:
+                non_quarterly_filings_df.at[index, 'Value'] = 0
             print(f"🚨 Could not find price for {ticker} on {date}.")
 
     # Numerics to String format
