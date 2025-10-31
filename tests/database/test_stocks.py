@@ -106,3 +106,22 @@ class TestStocksDatabase(unittest.TestCase):
                 f"{missing_df.to_string(index=False)}"
             )
             self.fail(error_message)
+
+
+    def test_stocks_file_is_sorted(self):
+        """
+        Verifies that stocks.csv is sorted by 'Ticker' and then by 'CUSIP'.
+        This ensures that the file is consistently organized, which is important for readability and version control.
+        """
+        stocks_df = load_stocks().reset_index()
+
+        # Create a sorted version of the DataFrame
+        sorted_df = stocks_df.sort_values(by=['Ticker', 'CUSIP'])
+
+        # Check if the original DataFrame is identical to the sorted one
+        if not stocks_df.equals(sorted_df):
+            error_message = (
+                f"The stock.csv file is not sorted correctly by 'Ticker'.\n"
+                "Please run the database updater with option '0. Exit' to sort the file."
+            )
+            self.fail(error_message)
