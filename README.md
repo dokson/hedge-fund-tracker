@@ -323,6 +323,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *James O'Leary*'s [Henry James International Management](https://www.hj-intl.com/)
 - *Mike Gitlin*'s [Capital Research Global Investors](https://www.capitalgroup.com/)
 - *Vince Birley*'s [Vident Advisory](https://videntam.com/)
+- *Adam Sender*'s [Sender Company & Partners](https://www.sendercompany.com/)
 - *Phil Swisher*'s [Trevian Wealth Management](https://www.trevianwealth.com/)
 - *Rafał Madej*'s [PKO TFI](https://www.pkotfi.pl/)
 - *Pierre-Yves Morlat*'s [Qube Research & Technologies](https://www.qube-rt.com/)
