@@ -1,31 +1,28 @@
-from app.utils.database import DB_FOLDER, get_all_quarters
-import pandas as pd
+from app.utils.database import DB_FOLDER, get_all_quarters, load_hedge_funds
 import os
 import unittest
 
-EXCLUDED_HEDGE_FUNDS_FILE = 'excluded_hedge_funds.csv'
-
 
 class TestHedgeFunds(unittest.TestCase):
-    def test_no_files_for_excluded_funds(self):
+    def test_all_reports_belong_to_hedge_funds_file(self):
         """
-        Verifies that no report files exist for any of the excluded funds in any of the quarterly report directories.
+        Verifies that all quarterly report files correspond to a fund listed in hedge_funds.csv.
         """
-        try:
-            excluded_funds_df = pd.read_csv(f"{DB_FOLDER}/{EXCLUDED_HEDGE_FUNDS_FILE}")
-        except FileNotFoundError:
-            self.fail(f"{EXCLUDED_HEDGE_FUNDS_FILE} not found.")
-
-        excluded_fund_names = excluded_funds_df['Fund'].str.replace(' ', '_').tolist()
+        hedge_funds = load_hedge_funds()
+        known_fund_names = {fund['Fund'] for fund in hedge_funds}
         all_quarters = get_all_quarters()
 
-        found_files = []
+        unexpected_files = []
 
         for quarter in all_quarters:
             quarter_path = os.path.join(DB_FOLDER, quarter)
-            for fund_name in excluded_fund_names:
-                file_path = os.path.join(quarter_path, f"{fund_name}.csv")
-                if os.path.exists(file_path):
-                    found_files.append(file_path)
+            if not os.path.isdir(quarter_path):
+                continue
 
-        self.assertEqual(len(found_files), 0, f"Found unexpected files for excluded funds: {found_files}")
+            for filename in os.listdir(quarter_path):
+                if filename.endswith('.csv'):
+                    fund_name_from_file = os.path.splitext(filename)[0].replace('_', ' ')
+                    if fund_name_from_file not in known_fund_names:
+                        unexpected_files.append(os.path.join(quarter_path, filename))
+
+        self.assertEqual(len(unexpected_files), 0, f"Found report files for unknown funds: {unexpected_files}")
