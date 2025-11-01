@@ -231,6 +231,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Cathie Wood*'s [ARK Invest](https://www.ark-invest.com/)
 - *Bill Ackman*'s [Pershing Square](https://pershingsquareholdings.com/)
 - *Dmitry Balyasny*'s [Balyasny Asset Management](https://www.bamfunds.com/)
+- *Alec Litowitz*'s [Magnetar Capital](https://www.magnetar.com/)
 - *Liu Yijun*'s [Prime Capital Management](http://www.primecapital.com.hk/)
 - *Cliff Asness*'s [AQR Capital Management](https://www.aqr.com/)
 - *Murray Stahl*'s [Horizon Kinetics](https://horizonkinetics.com/)
