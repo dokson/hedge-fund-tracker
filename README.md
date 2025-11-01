@@ -334,6 +334,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Paul Thwaite*'s [NatWest Group](https://www.natwestgroup.com/)
 - *Akash Prakash*'s [Amansa Capital](https://www.amansacapital.com/)
 - *Rafał Madej*'s [PKO TFI](https://www.pkotfi.pl/)
+- *Kevin Yousif*'s [Yousif Capital Management](https://www.yousifcapital.com/)
 - *Richard Ji*'s [All-Stars Investment](https://www.allstarsinvestment.com/)
 - *Preston McSwain*'s [Fiduciary Wealth Partners](https://fwpwealth.com/)
 - *Kathleen Grace*'s [Fiduciary Family Office](https://www.fiduciaryfo.com/)
