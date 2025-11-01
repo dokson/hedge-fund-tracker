@@ -65,7 +65,7 @@ def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters={}, 
     print_centered_table(tabulate(display_df[columns_to_show], headers="keys", tablefmt="psql", showindex=False, stralign="center", numalign="center"))
 
 
-def prompt_for_selection(items, text, print_func=None, num_columns=None):
+def prompt_for_selection(items, text, print_func=None, num_columns=None, start_index=1):
     """
     Prompts the user to select an item from a list, with optional multi-column display.
 
@@ -77,14 +77,16 @@ def prompt_for_selection(items, text, print_func=None, num_columns=None):
             - If None (default): Displays a simple, single-column list.
             - If -1: Displays a multi-column grid, dynamically calculating the number of columns to fit the terminal width.
             - If a positive integer (e.g., 3): Displays a multi-column grid with that specific number of columns.
+        start_index (int, optional): The starting number for the selection list. Defaults to 1.
 
     Returns:
         The selected item from the list, or None if the selection is cancelled or invalid.
     """
     display_texts = []
     for i, item in enumerate(items):
-        base_text = print_func(item) if print_func else str(item)
-        display_texts.append(f"{i + 1}. {base_text}")
+        display_number = i + start_index
+        base_text = print_func(item) if print_func else str(item).replace(f"Offset={i}", f"Offset={display_number}")
+        display_texts.append(f"{display_number}. {base_text}")
 
     print(text + "\n")
 
@@ -108,15 +110,16 @@ def prompt_for_selection(items, text, print_func=None, num_columns=None):
     print(tabulate(table_data, tablefmt="plain"))
 
     try:
-        choice = input(f"\nEnter a number (1-{len(items)}): ")
-        selected_index = int(choice) - 1
+        prompt_text = f"\nEnter a number ({start_index}-{len(items) + start_index - 1}): "
+        choice = input(prompt_text)
+        selected_index = int(choice) - start_index
         if 0 <= selected_index < len(items):
             return items[selected_index]
         else:
-            print(f"❌ Invalid selection. Please enter a number between 1 and {len(items)}.")
+            print(f"❌ Invalid selection. Please enter a number between {start_index} and {len(items) + start_index - 1}.")
             return None
     except ValueError:
-        print(f"❌ Invalid input. Please enter a number between 1 and {len(items)}.")
+        print(f"❌ Invalid input. Please enter a number.")
         return None
 
 
@@ -160,6 +163,7 @@ def select_period(text="Select offset:"):
     Returns the selected offset integer.
     """
     period_options = [
+        (0, "Latest vs Previous quarter"),
         (1, "Previous vs Two quarters back (Offset=1)"),
         (2, "Two vs Three quarters back (Offset=2)"),
         (3, "Three vs Four quarters back (Offset=3)"),
@@ -173,7 +177,8 @@ def select_period(text="Select offset:"):
         period_options,
         text,
         print_func=lambda option: option[1],
-        num_columns=2
+        num_columns=2,
+        start_index=0
     )
 
 

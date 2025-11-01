@@ -117,9 +117,8 @@ This will open a separate menu for data management:
 │  0. Exit                                                                      │
 │  1. Generate latest 13F reports for all known hedge funds                     │
 │  2. Fetch latest non-quarterly filings for all known hedge funds              │
-│  3. Generate latest 13F report for a known hedge fund                         │
-│  4. Generate historical 13F report for a known hedge fund                     │
-│  5. Manually enter a hedge fund CIK to generate latest 13F report             │
+│  3. Generate 13F report for a known hedge fund                                │
+│  4. Manually enter a hedge fund CIK to generate a 13F report                  │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 

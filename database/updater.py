@@ -93,20 +93,11 @@ def run_fetch_nq_filings():
     print_centered(f"All funds processed", "-")
 
 
-def run_single_fund_report():
+def run_fund_report():
     """
-    3. Generate latest report for a known hedge fund.
+    3. Generate 13F report for a known hedge fund for a specific period.
     """
-    selected_fund = select_fund("Select the hedge fund for latest report 13F generation:")
-    if selected_fund:
-        process_fund(selected_fund)
-
-
-def run_historical_fund_report():
-    """
-    4. Generate historical report for a known hedge fund.
-    """
-    selected_fund = select_fund("Select the hedge fund for historical report 13F generation:")
+    selected_fund = select_fund("Select the hedge fund for 13F report generation:")
     if not selected_fund:
         return
 
@@ -117,10 +108,16 @@ def run_historical_fund_report():
 
 def run_manual_cik_report():
     """
-    5. Manually enter a hedge fund CIK to generate latest report.
+    4. Manually enter a hedge fund CIK to generate a 13F report for a specific period.
     """
     cik = input("Enter 10-digit CIK number: ").strip()
-    process_fund({'CIK': cik})
+    if not cik:
+        print("❌ CIK cannot be empty.")
+        return
+
+    selected_period = select_period()
+    if selected_period is not None:
+        process_fund({'CIK': cik}, offset=selected_period[0])
 
 
 if __name__ == "__main__":
@@ -128,9 +125,8 @@ if __name__ == "__main__":
         '0': exit,
         '1': run_all_funds_report,
         '2': run_fetch_nq_filings,
-        '3': run_single_fund_report,
-        '4': run_historical_fund_report,
-        '5': run_manual_cik_report,
+        '3': run_fund_report,
+        '4': run_manual_cik_report,
     }
 
     while True:
@@ -141,12 +137,11 @@ if __name__ == "__main__":
             print("0. Exit")
             print("1. Generate latest 13F reports for all known hedge funds")
             print("2. Fetch latest non-quarterly filings for all known hedge funds")
-            print("3. Generate latest 13F report for a known hedge fund")
-            print("4. Generate historical 13F report for a known hedge fund")
-            print("5. Manually enter a hedge fund CIK to generate latest 13F report")
+            print("3. Generate 13F report for a known hedge fund")
+            print("4. Manually enter a hedge fund CIK to generate a 13F report")
             horizontal_rule()
 
-            choice = input("Choose an option (0-5): ")
+            choice = input("Choose an option (0-4): ")
             action = actions.get(choice)
             if action:
                 if action() is False:
