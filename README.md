@@ -224,6 +224,7 @@ However, its inclusion in the `hedge_funds.csv` will be reconsidered if it conti
 
 The quality of the output analysis is directly tied to the quality of the input data. To enhance the accuracy of the insights and opportunities identified, many popular high-profile funds have been intentionally excluded by design:
 
+<!-- EXCLUDED_FUNDS_LIST_START -->
 - *Warren Buffett*'s [Berkshire Hathaway](https://www.berkshirehathaway.com/)
 - *Ken Griffin*'s [Citadel Advisors](https://www.citadel.com/)
 - *Ray Dalio*'s [Bridgewater Associates](https://www.bridgewater.com/)
@@ -231,6 +232,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Cathie Wood*'s [ARK Invest](https://www.ark-invest.com/)
 - *Bill Ackman*'s [Pershing Square](https://pershingsquareholdings.com/)
 - *Dmitry Balyasny*'s [Balyasny Asset Management](https://www.bamfunds.com/)
+- *Liu Yijun*'s [Prime Capital Management](http://www.primecapital.com.hk/)
 - *Cliff Asness*'s [AQR Capital Management](https://www.aqr.com/)
 - *Murray Stahl*'s [Horizon Kinetics](https://horizonkinetics.com/)
 - *Edward Mule*'s [Silver Point Capital](https://www.silverpointcapital.com/)
@@ -264,7 +266,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Gaurav Kapadia*'s [XN](https://www.xnlp.com/)
 - *John Overdeck*'s [Two Sigma](https://www.twosigma.com/)
 - *Nathaniel August*'s [Mangrove Partners](https://mangrovepartners.com/)
-- *James Oshaughnessy*'s [O'Shaughnessy Asset Management](https://www.osam.com/)
+- *James O'Shaughnessy*'s [O'Shaughnessy Asset Management](https://www.osam.com/)
 - *John Paulson*'s [Paulson & Co.](https://paulsonco.com/)
 - *David Rolfe*'s [Wedgewood Partners](https://wedgewoodpartners.com/)
 - *Pat Dorsey*'s [Dorsey Asset Management](https://dorseyasset.com/)
@@ -337,6 +339,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - [BlackRock](https://www.blackrock.com/)
 - [State Street](https://statestreet.com/)
 - [Jane Street](https://www.janestreet.com/)
+<!-- EXCLUDED_FUNDS_LIST_END -->
 
 > **💡 Note**: For convenience, key information for these funds, including their CIKs, is maintained in the `database/excluded_hedge_funds.csv` file.
 

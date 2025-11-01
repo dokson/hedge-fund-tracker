@@ -116,7 +116,7 @@ def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}") -> list:
         df = pd.read_csv(filepath, dtype={'CIK': str, 'CIKs': str}, keep_default_na=False)
         return df.to_dict('records')
     except Exception as e:
-        print(f"Error while reading '{filepath}': {e}")
+        print(f"❌ Error while reading '{filepath}': {e}")
         return []
 
 
@@ -137,7 +137,7 @@ def load_models(filepath=f"./{DB_FOLDER}/{MODELS_FILE}") -> list:
         df['Client'] = df['Client'].map(client_map)
         return df.to_dict('records')
     except Exception as e:
-        print(f"Error while reading models from '{filepath}': {e}")
+        print(f"❌ Error while reading models from '{filepath}': {e}")
         return []
 
 
@@ -156,7 +156,7 @@ def load_non_quarterly_data(filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FI
         # Keep only the most recent entry for each Ticker
         return df.sort_values(by=['Ticker', 'Filing_Date', 'Date'], ascending=False).drop_duplicates(subset='Ticker', keep='first')
     except Exception as e:
-        print(f"Error while reading schedule filings from '{filepath}': {e}")
+        print(f"❌ Error while reading schedule filings from '{filepath}': {e}")
         return pd.DataFrame()
 
 
@@ -194,7 +194,7 @@ def load_stocks(filepath=f"./{DB_FOLDER}/{STOCKS_FILE}") -> pd.DataFrame:
         df = pd.read_csv(filepath, dtype={'CUSIP': str, 'Ticker': str, 'Company': str}, keep_default_na=False)
         return df.set_index('CUSIP')
     except Exception as e:
-        print(f"Error while reading stocks file from '{filepath}': {e}")
+        print(f"❌ Error while reading stocks file from '{filepath}': {e}")
         return pd.DataFrame()
 
 
@@ -218,7 +218,7 @@ def save_comparison(comparison_dataframe: pd.DataFrame, date: str, fund_name: st
         comparison_dataframe.to_csv(filename, index=False)
         print(f"Created {filename}")
     except Exception as e:
-        print(f"An error occurred while writing comparison file for '{fund_name}': {e}")
+        print(f"❌ An error occurred while writing comparison file for '{fund_name}': {e}")
 
 
 def save_non_quarterly_filings(schedule_filings: list, filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}") -> None:
@@ -239,7 +239,7 @@ def save_non_quarterly_filings(schedule_filings: list, filepath=f"./{DB_FOLDER}/
         combined_schedules_df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
         print(f"Latest schedule filings saved to {filepath}")
     except Exception as e:
-        print(f"An error occurred while saving latest schedule filings to '{filepath}': {e}")
+        print(f"❌ An error occurred while saving latest schedule filings to '{filepath}': {e}")
 
 
 def save_stock(cusip: str, ticker: str, company: str) -> None:
@@ -260,7 +260,7 @@ def save_stock(cusip: str, ticker: str, company: str) -> None:
             writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
             writer.writerow([cusip, ticker, company])
     except Exception as e:
-        print(f"An error occurred while writing to '{STOCKS_FILE}': {e}")
+        print(f"❌ An error occurred while writing to '{STOCKS_FILE}': {e}")
 
 
 def sort_stocks(filepath=f'./database/{STOCKS_FILE}') -> None:
@@ -280,4 +280,4 @@ def sort_stocks(filepath=f'./database/{STOCKS_FILE}') -> None:
         df.sort_values(by=['Ticker', 'CUSIP'], inplace=True)
         df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
     except Exception as e:
-        print(f"An error occurred while processing file '{filepath}': {e}")
+        print(f"❌ An error occurred while processing file '{filepath}': {e}")

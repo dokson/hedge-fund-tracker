@@ -4,6 +4,7 @@ from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_non_quar
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, select_fund, select_period
 from app.utils.database import load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks
+from app.utils.readme import update_readme
 
 
 APP_NAME = "HEDGE FUND TRACKER - DATABASE UPDATER"
@@ -14,6 +15,7 @@ def exit():
     0. Exit the application (after sorting stocks).
     """
     sort_stocks()
+    update_readme()
     print("Bye! 👋 Exited.")
     return False
 
