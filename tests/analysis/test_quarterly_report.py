@@ -80,12 +80,12 @@ class TestReport(unittest.TestCase):
 
         total_row_index = len(df_output) - 1
         self.assertEqual(df_output.loc[total_row_index, 'CUSIP'], "Total")
-        # Total Portfolio Value (Recent): 18000 + 5000 + 8000 = 31000
+        # Total Portfolio Value (Recent): 25000 + 5000 + 8000 = 38000
         self.assertEqual(df_output.loc[total_row_index, 'Value'], format_value(38000))
         # Total Delta Value: 12500 + 5000 - 6000 + 0 = 11500
         self.assertEqual(df_output.loc[total_row_index, 'Delta_Value'], format_value(11500))
-        # Total Delta %: (8000 / 38000) * 100
-        self.assertEqual(df_output.loc[total_row_index, 'Delta'], format_percentage((11500/38000)*100, True))
+        # Total Delta %: total_delta_value / previous_portfolio_value * 100 = 11500 / (10000 + 6000 + 8000) * 100 = 11500 / 24000 * 100
+        self.assertEqual(df_output.loc[total_row_index, 'Delta'], format_percentage((11500/24000)*100, True))
         self.assertEqual(df_output.loc[total_row_index, 'Portfolio%'], format_percentage(100))
 
 

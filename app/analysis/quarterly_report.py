@@ -40,8 +40,10 @@ def generate_comparison(df_recent, df_previous):
     )
 
     total_portfolio_value = df_comparison['Value'].sum()
+    previous_portfolio_value = df_comparison['Value_previous'].sum()
     total_delta_value = df_comparison['Delta_Value'].sum()
-    total_delta = total_delta_value / total_portfolio_value * 100
+
+    total_delta = total_delta_value / previous_portfolio_value * 100 if previous_portfolio_value != 0 else total_delta_value / total_portfolio_value * 100
 
     df_comparison = resolve_ticker(df_comparison)
 
