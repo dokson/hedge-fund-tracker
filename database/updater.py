@@ -5,6 +5,7 @@ from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, select_fund, select_period
 from app.utils.database import load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks
 from app.utils.readme import update_readme
+from app.utils.strings import get_previous_quarter_end_date
 
 
 APP_NAME = "HEDGE FUND TRACKER - DATABASE UPDATER"
@@ -34,11 +35,11 @@ def process_fund(fund_info, offset=0):
         latest_date = filings[0]['reference_date']
         dataframe_latest = xml_to_dataframe_13f(filings[0]['xml_content'])
 
-        # Step 2: Find the first valid preceding filing for comparison.
-        # This loop correctly is needed to handle amendments (13F-HR/A) with earlier reference dates.
+        # Step 2: Find the filing for the immediately preceding quarter.
+        # This loop skips amendments and ensures we are comparing against the correct previous period.
         previous_filing = filings[1] if len(filings) == 2 else None
         
-        while previous_filing and latest_date <= previous_filing['reference_date']:
+        while previous_filing and previous_filing['reference_date'] != get_previous_quarter_end_date(latest_date):
             offset += 1
             filings = fetch_latest_two_13f_filings(cik, offset)
             previous_filing = filings[1] if len(filings) == 2 else None

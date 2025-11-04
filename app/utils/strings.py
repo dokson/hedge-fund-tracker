@@ -248,6 +248,26 @@ def get_quarter_date(quarter: str) -> str:
     return f"{year}-{date_map[quarter]}"
 
 
+def get_previous_quarter_end_date(date: str) -> str:
+    """
+    Calculates the end date of the quarter immediately preceding the one for the given date.
+
+    Args:
+        date_str (str): A date string in 'YYYY-MM-DD' format.
+
+    Returns:
+        str: The end date of the previous quarter in 'YYYY-MM-DD' format.
+    """
+    quarter = get_quarter(date)
+    year = int(quarter[:4])
+    quarter_num = int(quarter[5])
+
+    prev_year = year if quarter_num > 1 else year - 1
+    prev_quarter_num = quarter_num - 1 if quarter_num > 1 else 4
+
+    return get_quarter_date(f"{prev_year}Q{prev_quarter_num}")
+
+
 def isin_to_cusip(isin: str) -> str | None:
     """
     Converts a 12-character ISIN to a 9-character CUSIP.

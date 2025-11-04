@@ -1,4 +1,4 @@
-from app.utils.database import DB_FOLDER, get_all_quarters, load_hedge_funds
+from app.utils.database import DB_FOLDER, get_all_quarters, get_last_quarter_for_fund, load_hedge_funds
 import os
 import unittest
 
@@ -26,3 +26,19 @@ class TestHedgeFunds(unittest.TestCase):
                         unexpected_files.append(os.path.join(quarter_path, filename))
 
         self.assertEqual(len(unexpected_files), 0, f"Found report files for unknown funds: {unexpected_files}")
+
+
+    def test_all_funds_have_at_least_one_report(self):
+        """
+        Verifies that every fund listed in hedge_funds.csv has at least one quarterly report file.
+        """
+        hedge_funds = load_hedge_funds()
+        funds_without_reports = []
+
+        for fund in hedge_funds:
+            fund_name = fund['Fund']
+            if get_last_quarter_for_fund(fund_name) is None:
+                funds_without_reports.append(fund_name)
+
+        if funds_without_reports:
+            self.fail(f"Found {len(funds_without_reports)} funds in hedge_funds.csv with no corresponding report files in any quarter:\n{funds_without_reports}")
