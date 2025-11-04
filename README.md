@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/github/license/dokson/hedge-fund-tracker)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dokson/hedge-fund-tracker/pulls)
 [![GitHub stars](https://img.shields.io/github/stars/dokson/hedge-fund-tracker.svg?style=social&label=Star)](https://github.com/dokson/hedge-fund-tracker/stargazers)
+[![GitHub watchers](https://img.shields.io/github/watchers/dokson/hedge-fund-tracker.svg)](https://github.com/dokson/hedge-fund-tracker/watchers)
+[![GitHub forks](https://img.shields.io/github/forks/dokson/hedge-fund-tracker.svg)](https://github.com/dokson/hedge-fund-tracker/network/members)
 
 > **Track hedge fund portfolios and unlock actionable insights.**
 
