@@ -339,6 +339,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Adam Sender*'s [Sender Company & Partners](https://www.sendercompany.com/)
 - *Phil Swisher*'s [Trevian Wealth Management](https://www.trevianwealth.com/)
 - *Robert Harvey*'s [Harvey Capital Management](https://harveycapital.com/)
+- *William Rutherford*'s [Rutherford Investment Management](https://rutherfordinvestment.com/)
 - *Paul Thwaite*'s [NatWest Group](https://www.natwestgroup.com/)
 - *Akash Prakash*'s [Amansa Capital](https://www.amansacapital.com/)
 - *Rafał Madej*'s [PKO TFI](https://www.pkotfi.pl/)
