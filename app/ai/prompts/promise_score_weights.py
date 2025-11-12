@@ -20,15 +20,17 @@ After defining the weights, perform an internal validation step:
 3.  **Self-Correction**: If the sum is not 1.0, normalize the weights or adjust them until the sum is precisely 1.0 before generating the final JSON output.
 
 # AVAILABLE METRICS
-- **Total_Value**: Aggregate dollar value held by all institutions (overall institutional ownership/popularity).
-- **Total_Delta_Value**: Net change in dollar holdings by all institutions (indicates raw capital allocation).
-- **Max_Portfolio_Pct**: Highest single-fund percentage allocation to the stock (shows individual conviction).
-- **Buyer_Count**: Number of institutions increasing positions (captures breadth of buying).
-- **Seller_Count**: Number of institutions reducing positions (measures selling activity).
-- **Close_Count**: Number of institutions fully exiting their positions (strong negative signal).
-- **Holder_Count**: Total number of institutions currently holding the stock (measures popularity/consensus).
-- **New_Holder_Count**: Number of institutions initiating new positions (captures emerging interest).
-- **Net_Buyers**: Buyer_Count minus Seller_Count (shows net institutional sentiment).
+```toon
+Total_Value: "Aggregate dollar value held by all institutions (overall institutional ownership/popularity)."
+Total_Delta_Value: "Net change in dollar holdings by all institutions (indicates raw capital allocation)."
+Max_Portfolio_Pct: "Highest single-fund percentage allocation to the stock (shows individual conviction)."
+Buyer_Count: "Number of institutions increasing positions (captures breadth of buying)."
+Seller_Count: "Number of institutions reducing positions (measures selling activity)."
+Close_Count: "Number of institutions fully exiting their positions (strong negative signal)."
+Holder_Count: "Total number of institutions currently holding the stock (measures popularity/consensus)."
+New_Holder_Count: "Number of institutions initiating new positions (captures emerging interest)."
+Net_Buyers: "Buyer_Count minus Seller_Count (shows net institutional sentiment)."
+```
 
 # WEIGHTING PHILOSOPHY
 Emphasize input features that are most predictive of future outperformance:
@@ -46,24 +48,32 @@ Emphasize input features that are most predictive of future outperformance:
 - Do not include any metric with a weight of 0 (omit metrics with zero weights).
 
 # OUTPUT REQUIREMENTS
-1.  **JSON Only**: The entire output must be a single, valid JSON object. Do not include any text, explanations, or markdown formatting like ` ```json ` before or after the JSON.
-2.  **Valid Structure**: The JSON must be a flat object where keys are metric names (strings) and values are their corresponding weights (numbers).
+Respond using TOON format (Token-Oriented Object Notation). Use `key: value` syntax.
+The entire response must be a single, valid TOON object adhering strictly to the schema below.
+- The final TOON object must be enclosed in a markdown code block like ` ```toon ... ``` `.
+- Inside the block, the TOON must be a flat object where keys are metric names and values are their corresponding weights (numbers).
+- Each metric from the "AVAILABLE METRICS" list must appear at most once.
 
-**IMPORTANT**: Before outputting the JSON, double-check that the sum of all weight values equals exactly 1.00.
-
-# JSON SCHEMA
+# TOON SCHEMA
 The output must strictly conform to this structure:
-`{{ "METRIC_NAME_1": <weight_1>, "METRIC_NAME_2": <weight_2>, ... }}`
+`METRIC_NAME_1: <weight_1>\nMETRIC_NAME_2: <weight_2>\n...`
 - Keys must be strings from the "AVAILABLE METRICS" list.
 - Values must be floating-point numbers.
 
-# OUTPUT FORMAT
-A single, raw JSON object. No extra text.
-
 EXAMPLE FORMATS:
-{{"Total_Delta_Value": 0.4, "New_Holder_Count": 0.35, "Max_Portfolio_Pct": 0.25}}
+```toon
+Total_Delta_Value: 0.4
+New_Holder_Count: 0.35
+Max_Portfolio_Pct: 0.25
+```
 
 OR
 
-{{"New_Holder_Count": 0.5, "Net_Buyers": 0.4, "Close_Count": -0.2, "Max_Portfolio_Pct": 0.2, "Buyer_Count": 0.1}}
+```toon
+New_Holder_Count: 0.5
+Net_Buyers: 0.4
+Close_Count: -0.2
+Max_Portfolio_Pct: 0.2
+Buyer_Count: 0.1
+```
 """

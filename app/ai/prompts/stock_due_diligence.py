@@ -1,13 +1,9 @@
-def stock_due_diligence_prompt(ticker: str, company: str, filing_date: str, institutional_activity: str, current_price: float) -> str:
+def stock_due_diligence_prompt(stock_context_toon: str) -> str:
     """
     Builds the prompt for conducting AI-powered due diligence on a single stock.
 
     Args:
-        ticker (str): The stock ticker.
-        company (str): The company name.
-        filing_date (str): The reference filing date for the analysis period.
-        institutional_activity (str): A summary of institutional trading activity for the stock.
-        current_price (float): The current market price of the stock.
+        stock_context_toon (str): A TOON-encoded string containing all context for the stock analysis.
 
     Returns:
         str: The complete prompt string for the AI model.
@@ -21,14 +17,11 @@ Begin with a concise checklist (3-7 bullets) of what you will do; keep items con
 # TASK
 Perform a due diligence analysis for the stock provided below. Synthesize institutional activity data, current market conditions, and fundamental company data to form a professional opinion on its potential over the next 3 months.
 
-## STOCK TO ANALYZE
-- **Ticker**: {ticker}
-- **Company**: {company}
-- **Current Price (as of today)**: ${current_price:,.2f}
-
-## CONTEXT: INSTITUTIONAL ACTIVITY (as of {filing_date})
-Below is a summary of recent activity from top-performing hedge funds:
-{institutional_activity}
+## STOCK CONTEXT
+All the necessary information about the stock to analyze is provided below in TOON format.
+```toon
+{stock_context_toon}
+```
 
 # ANALYSIS REQUIREMENTS
 Your analysis must cover the following key areas. Be concise but insightful. For each section (except Business Summary), you must provide a sentiment indicator.
@@ -50,57 +43,52 @@ For each analysis section below, provide a sentiment indicator:
 - **Bearish**: Negative outlook / Unfavorable
 
 ## OUTPUT FORMAT
-Return a single valid JSON object adhering strictly to the following schema. All fields are required unless unavailable, in which case use `null`.
+Respond using TOON format (Token-Oriented Object Notation). Use `key: value` syntax and indentation for nesting.
+The entire response must be a single, valid TOON object adhering strictly to the schema below. All fields are required; use `null` for unavailable data.
+The final TOON object must be enclosed in a markdown code block like ` ```toon ... ``` `.
 
 ### SCHEMA
-{{
-  "ticker": "{ticker}",
-  "company": "{company}",
-  "analysis": {{
-    "business_summary": "...",
-    "financial_health": "...",
-    "financial_health_sentiment": "Bullish/Neutral/Bearish",
-    "valuation": "...",
-    "valuation_sentiment": "Bullish/Neutral/Bearish",
-    "growth_vs_risks": "...",
-    "growth_vs_risks_sentiment": "Bullish/Neutral/Bearish",
-    "institutional_sentiment": "...",
-    "institutional_sentiment_sentiment": "Bullish/Neutral/Bearish"
-  }},
-  "investment_thesis": {{
-    "overall_sentiment": "Bullish/Neutral/Bearish",
-    "thesis": "...",
-    "price_target": "...",
-  }}
-}}
+ticker: "..."
+company: "..."
+analysis:
+  business_summary: "..."
+  financial_health: "..."
+  financial_health_sentiment: "Bullish/Neutral/Bearish"
+  valuation: "..."
+  valuation_sentiment: "Bullish/Neutral/Bearish"
+  growth_vs_risks: "..."
+  growth_vs_risks_sentiment: "Bullish/Neutral/Bearish"
+  institutional_sentiment: "..."
+  institutional_sentiment_sentiment: "Bullish/Neutral/Bearish"
+investment_thesis:
+  overall_sentiment: "Bullish/Neutral/Bearish"
+  thesis: "..."
+  price_target: "..."
 
 - Complete all listed fields. If data is missing/unavailable, set the value to `null`.
 - Sentiment fields must be "Bullish", "Neutral", or "Bearish", or `null` if unavailable.
 - `price_target`: string formatted as USD (e.g., "$145") or `null` if not applicable/uncertain.
-- Output only the JSON object — do not include explanations, markdown formatting, or notes.
 - If institutional activity data is unavailable, set `institutional_sentiment` and `institutional_sentiment_sentiment` to `null`.
 - If any analysis section cannot be completed, set its value, including its sentiment, to `null`.
-After generating the JSON output, validate it against the schema for required fields and correct types, and ensure sentiment fields and price_target meet format requirements. If validation fails, self-correct and regenerate the output.
+After generating the TOON output, validate it against the schema for required fields and correct types, and ensure sentiment fields and price_target meet format requirements. If validation fails, self-correct and regenerate the output.
 
 # EXAMPLE OUTPUT STRUCTURE
-{{
-  "ticker": "NVDA",
-  "company": "NVIDIA Corp",
-  "analysis": {{
-    "business_summary": "NVIDIA is a leader in designing GPUs for gaming, professional markets, and data centers, with a dominant position in the AI and machine learning space.",
-    "financial_health": "Exhibits explosive revenue growth and high net margins. Debt levels are manageable relative to its strong cash flow.",
-    "financial_health_sentiment": "Bullish",
-    "valuation": "Trades at a premium P/E ratio, reflecting high growth expectations. While historically high, it is often considered justified by its market leadership in AI.",
-    "valuation_sentiment": "Neutral",
-    "growth_vs_risks": "While catalysts like AI adoption and the Blackwell architecture are strong, the high valuation and geopolitical risks create significant headwinds. The balance currently appears slightly tilted towards risk.",
-    "growth_vs_risks_sentiment": "Bearish",
-    "institutional_sentiment": "Despite some profit-taking, it remains a core holding for many growth-oriented funds, indicating continued long-term belief in its AI dominance.",
-    "institutional_sentiment_sentiment": "Bullish"
-  }},
-  "investment_thesis": {{
-    "overall_sentiment": "Bullish",
-    "thesis": "Bullish on continued AI leadership. The stock's premium valuation is warranted by its superior growth profile and market position, though investors should be mindful of volatility.",
-    "price_target": "$145"
-  }}
-}}
+```toon
+ticker: "NVDA"
+company: "NVIDIA Corp"
+analysis:
+  business_summary: "NVIDIA is a leader in designing GPUs for gaming, professional markets, and data centers, with a dominant position in the AI and machine learning space."
+  financial_health: "Exhibits explosive revenue growth and high net margins. Debt levels are manageable relative to its strong cash flow."
+  financial_health_sentiment: "Bullish"
+  valuation: "Trades at a premium P/E ratio, reflecting high growth expectations. While historically high, it is often considered justified by its market leadership in AI."
+  valuation_sentiment: "Neutral"
+  growth_vs_risks: "While catalysts like AI adoption and the Blackwell architecture are strong, the high valuation and geopolitical risks create significant headwinds. The balance currently appears slightly tilted towards risk."
+  growth_vs_risks_sentiment: "Bearish"
+  institutional_sentiment: "Despite some profit-taking, it remains a core holding for many growth-oriented funds, indicating continued long-term belief in its AI dominance."
+  institutional_sentiment_sentiment: "Bullish"
+investment_thesis:
+  overall_sentiment: "Bullish"
+  thesis: "Bullish on continued AI leadership. The stock's premium valuation is warranted by its superior growth profile and market position, though investors should be mindful of volatility."
+  price_target: "$145"
+```
 """
