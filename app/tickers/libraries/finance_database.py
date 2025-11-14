@@ -75,10 +75,6 @@ class FinanceDatabase(FinanceLibrary):
             return format_string(result.iloc[0]['name'])
 
         print(f"🚨 Finance Database: No company found for CUSIP {cusip}")
-
-        subject = f"No company found for CUSIP '{cusip}'"
-        body = f"Could not find any company for the CUSIP: {cusip}."
-        open_issue(subject, body)
         return None
 
 

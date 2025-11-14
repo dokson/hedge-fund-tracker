@@ -67,6 +67,12 @@ def resolve_ticker(df):
                     if company_name:
                         break
 
+                company_name = company_name or company
+                if not company_name:
+                    subject = f"Company not found for CUSIP '{cusip}'"
+                    body = f"Could not find any company for the CUSIP: {cusip} / Ticker: '{ticker}'."
+                    open_issue(subject, body)
+
                 stocks.loc[cusip, 'Ticker'] = ticker
                 stocks.loc[cusip, 'Company'] = company_name
                 save_stock(cusip, ticker, company_name)
