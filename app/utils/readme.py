@@ -7,13 +7,14 @@ EXCLUDED_HEDGE_FUNDS_FILE = './database/excluded_hedge_funds.csv'
 
 def generate_excluded_funds_list() -> str | None:
     """
-    Generates a markdown list of excluded funds from a CSV file.
+    Generates a markdown list of the first 50 excluded funds from a CSV file.
     """
     try:
         df = pd.read_csv(EXCLUDED_HEDGE_FUNDS_FILE, keep_default_na=False)
         
         markdown_list = []
-        for _, row in df.iterrows():
+        # Iterate over the first 50 funds
+        for _, row in df.head(50).iterrows():
             manager = row['Manager']
             fund = row['Fund']
             url = row['URL']
@@ -22,7 +23,11 @@ def generate_excluded_funds_list() -> str | None:
                 markdown_list.append(f"- *{manager}*'s [{fund}]({url})")
             else:
                 markdown_list.append(f"- [{fund}]({url})")
-        
+
+        if len(df) > 50:
+            file_path = EXCLUDED_HEDGE_FUNDS_FILE.replace('./', '')
+            markdown_list.append(f"- and many more... (see [`{file_path}`](/{file_path}) for the full list)")
+
         return "\n".join(markdown_list)
     except FileNotFoundError:
         print(f"❌ Error: {EXCLUDED_HEDGE_FUNDS_FILE} was not found.")

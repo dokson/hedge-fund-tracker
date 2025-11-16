@@ -25,7 +25,14 @@ class TestHedgeFunds(unittest.TestCase):
                     if fund_name_from_file not in known_fund_names:
                         unexpected_files.append(os.path.join(quarter_path, filename))
 
-        self.assertEqual(len(unexpected_files), 0, f"Found report files for unknown funds: {unexpected_files}")
+        if unexpected_files:
+            formatted_files = "\n".join(sorted(unexpected_files))
+            error_message = (
+                f"Found {len(unexpected_files)} report files for unknown funds.\n"
+                "These files correspond to funds not listed in hedge_funds.csv. Please add them or remove the files:\n\n"
+                f"{formatted_files}"
+            )
+            self.fail(error_message)
 
 
     def test_all_funds_have_at_least_one_report(self):
@@ -41,4 +48,10 @@ class TestHedgeFunds(unittest.TestCase):
                 funds_without_reports.append(fund_name)
 
         if funds_without_reports:
-            self.fail(f"Found {len(funds_without_reports)} funds in hedge_funds.csv with no corresponding report files in any quarter:\n{funds_without_reports}")
+            formatted_funds = "\n".join(sorted(funds_without_reports))
+            error_message = (
+                f"Found {len(funds_without_reports)} funds in hedge_funds.csv with no corresponding report files in any quarter.\n"
+                "Please generate a report for them or remove them from hedge_funds.csv:\n\n"
+                f"{formatted_funds}"
+            )
+            self.fail(error_message)
