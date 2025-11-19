@@ -13,7 +13,7 @@ python-dotenv = "~=1.2"
 python-toon = "~=0.1"
 finnhub-python = "~=2.4"
 financedatabase = "~=2.3"
-google-genai = "~=1.50"
+google-genai = "~=1.51"
 openai = "~=2.8"
 
 [dev-packages]
