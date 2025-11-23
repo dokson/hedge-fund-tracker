@@ -2165,11 +2165,11 @@
         },
         "xarray": {
             "hashes": [
-                "sha256:3c2b5ad7389825bd624ada5ff26b01ac54b1aae72e2fe0d724d81d40a2bf5785",
-                "sha256:a4e699433b87a7fac340951bc36648645eeef72bdd915ff055ac2fd99865a73d"
+                "sha256:986893b995de4a948429356a3897d78e634243c1cac242bd59d03832b9d72dd1",
+                "sha256:d7a4aa4500edbfd60676b1613db97da309ab144cac0bcff0cbf483c61c662af1"
             ],
             "markers": "python_version >= '3.11'",
-            "version": "==2025.10.1"
+            "version": "==2025.11.0"
         },
         "xlrd": {
             "hashes": [
