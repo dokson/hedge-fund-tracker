@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           # Fetch all history so we can switch to the branch
           fetch-depth: 0
