@@ -1,6 +1,7 @@
 from app.utils.strings import get_next_yyyymmdd_day
 from bs4 import BeautifulSoup
 from tenacity import retry, stop_after_attempt, retry_if_result, wait_exponential, RetryError
+import concurrent.futures
 import requests
 import re
 
@@ -106,7 +107,7 @@ def _get_primary_xml_url(report_page_soup, filing_type):
     """
     try:
         config = FILING_SPECS.get(filing_type)      
-        tags = report_page_soup.findAll('a', attrs={'href': re.compile('xml')})
+        tags = report_page_soup.find_all('a', attrs={'href': re.compile('xml')})
 
         xml_link_index = config['xml_link_index']
         if len(tags) > xml_link_index:
@@ -200,32 +201,38 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
     filings = []
     yyyymmdd_date = start_date.replace('-', '')
 
-    search_url_schedule = _create_search_url(cik, 'SCHEDULE', get_next_yyyymmdd_day(yyyymmdd_date))
-    response_schedule = _get_request(search_url_schedule)
-    soup = BeautifulSoup(response_schedule.text, "html.parser")
-    document_tags = soup.find_all('a', id="documentsbutton")
+    # Helper to fetch tags for a specific type
+    def get_tags(filing_type):
+        url = _create_search_url(cik, filing_type, get_next_yyyymmdd_day(yyyymmdd_date))
+        try:
+            resp = _get_request(url)
+            if not resp:
+                print(f"❌ Could not fetch {filing_type} filings for CIK {cik} (request failed)")
+                return []
+            soup = BeautifulSoup(resp.text, "html.parser")
+            return [(tag, filing_type) for tag in soup.find_all('a', id="documentsbutton")]
+        except Exception as e:
+            print(f"❌ Error fetching {filing_type} filings for CIK {cik}: {e}")
+            return []
 
-    if not document_tags:
-        print(f"No schedule filings found for CIK: {cik}")
+    all_tags = []
+    all_tags.extend(get_tags('SCHEDULE'))
+    all_tags.extend(get_tags('4'))
 
-    for tag in document_tags:
-        filing_data = _scrape_filing(tag, 'SCHEDULE')
-        if filing_data:
-            filings.append(filing_data)
-
-    search_url_4 = _create_search_url(cik, '4', get_next_yyyymmdd_day(yyyymmdd_date))
-    response_4 = _get_request(search_url_4)
-    soup = BeautifulSoup(response_4.text, "html.parser")
-    document_tags = soup.find_all('a', id="documentsbutton")
-
-    if not document_tags:
-        print(f"No 4 filings found for CIK: {cik}")
+    if not all_tags:
+        print(f"No non-quarterly filings found for CIK: {cik} after {start_date}")
         return filings
 
-    for tag in document_tags:
-        filing_data = _scrape_filing(tag, '4')
-        if filing_data:
-            filings.append(filing_data)
+    # Parallel execution
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [
+            executor.submit(_scrape_filing, tag, f_type) 
+            for tag, f_type in all_tags
+        ]
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            if result:
+                filings.append(result)
 
     return filings
 

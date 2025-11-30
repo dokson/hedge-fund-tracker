@@ -156,8 +156,8 @@ class TestSecScraper(unittest.TestCase):
             # So it will only scrape doc1 and doc2.
             # We give them dates to verify sorting (doc1 is older, doc2 is newer).
             mock_scrape.side_effect = [
-                {'id': 1, 'date': '2023-01-01'}, # doc1
-                {'id': 2, 'date': '2023-01-05'}  # doc2
+                {'id': 1, 'date': '2023-06-30'}, # last filing
+                {'id': 2, 'date': '2023-03-31'}  # second last filing
             ]
 
             filings = fetch_latest_two_13f_filings('CIK123')
@@ -165,9 +165,8 @@ class TestSecScraper(unittest.TestCase):
             # Verify we only got 2 results
             self.assertEqual(len(filings), 2)
             
-            # Verify sorting: newest date (2023-01-05) should be first
-            self.assertEqual(filings[0]['date'], '2023-01-05')
-            self.assertEqual(filings[1]['date'], '2023-01-01')
+            self.assertEqual(filings[0]['date'], '2023-06-30')
+            self.assertEqual(filings[1]['date'], '2023-03-31')
             
             # Verify we only attempted to scrape 2 times, not 4
             self.assertEqual(mock_scrape.call_count, 2)
