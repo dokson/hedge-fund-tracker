@@ -34,12 +34,12 @@
         },
         "beautifulsoup4": {
             "hashes": [
-                "sha256:2a98ab9f944a11acee9cc848508ec28d9228abfd522ef0fad6a02a72e0ded69e",
-                "sha256:5ef6fa3a8cbece8488d66985560f97ed091e22bbc4e9c2338508a9d5de6d4515"
+                "sha256:0918bfe44902e6ad8d57732ba310582e98da931428d231a5ecb9e7c703a735bb",
+                "sha256:6292b1c5186d356bba669ef9f7f051757099565ad9ada5dd630bd9de5fa7fb86"
             ],
             "index": "pypi",
             "markers": "python_full_version >= '3.7.0'",
-            "version": "==4.14.2"
+            "version": "==4.14.3"
         },
         "bottleneck": {
             "hashes": [
@@ -475,11 +475,11 @@
         },
         "finnhub-python": {
             "hashes": [
-                "sha256:00da4249ddf598188da9e0ae5f561e3db922cf8a9073d406792b0917cbe99b87",
-                "sha256:b6a73e7cf8fc0859430c647a0c7c9487b036be33c77ecb019ecc422227204083"
+                "sha256:826abfad1c4692f278358c799c8b1608dbf33c9bc2be4be018b9d9b944fc822c",
+                "sha256:9d9b13eebfc9ce531bee844689992b6cccfb3f33e399250286f8b8ca05570885"
             ],
             "index": "pypi",
-            "version": "==2.4.25"
+            "version": "==2.4.26"
         },
         "fonttools": {
             "hashes": [
