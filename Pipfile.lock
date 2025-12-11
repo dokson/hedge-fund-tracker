@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "6ff2c737b81103017009da1819bb7c0177e730a2ec67aede1adadac1fa927f26"
+            "sha256": "4e597620252b05eb78f68b2ad537bf6f091e8f75bd86e5b09868bbce4cd05e60"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -647,12 +647,12 @@
         },
         "google-genai": {
             "hashes": [
-                "sha256:ab7de6741437ee17f01d4db85e351eb8504466663cd83ce420ecb4e29b58b00d",
-                "sha256:c06853402814a47bb020f2dc50fc03fb77cc349dff65da35cddbd19046f9bd58"
+                "sha256:98c422762b5ff6e16b8d9a1e4938e8e0ad910392a5422e47f5301498d7f373a1",
+                "sha256:ae9f1318fedb05c7c1b671a4148724751201e8908a87568364a309804064d986"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==1.54.0"
+            "version": "==1.55.0"
         },
         "h11": {
             "hashes": [
@@ -1329,12 +1329,12 @@
         },
         "openai": {
             "hashes": [
-                "sha256:0d168a490fbb45630ad508a6f3022013c155a68fd708069b6a1a01a5e8f0ffad",
-                "sha256:b52ec65727fc8f1eed2fbc86c8eac0998900c7ef63aa2eb5c24b69717c56fa5f"
+                "sha256:21189da44d2e3d027b08c7a920ba4454b8b7d6d30ae7e64d9de11dbe946d4faa",
+                "sha256:b3da01d92eda31524930b6ec9d7167c535e843918d7ba8a76b1c38f1104f321e"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==2.9.0"
+            "version": "==2.11.0"
         },
         "openpyxl": {
             "hashes": [
@@ -2069,11 +2069,11 @@
         },
         "urllib3": {
             "hashes": [
-                "sha256:5379eb6e1aba4088bae84f8242960017ec8d8e3decf30480b3a1abdaa9671a3f",
-                "sha256:e67d06fe947c36a7ca39f4994b08d73922d40e6cca949907be05efa6fd75110b"
+                "sha256:016f9c98bb7e98085cb2b4b17b87d2c702975664e4f060c6532e64d1c1a5e797",
+                "sha256:ec21cddfe7724fc7cb4ba4bea7aa8e2ef36f607a4bab81aa6ce42a13dc3f03dd"
             ],
             "markers": "python_version >= '3.9'",
-            "version": "==2.6.1"
+            "version": "==2.6.2"
         },
         "websockets": {
             "hashes": [
