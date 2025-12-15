@@ -29,7 +29,7 @@ jobs:
           cache-dependency-path: "**/Pipfile.lock"
 
       - name: Cache pipenv dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.local/share/virtualenvs
           key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
