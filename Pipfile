@@ -14,7 +14,7 @@ python-toon = "~=0.1"
 finnhub-python = "~=2.4"
 financedatabase = "~=2.3"
 google-genai = "~=1.56"
-openai = "~=2.13"
+openai = "~=2.14"
 
 [dev-packages]
 
