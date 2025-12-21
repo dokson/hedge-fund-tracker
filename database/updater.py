@@ -107,6 +107,7 @@ def process_fund_nq(fund):
         if filings:
             filings_df = get_non_quarterly_filings_dataframe(filings, fund_denomination, cik_to_process)
             if filings_df is not None:
+                filings_df = filings_df.copy()
                 filings_df.insert(0, 'Fund', fund_name)
                 return filings_df
         return None
@@ -136,20 +137,40 @@ def run_fetch_nq_filings():
     print(f"Fetching Non Quarterly filings for all {total_funds} funds...")
     nq_filings = []
     completed_count = 0
+    error_occurred = False
 
     with ProcessPoolExecutor(max_workers=round(total_funds / 10)) as executor:
         futures = {executor.submit(process_fund_nq, fund): fund for fund in hedge_funds}
 
         for future in as_completed(futures):
+            fund = futures[future]
             completed_count += 1
             try:
                 fund_name, results = future.result()
                 if results:
                     nq_filings.extend(results)
-
                 print_centered(f"Processed {completed_count:2}/{total_funds}: {fund_name}", "-")
+
             except Exception as e:
-                print_centered(f"❌ Exception {e} while processing {completed_count:2}/{total_funds}: {fund_name}", "-")
+                if isinstance(e, TypeError) and "pickle" in str(e):
+                    print_centered(f"❌ Pickle Error for {fund['Fund']}: retrying once in main thread...", "-")
+                    try:
+                        fund_name, results = process_fund_nq(fund)
+                        if results:
+                            nq_filings.extend(results)
+                        print_centered(f"Successfully processed {fund_name} on retry", "-")
+                        continue
+                    except Exception as retry_e:
+                        print_centered(f"❌ Retry failed for {fund['Fund']}: {retry_e}", "-")
+                        e = retry_e
+                
+                print_centered(f"❌ Unrecoverable error processing {fund['Fund']}: {e}", "-")
+                error_occurred = True
+                break  # Exit the loop on unrecoverable error
+
+    if error_occurred:
+        print_centered("❌ Processing was halted due to an error. No filings were saved.")
+        return
 
     save_non_quarterly_filings(nq_filings)
     print_centered(f"All funds processed - {len(nq_filings)} filing(s) saved", "-")
