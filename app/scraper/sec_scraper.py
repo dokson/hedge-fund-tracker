@@ -1,7 +1,6 @@
 from app.utils.strings import get_next_yyyymmdd_day
 from bs4 import BeautifulSoup
 from tenacity import retry, stop_after_attempt, retry_if_result, wait_exponential, RetryError
-import concurrent.futures
 import requests
 import re
 
@@ -223,16 +222,10 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
         print(f"No non-quarterly filings found for CIK: {cik} after {start_date}")
         return filings
 
-    # Parallel execution
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [
-            executor.submit(_scrape_filing, tag, f_type) 
-            for tag, f_type in all_tags
-        ]
-        for future in concurrent.futures.as_completed(futures):
-            result = future.result()
-            if result:
-                filings.append(result)
+    for tag, f_type in all_tags:
+        filing_data = _scrape_filing(tag, f_type)
+        if filing_data:
+            filings.append(filing_data)
 
     return filings
 
