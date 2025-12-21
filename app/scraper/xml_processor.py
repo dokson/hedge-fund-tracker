@@ -157,24 +157,33 @@ def xml_to_dataframe_4(xml_content):
 
     owner_shares = {}
 
+    def process_item(item):
+        """
+        Helper to extract holding info from a transaction or holding tag.
+        """
+        shares_post = float(_get_tag_text(item, 'sharesownedfollowingtransaction'))
+        ownership_nature = item.find('ownershipnature')
+        direct_indirect = _get_tag_text(ownership_nature, 'directorindirectownership')
+        nature_of_ownership = _get_tag_text(ownership_nature, 'natureofownership') or "Direct"
+        
+        key = (str(direct_indirect).strip().upper(), str(nature_of_ownership).strip().upper())
+        owner_shares[key] = shares_post
+
+    non_derivative_table = soup_xml.find('nonderivativetable')
+    if non_derivative_table:
+        for child in non_derivative_table.children:
+            if child.name and 'nonderivativetransaction' in child.name:
+                process_item(child)
+            elif child.name and 'nonderivativeholding' in child.name:
+                process_item(child)
+
+    total_shares = int(sum(owner_shares.values()))
+
     for reporting_person in soup_xml.find_all('reportingowner'):
         owner_cik = _get_tag_text(reporting_person, 'rptownercik')
         owner_name = _get_tag_text(reporting_person, 'rptownername')
 
-        # Initialize owner's shares if not already present
-        if owner_cik not in owner_shares:
-            owner_shares[owner_cik] = {'name': owner_name, 'shares': 0}
-
-        # Extract shares from nonDerivativeTransaction
-        non_derivative_table = soup_xml.find('nonderivativetable')
-        if non_derivative_table:
-            for transaction in non_derivative_table.find_all('nonderivativetransaction'):
-                owner_shares[owner_cik]['shares'] += int(float(_get_tag_text(transaction, 'sharesownedfollowingtransaction')))
-            for holding in non_derivative_table.find_all('nonderivativeholding'):
-                owner_shares[owner_cik]['shares'] += int(float(_get_tag_text(holding, 'sharesownedfollowingtransaction')))
-
-    for owner_cik, info in owner_shares.items():
-        data.append([company, ticker, cik, info['shares'], owner_cik, info['name'], date])
+        data.append([company, ticker, cik, total_shares, owner_cik, owner_name, date])
 
     df = pd.DataFrame(data, columns=columns)
 
