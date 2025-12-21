@@ -139,7 +139,7 @@ def run_fetch_nq_filings():
     completed_count = 0
     error_occurred = False
 
-    with ProcessPoolExecutor(max_workers=round(total_funds / 10)) as executor:
+    with ProcessPoolExecutor(max_workers=10) as executor:
         futures = {executor.submit(process_fund_nq, fund): fund for fund in hedge_funds}
 
         for future in as_completed(futures):
