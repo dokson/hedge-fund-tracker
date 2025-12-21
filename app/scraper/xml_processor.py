@@ -66,7 +66,8 @@ def xml_to_dataframe_13f(xml_content):
     # SEC rules for XML filings technically require full dollar amounts, but many funds still report in thousands, while others use full dollars.
     # THRESHOLD: If the median stock price in the portfolio is below $0.50, it is mathematically certain the filing is reported in thousands.
     # Most institutional holdings trade between $10 and $1000. In 'thousands' format, a $100 stock appears as $0.10.
-    median_price = df['Value'] / df['Shares'].median()
+    implied_prices = df['Value'] / df['Shares'].replace(0, pd.NA)
+    median_price = float(implied_prices.median())
     PRICE_THRESHOLD = 0.50
 
     if median_price < PRICE_THRESHOLD:
