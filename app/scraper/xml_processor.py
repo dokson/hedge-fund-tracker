@@ -62,18 +62,19 @@ def xml_to_dataframe_13f(xml_content):
     df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
     df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce').astype(int)
     
-    # --- Smart Value Scaling ---
-    # SEC 13F-HR rules state values are in full dollar amount. Some filings, however, report the thousands.
-    # We use a dual-threshold heuristic to distinguish between the two formats.
-    # We assume values are in thousands and should be scaled up ONLY IF:
-    # 1. The largest single position is below a certain threshold (e.g., $1M). A value of 1M in thousands would be $1B, a rare single position.
-    # 2. The total portfolio value is also below a threshold (e.g., $100M, the 13F filing minimum).
-    # If either of these is false, we assume the values are already in full dollars and do not scale them.
-    MAX_POSITION_THRESHOLD = 1_000_000
-    TOTAL_VALUE_THRESHOLD = 100_000_000
+    # --- Smart Value Scaling (Heuristic-based) ---
+    # SEC rules for XML filings technically require full dollar amounts, but many funds still report in thousands, while others use full dollars.
+    # THRESHOLD: If the median stock price in the portfolio is below $0.50, it is mathematically certain the filing is reported in thousands.
+    # Most institutional holdings trade between $10 and $1000. In 'thousands' format, a $100 stock appears as $0.10.
+    median_price = df['Value'] / df['Shares'].median()
+    PRICE_THRESHOLD = 0.50
 
-    if not df.empty and df['Value'].max() < MAX_POSITION_THRESHOLD and df['Value'].sum() < TOTAL_VALUE_THRESHOLD:
+    if median_price < PRICE_THRESHOLD:
+        # Case: Filing in thousands -> Scale up to full dollars
         df['Value'] = df['Value'] * 1000
+    else:
+        # Case: Filing already in full dollars
+        pass
 
     # Dedup by CUSIP
     df = df.groupby(['CUSIP'], as_index=False).agg({
