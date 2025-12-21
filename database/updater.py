@@ -7,6 +7,7 @@ from app.utils.database import load_hedge_funds, save_comparison, save_non_quart
 from app.utils.readme import update_readme
 from app.utils.strings import get_previous_quarter_end_date
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+import os
 
 
 APP_NAME = "HEDGE FUND TRACKER - DATABASE UPDATER"
@@ -73,7 +74,12 @@ def run_all_funds_report():
     print(f"Starting updating reports for all {total_funds} funds...")
     print("This will generate last vs previous quarter comparisons.")
 
-    with ThreadPoolExecutor(max_workers=round(total_funds / 10)) as executor:
+    # Use 1 worker on GitHub Actions to stay within rate limits and have cleaner logs
+    max_workers = 1 if os.getenv('GITHUB_ACTIONS') == 'true' else round(total_funds / 10)
+    if max_workers == 1:
+        print("Running sequentially (GitHub Actions detected).")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(process_fund, fund): fund for fund in hedge_funds}
 
         for i, future in enumerate(as_completed(futures)):
@@ -139,7 +145,12 @@ def run_fetch_nq_filings():
     completed_count = 0
     error_occurred = False
 
-    with ProcessPoolExecutor(max_workers=10) as executor:
+    # Use 1 worker on GitHub Actions to stay within rate limits and have cleaner logs
+    max_workers = 1 if os.getenv('GITHUB_ACTIONS') == 'true' else round(total_funds / 10)
+    if max_workers == 1:
+        print("Running sequentially (GitHub Actions detected).")
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(process_fund_nq, fund): fund for fund in hedge_funds}
 
         for future in as_completed(futures):
