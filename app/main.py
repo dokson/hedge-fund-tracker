@@ -186,7 +186,7 @@ def run_ai_due_diligence():
         analysis_quarter = get_most_recent_quarter(ticker)
 
         if not analysis_quarter:
-            print(f"❌ No recente data found for ticker {ticker} (last two quarters).")
+            print(f"❌ No recent data found for ticker {ticker} (last two quarters).")
             return
         elif analysis_quarter != last_available_quarter:
             print(f"🚨 Warning: Data for {ticker} not found in the latest quarter ({last_available_quarter}). Using data from {analysis_quarter} instead.")
