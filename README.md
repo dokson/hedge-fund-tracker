@@ -25,7 +25,7 @@ pipenv install
 
 # Set up environment variables
 cp .env.example .env
-# Add your API keys (FINNHUB, GITHUB, GOOGLE, GROQ, OPENROUTER) to the .env file
+# Add your tokens/API keys (FinnHub, GitHub, Google AI Studio, Groq, HuggingFace, OpenRouter) to the .env file
 
 # Run the application
 pipenv run python -m app.main
@@ -76,6 +76,7 @@ pipenv run python -m app.main
    # GITHUB_TOKEN="your_github_token"
    # GOOGLE_API_KEY="your_google_api_key"
    # GROQ_API_KEY="your_groq_api_key"
+   # HF_TOKEN="your_hugging_face_token"
    # OPENROUTER_API_KEY="your_openrouter_api_key"
    ```
 
@@ -142,12 +143,13 @@ The tool can utilize API keys for enhanced functionality, but all are optional:
 | **[![GitHub Models](https://github.com/user-attachments/assets/3e8ca2f8-1bb0-4ec3-9374-d6106499adde)](https://github.com/marketplace/models) [GitHub Models](https://github.com/marketplace/models)** | Access to top-tier models (e.g., [xAI Grok-3](https://x.ai/news/grok-3), [OpenAI GPT-5](https://openai.com/en-US/gpt-5/), etc...) | [GitHub Tokens](https://github.com/settings/personal-access-tokens/new?description=Used+to+call+GitHub+Models+APIs+to+easily+run+LLMs%3A+https%3A%2F%2Fdocs.github.com%2Fgithub-models%2Fquickstart%23step-2-make-an-api-call&name=GitHub+Models+token&user_models=read) |
 | **[![Google AI Studio](https://github.com/user-attachments/assets/3b351d8e-d7f6-4337-9c2f-d2af77f30711)](https://aistudio.google.com/) [Google AI Studio](https://aistudio.google.com/)** | Access to [Google Gemini](https://gemini.google.com/) models | [AI Studio Keys](https://aistudio.google.com/app/apikey) |
 | **[![Groq AI](https://github.com/user-attachments/assets/c56394b5-79f8-4c25-a24a-2e2a8bde829c)](https://console.groq.com/) [Groq AI](https://console.groq.com/)** | Access to various LLMs (e.g., OpenAI [gpt-oss](https://github.com/openai/gpt-oss), Meta [Llama](https://www.llama.com/), etc...) | [Groq Keys](https://console.groq.com/keys) |
-| **[![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3)](https://openrouter.ai/) [OpenRouter](https://openrouter.ai/)** | Access to various LLMs (e.g., [Deepseek](https://www.deepseek.com/), Alibaba [Tongyi DeepResearch](https://github.com/Alibaba-NLP/DeepResearch), etc...) | [OpenRouter Keys](https://openrouter.ai/settings/keys) |
+| **[![Hugging Face](https://github.com/user-attachments/assets/b4f22e8b-6c6e-4e28-91ca-e2bc9b89837f)](https://huggingface.co/) [Hugging Face](https://huggingface.co/)** | Access to open weights models (e.g., [DeepSeek R1](https://huggingface.co/deepseek-ai/DeepSeek-R1), [Kimi-Linear-48B](https://huggingface.co/moonshotai/Kimi-Linear-48B-A3B-Instruct), etc...) | [HF Tokens](https://huggingface.co/settings/tokens) |
+| **[![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3)](https://openrouter.ai/) [OpenRouter](https://openrouter.ai/)** | Access to various LLMs (e.g., [Claude 4.5 Opus](https://www.anthropic.com/news/claude-4-5-opus), [GLM 4.5 Air](https://chatglm.cn/), etc...) | [OpenRouter Keys](https://openrouter.ai/settings/keys) |
 
 > **💡 Note:** Ticker resolution primarily uses [yfinance](https://github.com/ranaroussi/yfinance), which is free and requires no API key. If that fails, the system falls back to [Finnhub](https://finnhub.io/) (if an API key is provided), with the final fallback being [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/).
 >
-> **💡 Note:** You don't need to use all the APIs. For the generative AI models ([Google AI Studio](https://aistudio.google.com/), [GitHub Models](https://github.com/marketplace/models), [Groq AI](https://console.groq.com/), and [OpenRouter](https://openrouter.ai/)), you only need the API keys for the services you plan to use.
-> For instance, if you want to experiment with models like [OpenAI](https://openai.com/) [gpt-oss](https://github.com/openai/gpt-oss), you just need a [Groq AI Key](https://console.groq.com/keys). Experimenting with different models is encouraged, as the quality of AI-generated analysis, both for identifying promising stocks and for conducting due diligence, can vary. However, top-performing stocks are typically identified consistently across all tested models. **All APIs used in this project are currently free (with GitHub Models providing a generous free tier for developers).**
+> **💡 Note:** You don't need to use all the APIs. For the generative AI models ([Google AI Studio](https://aistudio.google.com/), [GitHub Models](https://github.com/marketplace/models), [Groq AI](https://console.groq.com/), [Hugging Face](https://huggingface.co/models), and [OpenRouter](https://openrouter.ai/)), you only need the API keys for the services you plan to use.
+> For instance, if you want to experiment with models like [OpenAI](https://openai.com/) [GPT-4o mini](https://platform.openai.com/docs/models/gpt-4o-mini), you just need a [GitHub Token](https://github.com/settings/tokens). Experimenting with different models is encouraged, as the quality of AI-generated analysis, both for identifying promising stocks and for conducting due diligence, can vary. However, top-performing stocks are typically identified consistently across all tested models. **All APIs used in this project are currently free (with GitHub Models providing a generous free tier for developers).**
 
 ## 📁 Project Structure
 
@@ -335,14 +337,15 @@ To add a new model, open `database/models.csv` and add a new row with the follow
 
 - **ID**: The specific model identifier as required by the provider's API.
 - **Description**: A brief, user-friendly description that will be displayed in the selection menu.
-- **Client**: The provider of the model. Must be one of `Google`, `Groq`, `OpenRouter`, or `GitHub`.
+- **Client**: The provider of the model. Must be one of `GitHub`, `Google`, `Groq`, `HuggingFace`, or `OpenRouter`.
 
 Here are the official model lists for each provider:
 
+- [GitHub Models](https://github.com/marketplace/models)
 - [Google Gemini Models](https://ai.google.dev/gemini-api/docs/models)
-- [Groq Available Models](https://console.groq.com/docs/models)
-- [OpenRouter Available Models](https://openrouter.ai/models?order=newest&max_price=0)
-- [GitHub Marketplace Models](https://github.com/marketplace/models)
+- [Groq Models](https://console.groq.com/docs/models)
+- [HuggingFace Models](https://huggingface.co/models)
+- [OpenRouter Free Models](https://openrouter.ai/models?order=newest&max_price=0)
 
 ## ⚠️ Limitations & Considerations
 

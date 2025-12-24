@@ -1,4 +1,4 @@
-from app.ai.clients import GitHubClient, GoogleAIClient, GroqClient, OpenRouterClient
+from app.ai.clients import GitHubClient, GoogleAIClient, GroqClient, HuggingFaceClient, OpenRouterClient
 from app.utils.strings import get_quarter
 from pathlib import Path
 import pandas as pd
@@ -135,10 +135,11 @@ def load_models(filepath=f"./{DB_FOLDER}/{MODELS_FILE}") -> list:
         list: A list of dictionaries, each representing an AI model with the 'client' key holding the corresponding client class.
     """
     client_map = {
+        "GitHub": GitHubClient,
         "Google": GoogleAIClient,
         "Groq": GroqClient,
+        "HuggingFace": HuggingFaceClient,
         "OpenRouter": OpenRouterClient,
-        "GitHub": GitHubClient,
     }
     try:
         df = pd.read_csv(filepath, keep_default_na=False)

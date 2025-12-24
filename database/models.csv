@@ -3,5 +3,6 @@
 "llama-3.3-70b-versatile","Llama 3.3 70B (fastest)","Groq"
 "gemini-3-flash-preview","Gemini 3 Flash","Google"
 "openai/gpt-4o-mini","OpenAI GPT-4o Mini","GitHub"
+"deepseek-ai/DeepSeek-R1:novita","DeepSeek R1","HuggingFace"
 "microsoft/Phi-4-mini-reasoning","Phi-4 Mini Reasoning","GitHub"
-"tngtech/deepseek-r1t2-chimera:free","DeepSeek R1T2 Chimera","OpenRouter"
+"nvidia/nemotron-3-nano-30b-a3b:free","Nemotron 3 Nano 30B","OpenRouter"
