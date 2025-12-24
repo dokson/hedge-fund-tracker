@@ -24,6 +24,7 @@ class OpenAIClient(AIClient):
         self.client = OpenAI(
             base_url=self.get_base_url(),
             api_key=api_key,
+            default_headers=self.get_headers()
         )
         self.model = model
 
@@ -44,6 +45,20 @@ class OpenAIClient(AIClient):
         pass
 
 
+    def get_headers(self) -> dict:
+        """
+        Returns optional default headers for the client.
+        """
+        return {}
+
+
+    def get_extra_body(self) -> dict:
+        """
+        Returns optional extra body parameters for the API call.
+        """
+        return {}
+
+
     def get_model_name(self) -> str:
         """
         Get the current model name.
@@ -56,14 +71,21 @@ class OpenAIClient(AIClient):
         stop=stop_after_attempt(3),
         before_sleep=lambda rs: print(f"⏳ Retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})")
     )
-    def generate_content(self, prompt: str) -> str:
+    def generate_content(self, prompt: str, **kwargs) -> str:
         """
         Generate content using an OpenAI-compatible API.
+        Accepts optional keyword arguments for the completion call.
         """
         try:
+            extra_body = self.get_extra_body()
+            if "extra_body" in kwargs:
+                extra_body.update(kwargs.pop("extra_body"))
+
             response = self.client.chat.completions.create(
                 model=self.model,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
+                extra_body=extra_body,
+                **kwargs
             )
             return response.choices[0].message.content or ""
         except Exception as e:

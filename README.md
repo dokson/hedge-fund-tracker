@@ -25,7 +25,7 @@ pipenv install
 
 # Set up environment variables
 cp .env.example .env
-# Add your API keys (FINNHUB, GOOGLE, GROQ, OPENROUTER) to the .env file
+# Add your API keys (FINNHUB, GITHUB, GOOGLE, GROQ, OPENROUTER) to the .env file
 
 # Run the application
 pipenv run python -m app.main
@@ -34,7 +34,7 @@ pipenv run python -m app.main
 ## ✨ Key Features
 
 | Feature | Description |
-|---------|-------------|
+| --------- | ------------- |
 | **🆚 Comparative Analysis** | Combines quarterly (13F) and non-quarterly (13D/G, Form 4) filings for an up-to-date view |
 | **📋 Detailed Reports** | Generates clear, console-based reports with intuitive formatting |
 | **🗄️ Curated Database** | Includes list of top hedge funds and AI models, both easily editable via CSV files |
@@ -73,6 +73,7 @@ pipenv run python -m app.main
    
    # Edit .env file and add your API keys:
    # FINNHUB_API_KEY="your_finnhub_key"
+   # GITHUB_TOKEN="your_github_token"
    # GOOGLE_API_KEY="your_google_api_key"
    # GROQ_API_KEY="your_groq_api_key"
    # OPENROUTER_API_KEY="your_openrouter_api_key"
@@ -110,6 +111,13 @@ To run the data update operations, you need to use the `updater.py` script from 
 pipenv run python -m database.updater
 ```
 
+### 🧹 Database Updater
+
+The `updater.py` script includes semi-automated maintenance tasks:
+
+- **Sorting**: Upon exit (option `0`), the script automatically sorts the `database/stocks.csv` file by ticker to maintain performance and prevent Git diff noise.
+- **Auto-Documentation**: This README's excluded funds section is synchronized whenever the database is refreshed manually.
+
 This will open a separate menu for data management:
 
 ```txt
@@ -129,16 +137,17 @@ This will open a separate menu for data management:
 The tool can utilize API keys for enhanced functionality, but all are optional:
 
 | Service | Purpose | Get Free API Key |
-|---------|---------|-------------|
+| --------- | --------- | ------------- |
 | **[![Finnhub](https://github.com/user-attachments/assets/94465a7f-75e0-4a21-827c-511540c80cb3)](https://finnhub.io/) [Finnhub](https://finnhub.io/)** | [CUSIP](https://en.wikipedia.org/wiki/CUSIP) to [stock ticker](https://en.wikipedia.org/wiki/Ticker_symbol) conversion | [Finnhub Keys](https://finnhub.io/dashboard) |
+| **[![GitHub Models](https://github.com/user-attachments/assets/3e8ca2f8-1bb0-4ec3-9374-d6106499adde)](https://github.com/marketplace/models) [GitHub Models](https://github.com/marketplace/models)** | Access to top-tier models (e.g., [xAI Grok-3](https://x.ai/news/grok-3), [OpenAI GPT-5](https://openai.com/en-US/gpt-5/), etc...) | [GitHub Tokens](https://github.com/settings/personal-access-tokens/new?description=Used+to+call+GitHub+Models+APIs+to+easily+run+LLMs%3A+https%3A%2F%2Fdocs.github.com%2Fgithub-models%2Fquickstart%23step-2-make-an-api-call&name=GitHub+Models+token&user_models=read) |
 | **[![Google AI Studio](https://github.com/user-attachments/assets/3b351d8e-d7f6-4337-9c2f-d2af77f30711)](https://aistudio.google.com/) [Google AI Studio](https://aistudio.google.com/)** | Access to [Google Gemini](https://gemini.google.com/) models | [AI Studio Keys](https://aistudio.google.com/app/apikey) |
 | **[![Groq AI](https://github.com/user-attachments/assets/c56394b5-79f8-4c25-a24a-2e2a8bde829c)](https://console.groq.com/) [Groq AI](https://console.groq.com/)** | Access to various LLMs (e.g., OpenAI [gpt-oss](https://github.com/openai/gpt-oss), Meta [Llama](https://www.llama.com/), etc...) | [Groq Keys](https://console.groq.com/keys) |
-| **[![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3)](https://openrouter.ai/) [OpenRouter](https://openrouter.ai/)** | Access to various LLMs (e.g., [Deepseek](https://www.deepseek.com/), Alibaba [Tongyi DeepResearch](https://github.com/Alibaba-NLP/DeepResearch), NVIDIA [nemotron](https://build.nvidia.com/nvidia/nvidia-nemotron-nano-9b-v2/modelcard), etc...) | [OpenRouter Keys](https://openrouter.ai/settings/keys) |
+| **[![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3)](https://openrouter.ai/) [OpenRouter](https://openrouter.ai/)** | Access to various LLMs (e.g., [Deepseek](https://www.deepseek.com/), Alibaba [Tongyi DeepResearch](https://github.com/Alibaba-NLP/DeepResearch), etc...) | [OpenRouter Keys](https://openrouter.ai/settings/keys) |
 
 > **💡 Note:** Ticker resolution primarily uses [yfinance](https://github.com/ranaroussi/yfinance), which is free and requires no API key. If that fails, the system falls back to [Finnhub](https://finnhub.io/) (if an API key is provided), with the final fallback being [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/).
 >
-> **💡 Note:** You don't need to use all the APIs. For the generative AI models ([Google AI Studio](https://aistudio.google.com/), [Groq AI](https://console.groq.com/), and [OpenRouter](https://openrouter.ai/)), you only need the API keys for the services you plan to use.
-> For instance, if you want to experiment with models like [OpenAI](https://openai.com/) [gpt-oss](https://github.com/openai/gpt-oss), you just need a [Groq AI Key](https://console.groq.com/keys). Experimenting with different models is encouraged, as the quality of AI-generated analysis, both for identifying promising stocks and for conducting due diligence, can vary. However, top-performing stocks are typically identified consistently across all tested models. **All APIs used in this project are currently free.**
+> **💡 Note:** You don't need to use all the APIs. For the generative AI models ([Google AI Studio](https://aistudio.google.com/), [GitHub Models](https://github.com/marketplace/models), [Groq AI](https://console.groq.com/), and [OpenRouter](https://openrouter.ai/)), you only need the API keys for the services you plan to use.
+> For instance, if you want to experiment with models like [OpenAI](https://openai.com/) [gpt-oss](https://github.com/openai/gpt-oss), you just need a [Groq AI Key](https://console.groq.com/keys). Experimenting with different models is encouraged, as the quality of AI-generated analysis, both for identifying promising stocks and for conducting due diligence, can vary. However, top-performing stocks are typically identified consistently across all tested models. **All APIs used in this project are currently free (with GitHub Models providing a generous free tier for developers).**
 
 ## 📁 Project Structure
 
@@ -221,7 +230,7 @@ However, its inclusion in the `hedge_funds.csv` will be reconsidered if it conti
 
 #### Notable Exclusions
 
-The quality of the output analysis is directly tied to the quality of the input data. To enhance the accuracy of the insights and opportunities identified, many popular high-profile funds have been intentionally excluded by design:
+The quality of the output analysis is directly tied to the quality of the input data. To enhance the accuracy of the insights and opportunities identified, many popular high-profile funds have been intentionally excluded by design (the list below is automatically managed and capped to 50 funds, but you can see the full list in `excluded_hedge_funds.csv`):
 
 <!-- EXCLUDED_FUNDS_LIST_START -->
 - *Warren Buffett*'s [Berkshire Hathaway](https://www.berkshirehathaway.com/)
@@ -293,10 +302,13 @@ Want to track additional funds? Simply edit `database/hedge_funds.csv` and add y
 
 > **💡 Note**: `hedge_funds.csv` currently includes **not only *traditional hedge funds*** but also **other institutional investors** *(private equity funds, large banks, VCs, pension funds, etc., that file 13F to the [SEC](http://sec.gov/))* selected from what I consider the **top 5%** of performers.
 >
-> If you wish to track any of the **Notable Exclusions** hedge funds, you can copy the relevant rows from `excluded_hedge_funds.csv` into `hedge_funds.csv`. You will need to add the `Denomination` column, which is crucial for accurately processing non-quarterly filings (13D/G, Form 4) as it helps identify the fund's specific transactions within the filing document.
+> If you wish to track any of the **Notable Exclusions** hedge funds, you can copy the relevant rows from `excluded_hedge_funds.csv` into `hedge_funds.csv`.
 >
-> **💡 Note** on the `CIKs` column: This optional field is used to track filings from related entities or subsidiaries of a primary fund. Some investment firms have complex structures where different legal entities file separately.
-> For example, [Jeffrey Ubben](https://en.wikipedia.org/wiki/Jeffrey_W._Ubben)'s `ValueAct Holdings` (`CIK` = `0001418814`) also has filings under its management company, `ValueAct Capital Management` (`CIK` = `0001418812`). By adding `0001418812` to the CIKs column for [ValueAct](https://valueact.com/), the tool aggregates **non-quarterly filings (13D/G, Form 4)** data from both CIKs, ensuring a more complete and updated view of the fund's real-time trading activity.
+> **Columns for Custom Funds:**
+>
+> - **`Denomination`**: This is the exact legal name used by the fund in its filings. It is **essential** for accurately processing non-quarterly filings (13D/G, Form 4) as the scraper uses it to identify the fund's specific transactions within complex filing documents.
+> - **`CIKs`**: A comma-separated list of additional CIKs. This field is used to track filings from related entities or subsidiaries. Some investment firms have complex structures where different legal entities file separately (e.g., a management company and a holding company).
+>   - *Example:* [Jeffrey Ubben](https://en.wikipedia.org/wiki/Jeffrey_W._Ubben)'s `ValueAct Holdings` (`CIK` = `0001418814`) also has filings under `ValueAct Capital Management` (`CIK` = `0001418812`). By adding `0001418812` to the `CIKs` column, the tool aggregates **non-quarterly filings** from both entities for a complete view.
 >
 > ```csv
 >"CIK","Fund","Manager","Denomination","CIKs"
@@ -311,7 +323,9 @@ The models included in `database/models.csv` have been selected because they hav
 
 > **💡 Note** on Meta's [`llama-3.3-70b-versatile`](https://github.com/meta-llama/llama-models/blob/main/models/llama3_3/MODEL_CARD.md): while it can occasionally be less precise in defining the heuristic for the "Promise Score" compared to other top-tier models, it remains a valuable option. Its exceptional speed and lightweight nature make it ideal for rapid experimentation and iterative analysis, providing a useful trade-off between accuracy and performance. As the AI landscape evolves, it is expected that this model will eventually be replaced by newer alternatives that offer similar or better speed and efficiency.
 >
-> **💡 Note** on [xAI](https://x.ai)'s [Grok](https://x.ai/grok): [OpenRouter](https://openrouter.ai/) was initially included because it offered free access to top-tier models like [`x-ai/grok-4-fast`](https://x.ai/news/grok-4-fast); while this is no longer available for free, you can still use it with this tool if you have an existing API key. OpenRouter supports a [Bring Your Own Key (*BYOK*)](https://openrouter.ai/docs/use-cases/byok) feature, allowing you to use your personal xAI key (or keys from other providers) through their platform.
+> **💡 Note** on [xAI's Grok-3](https://x.ai/blog/grok-3): This tool now supports [GitHub Models](https://github.com/marketplace/models), which provides access to **Grok-3** and other next-generation models like **GPT-5** and **Llama 4**. This integration allows for state-of-the-art financial reasoning and due diligence directly through your GitHub account.
+>
+> **💡 Note** on [OpenRouter](https://openrouter.ai/): OpenRouter was initially included because it offered free access to top-tier models; while some are no longer free, you can still use it with this tool if you have an existing API key.
 
 ### Adding Custom AI Models
 
@@ -321,20 +335,21 @@ To add a new model, open `database/models.csv` and add a new row with the follow
 
 - **ID**: The specific model identifier as required by the provider's API.
 - **Description**: A brief, user-friendly description that will be displayed in the selection menu.
-- **Client**: The provider of the model. Must be one of `Google`, `Groq`, or `OpenRouter`.
+- **Client**: The provider of the model. Must be one of `Google`, `Groq`, `OpenRouter`, or `GitHub`.
 
 Here are the official model lists for each provider:
 
 - [Google Gemini Models](https://ai.google.dev/gemini-api/docs/models)
 - [Groq Available Models](https://console.groq.com/docs/models)
 - [OpenRouter Available Models](https://openrouter.ai/models?order=newest&max_price=0)
+- [GitHub Marketplace Models](https://github.com/marketplace/models)
 
 ## ⚠️ Limitations & Considerations
 
 It's crucial to understand the inherent limitations of tracking investment strategies solely through SEC filings:
 
 | Limitation | Impact | Mitigation |
-|------------|--------|------------|
+| ------------ | -------- | ------------ |
 | **🕒 Filing Delay** | Data can be 45+ days old | Focus on long-term strategies |
 | **🧩 Incomplete Picture** | Only US long positions shown | Use as part of broader analysis |
 | **📉 No Short Positions** | Missing hedge information | Consider reported positions carefully |
@@ -366,13 +381,14 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 ## 🗃️ Technical Stack
 
 | 🗂️ Category | 🦾 Technology |
-|----------|------------|
+| ---------- | ------------ |
 | **Core** | [Python 3.13](https://www.python.org/downloads/release/python-3130/)+, [pipenv](https://pipenv.pypa.io/) |
 | **Web Scraping** | [Requests](https://2.python-requests.org/en/master/), [Beautiful Soup](https://pypi.org/project/beautifulsoup4/), [lxml](https://lxml.de/) |
+| **Reliability** | [Tenacity](https://github.com/jd/tenacity) (Smart retries for API rate-limiting and AI responses) |
 | **Config** | [python-dotenv](https://github.com/theskumar/python-dotenv) |
 | **Data Processing** | [pandas](https://pandas.pydata.org/), [csv](https://docs.python.org/3/library/csv.html) |
 | **Stocks Libraries** | [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/) |
-| **Gen AI** | [python-toon](https://github.com/xaviviro/python-toon), [Google Gen AI SDK](https://googleapis.github.io/python-genai/), [OpenAI](https://github.com/openai/openai-python),  |
+| **Gen AI** | [python-toon](https://github.com/xaviviro/python-toon), [Google Gen AI SDK](https://googleapis.github.io/python-genai/), [OpenAI](https://github.com/openai/openai-python) |
 
 ## 🤝🏼 Contributing & Support
 

@@ -1,4 +1,4 @@
-from app.ai.clients import GoogleAIClient, GroqClient, OpenRouterClient
+from app.ai.clients import GitHubClient, GoogleAIClient, GroqClient, OpenRouterClient
 from app.utils.strings import get_quarter
 from pathlib import Path
 import pandas as pd
@@ -138,6 +138,7 @@ def load_models(filepath=f"./{DB_FOLDER}/{MODELS_FILE}") -> list:
         "Google": GoogleAIClient,
         "Groq": GroqClient,
         "OpenRouter": OpenRouterClient,
+        "GitHub": GitHubClient,
     }
     try:
         df = pd.read_csv(filepath, keep_default_na=False)

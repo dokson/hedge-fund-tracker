@@ -5,7 +5,7 @@ class OpenRouterClient(OpenAIClient):
     """
     OpenRouter client implementation using various available models (e.g., DeepSeek)
     """
-    DEFAULT_MODEL = "deepseek/deepseek-chat-v3.1:free"
+    DEFAULT_MODEL = "xiaomi/mimo-v2-flash:free"
 
 
     def __init__(self, model: str = DEFAULT_MODEL):
@@ -35,3 +35,21 @@ class OpenRouterClient(OpenAIClient):
         Returns the name of the environment variable for the OpenRouter API key.
         """
         return "OPENROUTER_API_KEY"
+
+
+    def get_headers(self) -> dict:
+        """
+        Returns the recommended headers for OpenRouter.
+        """
+        return {
+            "HTTP-Referer": "https://github.com/dokson/hedge-fund-tracker",
+            "X-Title": "Hedge Fund Tracker"
+        }
+
+
+    def get_extra_body(self) -> dict:
+        """
+        Returns extra body parameters.
+        Some providers (like Venice) might be sensitive to these even if empty.
+        """
+        return {}
