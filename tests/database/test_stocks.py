@@ -125,3 +125,31 @@ class TestStocksDatabase(unittest.TestCase):
                 "Please run the database updater with option '0. Exit' to sort the file."
             )
             self.fail(error_message)
+
+
+    def test_no_truncated_names(self):
+        """
+        Checks for company names in stocks.csv that appear to be truncated.
+        Fails if any company name ends with suspicious suffixes indicating truncation.
+        """
+        stocks_df = load_stocks().reset_index()
+
+        # List of suffixes that often indicate truncation
+        suspicious_suffixes = (
+            " H", "Accep", "Acqu", "Acquistn", "Act", "Amer", "Argenta", "Brasileir", "Buenaventu", "Ca", "Cent", "Chesapea", "Cnty",
+            "Comm", "Comms", "Companie", "Dynamic", "Elec", "Fragra", "Gen", "Genera", "Grou", "Grwt", "Hig", "Inco", "Indl", "Infr",
+            "Infrastructu", "Infrastructure", "Inm", "Ins", "Internat", "Lendi", "Limite", "Mach", "Machs", "Mfg", "Nat", "Northn",
+            "Ohio", "Op", "Opp", "Par", "Pare", "Partne", "Partner", "Pete", "Petro", "Real", "Resh", "Rty", "Soluti", "Solutio",
+            "Solution", "Southn", "Strate", "Suppo", "Svgs", "Svsc", "Technologs", "Therapeuti", "TrueShar", "Vang", "Vy", "Wash"
+        )
+
+        # Filter rows where the Company column ends with one of the suffixes
+        truncated = stocks_df[stocks_df['Company'].str.endswith(suspicious_suffixes, na=False)]
+
+        if not truncated.empty:
+            error_message = (
+                f"Found {len(truncated)} company names that appear to be truncated.\n"
+                "Please fix the following names in stocks.csv:\n\n"
+                f"{truncated[['Ticker', 'Company']].to_string(index=False)}"
+            )
+            self.fail(error_message)
