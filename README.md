@@ -221,14 +221,9 @@ My approach prioritizes high [cumulative returns](https://en.wikipedia.org/wiki/
 
 ### List Management
 
-The list of hedge funds is actively managed to maintain its quality. Funds that begin to underperform may be replaced, and the list may be expanded over time to include new top performers.
+The list of hedge funds is actively managed to maintain its quality; funds that underperform may be replaced, while new top performers are periodically added.
 
-A clear example of this selection process is the exclusion of **Prime Capital Management** (*CIK: `0001448793`*), managed by *Liu Yijun*. Despite an impressive **3-Year Cumulative Return** of over **+165%** (as of Q2 2025), the fund was ultimately not included for two key reasons:
-
-- **Inconsistent Path of Returns**: Its strong performance is concentrated in the last two years, lacking the long-term consistency favored by the selection methodology's preference for a more consistent, long-term track record.
-- **Extreme Portfolio Concentration**: The portfolio's reliance on only 2-3 positions makes its performance statistically less relevant for broader analysis and increases potential volatility.
-
-However, its inclusion in the `hedge_funds.csv` will be reconsidered if it continues to deliver strong, consistent performance in the future.
+However, despite their strong performance, several funds with portfolios predominantly focused on **Healthcare** and **Biotech**, such as **[Nextech Invest](https://www.nextechinvest.com/)**, **[Enavate Sciences](https://enavatesciences.com/)**, **[Caligan Partners](https://www.caliganpartners.com/)**, and **[Boxer Capital Management](https://www.boxercap.com/)**, have been intentionally excluded. These funds invest in highly specialized sectors where I lack the necessary expertise. Consequently, I consider them too risky for my personal investment profile, given the complexity and volatility inherent in biotech and healthcare ventures.
 
 #### Notable Exclusions
 
@@ -243,7 +238,6 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Bill Ackman*'s [Pershing Square](https://pershingsquareholdings.com/)
 - *Dmitry Balyasny*'s [Balyasny Asset Management](https://www.bamfunds.com/)
 - *Alec Litowitz*'s [Magnetar Capital](https://www.magnetar.com/)
-- *Liu Yijun*'s [Prime Capital Management](http://www.primecapital.com.hk/)
 - *Cliff Asness*'s [AQR Capital Management](https://www.aqr.com/)
 - *David Tepper*'s [Appaloosa](https://www.appaloosawm.com/)
 - *Frank Sands*'s [Sands Capital Management](https://www.sandscapital.com/)
@@ -285,6 +279,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - *Steve Mandel*'s [Lone Pine Capital](https://www.lonepinecapital.com/)
 - *Seymour Kaufman*'s [Crosslink Capital](https://www.crosslinkcapital.com/)
 - *John Overdeck*'s [Two Sigma](https://www.twosigma.com/)
+- *Nathaniel August*'s [Mangrove Partners](https://mangrovepartners.com/)
 - and many more... (see [`database/excluded_hedge_funds.csv`](/database/excluded_hedge_funds.csv) for the full list)
 <!-- EXCLUDED_FUNDS_LIST_END -->
 
