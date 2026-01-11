@@ -44,8 +44,10 @@ For each analysis section below, provide a sentiment indicator:
 
 ## OUTPUT FORMAT
 Respond using TOON format (Token-Oriented Object Notation). Use `key: value` syntax and indentation for nesting.
-The entire response must be a single, valid TOON object adhering strictly to the schema below. All fields are required; use `null` for unavailable data.
-The final TOON object must be enclosed in a markdown code block like ` ```toon ... ``` `.
+- **Keys**: Use the stock TICKER exactly as provided.
+- **Values**: Enclose all string values in double quotes (`"..."`).
+- **Schema Strictness**: The entire response must be a single, valid TOON object enclosed in a markdown code block like ` ```toon ... ``` `.
+- **No Preamble**: Do NOT include any text, analysis, or conversational filler outside the markdown code block.
 
 ### SCHEMA
 ticker: "..."

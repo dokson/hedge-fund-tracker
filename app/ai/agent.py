@@ -157,6 +157,12 @@ class AnalystAgent:
         return suggestions_df
 
 
+    @retry(
+        retry=retry_if_exception_type(InvalidAIResponseError),
+        wait=wait_fixed(1),
+        stop=stop_after_attempt(5),
+        before_sleep=lambda rs: print(f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
+    )
     def run_stock_due_diligence(self, ticker: str) -> dict:
         """
         Performs AI-powered due diligence on a single stock.
@@ -207,7 +213,9 @@ class AnalystAgent:
         response_text = self.ai_client.generate_content(prompt)
         parsed_data = ResponseParser().extract_and_decode_toon(response_text)
 
-        if parsed_data:
-            parsed_data['current_price'] = current_price
+        if not parsed_data:
+            raise InvalidAIResponseError("AI returned an empty or invalid TOON structure")
+
+        parsed_data['current_price'] = current_price
 
         return parsed_data
