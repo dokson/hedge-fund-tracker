@@ -180,14 +180,20 @@ class AnalystAgent:
             return {}
         print(f"💲 Current price for {ticker}: ${current_price:,.2f}")
 
+        total_value = stock_df['Value'].sum()
+        total_delta_value = stock_df['Delta_Value'].sum()
+        previous_total_value = total_value - total_delta_value
+        delta_pct = total_delta_value / previous_total_value * 100 if previous_total_value != 0 else 0
+
         stock_data = {
             "ticker": ticker,
             "company": stock_df['Company'].iloc[0],
             "filing_date": self.filing_date,
             "current_price": f"${current_price:,.2f}",
             "institutional_activity": {
-                "total_value_held": f"${stock_df['Value'].sum():,.0f}",
-                "net_change_in_value": f"${stock_df['Delta_Value'].sum():,.0f}",
+                "total_value_held": f"${total_value:,.0f}",
+                "net_change_in_value": f"${total_delta_value:,.0f}",
+                "delta_percentage": f"{delta_pct:+.2f}%",
                 "buyers": int((stock_df['Delta_Value'] > 0).sum()),
                 "sellers": int((stock_df['Delta_Value'] < 0).sum()),
                 "new_positions": int((stock_df['Delta'].str.startswith('NEW')).sum()),

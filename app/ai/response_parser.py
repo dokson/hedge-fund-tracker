@@ -15,7 +15,7 @@ class ResponseParser:
             text = response_text.strip()
             
             # 1. Prioritize finding a markdown block, as it's the most reliable indicator.
-            markdown_match = re.search(r'```(?:toon)?\s*\n(.*?)```', text, re.DOTALL)
+            markdown_match = re.search(r'```(?:toon)?\s*(.*?)```', text, re.DOTALL)
             if markdown_match:
                 toon_content = markdown_match.group(1).strip()
                 return decode(toon_content)
@@ -25,7 +25,7 @@ class ResponseParser:
             last_block_lines = []
             for line in reversed(lines):
                 # If the line looks like a key-value pair, add it to our block
-                is_toon_line = re.match(r'^\s*[a-zA-Z0-9_]+\s*:', line)
+                is_toon_line = re.match(r'^\s*[a-zA-Z0-9_\-\.]+\s*:', line)
                 is_empty_line = not line.strip()
 
                 if is_toon_line or (is_empty_line and last_block_lines):

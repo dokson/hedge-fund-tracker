@@ -15,7 +15,9 @@ class PromiseScoreValidator:
         'Holder_Count',
         'New_Holder_Count',
         'Net_Buyers',
-        'Close_Count'
+        'Close_Count',
+        'Delta',
+        'Buyer_Seller_Ratio'
     ]
 
 

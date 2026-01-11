@@ -123,7 +123,8 @@ def run_stock_analysis():
         holder_count = (df_analysis['Delta'] != 'CLOSE').sum()
         new_holder_count = (df_analysis['Delta'].str.startswith('NEW')).sum()
         close_count = (df_analysis['Delta'] == 'CLOSE').sum()
-        delta = total_delta_value / total_value * 100 if total_value != 0 else np.nan
+        previous_total_value = total_value - total_delta_value
+        delta = total_delta_value / previous_total_value * 100 if previous_total_value != 0 else np.nan
 
         print("\n")
         print_centered(f"TOTAL HELD: {format_value(total_value)}")

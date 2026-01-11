@@ -30,6 +30,8 @@ Close_Count: "Number of institutions fully exiting their positions (strong negat
 Holder_Count: "Total number of institutions currently holding the stock (measures popularity/consensus)."
 New_Holder_Count: "Number of institutions initiating new positions (captures emerging interest)."
 Net_Buyers: "Buyer_Count minus Seller_Count (shows net institutional sentiment)."
+Delta: "Percentage change in total value held (magnitude of institutional shift)."
+Buyer_Seller_Ratio: "Ratio of buyers to sellers (indicates consensus direction)."
 ```
 
 # WEIGHTING PHILOSOPHY
