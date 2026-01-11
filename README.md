@@ -1,17 +1,19 @@
 # 📊 Hedge Fund Tracker
 
+[![repo views](https://komarev.com/ghpvc/?username=dokson&repo=hedge-fund-tracker&label=views&color=orange)](https://github.com/dokson/hedge-fund-tracker)
 [![repo size](https://img.shields.io/github/repo-size/dokson/hedge-fund-tracker)](https://github.com/dokson/hedge-fund-tracker/tree/master)
 [![last commit](https://img.shields.io/github/last-commit/dokson/hedge-fund-tracker)](https://github.com/dokson/hedge-fund-tracker/commits/master/)
 [![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/release/python-3130/)
 [![License: MIT](https://img.shields.io/github/license/dokson/hedge-fund-tracker)](https://opensource.org/licenses/MIT)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dokson/hedge-fund-tracker/pulls)
 [![GitHub stars](https://img.shields.io/github/stars/dokson/hedge-fund-tracker.svg?style=social&label=Star)](https://github.com/dokson/hedge-fund-tracker/stargazers)
 [![GitHub watchers](https://img.shields.io/github/watchers/dokson/hedge-fund-tracker.svg)](https://github.com/dokson/hedge-fund-tracker/watchers)
 [![GitHub forks](https://img.shields.io/github/forks/dokson/hedge-fund-tracker.svg)](https://github.com/dokson/hedge-fund-tracker/network/members)
 
-> **Track hedge fund portfolios and unlock actionable insights.**
+> **SEC 13F Filing Tracker | Institutional Portfolio Analysis | AI-Powered Stock Research**
 
-A powerful Python tool designed to transform raw [SEC](http://sec.gov/) filing data into clear, actionable intelligence. It's built for anyone, from financial analysts to retail investors, seeking to understand the strategies of elite institutional investors by analyzing their quarterly and real-time portfolio changes.
+A comprehensive **Python tool** for tracking **hedge fund portfolios** through **SEC filings** (13F, 13D/G, Form 4). Transform raw [SEC EDGAR](https://www.sec.gov/edgar) data into actionable **investment insights**. Built for **financial analysts**, **quantitative traders**, and **retail investors** seeking to analyze **institutional investor strategies**, **portfolio changes**, and discover **stock opportunities** by following elite fund managers.
+
+**Keywords**: SEC filings tracker, 13F analysis, hedge fund portfolio, institutional investors, stock research, investment intelligence, CUSIP converter, financial data scraper, AI stock analysis
 
 ## 🚀 Quick Start
 
