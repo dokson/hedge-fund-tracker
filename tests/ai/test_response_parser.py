@@ -49,10 +49,19 @@ class TestResponseParser(unittest.TestCase):
 
     def test_extract_and_decode_invalid_toon(self):
         """
-        Tests that an invalid TOON string returns an empty dictionary.
+        Tests that an invalid TOON string (unquoted hyphen in key) returns an empty dictionary.
         """
-        response_text = 'invalid-key: "value"' # Keys cannot contain hyphens unless quoted
+        response_text = 'invalid-key: "value"'
         self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), {})
+
+
+    def test_extract_and_decode_with_quoted_keys(self):
+        """
+        Tests parsing TOON where keys are quoted (required for special characters).
+        """
+        response_text = '"BRK-B": 500\n"BF.B": 200'
+        expected = {'BRK-B': 500, 'BF.B': 200}
+        self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
 
 
     def test_extract_and_decode_empty_or_whitespace_string(self):

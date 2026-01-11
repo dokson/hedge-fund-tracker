@@ -25,7 +25,8 @@ class ResponseParser:
             last_block_lines = []
             for line in reversed(lines):
                 # If the line looks like a key-value pair, add it to our block
-                is_toon_line = re.match(r'^\s*[a-zA-Z0-9_\-\.]+\s*:', line)
+                # Supports unquoted (identifier) and quoted keys (required for hyphens/dots)
+                is_toon_line = re.match(r'^\s*(?:[a-zA-Z0-9_]+|"[^"]+")\s*:', line)
                 is_empty_line = not line.strip()
 
                 if is_toon_line or (is_empty_line and last_block_lines):

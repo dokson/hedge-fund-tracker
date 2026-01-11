@@ -72,7 +72,7 @@ SCORING CRITERIA:
 
 # OUTPUT FORMAT & SCHEMA
 Respond using TOON format (Token-Oriented Object Notation). Use `key: value` syntax and indentation for nesting.
-- **Keys**: Use the stock TICKER exactly as provided (e.g., `NVDA`, `BRK-B`, `BF.B`).
+- **Keys**: Use the stock TICKER exactly as provided. **IMPORTANT**: If a ticker contains a hyphen or dot (e.g., `"BRK-B"`, `"BF.B"`), it **must** be enclosed in double quotes.
 - **Nesting**: Use 2 spaces for indentation of fields under each ticker.
 - **Schema Strictness**: The entire response must be a single, valid TOON object enclosed in a markdown code block like ` ```toon ... ``` `.
 
