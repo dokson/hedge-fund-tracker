@@ -1,5 +1,7 @@
 "Fund","CUSIP","Ticker","Company","Shares","Value","Avg_Price","Date","Filing_Date"
+"Millennium","939653101","ELME","Elme Communities","4680337","12.96M","2.77","2026-01-08","2026-01-13"
 "Point72","90138A103","VNET","VNET Group, Inc.","76454352","759.96M","9.94","2026-01-08","2026-01-09"
+"Point72","483497103","KALV","KalVista Pharmaceuticals, Inc.","2781902","42.87M","15.41","2026-01-05","2026-01-13"
 "Point72","690469101","OVID","Ovid Therapeutics Inc.","6727209","11.3M","1.68","2026-01-02","2026-01-05"
 "Millennium","921659108","VNDA","Vanda Pharmaceuticals Inc.","1679013","15.2M","9.05","2025-12-31","2026-01-09"
 "FMR","862945102","ASST","STRIVE INC","15907064","11.93M","0.75","2025-12-31","2026-01-08"
