@@ -71,7 +71,7 @@ class OpenAIClient(AIClient):
         stop=stop_after_attempt(3),
         before_sleep=lambda rs: print(f"⏳ Retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})")
     )
-    def generate_content(self, prompt: str, **kwargs) -> str:
+    def _generate_content_impl(self, prompt: str, **kwargs) -> str:
         """
         Generate content using an OpenAI-compatible API.
         Accepts optional keyword arguments for the completion call.
