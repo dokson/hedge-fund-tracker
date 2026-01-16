@@ -120,3 +120,64 @@ class YFinance(FinanceLibrary):
         except Exception as e:
             print(f"❌ ERROR: Failed to get current price for Ticker {ticker} using YFinance: {e}")
             raise e
+
+
+    @staticmethod
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=8),
+        before_sleep=lambda retry_state: print(f"⏳ Retrying get_stocks_info for {retry_state.args[0]} (attempt #{retry_state.attempt_number})...")
+    )
+    def get_stocks_info(tickers: list[str]) -> dict[str, dict]:
+        """
+        Gets the current market prices and sector information for a list of tickers efficiently.
+
+        Args:
+            tickers (list[str]): A list of stock tickers.
+
+        Returns:
+            dict[str, dict]: A dictionary mapping tickers to their info (price, sector).
+                            Example: {'AAPL': {'price': 150.25, 'sector': 'Technology'}}
+        """
+        if not tickers:
+            return {}
+        
+        stocks_info = {}
+        
+        try:
+            data = yf.download(tickers=tickers, period='1d', interval='1m', group_by='ticker', auto_adjust=False, progress=False)
+            
+            for ticker in tickers:
+                try:
+                    if len(tickers) == 1:
+                        ticker_data = data
+                    else:
+                        ticker_data = data[ticker]
+                    
+                    if not ticker_data.empty:
+                        price = ticker_data['Close'].dropna().iloc[-1].item()
+                        stocks_info[ticker] = {'price': float(price), 'sector': None}
+                except Exception:
+                    continue
+            
+            # Get sector info for all tickers (both successful and failed price fetches)
+            for ticker in tickers:
+                try:
+                    stock = yf.Ticker(ticker)
+                    sector = stock.info.get('sector') or stock.info.get('industry')
+                    
+                    if ticker in stocks_info:
+                        stocks_info[ticker]['sector'] = sector
+                    else:
+                        # Price fallback
+                        print(f"⏳ Getting info for {ticker} using YFinance...")
+                        price = YFinance.get_current_price(ticker)
+                        if price:
+                            stocks_info[ticker] = {'price': price, 'sector': sector}
+                except Exception:
+                    continue
+
+            return stocks_info
+        except Exception as e:
+            print(f"❌ ERROR: Failed to get stock info using YFinance: {e}")
+            raise e

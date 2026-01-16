@@ -125,6 +125,20 @@ def get_percentage_formatter():
     return lambda x: format_percentage(x, decimal_places=2)
 
 
+def get_price_formatter():
+    """
+    Creates a formatter function for converting numbers to dollar-formatted prices with 2 decimal places.
+
+    This is a factory function that returns a lambda. The lambda expects a numeric value
+    and formats it as a price in USD with commas for thousands separators and 2 decimal places (e.g., $1,234.56).
+    Useful for applying consistent price formatting to data columns (e.g., in pandas).
+
+    Returns:
+        callable: A function that takes a numeric value and returns its formatted price string.
+    """
+    return lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A"
+
+
 def get_signed_perc_formatter():
     """
     Creates a formatter function for converting numbers to a percentage string with 2 decimal places.

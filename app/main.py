@@ -1,8 +1,9 @@
 from app.ai.agent import AnalystAgent
 from app.analysis.stocks import aggregate_quarter_by_fund, fund_analysis, get_quarter_data, quarter_analysis, stock_analysis
+from app.tickers.libraries.yfinance import YFinance
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, print_fund, select_ai_model, select_fund, select_quarter
 from app.utils.database import count_funds_in_quarter, get_all_quarters, get_last_quarter, get_most_recent_quarter, load_non_quarterly_data
-from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_signed_perc_formatter, get_string_formatter, get_value_formatter
+from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_price_formatter, get_signed_perc_formatter, get_string_formatter, get_value_formatter
 import numpy as np
 import pandas as pd
 
@@ -23,10 +24,27 @@ def run_view_nq_filings():
     nq_filings_df = non_quarterly_filings_df.join(latest_quarter_data_per_fund, how='inner', rsuffix='_quarter').reset_index()
     latest_n = 30
 
+    # Fetch current prices and industry info for the latest N tickers
+    subset_df = nq_filings_df.head(latest_n).copy()
+    tickers = subset_df['Ticker'].unique().tolist()
+    stock_info = YFinance.get_stocks_info(tickers)
+
+    # Ensure numeric types and calculate the percentage change
+    subset_df['Avg_Price'] = pd.to_numeric(subset_df['Avg_Price'], errors='coerce')
+    subset_df['Current_Price'] = subset_df['Ticker'].map(lambda t: stock_info.get(t, {}).get('price'))
+    subset_df['Sector'] = subset_df['Ticker'].map(lambda t: stock_info.get(t, {}).get('sector'))
+    subset_df['Price_Var%'] = ((subset_df['Current_Price'] - subset_df['Avg_Price']) / subset_df['Avg_Price']) * 100
+    
     print_dataframe(
-        nq_filings_df, latest_n, title=f"LATEST {latest_n} 13D/G AND FORM 4 FILINGS", sort_by=['Date', 'Fund', 'Portfolio_Pct'],
-        cols=['Date', 'Fund', 'Ticker', 'Company', 'Shares', 'Delta_Shares', 'Delta', 'Avg_Price', 'Value', 'Portfolio_Pct'],
-        formatters={'Delta': get_signed_perc_formatter(), 'Company': get_string_formatter(), 'Shares': get_value_formatter(), 'Delta_Shares': get_value_formatter(), 'Portfolio_Pct': get_percentage_formatter(),}
+        subset_df, latest_n, title=f"LATEST {latest_n} 13D/G AND FORM 4 FILINGS", sort_by=['Date', 'Fund', 'Portfolio_Pct'],
+        cols=['Date', 'Fund', 'Ticker', 'Company', 'Sector', 'Delta', 'Avg_Price', 'Current_Price', 'Price_Var%', 'Value', 'Portfolio_Pct'],
+        formatters={
+            'Company': get_string_formatter(), 
+            'Avg_Price': get_price_formatter(),
+            'Current_Price': get_price_formatter(),
+            'Price_Var%': get_signed_perc_formatter(),
+            'Portfolio_Pct': get_percentage_formatter(),
+        }
     )
 
 
@@ -83,7 +101,11 @@ def run_fund_analysis():
 
         top_n = 10
         columns = ['Ticker', 'Company', 'Portfolio_Pct', 'Value', 'Delta', 'Delta_Value']
-        formatters = {'Portfolio_Pct': get_percentage_formatter(), 'Value': get_value_formatter(), 'Delta_Value': get_value_formatter()}
+        formatters = {
+            'Portfolio_Pct': get_percentage_formatter(),
+            'Value': get_value_formatter(),
+            'Delta_Value': get_value_formatter()
+        }
 
         if len(df_fund) >= 2 * top_n:
             print_dataframe(df_fund, top_n, title=f'Top {top_n} Holdings by Portfolio %', sort_by='Portfolio_Pct', cols=columns, formatters=formatters)
@@ -137,7 +159,12 @@ def run_stock_analysis():
         print_dataframe(
             df_analysis, len(df_analysis), title=f'Holders by Shares', sort_by='Shares', 
             cols=['Fund', 'Portfolio_Pct', 'Shares', 'Value', 'Delta', 'Delta_Value'], 
-            formatters={'Portfolio_Pct': get_percentage_formatter(), 'Shares': get_value_formatter(), 'Value': get_value_formatter(), 'Delta_Value': get_value_formatter()}
+            formatters={
+                'Portfolio_Pct': get_percentage_formatter(),
+                'Shares': get_value_formatter(),
+                'Value': get_value_formatter(),
+                'Delta_Value': get_value_formatter()
+            }
         )
         print("\n")
 
