@@ -68,7 +68,6 @@ class YFinance(FinanceLibrary):
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=8),
-        retry=retry_if_exception_type((requests.exceptions.Timeout, TimeoutError)),
         before_sleep=lambda retry_state: print(f"⏳ Retrying get_avg_price for {retry_state.args[0]} (attempt #{retry_state.attempt_number})...")
     )
     def get_avg_price(ticker: str, date: date) -> float | None:
@@ -95,14 +94,13 @@ class YFinance(FinanceLibrary):
                 return YFinance.get_current_price(ticker)
         except Exception as e:
             print(f"❌ ERROR: Failed to get price for Ticker {ticker} on {date} using YFinance: {e}")
-            return None
+            raise e
 
 
     @staticmethod
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=8),
-        retry=retry_if_exception_type((requests.exceptions.Timeout, TimeoutError)),
         before_sleep=lambda retry_state: print(f"⏳ Retrying get_current_price for {retry_state.args[0]} (attempt #{retry_state.attempt_number})...")
     )
     def get_current_price(ticker: str) -> float | None:
@@ -121,4 +119,4 @@ class YFinance(FinanceLibrary):
             return float(price) if price is not None else None
         except Exception as e:
             print(f"❌ ERROR: Failed to get current price for Ticker {ticker} using YFinance: {e}")
-            return None
+            raise e
