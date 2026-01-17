@@ -9,11 +9,48 @@
 [![GitHub watchers](https://img.shields.io/github/watchers/dokson/hedge-fund-tracker.svg)](https://github.com/dokson/hedge-fund-tracker/watchers)
 [![GitHub forks](https://img.shields.io/github/forks/dokson/hedge-fund-tracker.svg)](https://github.com/dokson/hedge-fund-tracker/network/members)
 
+**If this tool is helping you, please ⭐ the repo!** It really helps discoverability.
+
 > **SEC 13F Filing Tracker | Institutional Portfolio Analysis | AI-Powered Stock Research**
 
 A comprehensive **Python tool** for tracking **hedge fund portfolios** through **SEC filings** (13F, 13D/G, Form 4). Transform raw [SEC EDGAR](https://www.sec.gov/edgar) data into actionable **investment insights**. Built for **financial analysts**, **quantitative traders**, and **retail investors** seeking to analyze **institutional investor strategies**, **portfolio changes**, and discover **stock opportunities** by following elite fund managers.
 
 **Keywords**: SEC filings tracker, 13F analysis, hedge fund portfolio, institutional investors, stock research, investment intelligence, CUSIP converter, financial data scraper, AI stock analysis
+
+<!--ts-->
+* [📊 Hedge Fund Tracker](#-hedge-fund-tracker)
+  * [🚀 Quick Start](#-quick-start)
+  * [✨ Key Features](#-key-features)
+  * [📦 Installation](#-installation)
+    * [Prerequisites](#prerequisites)
+    * [Data Management](#data-management)
+    * [Database Updater](#database-updater)
+    * [GICS Classification](#gics-classification)
+    * [API Configuration](#api-configuration)
+  * [📁 Project Structure](#-project-structure)
+  * [👨🏻‍💻 How This Tool Tracks Hedge Funds](#-how-this-tool-tracks-hedge-funds)
+  * [🏢 Hedge Funds Selection](#-hedge-funds-selection)
+    * [Selection Methodology](#selection-methodology)
+    * [List Management](#list-management)
+      * [Notable Exclusions](#notable-exclusions)
+      * [Adding Custom Funds](#adding-custom-funds)
+  * [🧠 AI Models Selection](#-ai-models-selection)
+    * [Adding Custom AI Models](#adding-custom-ai-models)
+  * [Limitations &amp; Considerations](#️-limitations--considerations)
+    * [A Truly Up-to-Date View](#a-truly-up-to-date-view)
+  * [⚙️ Automation with GitHub Actions](#️-automation-with-github-actions)
+    * [How It Works](#how-it-works)
+    * [How to Enable It](#how-to-enable-it)
+  * [🗃️ Technical Stack](#️-technical-stack)
+  * [🤝🏼 Contributing &amp; Support](#-contributing--support)
+    * [💬 Get Help](#-get-help)
+    * [✍🏻 Feedback](#-feedback)
+  * [📚 References](#-references)
+  * [🙏🏼 Acknowledgments](#-acknowledgments)
+  * [📄 License](#-license)
+
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!--te-->
 
 ## 🚀 Quick Start
 
@@ -50,8 +87,8 @@ pipenv run python -m app.main
 
 ### Prerequisites
 
-- [Python 3.13](https://www.python.org/downloads/release/python-3130/)+
-- [pipenv](https://pipenv.pypa.io/) (install with `pip install pipenv`)
+* [Python 3.13](https://www.python.org/downloads/release/python-3130/)+
+* [pipenv](https://pipenv.pypa.io/) (install with `pip install pipenv`)
 
 1. **📥 Clone and navigate:**
 
@@ -115,12 +152,12 @@ To run the data update operations, you need to use the `updater.py` script from 
 pipenv run python -m database.updater
 ```
 
-### 🧹 Database Updater
+### Database Updater
 
 The `updater.py` script includes semi-automated maintenance tasks:
 
-- **Sorting**: Upon exit (option `0`), the script automatically sorts the `database/stocks.csv` file by ticker to maintain performance and prevent Git diff noise.
-- **Auto-Documentation**: This README's excluded funds section is synchronized whenever the database is refreshed manually.
+* **Sorting**: Upon exit (option `0`), the script automatically sorts the `database/stocks.csv` file by ticker to maintain performance and prevent Git diff noise.
+* **Auto-Documentation**: This README's excluded funds section is synchronized whenever the database is refreshed manually.
 
 This will open a separate menu for data management:
 
@@ -136,7 +173,7 @@ This will open a separate menu for data management:
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 🗃️ GICS Classification
+### GICS Classification
 
 The project includes an **autonomous GICS (Global Industry Classification Standard) parser** (`database/gics/updater.py`). Originally developed by [MSCI](https://www.msci.com/) and [S&P](https://www.spglobal.com/), it scrapes Wikipedia to build a full hierarchy of 163 sub-industries. This provides the AI Analyst with granular industry context while remaining independent of third-party libraries.
 
@@ -201,20 +238,20 @@ hedge-fund-tracker/
 
 This tracker leverages the following types of SEC filings to provide a comprehensive view of institutional activity.
 
-- **📅 Quarterly 13F Filings**
-  - Required for funds managing $100M+
-  - Filed ***within 45 days*** of quarter-end
-  - Shows ***portfolio snapshot*** on last day of quarter
+* **📅 Quarterly 13F Filings**
+  * Required for funds managing $100M+
+  * Filed ***within 45 days*** of quarter-end
+  * Shows ***portfolio snapshot*** on last day of quarter
 
-- **📝 Non-Quarterly 13D/G Filings**
-  - Required when acquiring 5%+ of company shares
-  - Filed ***within 10 days*** of the transaction
-  - Provides a ***timely view*** of significant investments
+* **📝 Non-Quarterly 13D/G Filings**
+  * Required when acquiring 5%+ of company shares
+  * Filed ***within 10 days*** of the transaction
+  * Provides a ***timely view*** of significant investments
 
-- **✍🏻 Non-Quarterly SEC Form 4 Insider Filings**
-  - Filed by insiders (executives, directors) or large shareholders (>10%) when they trade company stocks
-  - Must be filed ***within 2 business days*** of the transaction
-  - Offers ***real-time insight*** into the actions of key individuals and institutions
+* **✍🏻 Non-Quarterly SEC Form 4 Insider Filings**
+  * Filed by insiders (executives, directors) or large shareholders (>10%) when they trade company stocks
+  * Must be filed ***within 2 business days*** of the transaction
+  * Offers ***real-time insight*** into the actions of key individuals and institutions
 
 ## 🏢 Hedge Funds Selection
 
@@ -239,57 +276,57 @@ However, despite their strong performance, several funds with portfolios predomi
 The quality of the output analysis is directly tied to the quality of the input data. To enhance the accuracy of the insights and opportunities identified, many popular high-profile funds have been intentionally excluded by design (the list below is automatically managed and capped to 50 funds, but you can see the full list in `excluded_hedge_funds.csv`):
 
 <!-- EXCLUDED_FUNDS_LIST_START -->
-- *Warren Buffett*'s [Berkshire Hathaway](https://www.berkshirehathaway.com/)
-- *Ken Griffin*'s [Citadel Advisors](https://www.citadel.com/)
-- *Ray Dalio*'s [Bridgewater Associates](https://www.bridgewater.com/)
-- *Michael Burry*'s [Scion Asset Management](https://www.scionasset.com/)
-- *Cathie Wood*'s [ARK Invest](https://www.ark-invest.com/)
-- *Bill Ackman*'s [Pershing Square](https://pershingsquareholdings.com/)
-- *Dmitry Balyasny*'s [Balyasny Asset Management](https://www.bamfunds.com/)
-- *Alec Litowitz*'s [Magnetar Capital](https://www.magnetar.com/)
-- *Cliff Asness*'s [AQR Capital Management](https://www.aqr.com/)
-- *David Tepper*'s [Appaloosa](https://www.appaloosawm.com/)
-- *Frank Sands*'s [Sands Capital Management](https://www.sandscapital.com/)
-- *Murray Stahl*'s [Horizon Kinetics](https://horizonkinetics.com/)
-- *Edward Mule*'s [Silver Point Capital](https://www.silverpointcapital.com/)
-- *David Abrams*'s [Abrams](https://www.abramscapital.com/)
-- *Jeffrey Ubben*'s [ValueAct Capital](https://valueact.com/)
-- *Paul Singer*'s [Elliott Investment](https://www.elliottmgmt.com/)
-- *Nancy Kukacka*'s [Avalon Global Asset Management](https://avalon-global.com/)
-- *Daniel Loeb*'s [Third Point](https://www.thirdpoint.com/)
-- *William Huffman*'s [Nuveen](https://www.nuveen.com/)
-- *George Soros*'s [Soros Fund Management](https://sorosfundmgmt.com/)
-- *Bill Gates*'s [Gates Foundation Trust](https://www.gatesfoundation.org/about/financials/foundation-trust)
-- *Carl Icahn*'s [Icahn Enterprises](https://www.ielp.com/)
-- *Dev Kantesaria*'s [Valley Forge Capital Management](https://www.valleyforgecapital.com/)
-- *Lewis Sanders*'s [Sanders Capital](https://www.sanderscapital.com/)
-- *Brad Gerstner*'s [Altimeter Capital Management](https://www.altimeter.com/)
-- *Colin Higgins*'s [Summitry](https://summitry.com/)
-- *Andreas Halvorsen*'s [Viking Global Investors](https://vikingglobal.com/)
-- *Chris Davis*'s [Davis Advisors](https://davisfunds.com/)
-- *David Lane*'s [Geode Capital Management](https://www.geodecapital.com/)
-- *Paul Isaac*'s [Arbiter Partners](https://arbiterpartners.net/)
-- *Robert Robotti*'s [Robotti Value Investors](https://www.robotti.com/)
-- *Jim Cracchiolo*'s [Ameriprise Financial](https://www.ameriprise.com/)
-- *Li Lu*'s [Himalaya Capital Management](https://www.himcap.com/)
-- *Francis Chou*'s [Chou Associates](https://www.choufunds.com/)
-- *Sherwin Zuckerman*'s [Zuckerman Investment Group](https://zuckermaninvestmentgroup.com/)
-- *Anand Parekh*'s [Alyeska Investment Group](https://alyeskagroup.com/)
-- *Ken Fisher*'s [Fisher Asset Management](https://www.fisherinvestments.com/)
-- *David Katz*'s [Matrix Asset Advisors](https://matrixassetadvisors.com/)
-- *Lee Ainslie*'s [Maverick Capital](https://www.maverickcap.com/)
-- *Joel Greenblatt*'s [Gotham Funds](https://www.gothamfunds.com/)
-- *Barry Ritholtz*'s [Ritholtz Wealth Management](https://www.ritholtzwealth.com/)
-- *Robert Pitts*'s [Steadfast Capital Management](https://www.steadfast.com/)
-- *Jason Lieber*'s [MYDA Capital](https://mydacapital.com/)
-- *Michael Moriarty*'s [Teewinot Capital Advisers](https://teewinotfunds.com/)
-- *Snehal Amin*'s [The Windacre Partnership](http://www.windacre.com/)
-- *Gaurav Kapadia*'s [XN](https://www.xnlp.com/)
-- *Steve Mandel*'s [Lone Pine Capital](https://www.lonepinecapital.com/)
-- *Seymour Kaufman*'s [Crosslink Capital](https://www.crosslinkcapital.com/)
-- *John Overdeck*'s [Two Sigma](https://www.twosigma.com/)
-- *Nathaniel August*'s [Mangrove Partners](https://mangrovepartners.com/)
-- and many more... (see [`database/excluded_hedge_funds.csv`](/database/excluded_hedge_funds.csv) for the full list)
+* *Warren Buffett*'s [Berkshire Hathaway](https://www.berkshirehathaway.com/)
+* *Ken Griffin*'s [Citadel Advisors](https://www.citadel.com/)
+* *Ray Dalio*'s [Bridgewater Associates](https://www.bridgewater.com/)
+* *Michael Burry*'s [Scion Asset Management](https://www.scionasset.com/)
+* *Cathie Wood*'s [ARK Invest](https://www.ark-invest.com/)
+* *Bill Ackman*'s [Pershing Square](https://pershingsquareholdings.com/)
+* *Dmitry Balyasny*'s [Balyasny Asset Management](https://www.bamfunds.com/)
+* *Alec Litowitz*'s [Magnetar Capital](https://www.magnetar.com/)
+* *Cliff Asness*'s [AQR Capital Management](https://www.aqr.com/)
+* *David Tepper*'s [Appaloosa](https://www.appaloosawm.com/)
+* *Frank Sands*'s [Sands Capital Management](https://www.sandscapital.com/)
+* *Murray Stahl*'s [Horizon Kinetics](https://horizonkinetics.com/)
+* *Edward Mule*'s [Silver Point Capital](https://www.silverpointcapital.com/)
+* *David Abrams*'s [Abrams](https://www.abramscapital.com/)
+* *Jeffrey Ubben*'s [ValueAct Capital](https://valueact.com/)
+* *Paul Singer*'s [Elliott Investment](https://www.elliottmgmt.com/)
+* *Nancy Kukacka*'s [Avalon Global Asset Management](https://avalon-global.com/)
+* *Daniel Loeb*'s [Third Point](https://www.thirdpoint.com/)
+* *William Huffman*'s [Nuveen](https://www.nuveen.com/)
+* *George Soros*'s [Soros Fund Management](https://sorosfundmgmt.com/)
+* *Bill Gates*'s [Gates Foundation Trust](https://www.gatesfoundation.org/about/financials/foundation-trust)
+* *Carl Icahn*'s [Icahn Enterprises](https://www.ielp.com/)
+* *Dev Kantesaria*'s [Valley Forge Capital Management](https://www.valleyforgecapital.com/)
+* *Lewis Sanders*'s [Sanders Capital](https://www.sanderscapital.com/)
+* *Brad Gerstner*'s [Altimeter Capital Management](https://www.altimeter.com/)
+* *Colin Higgins*'s [Summitry](https://summitry.com/)
+* *Andreas Halvorsen*'s [Viking Global Investors](https://vikingglobal.com/)
+* *Chris Davis*'s [Davis Advisors](https://davisfunds.com/)
+* *David Lane*'s [Geode Capital Management](https://www.geodecapital.com/)
+* *Paul Isaac*'s [Arbiter Partners](https://arbiterpartners.net/)
+* *Robert Robotti*'s [Robotti Value Investors](https://www.robotti.com/)
+* *Jim Cracchiolo*'s [Ameriprise Financial](https://www.ameriprise.com/)
+* *Li Lu*'s [Himalaya Capital Management](https://www.himcap.com/)
+* *Francis Chou*'s [Chou Associates](https://www.choufunds.com/)
+* *Sherwin Zuckerman*'s [Zuckerman Investment Group](https://zuckermaninvestmentgroup.com/)
+* *Anand Parekh*'s [Alyeska Investment Group](https://alyeskagroup.com/)
+* *Ken Fisher*'s [Fisher Asset Management](https://www.fisherinvestments.com/)
+* *David Katz*'s [Matrix Asset Advisors](https://matrixassetadvisors.com/)
+* *Lee Ainslie*'s [Maverick Capital](https://www.maverickcap.com/)
+* *Joel Greenblatt*'s [Gotham Funds](https://www.gothamfunds.com/)
+* *Barry Ritholtz*'s [Ritholtz Wealth Management](https://www.ritholtzwealth.com/)
+* *Robert Pitts*'s [Steadfast Capital Management](https://www.steadfast.com/)
+* *Jason Lieber*'s [MYDA Capital](https://mydacapital.com/)
+* *Michael Moriarty*'s [Teewinot Capital Advisers](https://teewinotfunds.com/)
+* *Snehal Amin*'s [The Windacre Partnership](http://www.windacre.com/)
+* *Gaurav Kapadia*'s [XN](https://www.xnlp.com/)
+* *Steve Mandel*'s [Lone Pine Capital](https://www.lonepinecapital.com/)
+* *Seymour Kaufman*'s [Crosslink Capital](https://www.crosslinkcapital.com/)
+* *John Overdeck*'s [Two Sigma](https://www.twosigma.com/)
+* *Nathaniel August*'s [Mangrove Partners](https://mangrovepartners.com/)
+* and many more... (see [`database/excluded_hedge_funds.csv`](/database/excluded_hedge_funds.csv) for the full list)
 <!-- EXCLUDED_FUNDS_LIST_END -->
 
 > **💡 Note**: For convenience, key information for these funds, including their CIKs, is maintained in the `database/excluded_hedge_funds.csv` file.
@@ -312,9 +349,9 @@ Want to track additional funds? Simply edit `database/hedge_funds.csv` and add y
 >
 > **Columns for Custom Funds:**
 >
-> - **`Denomination`**: This is the exact legal name used by the fund in its filings. It is **essential** for accurately processing non-quarterly filings (13D/G, Form 4) as the scraper uses it to identify the fund's specific transactions within complex filing documents.
-> - **`CIKs`**: A comma-separated list of additional CIKs. This field is used to track filings from related entities or subsidiaries. Some investment firms have complex structures where different legal entities file separately (e.g., a management company and a holding company).
->   - *Example:* [Jeffrey Ubben](https://en.wikipedia.org/wiki/Jeffrey_W._Ubben)'s `ValueAct Holdings` (`CIK` = `0001418814`) also has filings under `ValueAct Capital Management` (`CIK` = `0001418812`). By adding `0001418812` to the `CIKs` column, the tool aggregates **non-quarterly filings** from both entities for a complete view.
+> * **`Denomination`**: This is the exact legal name used by the fund in its filings. It is **essential** for accurately processing non-quarterly filings (13D/G, Form 4) as the scraper uses it to identify the fund's specific transactions within complex filing documents.
+> * **`CIKs`**: A comma-separated list of additional CIKs. This field is used to track filings from related entities or subsidiaries. Some investment firms have complex structures where different legal entities file separately (e.g., a management company and a holding company).
+>   * *Example:* [Jeffrey Ubben](https://en.wikipedia.org/wiki/Jeffrey_W._Ubben)'s `ValueAct Holdings` (`CIK` = `0001418814`) also has filings under `ValueAct Capital Management` (`CIK` = `0001418812`). By adding `0001418812` to the `CIKs` column, the tool aggregates **non-quarterly filings** from both entities for a complete view.
 >
 > ```csv
 >"CIK","Fund","Manager","Denomination","CIKs"
@@ -339,17 +376,17 @@ You can easily add or change the AI models used for analysis by editing the `dat
 
 To add a new model, open `database/models.csv` and add a new row with the following columns:
 
-- **ID**: The specific model identifier as required by the provider's API.
-- **Description**: A brief, user-friendly description that will be displayed in the selection menu.
-- **Client**: The provider of the model. Must be one of `GitHub`, `Google`, `Groq`, `HuggingFace`, or `OpenRouter`.
+* **ID**: The specific model identifier as required by the provider's API.
+* **Description**: A brief, user-friendly description that will be displayed in the selection menu.
+* **Client**: The provider of the model. Must be one of `GitHub`, `Google`, `Groq`, `HuggingFace`, or `OpenRouter`.
 
 Here are the official model lists for each provider:
 
-- [GitHub Models](https://github.com/marketplace/models)
-- [Google Gemini Models](https://ai.google.dev/gemini-api/docs/models)
-- [Groq Models](https://console.groq.com/docs/models)
-- [HuggingFace Models](https://huggingface.co/models)
-- [OpenRouter Free Models](https://openrouter.ai/models?order=newest&max_price=0)
+* [GitHub Models](https://github.com/marketplace/models)
+* [Google Gemini Models](https://ai.google.dev/gemini-api/docs/models)
+* [Groq Models](https://console.groq.com/docs/models)
+* [HuggingFace Models](https://huggingface.co/models)
+* [OpenRouter Free Models](https://openrouter.ai/models?order=newest&max_price=0)
 
 ## ⚠️ Limitations & Considerations
 
@@ -374,10 +411,10 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 ### How It Works
 
-- **Scheduled Runs**: The workflow runs automatically to check for **new 13F, 13D/G, and Form 4 filings** from the funds you are tracking (`hedge_funds.csv`). It runs four times a day from Monday to Friday (at 01:30, 13:30, 17:30, and 21:30 UTC) and once on Saturday (at 04:00 UTC).
-- **Safe Branching Strategy**: Instead of committing directly to your main branch, the workflow pushes all new data to a dedicated branch named `automated/filings-fetch`.
-- **User-Controlled Merging**: This approach gives you full control. You can review the changes committed by the bot and then merge them into your main branch whenever you're ready. This prevents unexpected changes and allows you to manage updates at your own pace.
-- **Automated Alerts**: If the script encounters a non-quarterly filing where it cannot identify the fund owner based on your `hedge_funds.csv` configuration, it will automatically open a GitHub Issue in your repository, alerting you to a potential data mismatch that needs investigation.
+* **Scheduled Runs**: The workflow runs automatically to check for **new 13F, 13D/G, and Form 4 filings** from the funds you are tracking (`hedge_funds.csv`). It runs four times a day from Monday to Friday (at 01:30, 13:30, 17:30, and 21:30 UTC) and once on Saturday (at 04:00 UTC).
+* **Safe Branching Strategy**: Instead of committing directly to your main branch, the workflow pushes all new data to a dedicated branch named `automated/filings-fetch`.
+* **User-Controlled Merging**: This approach gives you full control. You can review the changes committed by the bot and then merge them into your main branch whenever you're ready. This prevents unexpected changes and allows you to manage updates at your own pace.
+* **Automated Alerts**: If the script encounters a non-quarterly filing where it cannot identify the fund owner based on your `hedge_funds.csv` configuration, it will automatically open a GitHub Issue in your repository, alerting you to a potential data mismatch that needs investigation.
 
 ### How to Enable It
 
@@ -401,8 +438,8 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 ### 💬 Get Help
 
-- **🆕 [Feature Requests](https://github.com/dokson/hedge-fund-tracker/issues/new?template=feature_request.md)**
-- **🐛 [Bug Reports](https://github.com/dokson/hedge-fund-tracker/issues/new?template=bug_report.md)**
+* **🆕 [Feature Requests](https://github.com/dokson/hedge-fund-tracker/issues/new?template=feature_request.md)**
+* **🐛 [Bug Reports](https://github.com/dokson/hedge-fund-tracker/issues/new?template=bug_report.md)**
 
 ### ✍🏻 Feedback
 
@@ -411,14 +448,14 @@ If you have any suggestions or ideas for new features, please feel free to [get 
 
 ## 📚 References
 
-- [SEC Developer Resources](https://www.sec.gov/about/developer-resources)
-- [SEC: Frequently Asked Questions About Form 13F](https://www.sec.gov/rules-regulations/staff-guidance/division-investment-management-frequently-asked-questions/frequently-asked-questions-about-form-13f)
-- [SEC: Guidance on Beneficial Ownership Reporting (Sections 13D/G)](https://www.sec.gov/rules-regulations/staff-guidance/compliance-disclosure-interpretations/exchange-act-sections-13d-13g-regulation-13d-g-beneficial-ownership-reporting)
-- [Wikipedia: Global Industry Classification Standard](https://en.wikipedia.org/wiki/Global_Industry_Classification_Standard)
-- [MSCI: Global Industry Classification Standard (GICS)](https://www.msci.com/indexes/index-resources/gics)
-- [S&P Global: GICS Structure & Methodology](https://www.spglobal.com/spdji/en/documents/methodologies/methodology-gics.pdf)
-- [CUSIP (Committee on Uniform Security Identification Procedures)](https://en.wikipedia.org/wiki/CUSIP)
-- [Modern Portfolio Theory (MPT)](https://en.wikipedia.org/wiki/Modern_portfolio_theory)
+* [SEC Developer Resources](https://www.sec.gov/about/developer-resources)
+* [SEC: Frequently Asked Questions About Form 13F](https://www.sec.gov/rules-regulations/staff-guidance/division-investment-management-frequently-asked-questions/frequently-asked-questions-about-form-13f)
+* [SEC: Guidance on Beneficial Ownership Reporting (Sections 13D/G)](https://www.sec.gov/rules-regulations/staff-guidance/compliance-disclosure-interpretations/exchange-act-sections-13d-13g-regulation-13d-g-beneficial-ownership-reporting)
+* [Wikipedia: Global Industry Classification Standard](https://en.wikipedia.org/wiki/Global_Industry_Classification_Standard)
+* [MSCI: Global Industry Classification Standard (GICS)](https://www.msci.com/indexes/index-resources/gics)
+* [S&P Global: GICS Structure & Methodology](https://www.spglobal.com/spdji/en/documents/methodologies/methodology-gics.pdf)
+* [CUSIP (Committee on Uniform Security Identification Procedures)](https://en.wikipedia.org/wiki/CUSIP)
+* [Modern Portfolio Theory (MPT)](https://en.wikipedia.org/wiki/Modern_portfolio_theory)
 
 ## 🙏🏼 Acknowledgments
 
