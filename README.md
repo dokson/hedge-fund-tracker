@@ -44,7 +44,7 @@ pipenv run python -m app.main
 | **🤖 Multi-Provider AI Analysis** | Leverages different AI models to identify promising stocks based on filings |
 | **🔀 Flexible Management** | Offers multiple analysis modes: all funds, a single fund and also custom CIKs |
 | **⚙️ Automated Data Update** | Includes a GitHub Actions workflow to automatically fetch and commit the latest SEC filings |
-| **🗃️ GICS Hierarchy** | Features an autonomous parser to build a full [GICS](https://www.msci.com/our-solutions/indexes/gics) classification database |
+| **🗃️ GICS Hierarchy** | Features an autonomous parser to build a full [GICS](https://www.msci.com/indexes/index-resources/gics) classification database |
 
 ## 📦 Installation
 
