@@ -7,9 +7,10 @@ import re
 
 DB_FOLDER = './database'
 HEDGE_FUNDS_FILE = 'hedge_funds.csv'
+GICS_HIERARCHY_FILE = 'GICS/hierarchy.csv'
+LATEST_SCHEDULE_FILINGS_FILE = 'non_quarterly.csv'
 MODELS_FILE = 'models.csv'
 STOCKS_FILE = 'stocks.csv'
-LATEST_SCHEDULE_FILINGS_FILE = 'non_quarterly.csv'
 
 
 def get_all_quarters() -> list[str]:
@@ -166,6 +167,23 @@ def load_non_quarterly_data(filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FI
         return df.sort_values(by=['Ticker', 'Filing_Date', 'Date'], ascending=False).drop_duplicates(subset='Ticker', keep='first')
     except Exception as e:
         print(f"❌ Error while reading schedule filings from '{filepath}': {e}")
+        return pd.DataFrame()
+
+
+def load_gics_hierarchy(filepath=f"./{DB_FOLDER}/{GICS_HIERARCHY_FILE}") -> pd.DataFrame:
+    """
+    Loads the full GICS hierarchy from the CSV file.
+
+    Args:
+        filepath (str, optional): The path to the GICS hierarchy CSV file.
+
+    Returns:
+        pd.DataFrame: A DataFrame with the full GICS hierarchy mapping.
+    """
+    try:
+        return pd.read_csv(filepath)
+    except Exception as e:
+        print(f"❌ Error while reading GICS hierarchy from '{filepath}': {e}")
         return pd.DataFrame()
 
 

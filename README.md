@@ -44,6 +44,7 @@ pipenv run python -m app.main
 | **🤖 Multi-Provider AI Analysis** | Leverages different AI models to identify promising stocks based on filings |
 | **🔀 Flexible Management** | Offers multiple analysis modes: all funds, a single fund and also custom CIKs |
 | **⚙️ Automated Data Update** | Includes a GitHub Actions workflow to automatically fetch and commit the latest SEC filings |
+| **🗃️ GICS Hierarchy** | Features an autonomous parser to build a full [GICS](https://www.msci.com/our-solutions/indexes/gics) classification database |
 
 ## 📦 Installation
 
@@ -135,6 +136,10 @@ This will open a separate menu for data management:
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### 🗃️ GICS Classification
+
+The project includes an **autonomous GICS (Global Industry Classification Standard) parser** (`database/gics/updater.py`). Originally developed by [MSCI](https://www.msci.com/) and [S&P](https://www.spglobal.com/), it scrapes Wikipedia to build a full hierarchy of 163 sub-industries. This provides the AI Analyst with granular industry context while remaining independent of third-party libraries.
+
 ### API Configuration
 
 The tool can utilize API keys for enhanced functionality, but all are optional:
@@ -170,8 +175,10 @@ hedge-fund-tracker/
 │   │   ├── 📊 fund_1.csv           # Individual fund quarterly report
 │   │   ├── 📊 fund_2.csv
 │   │   └── 📊 fund_n.csv
-│   ├── 📁 2025Q2/
 │   ├── 📁 YYYYQN/
+│   ├── 📁 GICS/
+│   │   ├── 🗃️ hierarchy.csv        # Full GICS hierarchy
+│   │   └── ▶️ updater.py           # GICS updater script
 │   ├── 📝 hedge_funds.csv          # Curated hedge funds list -> EDIT THIS to add or remove funds to track
 │   ├── 📝 models.csv               # LLMs list to use for AI Financial Analyst -> EDIT THIS to add or remove AI models
 │   ├── 📊 non_quarterly.csv        # Stores latest 13D/G and Form 4 filings
@@ -407,7 +414,9 @@ If you have any suggestions or ideas for new features, please feel free to [get 
 - [SEC Developer Resources](https://www.sec.gov/about/developer-resources)
 - [SEC: Frequently Asked Questions About Form 13F](https://www.sec.gov/rules-regulations/staff-guidance/division-investment-management-frequently-asked-questions/frequently-asked-questions-about-form-13f)
 - [SEC: Guidance on Beneficial Ownership Reporting (Sections 13D/G)](https://www.sec.gov/rules-regulations/staff-guidance/compliance-disclosure-interpretations/exchange-act-sections-13d-13g-regulation-13d-g-beneficial-ownership-reporting)
-- [MSCI: Global Industry Classification Standard (GICS)](https://www.msci.com/our-solutions/indexes/gics)
+- [Wikipedia: Global Industry Classification Standard](https://en.wikipedia.org/wiki/Global_Industry_Classification_Standard)
+- [MSCI: Global Industry Classification Standard (GICS)](https://www.msci.com/indexes/index-resources/gics)
+- [S&P Global: GICS Structure & Methodology](https://www.spglobal.com/spdji/en/documents/methodologies/methodology-gics.pdf)
 - [CUSIP (Committee on Uniform Security Identification Procedures)](https://en.wikipedia.org/wiki/CUSIP)
 - [Modern Portfolio Theory (MPT)](https://en.wikipedia.org/wiki/Modern_portfolio_theory)
 

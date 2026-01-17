@@ -1,6 +1,7 @@
 from app.tickers.libraries.base_library import FinanceLibrary
 from datetime import date, timedelta
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_exponential
+import pandas as pd
 import re
 import requests
 import yfinance as yf
@@ -180,4 +181,48 @@ class YFinance(FinanceLibrary):
             return stocks_info
         except Exception as e:
             print(f"❌ ERROR: Failed to get stock info using YFinance: {e}")
+            raise e
+
+
+    @staticmethod
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=8),
+        before_sleep=lambda retry_state: print(f"⏳ Retrying get_sector_tickers for {retry_state.args[0]} (attempt #{retry_state.attempt_number})...")
+    )
+    def get_sector_tickers(sector_key: str, limit: int = None) -> list[dict]:
+        """
+        Gets a list of tickers for companies in a specific sector.
+
+        Args:
+            sector_key (str): The sector key (e.g., 'technology', 'healthcare', 'financial-services').
+            limit (int, optional): Maximum number of tickers to return. If None, returns all available.
+
+        Returns:
+            list[dict]: A list of dictionaries with ticker info.
+                       Example: [{'symbol': 'AAPL', 'name': 'Apple Inc.', 'weight': 0.15}, ...]
+        """
+        try:
+            sector = yf.Sector(sector_key)
+            top_companies = sector.top_companies
+            
+            if top_companies is None or top_companies.empty:
+                print(f"🚨 No companies found for sector '{sector_key}'")
+                return []
+            
+            companies = []
+            for _, row in top_companies.iterrows():
+                company_info = {
+                    'symbol': row.get('symbol', ''),
+                    'name': row.get('name', ''),
+                    'weight': row.get('weight', 0.0) if 'weight' in row else None
+                }
+                companies.append(company_info)
+                
+                if limit and len(companies) >= limit:
+                    break
+            
+            return companies
+        except Exception as e:
+            print(f"❌ ERROR: Failed to get tickers for sector '{sector_key}': {e}")
             raise e
