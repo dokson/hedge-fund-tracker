@@ -22,6 +22,7 @@ def run_view_nq_filings():
     latest_quarter_data_per_fund.set_index(['Fund', 'Ticker'], inplace=True)
 
     nq_filings_df = non_quarterly_filings_df.join(latest_quarter_data_per_fund, how='inner', rsuffix='_quarter').reset_index()
+    nq_filings_df = nq_filings_df[nq_filings_df['Delta_Shares'] != 0]
     latest_n = 30
 
     # Fetch current prices and industry info for the latest N tickers
