@@ -17,8 +17,10 @@ A comprehensive **Python tool** for tracking **hedge fund portfolios** through *
 
 **Keywords**: SEC filings tracker, 13F analysis, hedge fund portfolio, institutional investors, stock research, investment intelligence, CUSIP converter, financial data scraper, AI stock analysis
 
+## ⫶☰ Table of Contents
 <!--ts-->
 * [📊 Hedge Fund Tracker](#-hedge-fund-tracker)
+  * [⫶☰ Table of Contents](#-table-of-contents)
   * [🚀 Quick Start](#-quick-start)
   * [✨ Key Features](#-key-features)
   * [📦 Installation](#-installation)
@@ -43,7 +45,7 @@ A comprehensive **Python tool** for tracking **hedge fund portfolios** through *
     * [How to Enable It](#how-to-enable-it)
   * [🗃️ Technical Stack](#️-technical-stack)
   * [🤝🏼 Contributing &amp; Support](#-contributing--support)
-    * [💬 Get Help](#-get-help)
+    * [💬 Loved it? Help it grow](#-loved-it-help-it-grow)
     * [✍🏻 Feedback](#-feedback)
   * [📚 References](#-references)
   * [🙏🏼 Acknowledgments](#-acknowledgments)
@@ -436,10 +438,12 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 ## 🤝🏼 Contributing & Support
 
-### 💬 Get Help
+### 💬 Loved it? Help it grow
 
-* **🆕 [Feature Requests](https://github.com/dokson/hedge-fund-tracker/issues/new?template=feature_request.md)**
 * **🐛 [Bug Reports](https://github.com/dokson/hedge-fund-tracker/issues/new?template=bug_report.md)**
+* **🆕 [Feature Requests](https://github.com/dokson/hedge-fund-tracker/issues/new?template=feature_request.md)**
+* **🔀 [Fork & PR](https://github.com/dokson/hedge-fund-tracker/fork)**
+* **🔁 [Share on X](https://x.com/intent/post?text=Have%20a%20look%20at%20https%3A%2F%2Fgithub.com%2Fdokson%2Fhedge-fund-tracker%2F%20by%20%40alecolace) or [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https://github.com/dokson/hedge-fund-tracker/)**
 
 ### ✍🏻 Feedback
 
