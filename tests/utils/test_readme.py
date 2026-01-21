@@ -24,9 +24,9 @@ class TestReadme(unittest.TestCase):
 
         # 3. Assert: Check if the output is the expected markdown string
         expected_output = (
-            "- *Warren Buffett*'s [Berkshire Hathaway](url1)\n"
-            "- *Ken Griffin*'s [Citadel Advisors](url2)\n"
-            "- [BlackRock](url3)"
+            "* *Warren Buffett*'s [Berkshire Hathaway](url1)\n"
+            "* *Ken Griffin*'s [Citadel Advisors](url2)\n"
+            "* [BlackRock](url3)"
         )
         self.assertEqual(result, expected_output)
         mock_read_csv.assert_called_once_with(EXCLUDED_HEDGE_FUNDS_FILE, keep_default_na=False)
