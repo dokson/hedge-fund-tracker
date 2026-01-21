@@ -20,13 +20,13 @@ def generate_excluded_funds_list() -> str | None:
             url = row['URL']
             
             if manager and manager != fund:
-                markdown_list.append(f"- *{manager}*'s [{fund}]({url})")
+                markdown_list.append(f"* *{manager}*'s [{fund}]({url})")
             else:
-                markdown_list.append(f"- [{fund}]({url})")
+                markdown_list.append(f"* [{fund}]({url})")
 
         if len(df) > 50:
             file_path = EXCLUDED_HEDGE_FUNDS_FILE.replace('./', '')
-            markdown_list.append(f"- and many more... (see [`{file_path}`](/{file_path}) for the full list)")
+            markdown_list.append(f"* and many more... (see [`{file_path}`](/{file_path}) for the full list)")
 
         return "\n".join(markdown_list)
     except FileNotFoundError:
