@@ -5,7 +5,7 @@ import pandas as pd
 import unittest
 
 
-@patch("app.analysis.quarterly_report.resolve_ticker")
+@patch("app.stocks.ticker_resolver.TickerResolver.resolve_ticker")
 class TestReport(unittest.TestCase):
 
     def test_generate_comparison(self, mock_resolve_ticker):

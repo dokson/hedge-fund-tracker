@@ -1,6 +1,6 @@
 from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
-from app.tickers.libraries import YFinance
-from app.tickers.resolver import resolve_ticker
+from app.stocks.price_fetcher import PriceFetcher
+from app.stocks.ticker_resolver import TickerResolver
 from app.utils.database import load_non_quarterly_data
 from app.utils.github import open_issue
 from app.utils.pd import coalesce, format_value_series, get_numeric_series
@@ -52,7 +52,7 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_
         return None
 
     non_quarterly_filings_df = pd.concat(filing_list, ignore_index=True)
-    non_quarterly_filings_df = resolve_ticker(non_quarterly_filings_df)
+    non_quarterly_filings_df = TickerResolver.resolve_ticker(non_quarterly_filings_df)
 
     # Keep only the most recent accepted entry for each Ticker-Date combination because there can be amendments on the same Filing Date
     non_quarterly_filings_df = non_quarterly_filings_df.sort_values(by=['Ticker', 'Date', 'Accepted_On'], ascending=False).drop_duplicates(subset=['Ticker', 'Date'], keep='first')
@@ -64,7 +64,7 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_
     for index, row in non_quarterly_filings_df.iterrows():
         ticker = row['Ticker']
         date = row['Date'].date()
-        price = YFinance.get_avg_price(ticker, date)
+        price = PriceFetcher.get_avg_price(ticker, date)
         if price:
             non_quarterly_filings_df.at[index, 'Avg_Price'] = price
             non_quarterly_filings_df.at[index, 'Value'] = price * row['Shares']

@@ -75,7 +75,7 @@ def run_all_funds_report():
     print("This will generate last vs previous quarter comparisons.")
 
     # Use 1 worker on GitHub Actions to stay within rate limits and have cleaner logs
-    max_workers = 1 if os.getenv('GITHUB_ACTIONS') == 'true' else round(total_funds / 10)
+    max_workers = 1 if os.getenv('GITHUB_ACTIONS') == 'true' else 10
     if max_workers == 1:
         print("Running sequentially (GitHub Actions detected).")
 

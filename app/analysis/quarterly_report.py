@@ -1,4 +1,4 @@
-from app.tickers.resolver import resolve_ticker
+from app.stocks.ticker_resolver import TickerResolver
 from app.utils.pd import coalesce, format_value_series
 from app.utils.strings import format_percentage, format_value
 import pandas as pd
@@ -45,7 +45,7 @@ def generate_comparison(df_recent, df_previous):
 
     total_delta = total_delta_value / previous_portfolio_value * 100 if previous_portfolio_value != 0 else total_delta_value / total_portfolio_value * 100
 
-    df_comparison = resolve_ticker(df_comparison)
+    df_comparison = TickerResolver.resolve_ticker(df_comparison)
 
     # Order results by Delta_Value descending
     df_comparison = df_comparison.sort_values(by=['Delta_Value', 'Value'], ascending=[False, False])

@@ -1,5 +1,5 @@
 
-from app.tickers.libraries.base_library import FinanceLibrary
+from app.stocks.libraries.base_library import FinanceLibrary
 from app.utils.github import open_issue
 from app.utils.strings import format_string
 import financedatabase as fd

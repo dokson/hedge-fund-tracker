@@ -1,4 +1,4 @@
-from app.tickers.libraries.base_library import FinanceLibrary
+from app.stocks.libraries.base_library import FinanceLibrary
 from datetime import date, timedelta
 from tenacity import retry, stop_after_attempt, wait_exponential
 import pandas as pd

@@ -1,11 +1,11 @@
-from app.tickers.libraries.finance_database import FinanceDatabase
+from app.stocks.libraries.finance_database import FinanceDatabase
 import unittest
 from unittest.mock import patch
 
 
 class TestFinanceDatabase(unittest.TestCase):
 
-    @patch('app.tickers.libraries.finance_database.open_issue')
+    @patch('app.stocks.libraries.finance_database.open_issue')
     def test_get_ticker(self, mock_open_issue):
         """
         Tests the get_ticker method for known CUSIPs.
@@ -19,7 +19,7 @@ class TestFinanceDatabase(unittest.TestCase):
         self.assertIsNone(invalid_ticker)
 
 
-    @patch('app.tickers.libraries.finance_database.open_issue')
+    @patch('app.stocks.libraries.finance_database.open_issue')
     def test_get_company(self, mock_open_issue):
         """
         Tests the get_company method for known CUSIPs.
@@ -33,7 +33,7 @@ class TestFinanceDatabase(unittest.TestCase):
         self.assertIsNone(invalid_company)
 
 
-    @patch('app.tickers.libraries.finance_database.open_issue')
+    @patch('app.stocks.libraries.finance_database.open_issue')
     def test_get_cusip(self, mock_open_issue):
         """
         Tests the get_cusip method both for valid and invalid tickers.

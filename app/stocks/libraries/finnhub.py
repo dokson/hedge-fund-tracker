@@ -1,4 +1,4 @@
-from app.tickers.libraries.base_library import FinanceLibrary
+from app.stocks.libraries.base_library import FinanceLibrary
 from app.utils.strings import format_string
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception

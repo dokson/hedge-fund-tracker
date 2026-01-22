@@ -1,4 +1,4 @@
-from app.tickers.libraries.yfinance import YFinance
+from app.stocks.libraries.yfinance import YFinance
 from datetime import date
 import unittest
 from unittest.mock import MagicMock, patch

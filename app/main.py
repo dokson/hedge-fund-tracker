@@ -1,6 +1,7 @@
 from app.ai.agent import AnalystAgent
 from app.analysis.stocks import aggregate_quarter_by_fund, fund_analysis, get_quarter_data, quarter_analysis, stock_analysis
-from app.tickers.libraries.yfinance import YFinance
+from app.stocks.libraries.yfinance import YFinance
+from app.stocks.price_fetcher import PriceFetcher
 from app.utils.console import horizontal_rule, print_centered, print_dataframe, print_fund, select_ai_model, select_fund, select_quarter
 from app.utils.database import count_funds_in_quarter, get_all_quarters, get_last_quarter, get_most_recent_quarter, load_non_quarterly_data
 from app.utils.strings import format_percentage, format_value, get_percentage_formatter, get_price_formatter, get_signed_perc_formatter, get_string_formatter, get_value_formatter
@@ -32,7 +33,7 @@ def run_view_nq_filings():
 
     # Ensure numeric types and calculate the percentage change
     subset_df['Avg_Price'] = pd.to_numeric(subset_df['Avg_Price'], errors='coerce')
-    subset_df['Current_Price'] = subset_df['Ticker'].map(lambda t: stock_info.get(t, {}).get('price'))
+    subset_df['Current_Price'] = subset_df['Ticker'].map(lambda t: stock_info.get(t, {}).get('price') or PriceFetcher.get_current_price(t))
     subset_df['Sector'] = subset_df['Ticker'].map(lambda t: stock_info.get(t, {}).get('sector'))
     subset_df['Price_Var%'] = ((subset_df['Current_Price'] - subset_df['Avg_Price']) / subset_df['Avg_Price']) * 100
     

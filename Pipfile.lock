@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "44723b6b410177e25d31d615048331f649fa51e689e8a9cd1d69422cc771a72b"
+            "sha256": "78df415d3c4467291d17394a4f5bbbb917bae8fb5a4714d3e4e10a74e7d0bd4c"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -1979,6 +1979,14 @@
             "markers": "python_version >= '3.11'",
             "version": "==1.16.3"
         },
+        "setuptools": {
+            "hashes": [
+                "sha256:bf2e513eb8144c3298a3bd28ab1a5edb739131ec5c22e045ff93cd7f5319703a",
+                "sha256:fc30c51cbcb8199a219c12cc9c281b5925a4978d212f84229c909636d9f6984e"
+            ],
+            "markers": "python_version >= '3.9'",
+            "version": "==80.10.1"
+        },
         "six": {
             "hashes": [
                 "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
@@ -2036,6 +2044,14 @@
             "markers": "python_version >= '3.7'",
             "version": "==4.67.1"
         },
+        "tradingview-datafeed": {
+            "hashes": [
+                "sha256:2d008dbccc2e98778c7f9825046243873e37e933be7c3f061db66efc0dba83d7",
+                "sha256:875b8e537d7846f910a57eda754fa1192b94b6e75d0f7676ff34f84cbe2bfc8b"
+            ],
+            "index": "pypi",
+            "version": "==2.1.1"
+        },
         "typing-extensions": {
             "hashes": [
                 "sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466",
@@ -2054,11 +2070,11 @@
         },
         "tzdata": {
             "hashes": [
-                "sha256:1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8",
-                "sha256:b60a638fcc0daffadf82fe0f57e53d06bdec2f36c4df66280ae79bce6bd6f2b9"
+                "sha256:06a47e5700f3081aab02b2e513160914ff0694bce9947d6b76ebd6bf57cfc5d1",
+                "sha256:de39c2ca5dc7b0344f2eba86f49d614019d29f060fc4ebc8a417896a620b56a7"
             ],
             "markers": "python_version >= '2'",
-            "version": "==2025.2"
+            "version": "==2025.3"
         },
         "urllib3": {
             "hashes": [
@@ -2067,6 +2083,14 @@
             ],
             "markers": "python_version >= '3.9'",
             "version": "==2.6.3"
+        },
+        "websocket-client": {
+            "hashes": [
+                "sha256:9e813624b6eb619999a97dc7958469217c3176312b3a16a4bd1bc7e08a46ec98",
+                "sha256:af248a825037ef591efbf6ed20cc5faa03d3b47b9e5a2230a529eeee1c1fc3ef"
+            ],
+            "markers": "python_version >= '3.9'",
+            "version": "==1.9.0"
         },
         "websockets": {
             "hashes": [

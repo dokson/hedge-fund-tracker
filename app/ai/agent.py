@@ -3,7 +3,7 @@ from app.ai.promise_score_validator import PromiseScoreValidator
 from app.ai.prompts import promise_score_weights_prompt, quantivative_scores_prompt, stock_due_diligence_prompt
 from app.ai.response_parser import ResponseParser
 from app.analysis.stocks import quarter_analysis, stock_analysis
-from app.tickers.libraries.yfinance import YFinance
+from app.stocks.price_fetcher import PriceFetcher
 from app.utils.strings import get_quarter_date
 from tenacity import retry, stop_after_attempt, retry_if_exception_type, RetryError, wait_fixed
 from toon import encode
@@ -180,7 +180,7 @@ class AnalystAgent:
             print(f"❌ No data found for ticker {ticker} in quarter {self.quarter}.")
             return {}
 
-        current_price = YFinance.get_current_price(ticker)
+        current_price = PriceFetcher.get_current_price(ticker)
         if current_price is None:
             print(f"❌ Could not fetch current price for {ticker}. Aborting due diligence.")
             return {}

@@ -163,8 +163,8 @@ def load_non_quarterly_data(filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FI
     """
     try:
         df = pd.read_csv(filepath, dtype={'Fund': str, 'CUSIP': str}, keep_default_na=False)
-        # Keep only the most recent entry for each Ticker
-        return df.sort_values(by=['Ticker', 'Filing_Date', 'Date'], ascending=False).drop_duplicates(subset='Ticker', keep='first')
+        # Keep only the most recent entry for each Ticker for each Fund
+        return df.sort_values(by=['Date', 'Filing_Date'], ascending=False).drop_duplicates(subset=['Fund', 'Ticker'], keep='first')
     except Exception as e:
         print(f"❌ Error while reading schedule filings from '{filepath}': {e}")
         return pd.DataFrame()

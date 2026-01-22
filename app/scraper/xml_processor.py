@@ -1,4 +1,4 @@
-from app.tickers.resolver import assign_cusip
+from app.stocks.ticker_resolver import TickerResolver
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 import pandas as pd
 import warnings
@@ -198,4 +198,4 @@ def xml_to_dataframe_4(xml_content):
     df['Owner'] = df['Owner'].str.upper()
     df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d', errors='coerce')
 
-    return assign_cusip(df)
+    return TickerResolver.assign_cusip(df)
