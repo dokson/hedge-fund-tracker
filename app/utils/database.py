@@ -116,6 +116,26 @@ def get_all_quarter_files(quarter: str) -> list[str]:
     ]
 
 
+def load_fund_data(fund: str, quarter: str) -> pd.DataFrame:
+    """
+    Loads raw 13F data for a specific fund and quarter.
+
+    Args:
+        fund (str): The name of the fund.
+        quarter (str): The quarter in 'YYYYQN' format.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the fund's holdings for that quarter, or an empty DataFrame if not found.
+    """
+    fund_filename = f"{fund.replace(' ', '_')}.csv"
+    filepath = Path(DB_FOLDER) / quarter / fund_filename
+    if filepath.exists():
+        df = pd.read_csv(filepath)
+        df['Fund'] = fund
+        return df[df['CUSIP'] != 'Total']
+    return pd.DataFrame()
+
+
 def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}") -> list:
     """
     Loads hedge funds from file (hedge_funds.csv)

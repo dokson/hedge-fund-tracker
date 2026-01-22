@@ -1,8 +1,22 @@
 from app.utils.database import get_all_quarters, load_hedge_funds, load_models
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from tabulate import tabulate
 from typing import Dict
 import math
+import os
 import shutil
+import sys
+
+
+@contextmanager
+def silence_output():
+    """
+    Context manager to silence stdout and stderr.
+    Useful for suppressing verbose output from third-party libraries.
+    """
+    with open(os.devnull, 'w') as devnull:
+        with redirect_stderr(devnull), redirect_stdout(devnull):
+            yield
 
 
 def get_terminal_width(fallback=120):

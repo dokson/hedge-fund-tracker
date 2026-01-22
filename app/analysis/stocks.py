@@ -1,5 +1,5 @@
 from app.analysis.non_quarterly import update_quarter_with_nq_filings
-from app.utils.database import get_last_quarter, get_last_quarter_for_fund, load_quarterly_data, load_stocks
+from app.utils.database import get_last_quarter, get_last_quarter_for_fund, load_fund_data, load_non_quarterly_data, load_quarterly_data, load_stocks
 from app.utils.pd import get_numeric_series, get_percentage_number_series
 from app.utils.strings import format_percentage
 import numpy as np
@@ -56,8 +56,8 @@ def get_quarter_data(quarter=get_last_quarter()) -> pd.DataFrame:
     Loads and prepares quarterly data for analysis.
 
     - Loads raw quarterly data from CSV files.
-    - Converts string-based numeric columns ('Value', 'Delta_Value', 'Portfolio%') to numeric types.
-    - If the specified quarter is the most recent one, it integrates the latest non-quarterly filings (13D/G, Form 4) to provide an up-to-date view of holdings.
+    - If the specified quarter is the most recent one, it integrates the latest non-quarterly filings (13D/G, Form 4).
+    - If a fund has not yet filed for the current quarter but has non-quarterly data, it pulls its most recent previous 13F as a baseline.
 
     Args:
         quarter (str, optional): The quarter to load, in 'YYYYQN' format. Defaults to the last available quarter.
@@ -67,13 +67,27 @@ def get_quarter_data(quarter=get_last_quarter()) -> pd.DataFrame:
     """
     df_quarter = load_quarterly_data(quarter)
 
+    funds_to_update = [fund for fund in df_quarter['Fund'].unique() if get_last_quarter_for_fund(fund) == quarter]
+
+    # Include non quarterly data if it's the most recent quarter
+    if quarter == get_last_quarter():
+        nq_df = load_non_quarterly_data()
+        if not nq_df.empty:
+            for fund in nq_df['Fund'].unique().tolist():
+                if fund not in funds_to_update:
+                    # Fund has NQ data but no 13F for this quarter.
+                    # We pull its last 13F to serve as a baseline for comparisons.
+                    fund_last_quarter = get_last_quarter_for_fund(fund)
+                    if fund_last_quarter and fund_last_quarter != quarter:
+                        fund_base_df = load_fund_data(fund, fund_last_quarter)
+                        if not fund_base_df.empty:
+                            df_quarter = pd.concat([df_quarter, fund_base_df], ignore_index=True)
+                    funds_to_update.append(fund)
+
+    # Process numeric columns (handles both original and appended baseline data)
     df_quarter['Delta_Value_Num'] = get_numeric_series(df_quarter['Delta_Value'])
     df_quarter['Value_Num'] = get_numeric_series(df_quarter['Value'])
     df_quarter['Portfolio_Pct'] = get_percentage_number_series(df_quarter['Portfolio%'])
-
-    # Identify if there are funds in the current DataFrame at their most recent filing quarter.
-    # The update with non-quarterly data should only apply to them.
-    funds_to_update = [fund for fund in df_quarter['Fund'].unique() if get_last_quarter_for_fund(fund) == quarter]
 
     if funds_to_update:
         df_quarter = update_quarter_with_nq_filings(df_quarter, funds_to_update)

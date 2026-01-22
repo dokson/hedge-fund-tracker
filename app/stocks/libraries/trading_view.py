@@ -1,9 +1,12 @@
 from app.stocks.libraries.base_library import FinanceLibrary
+from app.utils.console import silence_output
 from datetime import date
 from tvDatafeed import TvDatafeed, Interval as TvInterval
+import logging
 import pandas as pd
 
-TRADINGVIEW_EXCHANGES = ['NASDAQ', 'NYSE', 'AMEX', 'ARCA', 'BATS', 'OTC']
+# Silence tvDatafeed related loggers if any
+logging.getLogger('tvDatafeed').setLevel(logging.CRITICAL)
 
 
 class TradingView(FinanceLibrary):
@@ -11,6 +14,9 @@ class TradingView(FinanceLibrary):
     Client for searching stock information using the tvDatafeed library.
     Acts as a fallback or alternative to YFinance.
     """
+    EXCHANGES = ['NASDAQ', 'NYSE', 'AMEX', 'ARCA', 'BATS', 'OTC', 'TSX', 'TSXV']
+
+
     @staticmethod
     def get_company(cusip: str, **kwargs) -> str | None:
         return None
@@ -29,14 +35,13 @@ class TradingView(FinanceLibrary):
         tv = kwargs.get('tv_session') or TvDatafeed()
         
         try:
-            for exchange in TRADINGVIEW_EXCHANGES:
+            for exchange in TradingView.EXCHANGES:
                 try:
-                    hist = tv.get_hist(symbol=ticker, exchange=exchange, interval=TvInterval.in_daily, n_bars=2)
+                    with silence_output():
+                        hist = tv.get_hist(symbol=ticker, exchange=exchange, interval=TvInterval.in_daily, n_bars=2)
                     if hist is not None and not hist.empty:
                         return float(hist['close'].iloc[-1])
-                except Exception as e:
-                    # If we have a connection error and were using an injected session, 
-                    # we might want to flag it, but for now we just continue or fail.
+                except Exception:
                     continue
             
             return None
@@ -56,14 +61,15 @@ class TradingView(FinanceLibrary):
         
         try:
             df = None
-            for exchange in TRADINGVIEW_EXCHANGES:
+            for exchange in TradingView.EXCHANGES:
                 try:
-                    # Fetching 100 daily bars to cover the last 3 months
-                    hist = tv.get_hist(symbol=ticker, exchange=exchange, interval=TvInterval.in_daily, n_bars=100)
+                    # Fetching 120 daily bars to cover the last quarter data
+                    with silence_output():
+                        hist = tv.get_hist(symbol=ticker, exchange=exchange, interval=TvInterval.in_daily, n_bars=120)
                     if hist is not None and not hist.empty:
                         df = hist
                         break
-                except Exception as e:
+                except Exception:
                     continue
             
             if df is None:

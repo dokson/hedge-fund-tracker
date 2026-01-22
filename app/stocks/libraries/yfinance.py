@@ -1,16 +1,23 @@
 from app.stocks.libraries.base_library import FinanceLibrary
+from app.utils.console import silence_output
 from datetime import date, timedelta
 from tenacity import retry, stop_after_attempt, wait_exponential
+import logging
 import pandas as pd
 import re
 import requests
 import yfinance as yf
+
+# Silence yfinance logger
+logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
 
 class YFinance(FinanceLibrary):
     """
     Client for searching stock information using the yfinance library, implementing the FinanceLibrary interface.
     """
+    FALLBACK_SUFFIXES = [".TO", ".V"]
+
     @staticmethod
     def get_company(cusip: str, **kwargs) -> str | None:
         """
@@ -28,7 +35,8 @@ class YFinance(FinanceLibrary):
             ticker = YFinance.get_ticker(cusip)
 
         try:
-            stock_info = yf.Ticker(ticker).info
+            with silence_output():
+                stock_info = yf.Ticker(ticker).info
             company_name = stock_info.get('longName') or stock_info.get('shortName', '')
             if company_name:
                 return re.sub(r'[.,]', '', company_name)
@@ -67,7 +75,7 @@ class YFinance(FinanceLibrary):
 
     @staticmethod
     @retry(
-        stop=stop_after_attempt(3),
+        stop=stop_after_attempt(2),
         wait=wait_exponential(multiplier=1, min=2, max=8),
         before_sleep=lambda retry_state: print(f"⏳ Retrying get_avg_price for {retry_state.args[0]} (attempt #{retry_state.attempt_number})...")
     )
@@ -86,13 +94,26 @@ class YFinance(FinanceLibrary):
         """
         try:
             # 'end' parameter is exclusive: To get a single day, we need the next day as the end.
-            price_data = yf.download(tickers=ticker, start=date, end=date+timedelta(days=1), auto_adjust=False, progress=False)
+            with silence_output():
+                price_data = yf.download(tickers=ticker, start=date, end=date+timedelta(days=1), auto_adjust=False, progress=False)
             if not price_data.empty:
                 price = round((price_data['High'].iloc[0].item() + price_data['Low'].iloc[0].item()) / 2, 2)
                 return price
-            else:
-                print(f"🚨 Using latest available price for {ticker} (requested date {date} not available)")
-                return YFinance.get_current_price(ticker)
+            
+            # Fallback for international tickers (e.g., TSX, TSXV)
+            if "." not in ticker:
+                for suffix in YFinance.FALLBACK_SUFFIXES:
+                    try:
+                        print(f"⏳ YFinance: Trying fallback {ticker + suffix} for {ticker}...")
+                        with silence_output():
+                            price = YFinance.get_avg_price(ticker + suffix, date)
+                        if price is not None:
+                            return price
+                    except:
+                        continue
+
+            print(f"🚨 Using latest available price for {ticker} (requested date {date} not available)")
+            return YFinance.get_current_price(ticker)
         except Exception as e:
             print(f"❌ ERROR: Failed to get price for Ticker {ticker} on {date} using YFinance: {e}")
             raise e
@@ -100,7 +121,7 @@ class YFinance(FinanceLibrary):
 
     @staticmethod
     @retry(
-        stop=stop_after_attempt(3),
+        stop=stop_after_attempt(2),
         wait=wait_exponential(multiplier=1, min=2, max=8),
         before_sleep=lambda retry_state: print(f"⏳ Retrying get_current_price for {retry_state.args[0]} (attempt #{retry_state.attempt_number})...")
     )
@@ -115,8 +136,22 @@ class YFinance(FinanceLibrary):
             float | None: The current price if found, otherwise None.
         """
         try:
-            stock = yf.Ticker(ticker)
-            price = stock.info.get('currentPrice')
+            with silence_output():
+                stock = yf.Ticker(ticker)
+                price = stock.info.get('currentPrice')
+            
+            # Fallback for international tickers (e.g., TSX, TSXV)
+            if price is None and "." not in ticker:
+                for suffix in YFinance.FALLBACK_SUFFIXES:
+                    try:
+                        print(f"⏳ YFinance: Trying current price fallback {ticker + suffix} for {ticker}...")
+                        with silence_output():
+                            price = yf.Ticker(ticker + suffix).info.get('currentPrice')
+                        if price is not None:
+                            break
+                    except:
+                        continue
+
             return float(price) if price is not None else None
         except Exception as e:
             print(f"❌ ERROR: Failed to get current price for Ticker {ticker} using YFinance: {e}")
@@ -146,7 +181,8 @@ class YFinance(FinanceLibrary):
         stocks_info = {}
         
         try:
-            data = yf.download(tickers=tickers, period='1d', interval='1m', group_by='ticker', auto_adjust=False, progress=False)
+            with silence_output():
+                data = yf.download(tickers=tickers, period='1d', interval='1m', group_by='ticker', auto_adjust=False, progress=False)
             
             for ticker in tickers:
                 try:
@@ -164,14 +200,15 @@ class YFinance(FinanceLibrary):
             # Get sector info for all tickers (both successful and failed price fetches)
             for ticker in tickers:
                 try:
-                    stock = yf.Ticker(ticker)
-                    sector = stock.info.get('sector') or stock.info.get('industry')
+                    with silence_output():
+                        stock = yf.Ticker(ticker)
+                        sector = stock.info.get('sector') or stock.info.get('industry')
                     
                     if ticker in stocks_info:
                         stocks_info[ticker]['sector'] = sector
                     else:
                         # Price fallback
-                        print(f"⏳ Getting info for {ticker} using YFinance...")
+                        print(f"⏳ Getting current price for {ticker}...")
                         price = YFinance.get_current_price(ticker)
                         if price:
                             stocks_info[ticker] = {'price': price, 'sector': sector}
@@ -203,8 +240,9 @@ class YFinance(FinanceLibrary):
                        Example: [{'symbol': 'AAPL', 'name': 'Apple Inc.', 'weight': 0.15}, ...]
         """
         try:
-            sector = yf.Sector(sector_key)
-            top_companies = sector.top_companies
+            with silence_output():
+                sector = yf.Sector(sector_key)
+                top_companies = sector.top_companies
             
             if top_companies is None or top_companies.empty:
                 print(f"🚨 No companies found for sector '{sector_key}'")
