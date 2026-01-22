@@ -8,7 +8,9 @@ class TestTradingView(unittest.TestCase):
 
     @patch('app.stocks.libraries.trading_view.TvDatafeed')
     def test_get_current_price_success(self, mock_tv_class):
-        """Test fetching current price using TvDatafeed."""
+        """
+        Test fetching current price using TvDatafeed.
+        """
         mock_tv_instance = mock_tv_class.return_value
         
         # Mock dataframe response
@@ -26,7 +28,9 @@ class TestTradingView(unittest.TestCase):
 
     @patch('app.stocks.libraries.trading_view.TvDatafeed')
     def test_get_current_price_failure(self, mock_tv_class):
-        """Test failure to fetch current price."""
+        """
+        Test failure to fetch current price.
+        """
         mock_tv_instance = mock_tv_class.return_value
         mock_tv_instance.get_hist.return_value = None # or empty df
         

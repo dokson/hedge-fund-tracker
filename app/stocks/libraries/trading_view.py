@@ -11,63 +11,50 @@ class TradingView(FinanceLibrary):
     Client for searching stock information using the tvDatafeed library.
     Acts as a fallback or alternative to YFinance.
     """
-    _TV = None
-
     @staticmethod
-    def _get_tv():
-        if TradingView._TV is None:
-            TradingView._TV = TvDatafeed()
-        return TradingView._TV
-
-
-    @staticmethod
-    def _reset_tv():
-        """
-        Resets the TvDatafeed session if a connection error occurs.
-        """
-        TradingView._TV = None
-        print("🚨 TradingView: Connection issue detected. Resetting session...")
+    def get_company(cusip: str, **kwargs) -> str | None:
         return None
 
 
     @staticmethod
-    def get_current_price(ticker: str) -> float | None:
+    def get_ticker(cusip: str, **kwargs) -> str | None:
+        return None
+
+
+    @staticmethod
+    def get_current_price(ticker: str, **kwargs) -> float | None:
         """
         Gets the current (or latest closing) market price for a ticker using tvDatafeed.
         """
+        tv = kwargs.get('tv_session') or TvDatafeed()
+        
         try:
-            tv = TradingView._get_tv()
-            
             for exchange in TRADINGVIEW_EXCHANGES:
                 try:
                     hist = tv.get_hist(symbol=ticker, exchange=exchange, interval=TvInterval.in_daily, n_bars=2)
                     if hist is not None and not hist.empty:
                         return float(hist['close'].iloc[-1])
                 except Exception as e:
-                    if "Connection" in str(e) or "remote host" in str(e):
-                        TradingView._reset_tv()
-                        return TradingView.get_current_price(ticker) # Retry with new session
+                    # If we have a connection error and were using an injected session, 
+                    # we might want to flag it, but for now we just continue or fail.
                     continue
             
             return None
 
         except Exception as e:
-            if "Connection" in str(e) or "remote host" in str(e):
-                TradingView._reset_tv()
             print(f"⚠️ TradingView fallback failed for {ticker}: {e}")
             return None
 
 
     @staticmethod
-    def get_avg_price(ticker: str, date_obj: date) -> float | None:
+    def get_avg_price(ticker: str, date_obj: date, **kwargs) -> float | None:
         """
         Gets the average daily price for a ticker on a specific date using tvdatafeed.
         The average price is calculated as (High + Low) / 2.
         """
+        tv = kwargs.get('tv_session') or TvDatafeed()
+        
         try:
-            # TvDatafeed initialization
-            tv = TradingView._get_tv()
-            
             df = None
             for exchange in TRADINGVIEW_EXCHANGES:
                 try:
@@ -77,9 +64,6 @@ class TradingView(FinanceLibrary):
                         df = hist
                         break
                 except Exception as e:
-                    if "Connection" in str(e) or "remote host" in str(e):
-                        TradingView._reset_tv()
-                        return TradingView.get_avg_price(ticker, date_obj) # Retry
                     continue
             
             if df is None:
