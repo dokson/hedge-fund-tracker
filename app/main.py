@@ -24,11 +24,12 @@ def run_view_nq_filings():
 
     nq_filings_df = non_quarterly_filings_df.join(latest_quarter_data_per_fund, how='inner', rsuffix='_quarter').reset_index()
     nq_filings_df = nq_filings_df[nq_filings_df['Delta_Shares'] != 0]
-    latest_n = 30
 
-    # Fetch current prices and industry info for the latest N tickers
-    subset_df = nq_filings_df.head(latest_n).copy()
+    # Filter filings from the last 30 days (interesting_day_range)
+    interesting_day_range = 30
+    subset_df = nq_filings_df[pd.to_datetime(nq_filings_df['Date']) >= pd.Timestamp.now().normalize() - pd.Timedelta(days=interesting_day_range)].copy()
     tickers = subset_df['Ticker'].unique().tolist()
+    # Fetch current prices and industry info
     stock_info = YFinance.get_stocks_info(tickers)
 
     # Ensure numeric types and calculate the percentage change
@@ -38,7 +39,7 @@ def run_view_nq_filings():
     subset_df['Price_Var%'] = ((subset_df['Current_Price'] - subset_df['Avg_Price']) / subset_df['Avg_Price']) * 100
     
     print_dataframe(
-        subset_df, latest_n, title=f"LATEST {latest_n} 13D/G AND FORM 4 FILINGS", sort_by=['Date', 'Fund', 'Portfolio_Pct'],
+        subset_df, len(subset_df), title=f"LAST {interesting_day_range} DAYS 13D/G AND FORM 4 FILINGS", sort_by=['Date', 'Fund', 'Portfolio_Pct'],
         cols=['Date', 'Fund', 'Ticker', 'Company', 'Sector', 'Delta', 'Avg_Price', 'Current_Price', 'Price_Var%', 'Value', 'Portfolio_Pct'],
         formatters={
             'Company': get_string_formatter(), 
