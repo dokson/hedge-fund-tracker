@@ -67,7 +67,9 @@ def get_quarter_data(quarter=get_last_quarter()) -> pd.DataFrame:
     """
     df_quarter = load_quarterly_data(quarter)
 
-    funds_to_update = [fund for fund in df_quarter['Fund'].unique() if get_last_quarter_for_fund(fund) == quarter]
+    # Identify funds that have filed this quarter
+    idx_13f_funds = df_quarter['Fund'].unique().tolist()
+    funds_to_update = [fund for fund in idx_13f_funds if get_last_quarter_for_fund(fund) == quarter]
 
     # Include non quarterly data if it's the most recent quarter
     if quarter == get_last_quarter():
@@ -90,7 +92,7 @@ def get_quarter_data(quarter=get_last_quarter()) -> pd.DataFrame:
     df_quarter['Portfolio_Pct'] = get_percentage_number_series(df_quarter['Portfolio%'])
 
     if funds_to_update:
-        df_quarter = update_quarter_with_nq_filings(df_quarter, funds_to_update)
+        df_quarter = update_quarter_with_nq_filings(df_quarter, funds_to_update, idx_13f_funds)
 
     return df_quarter
 

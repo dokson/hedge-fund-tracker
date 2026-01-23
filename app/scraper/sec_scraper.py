@@ -48,14 +48,17 @@ def _get_request(url):
         return None
 
 
-def _create_search_url(cik, filing_type='13F-HR', start_date=None):
+def _create_search_url(cik, filing_type='13F-HR', start_date=None, start_offset=0):
     """
     Creates the SEC EDGAR search URL for a given CIK and filing type.
     """
-    search_url = f'{SEC_URL}/cgi-bin/browse-edgar?CIK={cik}&action=getcompany&type={filing_type}'
+    search_url = f'{SEC_URL}/cgi-bin/browse-edgar?CIK={cik}&action=getcompany&type={filing_type}&count=100'
 
     if start_date:
         search_url += f'&datea={start_date}'
+        
+    if start_offset > 0:
+        search_url += f'&start={start_offset}'
 
     return search_url
 
@@ -200,19 +203,37 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
     filings = []
     yyyymmdd_date = start_date.replace('-', '')
 
-    # Helper to fetch tags for a specific type
+    # Helper to fetch tags for a specific type with pagination
     def get_tags(filing_type):
-        url = _create_search_url(cik, filing_type, get_next_yyyymmdd_day(yyyymmdd_date))
-        try:
-            resp = _get_request(url)
-            if not resp:
-                print(f"❌ Could not fetch {filing_type} filings for CIK {cik} (request failed)")
-                return []
-            soup = BeautifulSoup(resp.text, "html.parser")
-            return [(tag, filing_type) for tag in soup.find_all('a', id="documentsbutton")]
-        except Exception as e:
-            print(f"❌ Error fetching {filing_type} filings for CIK {cik}: {e}")
-            return []
+        all_type_tags = []
+        offset = 0
+        while True:
+            url = _create_search_url(cik, filing_type, get_next_yyyymmdd_day(yyyymmdd_date), offset)
+            try:
+                resp = _get_request(url)
+                if not resp:
+                    print(f"❌ Could not fetch {filing_type} filings for CIK {cik} (request failed at offset {offset})")
+                    break
+                soup = BeautifulSoup(resp.text, "html.parser")
+                tags = soup.find_all('a', id="documentsbutton")
+                
+                if not tags:
+                    break
+                
+                all_type_tags.extend([(tag, filing_type) for tag in tags])
+                
+                # If we retrieved 100 items, there might be more on the next page
+                if len(tags) == 100:
+                    offset += 100
+                    if offset >= 500: # Safety break to avoid infinite loops on extreme cases
+                        print(f"⚠️ Reached maximum pagination limit (500) for {filing_type} filings of CIK {cik}")
+                        break
+                else:
+                    break
+            except Exception as e:
+                print(f"❌ Error fetching {filing_type} filings for CIK {cik} at offset {offset}: {e}")
+                break
+        return all_type_tags
 
     all_tags = []
     all_tags.extend(get_tags('SCHEDULE'))

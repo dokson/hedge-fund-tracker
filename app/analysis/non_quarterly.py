@@ -81,7 +81,7 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_
     return non_quarterly_filings_df[['CUSIP', 'Ticker', 'Company', 'Shares', 'Value', 'Avg_Price', 'Date', 'Filing_Date']]
 
 
-def update_quarter_with_nq_filings(quarter_df: pd.DataFrame, funds_to_update: list[str]) -> pd.DataFrame:
+def update_quarter_with_nq_filings(quarter_df: pd.DataFrame, funds_to_update: list[str], idx_13f_funds: list[str] = None) -> pd.DataFrame:
     """
     Updates the 13F holdings dataframe with more recent data from non quarterly filings.
 
@@ -91,6 +91,7 @@ def update_quarter_with_nq_filings(quarter_df: pd.DataFrame, funds_to_update: li
     Args:
         quarter_df (pd.DataFrame): The DataFrame with 13F data for a given quarter.
         funds_to_update (list[str]): The list of fund whose data should be updated with non quarterly filings.
+        idx_13f_funds (list[str], optional): The list of funds that have officially filed a 13F for this quarter.
     """
     schedule_df = load_non_quarterly_data()
     schedule_df = schedule_df[schedule_df['Fund'].isin(funds_to_update)].set_index(['Fund', 'CUSIP'])
@@ -104,6 +105,16 @@ def update_quarter_with_nq_filings(quarter_df: pd.DataFrame, funds_to_update: li
         suffixes=('_13f', '_schedule'),
         indicator=True
     )
+
+    # Filter out stagnant positions from previous quarters:
+    # If a fund hasn't filed a 13F for this quarter (not in idx_13f_funds), 
+    # we only keep positions that have actual NQ activity this quarter.
+    if idx_13f_funds is not None:
+        updated_df = updated_df[
+            (updated_df['Fund'].isin(idx_13f_funds)) |
+            (updated_df['_merge'] != 'left_only')
+        ].copy()
+
     updated_df['Ticker'] = coalesce(updated_df['Ticker_13f'], updated_df['Ticker_schedule'])
     updated_df['Company'] = coalesce(updated_df['Company_13f'], updated_df['Company_schedule'].str.upper())
     updated_df['Shares'] = coalesce(updated_df['Shares_schedule'], updated_df['Shares_13f']).astype('int64')
