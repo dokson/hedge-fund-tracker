@@ -328,3 +328,248 @@ def sort_stocks(filepath=f'./database/{STOCKS_FILE}') -> None:
         df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
     except Exception as e:
         print(f"❌ An error occurred while processing file '{filepath}': {e}")
+
+
+def find_cusips_for_ticker(old_ticker: str) -> list[dict[str, str]]:
+    """
+    Finds all CUSIPs associated with a given ticker in the stocks.csv file.
+    
+    Args:
+        old_ticker (str): The ticker to search for.
+        
+    Returns:
+        list: A list of dictionaries containing CUSIP, Ticker, and Company information.
+    """
+    stocks_path = Path(DB_FOLDER) / STOCKS_FILE
+    matching_stocks = []
+    
+    if not stocks_path.exists():
+        print(f"❌ Error: {STOCKS_FILE} not found at {stocks_path}")
+        return matching_stocks
+    
+    with open(stocks_path, 'r', encoding='utf-8', newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row['Ticker'] == old_ticker:
+                matching_stocks.append({
+                    'CUSIP': row['CUSIP'],
+                    'Ticker': row['Ticker'],
+                    'Company': row['Company']
+                })
+    
+    return matching_stocks
+
+
+def update_stocks_csv(old_ticker: str, new_ticker: str) -> int:
+    """
+    Updates the ticker in stocks.csv for all matching CUSIPs.
+    
+    Args:
+        old_ticker (str): The current ticker to replace.
+        new_ticker (str): The new ticker to use.
+        
+    Returns:
+        int: The number of rows updated.
+    """
+    stocks_path = Path(DB_FOLDER) / STOCKS_FILE
+    
+    if not stocks_path.exists():
+        print(f"❌ Error: {STOCKS_FILE} not found")
+        return 0
+    
+    # Read all rows
+    rows = []
+    updated_count = 0
+    
+    with open(stocks_path, 'r', encoding='utf-8', newline='') as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        
+        for row in reader:
+            if row['Ticker'] == old_ticker:
+                row['Ticker'] = new_ticker
+                updated_count += 1
+            rows.append(row)
+    
+    # Write back
+    with open(stocks_path, 'w', encoding='utf-8', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+        writer.writeheader()
+        writer.writerows(rows)
+    
+    return updated_count
+
+
+def update_quarterly_filings(cusips: list[str], new_ticker: str) -> None:
+    """
+    Updates the ticker in all quarterly filing CSV files for the specified CUSIPs.
+    
+    Args:
+        cusips (list): List of CUSIPs to update.
+        new_ticker (str): The new ticker to use.
+    """
+    quarters = get_all_quarters()
+    
+    for quarter in quarters:
+        quarter_path = Path(DB_FOLDER) / quarter
+        
+        if not quarter_path.exists():
+            continue
+        
+        csv_files = list(quarter_path.glob('*.csv'))
+        
+        for csv_file in csv_files:
+            try:
+                rows = []
+                file_updated = False
+                
+                with open(csv_file, 'r', encoding='utf-8', newline='') as f:
+                    reader = csv.DictReader(f)
+                    fieldnames = reader.fieldnames
+                    
+                    if 'CUSIP' not in fieldnames or 'Ticker' not in fieldnames:
+                        continue
+                    
+                    for row in reader:
+                        if row['CUSIP'] in cusips:
+                            row['Ticker'] = new_ticker
+                            file_updated = True
+                        rows.append(row)
+                
+                if file_updated:
+                    with open(csv_file, 'w', encoding='utf-8', newline='') as f:
+                        writer = csv.DictWriter(f, fieldnames=fieldnames)
+                        writer.writeheader()
+                        writer.writerows(rows)
+                    
+                    print(f"✅ Updated {quarter}/{csv_file.name}")
+                    
+            except Exception as e:
+                print(f"❌ Error processing {csv_file}: {e}")
+
+
+
+def update_non_quarterly_filings(cusips: list[str], new_ticker: str) -> int:
+    """
+    Updates the ticker in the non_quarterly.csv file for the specified CUSIPs.
+    
+    Args:
+        cusips (list): List of CUSIPs to update.
+        new_ticker (str): The new ticker to use.
+        
+    Returns:
+        int: Number of rows updated.
+    """
+    nq_path = Path(DB_FOLDER) / LATEST_SCHEDULE_FILINGS_FILE
+    
+    rows = []
+    updated_count = 0
+    
+    try:
+        with open(nq_path, 'r', encoding='utf-8', newline='') as f:
+            reader = csv.DictReader(f)
+            fieldnames = reader.fieldnames
+            
+            for row in reader:
+                if row['CUSIP'] in cusips:
+                    row['Ticker'] = new_ticker
+                    updated_count += 1
+                rows.append(row)
+        
+        with open(nq_path, 'w', encoding='utf-8', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            writer.writeheader()
+            writer.writerows(rows)
+        
+        if updated_count > 0:
+            print(f"✅ Updated {updated_count} row(s) in {LATEST_SCHEDULE_FILINGS_FILE}")
+            
+    except Exception as e:
+        print(f"❌ Error processing {LATEST_SCHEDULE_FILINGS_FILE}: {e}")
+        return 0
+    
+    return updated_count
+
+
+def update_ticker_for_cusip(cusip: str, new_ticker: str) -> None:
+    """
+    Updates the ticker for a single CUSIP across the entire database.
+    
+    This function:
+    1. Updates the ticker for the specified CUSIP in stocks.csv
+    2. Updates all quarterly filings for that CUSIP
+    3. Updates the non_quarterly.csv file
+    
+    Args:
+        cusip (str): The CUSIP to update.
+        new_ticker (str): The new ticker to use.
+    """
+    stocks_path = Path(DB_FOLDER) / STOCKS_FILE
+    
+    if not stocks_path.exists():
+        print(f"❌ Error: {STOCKS_FILE} not found")
+        return
+    
+    # Update stocks.csv
+    rows = []
+    found = False
+    old_ticker = None
+    company = None
+    
+    with open(stocks_path, 'r', encoding='utf-8', newline='') as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        
+        for row in reader:
+            if row['CUSIP'] == cusip:
+                old_ticker = row['Ticker']
+                company = row['Company']
+                row['Ticker'] = new_ticker
+                found = True
+            rows.append(row)
+    
+    if not found:
+        print(f"❌ CUSIP '{cusip}' not found in {STOCKS_FILE}")
+        return
+    
+    print(f"  - CUSIP: {cusip}, Company: {company}, Old Ticker: {old_ticker} → New Ticker: {new_ticker}")
+    
+    # Write back stocks.csv
+    with open(stocks_path, 'w', encoding='utf-8', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+        writer.writeheader()
+        writer.writerows(rows)
+    
+    # Update quarterly filings and non-quarterly filings
+    update_quarterly_filings([cusip], new_ticker)
+    update_non_quarterly_filings([cusip], new_ticker)
+
+
+def update_ticker(old_ticker: str, new_ticker: str) -> None:
+    """
+    Updates a ticker across the entire database.
+    
+    This function:
+    1. Finds all CUSIPs associated with the old ticker in stocks.csv
+    2. Updates the ticker in stocks.csv
+    3. Updates all quarterly filings for those CUSIPs
+    4. Updates the non_quarterly.csv file
+    
+    Args:
+        old_ticker (str): The current ticker to replace.
+        new_ticker (str): The new ticker to use.
+    """
+    matching_stocks = find_cusips_for_ticker(old_ticker)
+    
+    if not matching_stocks:
+        print(f"❌ No stocks found with ticker '{old_ticker}'")
+        return
+    
+    for stock in matching_stocks:
+        print(f"  - CUSIP: {stock['CUSIP']}, Company: {stock['Company']}")
+    
+    cusips = [stock['CUSIP'] for stock in matching_stocks]
+    
+    update_stocks_csv(old_ticker, new_ticker)
+    update_quarterly_filings(cusips, new_ticker)
+    update_non_quarterly_filings(cusips, new_ticker)

@@ -3,7 +3,7 @@ from app.analysis.quarterly_report import generate_comparison
 from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_non_quarterly_after_date, get_latest_13f_filing_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, select_fund, select_period
-from app.utils.database import load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks
+from app.utils.database import load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
 from app.utils.readme import update_readme
 from app.utils.strings import get_previous_quarter_end_date
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
@@ -220,6 +220,62 @@ def run_manual_cik_report():
         process_fund({'CIK': cik}, offset=selected_period[0])
 
 
+def run_ticker_update():
+    """
+    5. Updates a stock ticker across the entire database.
+    
+    This function prompts the user to enter an old ticker and a new ticker,
+    then updates all occurrences in stocks.csv, all quarterly filings, and non-quarterly filings.
+    """
+    horizontal_rule()
+    print_centered("TICKER UPDATE UTILITY")
+    horizontal_rule()
+    print("This will update a ticker across:")
+    print("  - stocks.csv (master data file)")
+    print("  - All filings")
+    horizontal_rule()
+    
+    old_ticker = input("Enter the OLD ticker to replace: ").strip().upper()
+    if not old_ticker:
+        print("❌ Old ticker cannot be empty.")
+        return
+    
+    new_ticker = input("Enter the NEW ticker: ").strip().upper()
+    if not new_ticker:
+        print("❌ New ticker cannot be empty.")
+        return
+    
+    update_ticker(old_ticker, new_ticker)
+
+
+def run_cusip_ticker_update():
+    """
+    6. Updates a stock ticker for a single CUSIP across the entire database.
+    
+    This function prompts the user to enter a CUSIP and a new ticker,
+    then updates that specific CUSIP in stocks.csv, all quarterly filings, and non-quarterly filings.
+    """
+    horizontal_rule()
+    print_centered("CUSIP TICKER UPDATE UTILITY")
+    horizontal_rule()
+    print("This will update the ticker for a single CUSIP across:")
+    print("  - stocks.csv (master data file)")
+    print("  - All filings")
+    horizontal_rule()
+    
+    cusip = input("Enter the CUSIP: ").strip()
+    if not cusip:
+        print("❌ CUSIP cannot be empty.")
+        return
+    
+    new_ticker = input("Enter the NEW ticker: ").strip().upper()
+    if not new_ticker:
+        print("❌ New ticker cannot be empty.")
+        return
+    
+    update_ticker_for_cusip(cusip, new_ticker)
+
+
 if __name__ == "__main__":
     actions = {
         '0': exit,
@@ -227,6 +283,8 @@ if __name__ == "__main__":
         '2': run_fetch_nq_filings,
         '3': run_fund_report,
         '4': run_manual_cik_report,
+        '5': run_ticker_update,
+        '6': run_cusip_ticker_update
     }
 
     while True:
@@ -239,9 +297,11 @@ if __name__ == "__main__":
             print("2. Fetch latest non-quarterly filings for all known hedge funds")
             print("3. Generate 13F report for a known hedge fund")
             print("4. Manually enter a hedge fund CIK to generate a 13F report")
+            print("5. Update a stock ticker across the entire database")
+            print("6. Update a stock ticker for a single CUSIP")
             horizontal_rule()
 
-            choice = input("Choose an option (0-4): ")
+            choice = input("Choose an option (0-6): ")
             action = actions.get(choice)
             if action:
                 if action() is False:
