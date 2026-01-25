@@ -59,12 +59,12 @@ class TestSecScraper(unittest.TestCase):
         cik = "1234567890"
         
         # Test default 13F-HR
-        expected_url = f'https://www.sec.gov/cgi-bin/browse-edgar?CIK={cik}&action=getcompany&type=13F-HR'
+        expected_url = f'https://www.sec.gov/cgi-bin/browse-edgar?CIK={cik}&action=getcompany&type=13F-HR&count=100'
         self.assertEqual(_create_search_url(cik), expected_url)
 
         # Test with date
         date = "20230101"
-        expected_url_date = f'https://www.sec.gov/cgi-bin/browse-edgar?CIK={cik}&action=getcompany&type=SCHEDULE&datea={date}'
+        expected_url_date = f'https://www.sec.gov/cgi-bin/browse-edgar?CIK={cik}&action=getcompany&type=SCHEDULE&count=100&datea={date}'
         self.assertEqual(_create_search_url(cik, 'SCHEDULE', date), expected_url_date)
 
 
