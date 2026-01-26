@@ -467,11 +467,11 @@
         },
         "finnhub-python": {
             "hashes": [
-                "sha256:826abfad1c4692f278358c799c8b1608dbf33c9bc2be4be018b9d9b944fc822c",
-                "sha256:9d9b13eebfc9ce531bee844689992b6cccfb3f33e399250286f8b8ca05570885"
+                "sha256:2e5bd70ea9c41c077224d9eaebaa2b9c66e0445d4b4d2768fee20a56ce2af07f",
+                "sha256:c4402f481005bbb48f72acfa14d7c91e95af1b1c8367ba2f4457eebe4e61b611"
             ],
             "index": "pypi",
-            "version": "==2.4.26"
+            "version": "==2.4.27"
         },
         "fonttools": {
             "hashes": [
