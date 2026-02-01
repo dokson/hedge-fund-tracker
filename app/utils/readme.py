@@ -1,30 +1,31 @@
 import pandas as pd
 import re
 
-README_FILE = './README.md'
 EXCLUDED_HEDGE_FUNDS_FILE = './database/excluded_hedge_funds.csv'
+README_FILE = './README.md'
+README_DISPLAY_LIMIT = 50
 
 
 def generate_excluded_funds_list() -> str | None:
     """
-    Generates a markdown list of the first 50 excluded funds from a CSV file.
+    Generates a markdown list of the first N excluded funds from a CSV file.
     """
     try:
         df = pd.read_csv(EXCLUDED_HEDGE_FUNDS_FILE, keep_default_na=False)
         
         markdown_list = []
-        # Iterate over the first 50 funds
-        for _, row in df.head(50).iterrows():
-            manager = row['Manager']
-            fund = row['Fund']
-            url = row['URL']
+        # Iterate over the first N funds defined by README_DISPLAY_LIMIT
+        for row in df.head(README_DISPLAY_LIMIT).itertuples():
+            manager = row.Manager
+            fund = row.Fund
+            url = row.URL
             
             if manager and manager != fund:
                 markdown_list.append(f"* *{manager}*'s [{fund}]({url})")
             else:
                 markdown_list.append(f"* [{fund}]({url})")
 
-        if len(df) > 50:
+        if len(df) > README_DISPLAY_LIMIT:
             file_path = EXCLUDED_HEDGE_FUNDS_FILE.replace('./', '')
             markdown_list.append(f"* and many more... (see [`{file_path}`](/{file_path}) for the full list)")
 
