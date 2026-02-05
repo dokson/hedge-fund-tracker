@@ -1,7 +1,6 @@
 from app.stocks.libraries.yfinance import YFinance
 from datetime import date
 import unittest
-from unittest.mock import MagicMock, patch
 
 
 class TestYFinance(unittest.TestCase):
@@ -100,11 +99,10 @@ class TestYFinance(unittest.TestCase):
         """
         Tests the get_sector_tickers method with an invalid sector.
         """
+        from tenacity import RetryError
         # Test with an invalid sector key
-        companies = YFinance.get_sector_tickers('invalid-sector-key')
-        self.assertIsInstance(companies, list)
-        # Should return empty list for invalid sector
-        self.assertEqual(len(companies), 0)
+        with self.assertRaises(RetryError):
+            YFinance.get_sector_tickers('invalid-sector-key')
 
 
     def test_get_sector_tickers_all_sectors(self):
@@ -114,18 +112,18 @@ class TestYFinance(unittest.TestCase):
         """
         from app.utils.gics import load_yf_sectors
         
-        sectors_df = load_yf_sectors()        
+        sectors_df = load_yf_sectors()
         failed_sectors = []
-        
+
         for _, row in sectors_df.iterrows():
             sector_key = row['Key']
             sector_name = row['Name']
-            
+
             companies = YFinance.get_sector_tickers(sector_key, limit=3)
-            
+
             if len(companies) == 0:
                 failed_sectors.append(f"{sector_name} ({sector_key})")
-        
+
         self.assertEqual(len(failed_sectors), 0, f"The following sectors returned no companies from yfinance: {', '.join(failed_sectors)}")
 
 

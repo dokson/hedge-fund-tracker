@@ -243,11 +243,11 @@ class YFinance(FinanceLibrary):
             with silence_output():
                 sector = yf.Sector(sector_key)
                 top_companies = sector.top_companies
-            
+
             if top_companies is None or top_companies.empty:
-                print(f"🚨 No companies found for sector '{sector_key}'")
-                return []
-            
+                # Raise error to trigger @retry
+                raise ValueError(f"🚨 No companies found for sector '{sector_key}'")
+
             companies = []
             for _, row in top_companies.iterrows():
                 company_info = {
