@@ -104,7 +104,10 @@ class YFinance(FinanceLibrary):
                 return price
             
             # Fallback for international tickers (e.g., TSX, TSXV)
-            if "." not in ticker:
+            # Only attempt fallback if the ticker doesn't already have a separator (. or -)
+            # This prevents infinite recursion: ticker.replace('.', '-') makes it "SYMBOL-TO",
+            # and if we don't check for "-", we would keep appending "-TO".
+            if "." not in ticker and "-" not in ticker:
                 for suffix in YFinance.FALLBACK_SUFFIXES:
                     try:
                         print(f"⏳ YFinance: Trying fallback {ticker + suffix} for {ticker}...")
@@ -145,7 +148,7 @@ class YFinance(FinanceLibrary):
                 price = stock.info.get('currentPrice')
             
             # Fallback for international tickers (e.g., TSX, TSXV)
-            if price is None and "." not in ticker:
+            if price is None and "." not in ticker and "-" not in ticker:
                 for suffix in YFinance.FALLBACK_SUFFIXES:
                     try:
                         print(f"⏳ YFinance: Trying current price fallback {ticker + suffix} for {ticker}...")
