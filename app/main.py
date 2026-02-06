@@ -39,14 +39,13 @@ def run_view_nq_filings():
     subset_df['Price_Var%'] = ((subset_df['Current_Price'] - subset_df['Avg_Price']) / subset_df['Avg_Price']) * 100
     
     print_dataframe(
-        subset_df, len(subset_df), title=f"LAST {interesting_day_range} DAYS 13D/G AND FORM 4 FILINGS", sort_by=['Date', 'Fund', 'Portfolio_Pct'],
-        cols=['Date', 'Fund', 'Ticker', 'Company', 'Sector', 'Delta', 'Avg_Price', 'Current_Price', 'Price_Var%', 'Value', 'Portfolio_Pct'],
+        subset_df, len(subset_df), title=f"LAST {interesting_day_range} DAYS 13D/G AND FORM 4 FILINGS", sort_by=['Date', 'Fund'],
+        cols=['Date', 'Fund', 'Ticker', 'Company', 'Sector', 'Delta', 'Avg_Price', 'Current_Price', 'Price_Var%', 'Value'],
         formatters={
-            'Company': get_string_formatter(), 
+            'Company': get_string_formatter(25),
             'Avg_Price': get_price_formatter(),
             'Current_Price': get_price_formatter(),
-            'Price_Var%': get_signed_perc_formatter(),
-            'Portfolio_Pct': get_percentage_formatter(),
+            'Price_Var%': get_signed_perc_formatter()
         }
     )
 
@@ -65,11 +64,46 @@ def run_quarter_analysis():
         top_n = 15
         min_holder_threshold = round(count_funds_in_quarter(selected_quarter) / 10)
 
-        print_dataframe(df_analysis, top_n, f'Top {top_n} Consensus Buys (by Net # of Buyers)', ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'Delta', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Holder_Count', 'Total_Delta_Value', 'Total_Value'], {'Delta': get_signed_perc_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
-        print_dataframe(df_analysis, top_n, f'Top {top_n} New Consensus (by # of New Holders)', ['New_Holder_Count', 'Total_Delta_Value'], ['Ticker', 'Company', 'New_Holder_Count', 'Net_Buyers', 'Holder_Count', 'Delta', 'Total_Delta_Value', 'Total_Value'], {'Delta': get_signed_perc_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
-        print_dataframe(df_analysis[(df_analysis['Delta'] != np.inf) & (df_analysis['Holder_Count'] >= min_holder_threshold)], top_n, f'Top {top_n} Increasing Positions (by Delta)', 'Delta', ['Ticker', 'Company', 'New_Holder_Count', 'Net_Buyers', 'Holder_Count', 'Delta', 'Total_Delta_Value', 'Total_Value'], {'Delta': get_signed_perc_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
-        print_dataframe(df_analysis, top_n, f'Top {top_n} Big Bets (by Max Portfolio %)', 'Max_Portfolio_Pct', ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Avg_Portfolio_Pct', 'Delta', 'Total_Delta_Value', 'Total_Value'], {'Max_Portfolio_Pct': get_percentage_formatter(), 'Avg_Portfolio_Pct': get_percentage_formatter(), 'Delta': get_signed_perc_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()})
-        print_dataframe(df_analysis[df_analysis['Holder_Count'] >= min_holder_threshold], top_n, f'Average {top_n} Stocks Portfolio', 'Avg_Portfolio_Pct', ['Ticker', 'Company', 'Avg_Portfolio_Pct', 'Max_Portfolio_Pct', 'Holder_Count', 'Delta'], {'Avg_Portfolio_Pct': get_percentage_formatter(), 'Max_Portfolio_Pct': get_percentage_formatter(), 'Delta': get_signed_perc_formatter()})
+        print_dataframe(
+            df_analysis,
+            top_n,
+            f'Top {top_n} Consensus Buys (by Net # of Buyers)',
+            ['Net_Buyers', 'Buyer_Count', 'Total_Delta_Value'],
+            ['Ticker', 'Company', 'Delta', 'Net_Buyers', 'Buyer_Count', 'Seller_Count', 'Holder_Count', 'Total_Delta_Value'],
+            {'Company': get_string_formatter(30), 'Delta': get_signed_perc_formatter(), 'Total_Delta_Value': get_value_formatter()}
+        )
+        print_dataframe(
+            df_analysis,
+            top_n,
+            f'Top {top_n} New Consensus (by # of New Holders)',
+            ['New_Holder_Count', 'Total_Delta_Value'],
+            ['Ticker', 'Company', 'New_Holder_Count', 'Net_Buyers', 'Holder_Count', 'Delta', 'Total_Delta_Value', 'Total_Value'],
+            {'Delta': get_signed_perc_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()}
+        )
+        print_dataframe(
+            df_analysis[(df_analysis['Delta'] != np.inf) & (df_analysis['Holder_Count'] >= min_holder_threshold)],
+            top_n,
+            f'Top {top_n} Increasing Positions (by Delta)',
+            'Delta',
+            ['Ticker', 'Company', 'New_Holder_Count', 'Net_Buyers', 'Holder_Count', 'Delta', 'Total_Delta_Value', 'Total_Value'],
+            {'Company': get_string_formatter(35), 'Delta': get_signed_perc_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()}
+        )
+        print_dataframe(
+            df_analysis,
+            top_n,
+            f'Top {top_n} Big Bets (by Max Portfolio %)',
+            'Max_Portfolio_Pct',
+            ['Ticker', 'Company', 'Max_Portfolio_Pct', 'Avg_Portfolio_Pct', 'Delta', 'Total_Delta_Value', 'Total_Value'],
+            {'Max_Portfolio_Pct': get_percentage_formatter(), 'Avg_Portfolio_Pct': get_percentage_formatter(), 'Delta': get_signed_perc_formatter(), 'Total_Delta_Value': get_value_formatter(), 'Total_Value': get_value_formatter()}
+        )
+        print_dataframe(
+            df_analysis[df_analysis['Holder_Count'] >= min_holder_threshold],
+            top_n,
+            f'Average {top_n} Stocks Portfolio',
+            'Avg_Portfolio_Pct',
+            ['Ticker', 'Company', 'Avg_Portfolio_Pct', 'Max_Portfolio_Pct', 'Holder_Count', 'Delta'],
+            {'Avg_Portfolio_Pct': get_percentage_formatter(), 'Max_Portfolio_Pct': get_percentage_formatter(), 'Delta': get_signed_perc_formatter()}
+        )
         print("\n")
 
 
@@ -105,6 +139,7 @@ def run_fund_analysis():
         top_n = 10
         columns = ['Ticker', 'Company', 'Portfolio_Pct', 'Value', 'Delta', 'Delta_Value']
         formatters = {
+            'Company': get_string_formatter(35),
             'Portfolio_Pct': get_percentage_formatter(),
             'Value': get_value_formatter(),
             'Delta_Value': get_value_formatter()
@@ -207,7 +242,7 @@ def run_ai_analyst():
                 title=title,
                 sort_by='Promise',
                 cols=['Ticker', 'Company', 'Industry', 'Promise', 'Risk', 'Volatility', 'Momentum', 'Growth'],
-                formatters={'Company': lambda x: (str(x)[:32] + '...') if len(str(x)) > 35 else x}
+                formatters={'Company': get_string_formatter(35)}
             )
 
 

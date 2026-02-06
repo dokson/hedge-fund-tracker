@@ -153,18 +153,26 @@ def get_signed_perc_formatter():
     return lambda x: format_percentage(x, True)
 
 
-def get_string_formatter():
+def get_string_formatter(max_length: int = None):
     """
-    Creates a formatter function that formats a string to title case only if it is entirely in uppercase.
+    Creates a formatter function that formats a string to title case (if uppercase) and optionally truncates it to a maximum length.
 
-    This is a factory function that returns a lambda. The lambda expects a string value
-    and formats it using the `format_string` utility. Useful for applying consistent
-    string formatting to data columns (e.g., in pandas).
+    This is a factory function that returns a lambda. The lambda expects a string value, formats it using the `format_string` utility, and if `max_length` is provided and
+    the result exceeds it, truncates it with an ellipsis.
+
+    Args:
+        max_length (int, optional): Maximum length of the string. If exceeded, the string is truncated and '...' is added.
 
     Returns:
         callable: A function that takes a string value and returns its formatted string representation.
     """
-    return lambda x: format_string(x)
+    def formatter(x):
+        s = format_string(str(x))
+        if max_length and len(s) > max_length:
+            return s[:max_length - 3] + "..."
+        return s
+    
+    return lambda x: formatter(x)
 
 
 def get_value_formatter():
