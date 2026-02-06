@@ -3,7 +3,7 @@ from app.analysis.quarterly_report import generate_comparison
 from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_non_quarterly_after_date, get_latest_13f_filing_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, select_fund, select_period
-from app.utils.database import load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
+from app.utils.database import delete_fund_from_database, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
 from app.utils.readme import update_readme
 from app.utils.strings import get_previous_quarter_end_date
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
@@ -274,6 +274,23 @@ def run_cusip_ticker_update():
         return
     
     update_ticker_for_cusip(cusip, new_ticker)
+    
+
+def run_delete_fund():
+    """
+    7. Deletes a hedge fund from the database and adds it to the excluded list.
+    """
+    selected_fund = select_fund("Select the hedge fund to DELETE:")
+    if not selected_fund:
+        return
+
+    print(f"To confirm deletion of '{selected_fund['Fund']}', please enter its website URL.")
+    url = input("Website URL (must start with 'http'): ").strip()
+    
+    if url.lower().startswith('http'):
+        delete_fund_from_database(selected_fund, url=url)
+    else:
+        print("❌ Invalid URL or operation cancelled. Deletion aborted.")
 
 
 if __name__ == "__main__":
@@ -284,7 +301,8 @@ if __name__ == "__main__":
         '3': run_fund_report,
         '4': run_manual_cik_report,
         '5': run_ticker_update,
-        '6': run_cusip_ticker_update
+        '6': run_cusip_ticker_update,
+        '7': run_delete_fund
     }
 
     while True:
@@ -299,9 +317,10 @@ if __name__ == "__main__":
             print("4. Manually enter a hedge fund CIK to generate a 13F report")
             print("5. Update a stock ticker across the entire database")
             print("6. Update a stock ticker for a single CUSIP")
+            print("7. Delete a hedge fund from the database")
             horizontal_rule()
 
-            choice = input("Choose an option (0-6): ")
+            choice = input("Choose an option (0-7): ")
             action = actions.get(choice)
             if action:
                 if action() is False:

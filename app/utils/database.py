@@ -573,3 +573,69 @@ def update_ticker(old_ticker: str, new_ticker: str) -> None:
     update_stocks_csv(old_ticker, new_ticker)
     update_quarterly_filings(cusips, new_ticker)
     update_non_quarterly_filings(cusips, new_ticker)
+
+
+def delete_fund_from_database(fund_info: dict, url: str = "") -> None:
+    """
+    Deletes a hedge fund from the database.
+    
+    This function:
+    1. Removes all quarterly filing files for the fund.
+    2. Moves the fund record from hedge_funds.csv to excluded_hedge_funds.csv with the provided URL.
+    
+    Args:
+        fund_info (dict): A dictionary containing fund information ('Fund', 'CIK', etc.)
+        url (str): The website URL of the fund.
+    """
+    fund_name = fund_info.get('Fund')
+    if not fund_name:
+        print("❌ Error: Fund name is missing.")
+        return
+
+    print(f"Deleting '{fund_name}' from database...")
+
+    # 1. Delete quarterly filing files
+    fund_filename = f"{fund_name.replace(' ', '_')}.csv"
+    for quarter in get_all_quarters():
+        filepath = Path(DB_FOLDER) / quarter / fund_filename
+        if filepath.exists():
+            try:
+                filepath.unlink()
+                print(f"  - Deleted: {quarter}/{fund_filename}")
+            except Exception as e:
+                print(f"  - ❌ Error deleting {filepath}: {e}")
+
+    # 2. Update CSV files
+    hedge_funds_path = Path(DB_FOLDER) / HEDGE_FUNDS_FILE
+    excluded_path = Path(DB_FOLDER) / 'excluded_hedge_funds.csv'
+
+    try:
+        # Load all hedge funds
+        df_hedge_funds = pd.read_csv(hedge_funds_path, dtype=str, keep_default_na=False)
+        
+        # Find the record to move
+        record_to_move = df_hedge_funds[df_hedge_funds['Fund'] == fund_name]
+        
+        if record_to_move.empty:
+            print(f"❌ Fund '{fund_name}' not found in {HEDGE_FUNDS_FILE}")
+        else:
+            # Prepare record for excluded_hedge_funds.csv
+            excluded_record = record_to_move.copy()
+            excluded_record['URL'] = url
+            
+            # Append to excluded_hedge_funds.csv
+            if excluded_path.exists():
+                excluded_record.to_csv(excluded_path, mode='a', header=False, index=False, quoting=csv.QUOTE_ALL)
+            else:
+                excluded_record.to_csv(excluded_path, index=False, quoting=csv.QUOTE_ALL)
+            print(f"  - Added '{fund_name}' to excluded_hedge_funds.csv with URL: {url}")
+
+            # Remove from hedge_funds.csv
+            df_hedge_funds = df_hedge_funds[df_hedge_funds['Fund'] != fund_name]
+            df_hedge_funds.to_csv(hedge_funds_path, index=False, quoting=csv.QUOTE_ALL)
+            print(f"  - Removed '{fund_name}' from {HEDGE_FUNDS_FILE}")
+
+    except Exception as e:
+        print(f"❌ Error updating CSV files: {e}")
+
+    print(f"✅ Deletion of '{fund_name}' completed.")
