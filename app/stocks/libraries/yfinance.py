@@ -3,7 +3,6 @@ from app.utils.console import silence_output
 from datetime import date, timedelta
 from tenacity import retry, stop_after_attempt, wait_exponential
 import logging
-import pandas as pd
 import re
 import requests
 import yfinance as yf
@@ -33,6 +32,9 @@ class YFinance(FinanceLibrary):
         ticker = kwargs.get('ticker')
         if not ticker:
             ticker = YFinance.get_ticker(cusip)
+        
+        if ticker:
+            ticker = ticker.replace('.', '-')
 
         try:
             with silence_output():
@@ -93,6 +95,7 @@ class YFinance(FinanceLibrary):
             float | None: The average price if found, otherwise None.
         """
         try:
+            ticker = ticker.replace('.', '-')
             # 'end' parameter is exclusive: To get a single day, we need the next day as the end.
             with silence_output():
                 price_data = yf.download(tickers=ticker, start=date, end=date+timedelta(days=1), auto_adjust=False, progress=False)
@@ -136,6 +139,7 @@ class YFinance(FinanceLibrary):
             float | None: The current price if found, otherwise None.
         """
         try:
+            ticker = ticker.replace('.', '-')
             with silence_output():
                 stock = yf.Ticker(ticker)
                 price = stock.info.get('currentPrice')
@@ -178,40 +182,44 @@ class YFinance(FinanceLibrary):
         if not tickers:
             return {}
         
+        # Create a mapping between sanitized and original tickers
+        ticker_map = {t.replace('.', '-'): t for t in tickers}
+        sanitized_tickers = list(ticker_map.keys())
+
         stocks_info = {}
-        
+
         try:
             with silence_output():
-                data = yf.download(tickers=tickers, period='1d', interval='1m', group_by='ticker', auto_adjust=False, progress=False)
-            
-            for ticker in tickers:
+                data = yf.download(tickers=sanitized_tickers, period='1d', interval='1m', group_by='ticker', auto_adjust=False, progress=False)
+
+            for sanitized, original in ticker_map.items():
                 try:
-                    if len(tickers) == 1:
+                    if len(sanitized_tickers) == 1:
                         ticker_data = data
                     else:
-                        ticker_data = data[ticker]
-                    
+                        ticker_data = data[sanitized]
+
                     if not ticker_data.empty:
                         price = ticker_data['Close'].dropna().iloc[-1].item()
-                        stocks_info[ticker] = {'price': float(price), 'sector': None}
+                        stocks_info[original] = {'price': float(price), 'sector': None}
                 except Exception:
                     continue
-            
+
             # Get sector info for all tickers (both successful and failed price fetches)
-            for ticker in tickers:
+            for sanitized, original in ticker_map.items():
                 try:
                     with silence_output():
-                        stock = yf.Ticker(ticker)
+                        stock = yf.Ticker(sanitized)
                         sector = stock.info.get('sector') or stock.info.get('industry')
-                    
-                    if ticker in stocks_info:
-                        stocks_info[ticker]['sector'] = sector
+
+                    if original in stocks_info:
+                        stocks_info[original]['sector'] = sector
                     else:
                         # Price fallback
-                        print(f"⏳ Getting current price for {ticker}...")
-                        price = YFinance.get_current_price(ticker)
+                        print(f"⏳ Getting current price for {original}...")
+                        price = YFinance.get_current_price(original)
                         if price:
-                            stocks_info[ticker] = {'price': price, 'sector': sector}
+                            stocks_info[original] = {'price': price, 'sector': sector}
                 except Exception:
                     continue
 
@@ -256,10 +264,10 @@ class YFinance(FinanceLibrary):
                     'weight': row.get('weight', 0.0) if 'weight' in row else None
                 }
                 companies.append(company_info)
-                
+
                 if limit and len(companies) >= limit:
                     break
-            
+
             return companies
         except Exception as e:
             print(f"❌ ERROR: Failed to get tickers for sector '{sector_key}': {e}")

@@ -127,5 +127,28 @@ class TestYFinance(unittest.TestCase):
         self.assertEqual(len(failed_sectors), 0, f"The following sectors returned no companies from yfinance: {', '.join(failed_sectors)}")
 
 
+    def test_ticker_sanitization(self):
+        """
+        Tests that tickers with dots are correctly handled (sanitized to dashes).
+        We use BRK.B which is a common ticker with a dot.
+        """
+        # Test get_current_price with a dot
+        price = YFinance.get_current_price('BRK.B')
+        self.assertIsNotNone(price)
+        self.assertGreater(price, 0)
+
+        # Test get_avg_price with a dot
+        test_date = date(2024, 1, 15)
+        avg_price = YFinance.get_avg_price('BRK.B', test_date)
+        self.assertIsNotNone(avg_price)
+        self.assertGreater(avg_price, 0)
+
+        # Test get_stocks_info with a dot
+        stocks_info = YFinance.get_stocks_info(['BRK.B', 'AAPL'])
+        self.assertIn('BRK.B', stocks_info)
+        self.assertIn('AAPL', stocks_info)
+        self.assertGreater(stocks_info['BRK.B']['price'], 0)
+
+
 if __name__ == '__main__':
     unittest.main()
