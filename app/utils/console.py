@@ -5,6 +5,20 @@ from typing import Dict
 import math
 import os
 import shutil
+import sys
+
+
+# Ensure UTF-8 encoding for stdout and stderr, especially on Windows
+if sys.stdout.encoding.lower() != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, Exception):
+        pass
+if sys.stderr.encoding.lower() != 'utf-8':
+    try:
+        sys.stderr.reconfigure(encoding='utf-8')
+    except (AttributeError, Exception):
+        pass
 
 
 @contextmanager

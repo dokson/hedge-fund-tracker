@@ -18,6 +18,16 @@ class YFinance(FinanceLibrary):
     FALLBACK_SUFFIXES = [".TO", ".V"]
 
     @staticmethod
+    def _sanitize_ticker(ticker: str) -> str:
+        """
+        Sanitizes the ticker for yfinance. Replaces '.' with '-' for share classes (e.g., BRK.B), but preserves '.' for international suffixes (e.g., AAPL.TO).
+        """
+        if '.' in ticker and not any(ticker.endswith(s) for s in YFinance.FALLBACK_SUFFIXES):
+            return ticker.replace('.', '-')
+        return ticker
+
+
+    @staticmethod
     def get_company(cusip: str, **kwargs) -> str | None:
         """
         Searches for a company name for a given ticker using the yfinance library.
@@ -32,9 +42,8 @@ class YFinance(FinanceLibrary):
         ticker = kwargs.get('ticker')
         if not ticker:
             ticker = YFinance.get_ticker(cusip)
-        
-        if ticker:
-            ticker = ticker.replace('.', '-')
+        else:
+            ticker = YFinance._sanitize_ticker(ticker)
 
         try:
             with silence_output():
@@ -94,25 +103,30 @@ class YFinance(FinanceLibrary):
         Returns:
             float | None: The average price if found, otherwise None.
         """
-        try:
-            ticker = ticker.replace('.', '-')
+        def _get_single_avg_price(t: str) -> float | None:
+            search_ticker = YFinance._sanitize_ticker(t)
             # 'end' parameter is exclusive: To get a single day, we need the next day as the end.
             with silence_output():
-                price_data = yf.download(tickers=ticker, start=date, end=date+timedelta(days=1), auto_adjust=False, progress=False)
+                price_data = yf.download(tickers=search_ticker, start=date, end=date+timedelta(days=1), auto_adjust=False, progress=False)
+            
             if not price_data.empty:
-                price = round((price_data['High'].iloc[0].item() + price_data['Low'].iloc[0].item()) / 2, 2)
+                return round((price_data['High'].iloc[0].item() + price_data['Low'].iloc[0].item()) / 2, 2)
+            return None
+
+        try:
+            # Try original ticker first
+            price = _get_single_avg_price(ticker)
+            if price is not None:
                 return price
             
             # Fallback for international tickers (e.g., TSX, TSXV)
-            # Only attempt fallback if the ticker doesn't already have a separator (. or -)
-            # This prevents infinite recursion: ticker.replace('.', '-') makes it "SYMBOL-TO",
-            # and if we don't check for "-", we would keep appending "-TO".
+            # Only attempt fallback if the ticker doesn't already have a separator
             if "." not in ticker and "-" not in ticker:
                 for suffix in YFinance.FALLBACK_SUFFIXES:
                     try:
-                        print(f"⏳ YFinance: Trying fallback {ticker + suffix} for {ticker}...")
-                        with silence_output():
-                            price = YFinance.get_avg_price(ticker + suffix, date)
+                        fallback_ticker = ticker + suffix
+                        print(f"⏳ YFinance: Trying fallback {fallback_ticker} for {ticker}...")
+                        price = _get_single_avg_price(fallback_ticker)
                         if price is not None:
                             return price
                     except:
@@ -142,18 +156,19 @@ class YFinance(FinanceLibrary):
             float | None: The current price if found, otherwise None.
         """
         try:
-            ticker = ticker.replace('.', '-')
+            search_ticker = YFinance._sanitize_ticker(ticker)
             with silence_output():
-                stock = yf.Ticker(ticker)
+                stock = yf.Ticker(search_ticker)
                 price = stock.info.get('currentPrice')
             
             # Fallback for international tickers (e.g., TSX, TSXV)
             if price is None and "." not in ticker and "-" not in ticker:
                 for suffix in YFinance.FALLBACK_SUFFIXES:
                     try:
-                        print(f"⏳ YFinance: Trying current price fallback {ticker + suffix} for {ticker}...")
+                        fallback_ticker = ticker + suffix
+                        print(f"⏳ YFinance: Trying current price fallback {fallback_ticker} for {ticker}...")
                         with silence_output():
-                            price = yf.Ticker(ticker + suffix).info.get('currentPrice')
+                            price = yf.Ticker(fallback_ticker).info.get('currentPrice')
                         if price is not None:
                             break
                     except:
@@ -186,7 +201,7 @@ class YFinance(FinanceLibrary):
             return {}
         
         # Create a mapping between sanitized and original tickers
-        ticker_map = {t.replace('.', '-'): t for t in tickers}
+        ticker_map = {YFinance._sanitize_ticker(t): t for t in tickers}
         sanitized_tickers = list(ticker_map.keys())
 
         stocks_info = {}
