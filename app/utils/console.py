@@ -5,7 +5,6 @@ from typing import Dict
 import math
 import os
 import shutil
-import sys
 
 
 @contextmanager
@@ -19,11 +18,17 @@ def silence_output():
             yield
 
 
-def get_terminal_width(fallback=120):
+def get_terminal_width(fallback=110):
     """
-    Gets the width of terminal in characters.
+    Gets the width of terminal in characters with a small buffer.
     """
-    return shutil.get_terminal_size(fallback=(fallback, 24)).columns
+    try:
+        # Prefer environment variable if set, otherwise use shutil
+        width = int(os.environ.get('COLUMNS', shutil.get_terminal_size(fallback=(fallback, 24)).columns))
+        # Use a safe buffer (subtract 2) to account for some terminal borders/margins
+        return max(width - 2, 40)
+    except Exception:
+        return fallback
 
 
 def horizontal_rule(char='='):

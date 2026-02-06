@@ -189,8 +189,28 @@ def run_ai_analyst():
         agent = AnalystAgent(get_last_quarter(), ai_client=client)
         scored_list = agent.generate_scored_list(top_n)
         if not scored_list.empty:
-            title = f'Best {top_n} Promising Stocks according to {selected_model['Description']}'
-            print_dataframe(scored_list, top_n, title=title, sort_by='Promise_Score', cols=['Ticker', 'Company', 'Industry', 'Promise_Score', 'Risk_Score', 'Low_Volatility_Score', 'Momentum_Score', 'Growth_Score'])
+            title = f'Best {top_n} Promising Stocks according to {selected_model["Description"]}'
+            
+            # Remove "Score" suffix from headers and format scores
+            rename_map = {
+                'Promise_Score': 'Promise',
+                'Risk_Score': 'Risk',
+                'Low_Volatility_Score': 'Volatility',
+                'Momentum_Score': 'Momentum',
+                'Growth_Score': 'Growth'
+            }
+            scored_list = scored_list.rename(columns=rename_map)
+            
+            print_dataframe(
+                scored_list,
+                top_n,
+                title=title,
+                sort_by='Promise',
+                cols=['Ticker', 'Company', 'Industry', 'Promise', 'Risk', 'Volatility', 'Momentum', 'Growth'],
+                formatters={'Company': lambda x: (str(x)[:32] + '...') if len(str(x)) > 35 else x}
+            )
+
+
     except Exception as e:
         print(f"❌ An unexpected error occurred while running AI Financial Agent: {e}")
 
