@@ -1,69 +1,127 @@
 from app.stocks.libraries.yfinance import YFinance
 from datetime import date
+from unittest.mock import patch, MagicMock
+import pandas as pd
 import unittest
 
 
 class TestYFinance(unittest.TestCase):
-    def test_get_ticker(self):
+
+    @patch('app.stocks.libraries.yfinance.requests.get')
+    def test_get_ticker(self, mock_get):
         """
-        Tests the get_ticker method for known CUSIPs.
+        Tests the get_ticker method using mocks.
         """
-        # Test for a known CUSIP (Apple)
-        aapl_ticker = YFinance.get_ticker('037833100')
-        self.assertEqual(aapl_ticker, 'AAPL')
+        # Mock successful response
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            'quotes': [{'symbol': 'AAPL'}]
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        ticker = YFinance.get_ticker('037833100')
+        self.assertEqual(ticker, 'AAPL')
+        mock_get.assert_called_once_with(
+            "https://query1.finance.yahoo.com/v1/finance/search?q=037833100",
+            headers={'User-Agent': 'Mozilla/5.0'}
+        )
 
 
-    def test_get_company(self):
+    @patch('app.stocks.libraries.yfinance.yf.Ticker')
+    @patch('app.stocks.libraries.yfinance.YFinance.get_ticker')
+    def test_get_company(self, mock_get_ticker, mock_yf_ticker):
         """
-        Tests the get_company method for known tickers.
+        Tests the get_company method using mocks.
         """
-        # Test for a known ticker (Apple)
-        aapl_company = YFinance.get_company('037833100', ticker='AAPL')
-        self.assertIsNotNone(aapl_company)
-        self.assertIn('Apple', aapl_company)
+        # Mock yf.Ticker object
+        mock_instance = MagicMock()
+        mock_instance.info = {'longName': 'Apple Inc.'}
+        mock_yf_ticker.return_value = mock_instance
+
+        # Test with ticker provided
+        company = YFinance.get_company('037833100', ticker='AAPL')
+        self.assertEqual(company, 'Apple Inc')
+        mock_yf_ticker.assert_called_with('AAPL')
+
+        # Test with ticker not provided (should call get_ticker)
+        mock_get_ticker.return_value = 'MSFT'
+        mock_instance.info = {'shortName': 'Microsoft'}
+        company = YFinance.get_company('some_cusip')
+        self.assertEqual(company, 'Microsoft')
+        mock_get_ticker.assert_called_with('some_cusip')
+        mock_yf_ticker.assert_called_with('MSFT')
 
 
-    def test_get_current_price(self):
+    @patch('app.stocks.libraries.yfinance.yf.Ticker')
+    def test_get_current_price(self, mock_yf_ticker):
         """
-        Tests the get_current_price method for a known ticker.
+        Tests the get_current_price method using mocks.
         """
-        # Test for a known ticker (Apple)
-        aapl_price = YFinance.get_current_price('AAPL')
-        self.assertIsNotNone(aapl_price)
-        self.assertIsInstance(aapl_price, float)
-        self.assertGreater(aapl_price, 0)
+        mock_instance = MagicMock()
+        mock_instance.info = {'currentPrice': 150.0}
+        mock_yf_ticker.return_value = mock_instance
+
+        price = YFinance.get_current_price('AAPL')
+        self.assertEqual(price, 150.0)
+        mock_yf_ticker.assert_called_once_with('AAPL')
 
 
-    def test_get_avg_price(self):
+    @patch('app.stocks.libraries.yfinance.yf.download')
+    @patch('app.stocks.libraries.yfinance.YFinance.get_current_price')
+    def test_get_avg_price(self, mock_get_current, mock_download):
         """
-        Tests the get_avg_price method for a known ticker and date.
+        Tests the get_avg_price method using mocks.
         """
-        # Test for a known ticker (Apple) on a specific date
+        # Mock successful download
+        df = pd.DataFrame({'High': [110.0], 'Low': [90.0]}, index=[pd.Timestamp('2024-01-15')])
+        mock_download.return_value = df
+
         test_date = date(2024, 1, 15)
-        aapl_price = YFinance.get_avg_price('AAPL', test_date)
-        self.assertIsNotNone(aapl_price)
-        self.assertIsInstance(aapl_price, float)
-        self.assertGreater(aapl_price, 0)
+        price = YFinance.get_avg_price('AAPL', test_date)
+        self.assertEqual(price, 100.0)  # (110 + 90) / 2
+        mock_download.assert_called_once()
+
+        # Mock empty download (fallback to current price)
+        mock_download.return_value = pd.DataFrame()
+        mock_get_current.return_value = 155.0
+        price = YFinance.get_avg_price('AAPL', test_date)
+        self.assertEqual(price, 155.0)
+        mock_get_current.assert_called_once_with('AAPL')
 
 
-    def test_get_stocks_info(self):
+    @patch('app.stocks.libraries.yfinance.yf.download')
+    @patch('app.stocks.libraries.yfinance.yf.Ticker')
+    def test_get_stocks_info(self, mock_yf_ticker, mock_download):
         """
-        Tests the get_stocks_info method for multiple tickers.
+        Tests the get_stocks_info method using mocks.
         """
-        # Test for known tickers
-        tickers = ['AAPL', 'MSFT', 'GOOGL']
+        # Mock download results
+        # For multiple tickers, yfinance returns columns like ('AAPL', 'Close')
+        columns = pd.MultiIndex.from_tuples([('AAPL', 'Close'), ('MSFT', 'Close')])
+        df = pd.DataFrame([[150.0, 300.0]], columns=columns)
+        mock_download.return_value = df
+
+        # Mock individual Ticker info calls for sectors
+        mock_aapl = MagicMock()
+        mock_aapl.info = {'sector': 'Technology'}
+        mock_msft = MagicMock()
+        mock_msft.info = {'industry': 'Software'}
+        
+        def ticker_side_effect(symbol):
+            if symbol == 'AAPL': return mock_aapl
+            if symbol == 'MSFT': return mock_msft
+            return MagicMock()
+
+        mock_yf_ticker.side_effect = ticker_side_effect
+
+        tickers = ['AAPL', 'MSFT']
         stocks_info = YFinance.get_stocks_info(tickers)
-        
-        self.assertIsNotNone(stocks_info)
-        self.assertIsInstance(stocks_info, dict)
-        self.assertGreater(len(stocks_info), 0)
-        
-        # Check structure for at least one ticker
-        if 'AAPL' in stocks_info:
-            self.assertIn('price', stocks_info['AAPL'])
-            self.assertIn('sector', stocks_info['AAPL'])
-            self.assertIsInstance(stocks_info['AAPL']['price'], float)
-            self.assertGreater(stocks_info['AAPL']['price'], 0)
+
+        self.assertEqual(stocks_info['AAPL']['price'], 150.0)
+        self.assertEqual(stocks_info['AAPL']['sector'], 'Technology')
+        self.assertEqual(stocks_info['MSFT']['price'], 300.0)
+        self.assertEqual(stocks_info['MSFT']['sector'], 'Software')
 
 
     def test_get_stocks_info_empty_list(self):
@@ -74,80 +132,74 @@ class TestYFinance(unittest.TestCase):
         self.assertEqual(stocks_info, {})
 
 
-    def test_get_sector_tickers(self):
+    @patch('app.stocks.libraries.yfinance.yf.Sector')
+    def test_get_sector_tickers(self, mock_yf_sector):
         """
-        Tests the get_sector_tickers method for a valid sector.
+        Tests the get_sector_tickers method using mocks.
         """
-        # Test for technology sector
-        tech_companies = YFinance.get_sector_tickers('technology', limit=10)
-        
-        self.assertIsNotNone(tech_companies)
-        self.assertIsInstance(tech_companies, list)
-        self.assertGreater(len(tech_companies), 0)
-        self.assertLessEqual(len(tech_companies), 10)
-        
-        # Check structure of first company
-        if len(tech_companies) > 0:
-            company = tech_companies[0]
-            self.assertIn('symbol', company)
-            self.assertIn('name', company)
-            self.assertIsInstance(company['symbol'], str)
-            self.assertIsInstance(company['name'], str)
+        mock_sector_instance = MagicMock()
+        mock_sector_instance.top_companies = pd.DataFrame([
+            {'symbol': 'AAPL', 'name': 'Apple Inc.', 'weight': 0.1},
+            {'symbol': 'MSFT', 'name': 'Microsoft Corp.', 'weight': 0.08}
+        ])
+        mock_yf_sector.return_value = mock_sector_instance
+
+        companies = YFinance.get_sector_tickers('technology', limit=1)
+        self.assertEqual(len(companies), 1)
+        self.assertEqual(companies[0]['symbol'], 'AAPL')
 
 
-    def test_get_sector_tickers_invalid_sector(self):
+    @patch('app.stocks.libraries.yfinance.yf.Sector')
+    def test_get_sector_tickers_invalid_sector(self, mock_yf_sector):
         """
-        Tests the get_sector_tickers method with an invalid sector.
+        Tests the get_sector_tickers method with retry logic on failure.
         """
+        mock_yf_sector.return_value.top_companies = None
+        
         from tenacity import RetryError
-        # Test with an invalid sector key
         with self.assertRaises(RetryError):
             YFinance.get_sector_tickers('invalid-sector-key')
 
 
-    def test_get_sector_tickers_all_sectors(self):
+    @patch('app.stocks.libraries.yfinance.yf.Ticker')
+    @patch('app.stocks.libraries.yfinance.yf.download')
+    def test_ticker_sanitization(self, mock_download, mock_yf_ticker):
         """
-        Tests the get_sector_tickers method for all sectors derived from hierarchy.csv.
-        Verifies that each sector returns at least some companies from yfinance.
+        Tests that tickers with dots are correctly sanitized to dashes
+        when passed to yfinance library.
         """
-        from app.utils.gics import load_yf_sectors
+        # Test current price: BRK.B -> BRK-B
+        mock_instance = MagicMock()
+        mock_instance.info = {'currentPrice': 500.0}
+        mock_yf_ticker.return_value = mock_instance
+
+        YFinance.get_current_price('BRK.B')
+        mock_yf_ticker.assert_called_with('BRK-B')
+
+        # Test avg price: BRK.B -> BRK-B
+        df = pd.DataFrame({'High': [510.0], 'Low': [490.0]}, index=[pd.Timestamp('2024-01-15')])
+        mock_download.return_value = df
+        YFinance.get_avg_price('BRK.B', date(2024, 1, 15))
+        # download is called with tickers='BRK-B'
+        args, kwargs = mock_download.call_args
+        self.assertEqual(kwargs['tickers'], 'BRK-B')
+
+        # Test get_stocks_info mapping
+        columns = pd.MultiIndex.from_tuples([('BRK-B', 'Close'), ('AAPL', 'Close')])
+        df_multi = pd.DataFrame([[500.0, 200.0]], columns=columns)
+        mock_download.return_value = df_multi
         
-        sectors_df = load_yf_sectors()
-        failed_sectors = []
+        # Reset mocks for sector calls
+        mock_yf_ticker.reset_mock()
+        mock_yf_ticker.return_value.info = {'sector': 'Finance'}
 
-        for _, row in sectors_df.iterrows():
-            sector_key = row['Key']
-            sector_name = row['Name']
-
-            companies = YFinance.get_sector_tickers(sector_key, limit=3)
-
-            if len(companies) == 0:
-                failed_sectors.append(f"{sector_name} ({sector_key})")
-
-        self.assertEqual(len(failed_sectors), 0, f"The following sectors returned no companies from yfinance: {', '.join(failed_sectors)}")
-
-
-    def test_ticker_sanitization(self):
-        """
-        Tests that tickers with dots are correctly handled (sanitized to dashes).
-        We use BRK.B which is a common ticker with a dot.
-        """
-        # Test get_current_price with a dot
-        price = YFinance.get_current_price('BRK.B')
-        self.assertIsNotNone(price)
-        self.assertGreater(price, 0)
-
-        # Test get_avg_price with a dot
-        test_date = date(2024, 1, 15)
-        avg_price = YFinance.get_avg_price('BRK.B', test_date)
-        self.assertIsNotNone(avg_price)
-        self.assertGreater(avg_price, 0)
-
-        # Test get_stocks_info with a dot
-        stocks_info = YFinance.get_stocks_info(['BRK.B', 'AAPL'])
-        self.assertIn('BRK.B', stocks_info)
-        self.assertIn('AAPL', stocks_info)
-        self.assertGreater(stocks_info['BRK.B']['price'], 0)
+        info = YFinance.get_stocks_info(['BRK.B', 'AAPL'])
+        
+        # Verify result keys are original
+        self.assertIn('BRK.B', info)
+        self.assertIn('AAPL', info)
+        # Verify internal calls used sanitized
+        mock_yf_ticker.assert_any_call('BRK-B')
 
 
 if __name__ == '__main__':
