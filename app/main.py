@@ -1,4 +1,5 @@
 from app.ai.agent import AnalystAgent
+from app.analysis.performance_evaluator import PerformanceEvaluator
 from app.analysis.stocks import aggregate_quarter_by_fund, fund_analysis, get_quarter_data, quarter_analysis, stock_analysis
 from app.stocks.libraries.yfinance import YFinance
 from app.stocks.price_fetcher import PriceFetcher
@@ -204,12 +205,51 @@ def run_stock_analysis():
                 'Delta_Value': get_value_formatter()
             }
         )
-        print("\n")
+
+
+def run_performance_evaluation():
+    """
+    5. Evaluate fund performance (Holding-Based Return).
+    """
+    selected_fund = select_fund()
+    if selected_fund:
+        selected_quarter = select_quarter()
+        if not selected_quarter:
+            return
+
+        result = PerformanceEvaluator.calculate_quarterly_performance(selected_fund['Fund'], selected_quarter)
+        
+        if "error" in result:
+            print(f"❌ {result['error']}")
+            return
+
+        horizontal_rule('-')
+        print_centered(f"{selected_fund['Fund'].upper()} - {selected_quarter} PERFORMANCE EVALUATION (HBR)")
+        horizontal_rule('-')
+
+        print(f"\nPortfolio Return: {format_percentage(result['portfolio_return'], show_sign=True, decimal_places=2)}")
+        print(f"Start Value: {format_value(result['start_value'])}")
+        
+        formatters = {
+            'Company': get_string_formatter(30),
+            'Weight': get_percentage_formatter(),
+            'Return': get_signed_perc_formatter(),
+            'Weighted_Return': get_signed_perc_formatter()
+        }
+        cols = ['Ticker', 'Company', 'Weight', 'Return', 'Weighted_Return']
+
+        if result['top_contributors']:
+            df_contrib = pd.DataFrame(result['top_contributors'])
+            print_dataframe(df_contrib, len(df_contrib), title="Top Contributors (by Impact)", sort_by='Weighted_Return', cols=cols, formatters=formatters)
+        
+        if result['top_detractors']:
+            df_detract = pd.DataFrame(result['top_detractors'])
+            print_dataframe(df_detract, len(df_detract), title="Top Detractors (by Impact)", sort_by='Weighted_Return', cols=cols, formatters=formatters, ascending_sort=True)
 
 
 def run_ai_analyst():
     """
-    5. Run AI Analyst
+    6. Run AI Analyst
     """
     selected_model = select_ai_model()
     if not selected_model:
@@ -252,7 +292,7 @@ def run_ai_analyst():
 
 def run_ai_due_diligence():
     """
-    6. Run AI Due Diligence on a stock
+    7. Run AI Due Diligence on a stock
     """
     selected_model = select_ai_model()
     if not selected_model:
@@ -334,8 +374,9 @@ if __name__ == "__main__":
         '2': run_quarter_analysis,
         '3': run_fund_analysis,
         '4': run_stock_analysis,
-        '5': run_ai_analyst,
-        '6': run_ai_due_diligence,
+        '5': run_performance_evaluation,
+        '6': run_ai_analyst,
+        '7': run_ai_due_diligence,
     }
 
     while True:
@@ -348,11 +389,12 @@ if __name__ == "__main__":
             print("2. Analyze overall hedge-funds stock trends for a quarter")
             print("3. Analyze a specific fund's quarterly portfolio")
             print("4. Analyze a specific stock's activity for a quarter")
-            print("5. Run AI Analyst to find most promising stocks")
-            print("6. Run AI Due Diligence on a stock")
+            print("5. Evaluate a fund's performance (Holding-Based Return)")
+            print("6. Run AI Analyst to find most promising stocks")
+            print("7. Run AI Due Diligence on a stock")
             horizontal_rule()
 
-            main_choice = input("Choose an option (0-6): ")
+            main_choice = input("Choose an option (0-7): ")
             action = actions.get(main_choice)
             if action:
                 if action() is False:
