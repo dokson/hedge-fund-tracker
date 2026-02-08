@@ -254,6 +254,23 @@ def get_quarter(date_str):
     return f"{year}Q{quarter}"
 
 
+def parse_quarter(quarter_str: str) -> tuple[int, int]:
+    """
+    Parses a quarter string (e.g., '2024Q2') into a tuple (year, quarter).
+
+    Args:
+        quarter_str (str): The quarter string in 'YYYYQN' format.
+
+    Returns:
+        tuple: (year, quarter) as integers.
+    """
+    import re
+    match = re.match(r"(\d{4})Q([1-4])", quarter_str)
+    if not match:
+        raise ValueError(f"Invalid quarter format: {quarter_str}")
+    return int(match.group(1)), int(match.group(2))
+
+
 def get_quarter_date(quarter: str) -> str:
     """
     Converts a quarter string (e.g., '2024Q2') into its corresponding quarter-end date string.
@@ -264,10 +281,25 @@ def get_quarter_date(quarter: str) -> str:
     Returns:
         str: The quarter-end date in 'YYYY-MM-DD' format (e.g., '2024-06-30')
     """
-    year = int(quarter[:4])
-    quarter = int(quarter[5])
+    year, q = parse_quarter(quarter)
     date_map = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}
-    return f"{year}-{date_map[quarter]}"
+    return f"{year}-{date_map[q]}"
+
+
+def get_previous_quarter(quarter_str: str) -> str:
+    """
+    Calculates the quarter immediately preceding the given quarter string.
+
+    Args:
+        quarter_str (str): The quarter string in 'YYYYQN' format.
+
+    Returns:
+        str: The previous quarter string in 'YYYYQN' format.
+    """
+    year, q = parse_quarter(quarter_str)
+    if q == 1:
+        return f"{year-1}Q4"
+    return f"{year}Q{q-1}"
 
 
 def get_previous_quarter_end_date(date: str) -> str:
@@ -275,19 +307,14 @@ def get_previous_quarter_end_date(date: str) -> str:
     Calculates the end date of the quarter immediately preceding the one for the given date.
 
     Args:
-        date_str (str): A date string in 'YYYY-MM-DD' format.
+        date (str): A date string in 'YYYY-MM-DD' format.
 
     Returns:
         str: The end date of the previous quarter in 'YYYY-MM-DD' format.
     """
-    quarter = get_quarter(date)
-    year = int(quarter[:4])
-    quarter_num = int(quarter[5])
-
-    prev_year = year if quarter_num > 1 else year - 1
-    prev_quarter_num = quarter_num - 1 if quarter_num > 1 else 4
-
-    return get_quarter_date(f"{prev_year}Q{prev_quarter_num}")
+    current_quarter = get_quarter(date)
+    prev_quarter = get_previous_quarter(current_quarter)
+    return get_quarter_date(prev_quarter)
 
 
 def isin_to_cusip(isin: str) -> str | None:

@@ -136,6 +136,38 @@ def load_fund_data(fund: str, quarter: str) -> pd.DataFrame:
     return pd.DataFrame()
 
 
+def load_fund_holdings(fund: str, quarter: str) -> pd.DataFrame:
+    """
+    Loads and cleans holdings data for a specific fund and quarter.
+    This includes converting 'Value' and 'Shares' to numeric and calculating 'Reported_Price'.
+
+    Args:
+        fund (str): The name of the fund.
+        quarter (str): The quarter in 'YYYYQN' format.
+
+    Returns:
+        pd.DataFrame: A cleaned DataFrame with numeric 'Shares', 'Value', and 'Reported_Price'.
+    """
+    from app.utils.pd import get_numeric_series
+    
+    df = load_fund_data(fund, quarter)
+    if df.empty:
+        return df
+
+    # Clean numeric columns
+    df['Shares'] = pd.to_numeric(df['Shares'], errors='coerce').fillna(0)
+    if 'Value' in df.columns:
+        df['Value'] = get_numeric_series(df['Value']).fillna(0)
+    
+    # Calculate price per share from the report
+    df['Reported_Price'] = df.apply(
+        lambda r: r['Value'] / r['Shares'] if r['Shares'] > 0 else 0,
+        axis=1
+    )
+    
+    return df
+
+
 def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}") -> list:
     """
     Loads hedge funds from file (hedge_funds.csv)
