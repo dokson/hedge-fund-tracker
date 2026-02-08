@@ -1,6 +1,6 @@
 from app.utils.database import (
     HEDGE_FUNDS_FILE, MODELS_FILE, STOCKS_FILE, LATEST_SCHEDULE_FILINGS_FILE, GICS_HIERARCHY_FILE,
-    count_funds_in_quarter, get_all_quarters, get_last_quarter, get_last_quarter_for_fund,
+    count_funds_in_quarter, get_all_quarters, get_last_quarter, get_last_quarter_for_fund, get_quarters_for_fund,
     load_stocks, load_fund_holdings, load_hedge_funds, load_models, load_non_quarterly_data, load_gics_hierarchy,
     save_stock, sort_stocks, find_cusips_for_ticker, update_ticker, delete_fund_from_database, get_most_recent_quarter
 )
@@ -70,6 +70,12 @@ class TestDatabase(unittest.TestCase):
     def test_get_last_quarter_for_fund(self):
         self.assertEqual(get_last_quarter_for_fund('Fund A'), '2025Q1')
         self.assertIsNone(get_last_quarter_for_fund('Fund C'))
+
+
+    def test_get_quarters_for_fund(self):
+        self.assertEqual(get_quarters_for_fund('Fund A'), ['2025Q1', '2024Q4'])
+        self.assertEqual(get_quarters_for_fund('Fund B'), ['2025Q1'])
+        self.assertEqual(get_quarters_for_fund('Fund C'), [])
 
 
     def test_get_most_recent_quarter(self):

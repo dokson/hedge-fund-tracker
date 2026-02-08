@@ -60,11 +60,25 @@ def get_last_quarter_for_fund(fund_name: str) -> str | None:
     Returns:
         str | None: The most recent quarter string (e.g., '2025Q1'), or None if no filing is found.
     """
+    quarters = get_quarters_for_fund(fund_name)
+    return quarters[0] if quarters else None
+
+
+def get_quarters_for_fund(fund_name: str) -> list[str]:
+    """
+    Returns a sorted list (descending) of all quarters where a given fund has data.
+
+    Args:
+        fund_name (str): The name of the fund.
+
+    Returns:
+        list: A list of quarter strings (e.g., ['2025Q1', '2024Q4']).
+    """
     fund_filename = f"{fund_name.replace(' ', '_')}.csv"
-    for quarter in get_all_quarters():
-        if (Path(DB_FOLDER) / quarter / fund_filename).exists():
-            return quarter
-    return None
+    return [
+        quarter for quarter in get_all_quarters()
+        if (Path(DB_FOLDER) / quarter / fund_filename).exists()
+    ]
 
 
 def get_most_recent_quarter(ticker: str) -> str | None:

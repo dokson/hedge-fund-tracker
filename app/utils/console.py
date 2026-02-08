@@ -1,4 +1,5 @@
-from app.utils.database import get_all_quarters, load_hedge_funds, load_models
+from app.utils.database import get_all_quarters, get_quarters_for_fund, load_hedge_funds, load_models
+from app.utils.strings import get_previous_quarter
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from tabulate import tabulate
 from typing import Dict
@@ -215,9 +216,34 @@ def select_period(text="Select offset:"):
     )
 
 
-def select_quarter(text="Select the quarter"):
+def select_quarter(text="Select the quarter", fund_name=None, require_previous=False):
     """
     Prompts the user to select an analysis quarter.
-    Returns the selected quarter string (e.g., '2025Q1').
+    Optionally filters by fund availability and ensures a previous quarter exists for comparison.
+
+    Args:
+        text (str): The prompt text.
+        fund_name (str, optional): If provided, filters to quarters where this fund has data.
+        require_previous (bool): If True, only quarters that have a previous quarter's data
+                                 (based on fund_name or general availability) are shown.
+
+    Returns:
+        str: The selected quarter string (e.g., '2025Q1').
     """
-    return prompt_for_selection(get_all_quarters(), text)
+    if fund_name:
+        available_quarters = get_quarters_for_fund(fund_name)
+    else:
+        available_quarters = get_all_quarters()
+
+    if require_previous:
+        # Filter to quarters Q where Q-1 also exists in available_quarters
+        available_quarters = [
+            q for q in available_quarters
+            if get_previous_quarter(q) in available_quarters
+        ]
+
+    if not available_quarters:
+        print(f"❌ No valid quarters found for processing{f' (Fund: {fund_name})' if fund_name else ''}.")
+        return None
+
+    return prompt_for_selection(available_quarters, text)

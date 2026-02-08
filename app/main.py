@@ -114,7 +114,7 @@ def run_fund_analysis():
     """
     selected_fund = select_fund()
     if selected_fund:
-        selected_quarter = select_quarter()
+        selected_quarter = select_quarter(fund_name=selected_fund['Fund'])
         if not selected_quarter:
             return
 
@@ -213,7 +213,7 @@ def run_performance_evaluation():
     """
     selected_fund = select_fund()
     if selected_fund:
-        selected_quarter = select_quarter()
+        selected_quarter = select_quarter(fund_name=selected_fund['Fund'], require_previous=True)
         if not selected_quarter:
             return
 
