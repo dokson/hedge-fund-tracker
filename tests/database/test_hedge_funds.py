@@ -55,3 +55,27 @@ class TestHedgeFunds(unittest.TestCase):
                 f"{formatted_funds}"
             )
             self.fail(error_message)
+
+
+    def test_hedge_funds_are_sorted(self):
+        """
+        Verifies that hedge_funds.csv is sorted alphabetically by 'Fund',
+        ignoring the first two favorite entries (Duquesne, Renaissance).
+        """
+        hedge_funds = load_hedge_funds()
+
+        # Skip the first two funds
+        funds_to_check = [f['Fund'] for f in hedge_funds[2:]]
+        
+        # Create a sorted version (case-insensitive to match typical expectations)
+        sorted_funds = sorted(funds_to_check, key=str.casefold)
+        
+        # Check if the original list matches the sorted list
+        if funds_to_check != sorted_funds:
+            # Find the first mismatch for the error message
+            for i, (actual, expected) in enumerate(zip(funds_to_check, sorted_funds)):
+                if actual != expected:
+                    self.fail(
+                        f"hedge_funds.csv is not sorted correctly starting from the 3rd entry.\n"
+                        f"First mismatch at index {i+2}: Found '{actual}', expected '{expected}'."
+                    )
