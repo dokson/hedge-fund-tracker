@@ -174,7 +174,16 @@ class TestDatabase(unittest.TestCase):
         Clean up the temporary database directory.
         This runs after each test.
         """
-        shutil.rmtree(self.test_db_folder)
+        # Retry logic to handle Windows file locking issues
+        import time
+        for _ in range(5):
+            try:
+                shutil.rmtree(self.test_db_folder)
+                break
+            except PermissionError:
+                time.sleep(0.1)
+        else:
+            shutil.rmtree(self.test_db_folder)
         self.patcher.stop()
 
 

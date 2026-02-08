@@ -1,7 +1,8 @@
+from app.utils.database import DB_FOLDER, EXCLUDED_HEDGE_FUNDS_FILE as EXCLUDED_FILENAME
 import pandas as pd
 import re
 
-EXCLUDED_HEDGE_FUNDS_FILE = './database/excluded_hedge_funds.csv'
+EXCLUDED_HEDGE_FUNDS_FILE = f"{DB_FOLDER}/{EXCLUDED_FILENAME}"
 README_FILE = './README.md'
 README_DISPLAY_LIMIT = 50
 

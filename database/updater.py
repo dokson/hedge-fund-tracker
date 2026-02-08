@@ -2,11 +2,12 @@ from app.analysis.non_quarterly import get_non_quarterly_filings_dataframe
 from app.analysis.quarterly_report import generate_comparison
 from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_non_quarterly_after_date, get_latest_13f_filing_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
-from app.utils.console import horizontal_rule, print_centered, select_fund, select_period
-from app.utils.database import delete_fund_from_database, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
+from app.utils.console import horizontal_rule, print_centered, print_centered_table, select_fund, select_period
+from app.utils.database import get_funds_missing_quarters, delete_fund_from_database, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
 from app.utils.readme import update_readme
 from app.utils.strings import get_previous_quarter_end_date
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from tabulate import tabulate
 import os
 
 
@@ -293,6 +294,26 @@ def run_delete_fund():
         print("❌ Invalid URL or operation cancelled. Deletion aborted.")
 
 
+def print_missing_quarters_report():
+    """
+    8. Shows funds with missing quarters.
+    """
+    horizontal_rule()
+    print_centered("MISSING QUARTERS REPORT")
+    horizontal_rule()
+    
+    missing_quarters = get_funds_missing_quarters()
+    
+    if not missing_quarters:
+        print("✅ No funds with missing quarters found.")
+        return
+
+    data = [[fund, ", ".join(quarters)] for fund, quarters in missing_quarters.items()]
+    
+    print_centered_table(tabulate(data, headers=["Fund", "Missing Quarters"], tablefmt="psql", stralign="left"))
+    horizontal_rule()
+
+
 if __name__ == "__main__":
     actions = {
         '0': exit,
@@ -302,7 +323,8 @@ if __name__ == "__main__":
         '4': run_manual_cik_report,
         '5': run_ticker_update,
         '6': run_cusip_ticker_update,
-        '7': run_delete_fund
+        '7': run_delete_fund,
+        '8': print_missing_quarters_report
     }
 
     while True:
@@ -318,9 +340,10 @@ if __name__ == "__main__":
             print("5. Update a stock ticker across the entire database")
             print("6. Update a stock ticker for a single CUSIP")
             print("7. Delete a hedge fund from the database")
+            print("8. Show funds with missing quarters")
             horizontal_rule()
 
-            choice = input("Choose an option (0-7): ")
+            choice = input("Choose an option (0-8): ")
             action = actions.get(choice)
             if action:
                 if action() is False:

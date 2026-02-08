@@ -282,7 +282,7 @@ def run_ai_analyst():
                 title=title,
                 sort_by='Promise',
                 cols=['Ticker', 'Company', 'Industry', 'Promise', 'Risk', 'Volatility', 'Momentum', 'Growth'],
-                formatters={'Company': get_string_formatter(35)}
+                formatters={'Company': get_string_formatter(35), 'Industry': get_string_formatter(30)}
             )
 
 

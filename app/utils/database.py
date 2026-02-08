@@ -7,6 +7,7 @@ import re
 
 DB_FOLDER = './database'
 HEDGE_FUNDS_FILE = 'hedge_funds.csv'
+EXCLUDED_HEDGE_FUNDS_FILE = 'excluded_hedge_funds.csv'
 GICS_HIERARCHY_FILE = 'GICS/hierarchy.csv'
 LATEST_SCHEDULE_FILINGS_FILE = 'non_quarterly.csv'
 MODELS_FILE = 'models.csv'
@@ -653,7 +654,7 @@ def delete_fund_from_database(fund_info: dict, url: str = "") -> None:
 
     # 2. Update CSV files
     hedge_funds_path = Path(DB_FOLDER) / HEDGE_FUNDS_FILE
-    excluded_path = Path(DB_FOLDER) / 'excluded_hedge_funds.csv'
+    excluded_path = Path(DB_FOLDER) / EXCLUDED_HEDGE_FUNDS_FILE
 
     try:
         # Load all hedge funds
@@ -685,3 +686,25 @@ def delete_fund_from_database(fund_info: dict, url: str = "") -> None:
         print(f"❌ Error updating CSV files: {e}")
 
     print(f"✅ Deletion of '{fund_name}' completed.")
+
+
+def get_funds_missing_quarters() -> dict[str, list[str]]:
+    """
+    Identifies funds that are missing data for one or more available quarters.
+
+    Returns:
+        dict: A dictionary mapping fund names to a list of missing quarters.
+    """
+    all_quarters = set(get_all_quarters())
+    funds = load_hedge_funds()
+    missing_data_funds = {}
+
+    for fund in funds:
+        fund_name = fund['Fund']
+        fund_quarters = set(get_quarters_for_fund(fund_name))
+        
+        if fund_quarters != all_quarters:
+            missing = sorted(list(all_quarters - fund_quarters))
+            missing_data_funds[fund_name] = missing
+
+    return missing_data_funds
