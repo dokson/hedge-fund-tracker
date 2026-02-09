@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "1124c82f342ee699fe1f6d899c320cc85250ed90c8db93d84123579ccaf36f92"
+            "sha256": "515c964096a46db4637e761bebea4be12e68730b1c729dfdc3c23a4026f64120"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -1376,12 +1376,12 @@
         },
         "openai": {
             "hashes": [
-                "sha256:47224b74bd20f30c6b0a6a329505243cb2f26d5cf84d9f8d0825ff8b35e9c999",
-                "sha256:4f393fd886ca35e113aac7ff239bcd578b81d8f104f5aedc7d3693eb2af1d338"
+                "sha256:5018d3bcb6651c5aac90e6d0bf9da5cde1bdd23749f67b45b37c522b6e6353af",
+                "sha256:538f97e1c77a00e3a99507688c878cda7e9e63031807ba425c68478854d48b30"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==2.17.0"
+            "version": "==2.18.0"
         },
         "openpyxl": {
             "hashes": [
