@@ -9,6 +9,8 @@ import os
 import shutil
 import unittest
 import unittest.mock
+import threading
+import time
 
 
 class TestDatabase(unittest.TestCase):
@@ -146,6 +148,74 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(df_nq.iloc[0]['Ticker'], 'TICKNEW')
 
 
+    def test_concurrent_save_stocks(self):
+        num_threads = 10
+        iterations = 20
+        stocks_path = f'./{self.test_db_folder}/{STOCKS_FILE}'
+        
+        def worker(thread_idx):
+            for i in range(iterations):
+                cusip = f"C_{thread_idx}_{i}"
+                ticker = f"T_{thread_idx}_{i}"
+                company = f"Co_{thread_idx}_{i}"
+                save_stock(cusip, ticker, company)
+                
+        threads = []
+        for i in range(num_threads):
+            t = threading.Thread(target=worker, args=(i,))
+            threads.append(t)
+            
+        for t in threads:
+            t.start()
+            
+        for t in threads:
+            t.join()
+            
+        # Verify all records are present
+        df = load_stocks(stocks_path)
+        actual_count = len(df)
+        # Initial 2 records + 200 new ones
+        expected_count = 2 + (num_threads * iterations)
+        self.assertEqual(actual_count, expected_count)
+
+
+    def test_concurrent_save_and_sort(self):
+        stocks_path = f'./{self.test_db_folder}/{STOCKS_FILE}'
+        # One thread keeps saving, another keeps sorting
+        stop_event = threading.Event()
+        
+        def saver():
+            i = 0
+            while not stop_event.is_set():
+                save_stock(f"S_{i}", f"T_{i}", "Co")
+                i += 1
+                time.sleep(0.01)
+                
+        def sorter():
+            while not stop_event.is_set():
+                try:
+                    sort_stocks(stocks_path)
+                except Exception as e:
+                    pass
+                time.sleep(0.02)
+                
+        t1 = threading.Thread(target=saver)
+        t2 = threading.Thread(target=sorter)
+        
+        t1.start()
+        t2.start()
+        
+        time.sleep(1) # Run for 1 second is enough for this combined test
+        stop_event.set()
+        
+        t1.join()
+        t2.join()
+        
+        # Verify it didn't crash
+        df = load_stocks(stocks_path)
+        self.assertTrue(len(df) > 0)
+
+
     def test_delete_fund_from_database(self):
         fund_info = {'Fund': 'Fund B', 'CIK': '002'}
         # Create Fund B in hedge_funds.csv first
@@ -175,7 +245,6 @@ class TestDatabase(unittest.TestCase):
         This runs after each test.
         """
         # Retry logic to handle Windows file locking issues
-        import time
         for _ in range(5):
             try:
                 shutil.rmtree(self.test_db_folder)

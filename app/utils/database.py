@@ -1,9 +1,12 @@
 from app.ai.clients import GitHubClient, GoogleAIClient, GroqClient, HuggingFaceClient, OpenRouterClient
 from app.utils.strings import get_quarter
+from contextlib import contextmanager
 from pathlib import Path
-import pandas as pd
 import csv
+import os
+import pandas as pd
 import re
+import time
 
 DB_FOLDER = './database'
 HEDGE_FUNDS_FILE = 'hedge_funds.csv'
@@ -336,6 +339,53 @@ def save_non_quarterly_filings(schedule_filings: list, filepath=f"./{DB_FOLDER}/
         print(f"❌ An error occurred while saving latest schedule filings to '{filepath}': {e}")
 
 
+@contextmanager
+def stocks_lock(timeout=30):
+    """
+    A simple file-based lock to synchronize access to stocks.csv.
+    Uses a .lock file to ensure only one process/thread can modify the file at a time.
+    """
+    lock_path = Path(DB_FOLDER) / f"{STOCKS_FILE}.lock"
+    start_time = time.time()
+    acquired = False
+    
+    try:
+        while True:
+            try:
+                # Atomic creation of a lock file
+                fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.close(fd)
+                acquired = True
+                break
+            except FileExistsError:
+                if time.time() - start_time > timeout:
+                    raise TimeoutError(f"Could not acquire lock for {STOCKS_FILE} within {timeout} seconds.")
+                
+                # Check for stale lock (older than 60 seconds)
+                try:
+                    if time.time() - os.path.getmtime(lock_path) > 60:
+                        try:
+                            os.remove(lock_path)
+                            continue
+                        except OSError:
+                            pass
+                except OSError:
+                    pass
+                    
+                time.sleep(0.05)
+            except OSError:
+                # Handle potential permission errors or other weird OS-level issues
+                time.sleep(0.05)
+                
+        yield
+    finally:
+        if acquired:
+            try:
+                os.remove(lock_path)
+            except OSError:
+                pass
+
+
 def save_stock(cusip: str, ticker: str, company: str) -> None:
     """Appends a new stock record to the master stocks CSV file.
 
@@ -350,9 +400,10 @@ def save_stock(cusip: str, ticker: str, company: str) -> None:
     """
     try:
         # Use csv.writer to properly handle quoting, ensuring all fields are enclosed in double quotes.
-        with open(Path(DB_FOLDER) / STOCKS_FILE, 'a', newline='', encoding='utf-8') as stocks_file:
-            writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
-            writer.writerow([cusip, ticker, company])
+        with stocks_lock():
+            with open(Path(DB_FOLDER) / STOCKS_FILE, 'a', newline='', encoding='utf-8') as stocks_file:
+                writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
+                writer.writerow([cusip, ticker, company])
     except Exception as e:
         print(f"❌ An error occurred while writing to '{STOCKS_FILE}': {e}")
 
@@ -369,10 +420,11 @@ def sort_stocks(filepath=f'./database/{STOCKS_FILE}') -> None:
         filepath (str, optional): The path to the stocks CSV file.
     """
     try:
-        df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna('')
-        df.drop_duplicates(subset=['CUSIP'], keep='first', inplace=True)
-        df.sort_values(by=['Ticker', 'CUSIP'], inplace=True)
-        df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
+        with stocks_lock():
+            df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna('')
+            df.drop_duplicates(subset=['CUSIP'], keep='first', inplace=True)
+            df.sort_values(by=['Ticker', 'CUSIP'], inplace=True)
+            df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
     except Exception as e:
         print(f"❌ An error occurred while processing file '{filepath}': {e}")
 
@@ -439,10 +491,11 @@ def update_stocks_csv(old_ticker: str, new_ticker: str) -> int:
             rows.append(row)
     
     # Write back
-    with open(stocks_path, 'w', encoding='utf-8', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-        writer.writeheader()
-        writer.writerows(rows)
+    with stocks_lock():
+        with open(stocks_path, 'w', encoding='utf-8', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            writer.writeheader()
+            writer.writerows(rows)
     
     return updated_count
 
@@ -493,7 +546,6 @@ def update_quarterly_filings(cusips: list[str], new_ticker: str) -> None:
                     
             except Exception as e:
                 print(f"❌ Error processing {csv_file}: {e}")
-
 
 
 def update_non_quarterly_filings(cusips: list[str], new_ticker: str) -> int:
@@ -582,10 +634,11 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str) -> None:
     print(f"  - CUSIP: {cusip}, Company: {company}, Old Ticker: {old_ticker} → New Ticker: {new_ticker}")
     
     # Write back stocks.csv
-    with open(stocks_path, 'w', encoding='utf-8', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-        writer.writeheader()
-        writer.writerows(rows)
+    with stocks_lock():
+        with open(stocks_path, 'w', encoding='utf-8', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            writer.writeheader()
+            writer.writerows(rows)
     
     # Update quarterly filings and non-quarterly filings
     update_quarterly_filings([cusip], new_ticker)
