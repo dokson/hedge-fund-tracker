@@ -3,7 +3,7 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from app.utils.database import sort_stocks
+from app.utils.database import clean_stocks, sort_stocks
 from database.GICS.updater import main as update_gics_hierarchy
 from database.updater import run_all_funds_report, run_fetch_nq_filings
 
@@ -21,6 +21,8 @@ if __name__ == "__main__":
     run_fetch_nq_filings()
     print("::endgroup::✅ Non-Quarterly filings fetched successfully.")
 
+    print("::notice title=Stocks Database Maintenance::🧹 Cleaning stocks database...")
+    clean_stocks()
     print("::notice title=Stocks Database Maintenance::🗃️ Sorting stocks database...")
     sort_stocks()
-    print("✅ Stocks database sorted successfully.")
+    print("::notice title=Stocks Database Maintenance::✅ Stocks database maintenance completed.")

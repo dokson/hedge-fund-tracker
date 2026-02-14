@@ -3,7 +3,7 @@ from app.analysis.quarterly_report import generate_comparison
 from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_non_quarterly_after_date, get_latest_13f_filing_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_centered_table, select_fund, select_period
-from app.utils.database import get_funds_missing_quarters, delete_fund_from_database, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
+from app.utils.database import clean_stocks, get_funds_missing_quarters, delete_fund_from_database, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
 from app.utils.readme import update_readme
 from app.utils.strings import get_previous_quarter_end_date
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
@@ -16,10 +16,11 @@ APP_NAME = "HEDGE FUND TRACKER - DATABASE UPDATER"
 
 def exit():
     """
-    0. Exits the application (after sorting stocks).
+    0. Exits the application (after maintenance operations).
 
-    This function sorts the stock master file and updates the README with the latest data.
+    This function cleans orphan CUSIPs, sorts the stock master file and updates the README with the latest data.
     """
+    clean_stocks()
     sort_stocks()
     update_readme()
     print("Bye! 👋 Exited.")

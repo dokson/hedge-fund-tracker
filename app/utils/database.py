@@ -408,6 +408,69 @@ def save_stock(cusip: str, ticker: str, company: str) -> None:
         print(f"❌ An error occurred while writing to '{STOCKS_FILE}': {e}")
 
 
+
+def clean_stocks(filepath=f'./database/{STOCKS_FILE}') -> None:
+    """
+    Identifies and removes orphan CUSIPs from the master stocks CSV file.
+    An orphan CUSIP is one that exists in stocks.csv but not in any filing (quarterly or non-quarterly),
+    and belongs to a ticker that has more than one CUSIP entry.
+    """
+    try:
+        stocks_df = load_stocks().reset_index()
+        if stocks_df.empty:
+            return
+
+        all_stock_cusips = set(stocks_df['CUSIP'])
+        all_filing_cusips = set()
+
+        # 1. Collect all CUSIPs from all quarterly reports
+        for quarter in get_all_quarters():
+            quarter_df = load_quarterly_data(quarter)
+            if not quarter_df.empty:
+                all_filing_cusips.update(quarter_df['CUSIP'].dropna().unique())
+
+        # 2. Collect all CUSIPs from non-quarterly filings
+        non_quarterly = load_non_quarterly_data()
+        if not non_quarterly.empty:
+            all_filing_cusips.update(non_quarterly['CUSIP'].dropna().unique())
+
+        # 3. Find orphan CUSIPs (present in stocks.csv but not in any filings)
+        orphan_cusips = all_stock_cusips - all_filing_cusips
+
+        if not orphan_cusips:
+            return
+
+        # 4. Filter orphans to find only those belonging to Tickers with more than one CUSIP
+        ticker_cusip_counts = stocks_df.groupby('Ticker')['CUSIP'].nunique()
+        tickers_with_multiple_cusips = ticker_cusip_counts[ticker_cusip_counts > 1].index
+
+        # Isolate orphan CUSIPs that belong to these tickers
+        final_orphans_df = stocks_df[
+            (stocks_df['CUSIP'].isin(orphan_cusips)) & 
+            (stocks_df['Ticker'].isin(tickers_with_multiple_cusips))
+        ]
+
+        if final_orphans_df.empty:
+            return
+
+        print(f"🧹 Found {len(final_orphans_df)} orphan CUSIPs to remove:")
+        for _, row in final_orphans_df.iterrows():
+            print(f"  - {row['CUSIP']} ({row['Ticker']}): {row['Company']}")
+
+        orphan_cusips_to_remove = set(final_orphans_df['CUSIP'])
+
+        # 5. Remove orphans and save
+        with stocks_lock():
+            # Reload to ensure we have the latest data before saving
+            current_stocks_df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna('')
+            cleaned_df = current_stocks_df[~current_stocks_df['CUSIP'].isin(orphan_cusips_to_remove)]
+            cleaned_df.to_csv(filepath, index=False, encoding='utf-8', quoting=csv.QUOTE_ALL)
+            print(f"✅ Removed {len(orphan_cusips_to_remove)} orphan CUSIPs from {STOCKS_FILE}.")
+
+    except Exception as e:
+        print(f"❌ An error occurred while removing orphan CUSIPs: {e}")
+
+
 def sort_stocks(filepath=f'./database/{STOCKS_FILE}') -> None:
     """
     Reads, sorts, and overwrites the master stocks CSV file.
