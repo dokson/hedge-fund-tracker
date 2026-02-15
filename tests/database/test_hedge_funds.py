@@ -1,4 +1,4 @@
-from app.utils.database import DB_FOLDER, get_all_quarters, get_last_quarter_for_fund, load_hedge_funds
+from app.utils.database import DB_FOLDER, EXCLUDED_HEDGE_FUNDS_FILE, get_all_quarters, get_last_quarter_for_fund, load_hedge_funds
 import os
 import unittest
 
@@ -79,3 +79,26 @@ class TestHedgeFunds(unittest.TestCase):
                         f"hedge_funds.csv is not sorted correctly starting from the 3rd entry.\n"
                         f"First mismatch at index {i+2}: Found '{actual}', expected '{expected}'."
                     )
+
+
+    def test_no_duplicate_funds_in_excluded(self):
+        """
+        Verifies that no fund (by CIK) is present in both hedge_funds.csv and excluded_hedge_funds.csv.
+        """
+        hedge_funds = load_hedge_funds()
+        excluded_path = os.path.join(DB_FOLDER, EXCLUDED_HEDGE_FUNDS_FILE)
+        excluded_funds = load_hedge_funds(excluded_path)
+        
+        hedge_fund_ciks = {fund['CIK'] for fund in hedge_funds if fund['CIK']}
+        excluded_fund_ciks = {fund['CIK'] for fund in excluded_funds if fund['CIK']}
+        
+        duplicate_ciks = hedge_fund_ciks.intersection(excluded_fund_ciks)
+        
+        if duplicate_ciks:
+            # Map CIKs back to Fund names for a better error message
+            hedge_map = {fund['CIK']: fund['Fund'] for fund in hedge_funds}
+            excluded_map = {fund['CIK']: fund['Fund'] for fund in excluded_funds}
+            
+            error_details = [f"  - CIK {cik}: '{hedge_map[cik]}' (mismatch in excluded: '{excluded_map[cik]}')" for cik in sorted(duplicate_ciks)]
+            error_message = f"Found {len(duplicate_ciks)} CIKs present in both hedge_funds.csv and excluded_hedge_funds.csv:\n\n" + "\n".join(error_details)
+            self.fail(error_message)
