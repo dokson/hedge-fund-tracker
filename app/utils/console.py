@@ -85,8 +85,7 @@ def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters={}, 
     """
     print("\n")
     print_centered(title, "-")
-    print("\n")
- 
+
     ascending = ascending_sort if isinstance(sort_by, list) else [ascending_sort] * len(sort_by) if isinstance(sort_by, list) else ascending_sort
     display_df = dataframe.sort_values(by=sort_by, ascending=ascending).head(top_n).copy()
  
