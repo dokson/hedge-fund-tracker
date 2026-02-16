@@ -46,6 +46,7 @@ class TestPerformanceEvaluator(unittest.TestCase):
         self.assertEqual(result['fund'], "Test Fund")
         self.assertEqual(result['quarter'], "2025Q1")
         self.assertAlmostEqual(result['portfolio_return'], -3.333333333333333)
+        self.assertAlmostEqual(result['end_value'], 2900.0) # 3000 * (1 - 0.0333...)
         self.assertEqual(len(result['top_contributors']), 2)
         self.assertEqual(result['top_contributors'][0]['Ticker'], 'T1')
 
@@ -81,6 +82,7 @@ class TestPerformanceEvaluator(unittest.TestCase):
         
         # Price start = 10.0, Price end = 12.0 (fetched) -> Return = 0.2
         self.assertAlmostEqual(result['portfolio_return'], 20.0)
+        self.assertAlmostEqual(result['end_value'], 1200.0)
         mock_get_avg_price.assert_called_once()
 
 

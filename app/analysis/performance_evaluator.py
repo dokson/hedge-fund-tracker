@@ -6,12 +6,12 @@ import pandas as pd
 
 EVAL_TOP_N_POSITIONS = 100
 
+
 class PerformanceEvaluator:
     """
     Evaluates fund performance by calculating price-based returns of holdings,
     isolating management skill from capital flows.
     """
-
     @classmethod
     def calculate_quarterly_performance(cls, fund_name, target_quarter):
         """
@@ -76,6 +76,7 @@ class PerformanceEvaluator:
         df_eval['Weighted_Return'] = df_eval['Weight'] * df_eval['Return']
 
         portfolio_return = df_eval['Weighted_Return'].sum()
+        total_end_value = total_start_value * (1 + portfolio_return / 100)
         
         top_contributors = df_eval.sort_values(by='Weighted_Return', ascending=False).head(10)[['Ticker', 'Company', 'Weight', 'Return', 'Weighted_Return']].to_dict('records')
         top_detractors = df_eval.sort_values(by='Weighted_Return', ascending=True).head(10)[['Ticker', 'Company', 'Weight', 'Return', 'Weighted_Return']].to_dict('records')
@@ -85,6 +86,7 @@ class PerformanceEvaluator:
             "quarter": target_quarter,
             "portfolio_return": portfolio_return,
             "start_value": total_start_value,
+            "end_value": total_end_value,
             "top_contributors": top_contributors,
             "top_detractors": top_detractors
         }

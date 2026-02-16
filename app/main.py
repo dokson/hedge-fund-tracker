@@ -227,11 +227,13 @@ def run_performance_evaluation():
         print_centered(f"{selected_fund['Fund'].upper()} - {selected_quarter} PERFORMANCE EVALUATION (HBR)")
         horizontal_rule('-')
 
-        print(f"\nPortfolio Return: {format_percentage(result['portfolio_return'], show_sign=True, decimal_places=2)}")
-        print(f"Start Value: {format_value(result['start_value'])}")
+        print("\n")
+        print_centered(f"Portfolio Return: {format_percentage(result['portfolio_return'], show_sign=True, decimal_places=2)}")
+        print_centered(f"Start Value: {format_value(result['start_value'])}")
+        print_centered(f"End Value: {format_value(result['end_value'])}")
         
         formatters = {
-            'Company': get_string_formatter(30),
+            'Company': get_string_formatter(40),
             'Weight': get_percentage_formatter(),
             'Return': get_signed_perc_formatter(),
             'Weighted_Return': get_signed_perc_formatter()
