@@ -12,6 +12,34 @@ class PerformanceEvaluator:
     Evaluates fund performance by calculating price-based returns of holdings,
     isolating management skill from capital flows.
     """
+    @staticmethod
+    def calculate_growth_score(pct_change: float) -> int:
+        """
+        Calculates a Growth Potential score (1-100) based on price performance.
+        High Score = High Potential (price has dropped).
+        Low Score = Low Potential (price has run up).
+        """
+        if pct_change <= -40:
+            return 100
+        elif pct_change <= -15:
+            # Drop 15% to 40% -> Score 75 to 90
+            return int(75 + (abs(pct_change) - 15) / (40 - 15) * 15)
+        elif pct_change <= -2:
+            # Drop 2% to 15% -> Score 66 to 74
+            return int(66 + (abs(pct_change) - 2) / (15 - 2) * 8)
+        elif pct_change <= 2:
+            # Stable / Flat -2% to +2% -> Score 55 to 65
+            return int(55 + (pct_change + 2) / 4 * 10)
+        elif pct_change <= 15:
+            # Growth 2% to 15% -> Score 40 to 54
+            return int(54 - (pct_change - 2) / (15 - 2) * 14)
+        elif pct_change <= 40:
+            # Growth 15% to 40% -> Score 11 to 39
+            return int(39 - (pct_change - 15) / (40 - 15) * 28)
+        else:
+            return 1
+
+
     @classmethod
     def calculate_quarterly_performance(cls, fund_name, target_quarter):
         """

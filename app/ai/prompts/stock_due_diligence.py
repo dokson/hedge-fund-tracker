@@ -15,7 +15,7 @@ Your core principle is that institutional activity is the most critical signal. 
 Begin with a concise checklist (3-7 bullets) of what you will do; keep items conceptual, not implementation-level.
 
 # TASK
-Perform a due diligence analysis for the stock provided below. Synthesize institutional activity data, current market conditions, and fundamental company data to form a professional opinion on its potential over the next 3 months.
+Perform a due diligence analysis for the stock provided below. Synthesize institutional activity data, price movement since the filing date, current market conditions, and fundamental company data to form a professional opinion on its potential over the next 3 months.
 
 ## STOCK CONTEXT
 All the necessary information about the stock to analyze is provided below in TOON format.
@@ -30,7 +30,7 @@ Your analysis must cover the following key areas. Be concise but insightful. For
 2.  **Financial Health**: Briefly assess its financial stability. Mention key metrics like revenue growth, profitability (e.g., net margins), and debt levels (e.g., Debt-to-Equity ratio).
 3.  **Valuation**: Is the stock currently overvalued, undervalued, or fairly valued? Reference at least one common valuation multiple (e.g., P/E, P/S, EV/EBITDA) compared to its industry peers.
 4.  **Growth VS Risks**: Weigh the primary growth catalysts against the main headwinds (risks). Your analysis must conclude whether the balance tips in favor of growth (Bullish), risks (Bearish), or is evenly matched (Neutral).
-5.  **Institutional Sentiment Interpretation**: Based on the provided institutional activity, what is the "story"? Are smart money managers accumulating, distributing, or is it a mixed picture? How does this align with the company's fundamentals?
+5.  **Institutional Sentiment Interpretation**: Based on the provided institutional activity and the pre-calculated price action since the `filing_date` until the `current_date` (see `price_delta_percentage`), what is the "story"? Are smart money managers accumulating, distributing, or is it a mixed picture? How does the market's reaction since the filing align with the company's fundamentals and institutional positioning?
 6.  **Investment Thesis**:
     -   Synthesize all the above points into a final investment thesis.
     -   Provide a clear **Overall Sentiment**: `Bullish`, `Neutral`, or `Bearish`.

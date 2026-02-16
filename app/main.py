@@ -287,7 +287,6 @@ def run_ai_analyst():
                 formatters={'Company': get_string_formatter(35), 'Industry': get_string_formatter(30)}
             )
 
-
     except Exception as e:
         print(f"❌ An unexpected error occurred while running AI Financial Agent: {e}")
 

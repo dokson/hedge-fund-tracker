@@ -2,9 +2,12 @@ from app.ai.clients import AIClient
 from app.ai.promise_score_validator import PromiseScoreValidator
 from app.ai.prompts import promise_score_weights_prompt, quantivative_scores_prompt, stock_due_diligence_prompt
 from app.ai.response_parser import ResponseParser
+from app.analysis.performance_evaluator import PerformanceEvaluator
 from app.analysis.stocks import quarter_analysis, stock_analysis
+from app.stocks.libraries import YFinance
 from app.stocks.price_fetcher import PriceFetcher
 from app.utils.strings import get_quarter_date
+from datetime import date
 from tenacity import retry, stop_after_attempt, retry_if_exception_type, RetryError, wait_fixed
 from toon import encode
 import pandas as pd
@@ -84,13 +87,13 @@ class AnalystAgent:
         stop=stop_after_attempt(5),
         before_sleep=lambda rs: print(f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s...")
     )
-    def _get_ai_scores(self, stocks_toon: str) -> dict:
+    def _get_ai_scores(self, stocks_context: list[dict]) -> dict:
         """
-        Uses the LLM to categorize stocks and generate AI scores.
+        Uses the LLM to categorize stocks and generate thematic AI scores.
         Retries with tenacity if the response is invalid.
         """
-        prompt = quantivative_scores_prompt(stocks_toon, self.filing_date)
-        required_keys = ['sub_industry', 'momentum_score', 'low_volatility_score', 'risk_score', 'growth_potential_score']
+        prompt = quantivative_scores_prompt(encode(stocks_context), self.filing_date)
+        required_keys = ['momentum_score', 'low_volatility_score', 'risk_score']
 
         print(f"Sending request to AI ({self.ai_client.get_model_name()}) for thematic scores...")
         response_text = self.ai_client.generate_content(prompt)
@@ -104,19 +107,6 @@ class AnalystAgent:
 
         print(f"✅ Successfully parsed AI scores for {len(parsed_data)} tickers")
         return parsed_data
-
-
-    def _add_ai_scores_to_df(self, df: pd.DataFrame, ai_scores_data: dict) -> pd.DataFrame:
-        """
-        Add AI scores to the dataframe
-        """
-        df = df.copy()
-        df['Industry'] = df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('sub_industry', 'N/A'))
-        df['Risk_Score'] = df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('risk_score', 0))
-        df['Momentum_Score'] = df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('momentum_score', 0))
-        df['Low_Volatility_Score'] = df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('low_volatility_score', 0))
-        df['Growth_Score'] = df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('growth_potential_score', 0))
-        return df
 
 
     def generate_scored_list(self, top_n: int) -> pd.DataFrame:
@@ -136,23 +126,70 @@ class AnalystAgent:
         # Get top N stocks
         suggestions_df = df.sort_values(by='Promise_Score', ascending=False).head(top_n)
 
-        # Get thematic momentum scores for the top N stocks
-        top_stocks = suggestions_df[['Ticker', 'Company']].to_dict('records')
-        if top_stocks:
-            try:
-                ai_scores_data = self._get_ai_scores(encode(top_stocks))
-                suggestions_df = self._add_ai_scores_to_df(suggestions_df, ai_scores_data)
-            except RetryError as e:
-                print(f"❌ ERROR: Failed to get valid AI scores after multiple attempts: {e.last_attempt.exception()}")
-                return pd.DataFrame()
+        # Get top N tickers
+        tickers = suggestions_df['Ticker'].tolist()
+        if not tickers:
+            return suggestions_df
 
-        else:
-            # Add empty columns if no stocks
-            suggestions_df['Industry'] = None
-            suggestions_df['Risk_Score'] = None
-            suggestions_df['Momentum_Score'] = None
-            suggestions_df['Low_Volatility_Score'] = None
-            suggestions_df['Growth_Score'] = None
+        # 1. Get industry and current price programmatically from YFinance
+        print(f"🔍 Fetching programmatic data for {len(tickers)} tickers from YFinance...")
+        stocks_info = YFinance.get_stocks_info(tickers)
+
+        # 2. Calculate Growth scores autonomously
+        autonomous_scores = {}
+        for ticker in tickers:
+            info = stocks_info.get(ticker, {})
+            current_price = info.get('price')
+            industry = info.get('sector')
+            
+            if current_price:
+                # Get historical price
+                filing_price = PriceFetcher.get_avg_price(ticker, date.fromisoformat(self.filing_date))
+                
+                if filing_price:
+                    pct_change = ((current_price - filing_price) / filing_price) * 100
+                    growth_score = PerformanceEvaluator.calculate_growth_score(pct_change)
+            
+            autonomous_scores[ticker] = {
+                'Industry': industry or 'N/A',
+                'Growth_Score': growth_score if growth_score else "N/A",
+                'Current_Price': f"${current_price:,.2f}" if current_price else "N/A",
+                'Filing_Price': f"${filing_price:,.2f}" if filing_price else "N/A",
+                'Pct_Change': f"{pct_change:+.2f}%" if current_price and filing_price else "N/A"
+            }
+
+        # 3. Get LLM scores (Momentum, Volatility, Risk)
+        stocks_context = []
+        for ticker in tickers:
+            stocks_context.append({
+                'ticker': ticker,
+                'company': suggestions_df[suggestions_df['Ticker'] == ticker]['Company'].iloc[0],
+                'industry': autonomous_scores[ticker]['Industry'],
+                'filing_date': self.filing_date,
+                'filing_price': autonomous_scores[ticker]['Filing_Price'],
+                'current_price': autonomous_scores[ticker]['Current_Price'],
+                'price_change_since_filing': autonomous_scores[ticker]['Pct_Change']
+            })
+
+        try:
+            ai_scores_data = self._get_ai_scores(stocks_context)
+            
+            # 4. Combine and update dataframe
+            suggestions_df = suggestions_df.copy()
+            suggestions_df['Industry'] = suggestions_df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('industry') or autonomous_scores.get(t, {}).get('Industry', 'N/A'))
+            suggestions_df['Growth_Score'] = suggestions_df['Ticker'].map(lambda t: autonomous_scores.get(t, {}).get('Growth_Score', 0))
+            suggestions_df['Risk_Score'] = suggestions_df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('risk_score', 0))
+            suggestions_df['Momentum_Score'] = suggestions_df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('momentum_score', 0))
+            suggestions_df['Low_Volatility_Score'] = suggestions_df['Ticker'].map(lambda t: ai_scores_data.get(t, {}).get('low_volatility_score', 0))
+
+        except RetryError as e:
+            print(f"❌ ERROR: Failed to get valid AI scores after multiple attempts: {e.last_attempt.exception()}")
+            # Set defaults if AI fails
+            suggestions_df['Industry'] = suggestions_df['Ticker'].map(lambda t: autonomous_scores.get(t, {}).get('Industry', 'N/A'))
+            suggestions_df['Growth_Score'] = suggestions_df['Ticker'].map(lambda t: autonomous_scores.get(t, {}).get('Growth_Score', 0))
+            suggestions_df['Risk_Score'] = 0
+            suggestions_df['Momentum_Score'] = 0
+            suggestions_df['Low_Volatility_Score'] = 0
 
         return suggestions_df
 
@@ -186,6 +223,12 @@ class AnalystAgent:
             return {}
         print(f"💲 Current price for {ticker}: ${current_price:,.2f}")
 
+        filing_date_price = PriceFetcher.get_avg_price(ticker, date.fromisoformat(self.filing_date))
+        price_delta_pct = None
+        if filing_date_price:
+            print(f"💲 Price on filing date ({self.filing_date}): ${filing_date_price:,.2f}")
+            price_delta_pct = ((current_price - filing_date_price) / filing_date_price) * 100
+
         total_value = stock_df['Value'].sum()
         total_delta_value = stock_df['Delta_Value'].sum()
         previous_total_value = total_value - total_delta_value
@@ -195,7 +238,10 @@ class AnalystAgent:
             "ticker": ticker,
             "company": stock_df['Company'].iloc[0],
             "filing_date": self.filing_date,
+            "current_date": date.today().isoformat(),
+            "filing_date_price": f"${filing_date_price:,.2f}" if filing_date_price else "N/A",
             "current_price": f"${current_price:,.2f}",
+            "price_delta_percentage": f"{price_delta_pct:+.2f}%" if price_delta_pct is not None else "N/A",
             "institutional_activity": {
                 "total_value_held": f"${total_value:,.0f}",
                 "net_change_in_value": f"${total_delta_value:,.0f}",
