@@ -20,7 +20,9 @@ SCORING CRITERIA:
 
 1. INDUSTRY:
    - Verify the provided `industry`. 
-   - **IMPORTANT**: If the provided industry is `"N/A"`, you **MUST** research and provide the correct GICS Industry classification (e.g., "Software", "Biotechnology", "Oil, Gas & Consumable Fuels"). If a value is already provided, keep it.
+   - **IMPORTANT**: If the provided industry is `"N/A"`, you **MUST** research and provide the correct GICS Industry classification (e.g., "Software", "Biotechnology", "Oil, Gas & Consumable Fuels"). 
+   - **ETF Rule**: If the ticker represents an Exchange Traded Fund (ETF), you **MUST** set the industry to `"Exchange Traded Funds"`.
+   - If a valid industry value is already provided, keep it.
 
 2. MOMENTUM_SCORE (1-100):
    - **Objective**: Measure the strength of the stock's recent price trend and market enthusiasm.
@@ -47,6 +49,26 @@ SCORING CRITERIA:
    - 30-49: Lower risk; strong balance sheet, diversified revenue streams, defensive characteristics.
    - 1-29: Minimal risk; high quality "blue-chip", fortress balance sheet, very predictable cash flows.
 
+# VALIDATION EXAMPLES
+- **NVDA (NVIDIA Corp)**: 
+  *Profile*: High-growth semiconductor leader with massive momentum but high valuation risk.
+  industry: "Semiconductors"
+  momentum_score: 95
+  low_volatility_score: 25
+  risk_score: 65
+- **PG (Procter & Gamble)**: 
+  *Profile*: Defensive consumer staple with very stable price action and low growth volatility.
+  industry: "Household Products"
+  momentum_score: 45
+  low_volatility_score: 90
+  risk_score: 20
+- **LLY (Eli Lilly)**: 
+  *Profile*: Pharmaceutical giant with strong recent uptrend due to new drug success, moderate volatility.
+  industry: "Pharmaceuticals"
+  momentum_score: 92
+  low_volatility_score: 55
+  risk_score: 40
+
 # OUTPUT FORMAT & SCHEMA
 Respond using TOON format (Token-Oriented Object Notation). Use `key: value` syntax and indentation for nesting.
 - **Keys**: Use the stock TICKER exactly as provided. **IMPORTANT**: If a ticker contains a hyphen or dot (e.g., `"BRK-B"`, `"BF.B"`), it **must** be enclosed in double quotes.
@@ -55,7 +77,7 @@ Respond using TOON format (Token-Oriented Object Notation). Use `key: value` syn
 
 ## SCHEMA
 TICKER:
-  industry: "GICS Sub-Industry Name"
+  industry: "GICS Industry"
   momentum_score: integer_1_to_100
   low_volatility_score: integer_1_to_100
   risk_score: integer_1_to_100

@@ -271,10 +271,10 @@ def run_ai_analyst():
             # Remove "Score" suffix from headers and format scores
             rename_map = {
                 'Promise_Score': 'Promise',
+                'Growth_Score': 'Growth',
                 'Risk_Score': 'Risk',
                 'Low_Volatility_Score': 'Volatility',
-                'Momentum_Score': 'Momentum',
-                'Growth_Score': 'Growth'
+                'Momentum_Score': 'Momentum'
             }
             scored_list = scored_list.rename(columns=rename_map)
             
@@ -283,7 +283,7 @@ def run_ai_analyst():
                 top_n,
                 title=title,
                 sort_by='Promise',
-                cols=['Ticker', 'Company', 'Industry', 'Promise', 'Risk', 'Volatility', 'Momentum', 'Growth'],
+                cols=['Ticker', 'Company', 'Industry', 'Promise', 'Growth', 'Risk', 'Volatility', 'Momentum'],
                 formatters={'Company': get_string_formatter(35), 'Industry': get_string_formatter(30)}
             )
 
