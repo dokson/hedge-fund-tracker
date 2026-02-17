@@ -2,7 +2,7 @@
 "xai/grok-3-mini","Grok-3 Mini (best)","GitHub"
 "llama-3.3-70b-versatile","Llama 3.3 70B (fastest)","Groq"
 "gemini-3-flash-preview","Gemini 3 Flash","Google"
-"microsoft/Phi-4-mini-reasoning","Microsoft Phi-4 Mini Reasoning","GitHub"
+"openrouter/aurora-alpha","Aurora Alpha","OpenRouter"
 "deepseek-ai/DeepSeek-V3.2:novita","DeepSeek V3.2","HuggingFace"
 "nvidia/nemotron-3-nano-30b-a3b:free","NVIDIA Nemotron 3 Nano 30B","OpenRouter"
 "zai-org/GLM-4.7-Flash:novita","GLM-4.7-Flash","HuggingFace"
