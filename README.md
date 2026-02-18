@@ -282,6 +282,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 * *Ken Griffin*'s [Citadel Advisors](https://www.citadel.com/)
 * *Ray Dalio*'s [Bridgewater Associates](https://www.bridgewater.com/)
 * *Michael Burry*'s [Scion Asset Management](https://www.scionasset.com/)
+* *Peter Thiel*'s [Thiel Macro](https://www.linkedin.com/company/thiel-macro)
 * *Cathie Wood*'s [ARK Invest](https://www.ark-invest.com/)
 * *Bill Ackman*'s [Pershing Square](https://pershingsquareholdings.com/)
 * *Dmitry Balyasny*'s [Balyasny Asset Management](https://www.bamfunds.com/)
@@ -326,7 +327,6 @@ The quality of the output analysis is directly tied to the quality of the input 
 * *Seymour Kaufman*'s [Crosslink Capital](https://www.crosslinkcapital.com/)
 * *Mario Gabelli*'s [GAMCO Investors](https://gabelli.com/)
 * *John Overdeck*'s [Two Sigma](https://www.twosigma.com/)
-* *Bill Nygren*'s [Harris Associates](https://harrisassoc.com/)
 * *Richard Pzena*'s [Pzena Investment Management](https://www.pzena.com/)
 * and many more... (see [`database/excluded_hedge_funds.csv`](/database/excluded_hedge_funds.csv) for the full list)
 <!-- EXCLUDED_FUNDS_LIST_END -->

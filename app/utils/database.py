@@ -389,10 +389,9 @@ def stocks_lock(timeout=30):
 def save_stock(cusip: str, ticker: str, company: str) -> None:
     """Appends a new stock record to the master stocks CSV file.
 
-    This function appends a new row without checking for duplicates.
-    It is intended to be used in conjunction with `sort_stocks` to clean up the file.
-    If the file is new, it will also write the header row.
-
+    This function appends a new row while ensuring no duplicates are created.
+    It uses a lock and then re-checks if the CUSIP exists (Double-Checked Locking).
+    
     Args:
         cusip (str): The CUSIP identifier of the stock.
         ticker (str): The stock ticker symbol.
@@ -401,12 +400,17 @@ def save_stock(cusip: str, ticker: str, company: str) -> None:
     try:
         # Use csv.writer to properly handle quoting, ensuring all fields are enclosed in double quotes.
         with stocks_lock():
+            # Double-check if the CUSIP was already added by another process/thread while we were waiting for the lock.
+            stocks_df = load_stocks()
+            if not stocks_df.empty and cusip in stocks_df.index:
+                # Already exists, skip appending
+                return
+
             with open(Path(DB_FOLDER) / STOCKS_FILE, 'a', newline='', encoding='utf-8') as stocks_file:
                 writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
                 writer.writerow([cusip, ticker, company])
     except Exception as e:
         print(f"❌ An error occurred while writing to '{STOCKS_FILE}': {e}")
-
 
 
 def clean_stocks(filepath=f'./database/{STOCKS_FILE}') -> None:
