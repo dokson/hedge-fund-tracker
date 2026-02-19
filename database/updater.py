@@ -52,10 +52,34 @@ def process_fund(fund_info, offset=0):
         # This loop skips amendments and ensures we are comparing against the correct previous period.
         previous_filing = filings[1] if len(filings) == 2 else None
         
-        while previous_filing and previous_filing['reference_date'] != get_previous_quarter_end_date(latest_date):
+        target_date = get_previous_quarter_end_date(latest_date)
+        target_date_prev = get_previous_quarter_end_date(target_date)
+
+        found_previous = None
+        fallback_previous = None
+
+        # Exhaustive search: prioritized target_date, fallback target_date_prev
+        while previous_filing:
+            ref_date = previous_filing['reference_date']
+            pub_date = previous_filing['date']
+            
+            if ref_date == target_date:
+                found_previous = previous_filing
+                break
+            
+            if ref_date == target_date_prev and not fallback_previous:
+                fallback_previous = previous_filing
+            
+            # Smart stop: if published date is already older than the fallback reporting date, 
+            # we can't possibly find a newer reporting period further down the list.
+            if pub_date < target_date_prev:
+                break
+            
             offset += 1
             filings = fetch_latest_two_13f_filings(cik, offset)
             previous_filing = filings[1] if len(filings) == 2 else None
+
+        previous_filing = found_previous or fallback_previous
 
         dataframe_previous = xml_to_dataframe_13f(previous_filing['xml_content']) if previous_filing else None
         dataframe_comparison = generate_comparison(dataframe_latest, dataframe_previous)
