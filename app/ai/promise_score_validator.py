@@ -17,7 +17,10 @@ class PromiseScoreValidator:
         'Net_Buyers',
         'Close_Count',
         'Delta',
-        'Buyer_Seller_Ratio'
+        'Buyer_Seller_Ratio',
+        'High_Conviction_Count',
+        'Ownership_Delta_Avg',
+        'Portfolio_Concentration_Avg'
     ]
 
 

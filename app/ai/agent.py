@@ -234,6 +234,9 @@ class AnalystAgent:
         previous_total_value = total_value - total_delta_value
         delta_pct = total_delta_value / previous_total_value * 100 if previous_total_value != 0 else 0
 
+        # Get summary metrics for this ticker
+        summary_row = self.analysis_df[self.analysis_df['Ticker'] == ticker].iloc[0] if not self.analysis_df[self.analysis_df['Ticker'] == ticker].empty else None
+
         stock_data = {
             "ticker": ticker,
             "company": stock_df['Company'].iloc[0],
@@ -249,7 +252,10 @@ class AnalystAgent:
                 "buyers": int((stock_df['Delta_Value'] > 0).sum()),
                 "sellers": int((stock_df['Delta_Value'] < 0).sum()),
                 "new_positions": int((stock_df['Delta'].str.startswith('NEW')).sum()),
-                "closed_positions": int((stock_df['Delta'] == 'CLOSE').sum())
+                "closed_positions": int((stock_df['Delta'] == 'CLOSE').sum()),
+                "high_conviction_new_entries": int(summary_row['High_Conviction_Count']) if summary_row is not None else 0,
+                "ownership_delta_avg": f"{summary_row['Ownership_Delta_Avg']:+.2f}%" if summary_row is not None else "0.00%",
+                "portfolio_concentration_avg": f"{summary_row['Portfolio_Concentration_Avg']:.2f}%" if summary_row is not None else "0.00%"
             }
         }
         stock_context_toon = encode(stock_data)

@@ -38,7 +38,23 @@ def aggregate_quarter_by_fund(df_quarter) -> pd.DataFrame:
     # We assign a small non-zero value to represent this
     df_fund_quarter.loc[(df_fund_quarter['Portfolio_Pct'] == 0) & (df_fund_quarter['Shares'] > 0), 'Portfolio_Pct'] = 0.009
 
-    # Calculate 'Delta' based on aggregated values
+    # 1. Calculate Portfolio_Pct_Rank for each stock within each fund
+    df_fund_quarter['Portfolio_Pct_Rank'] = df_fund_quarter.groupby('Fund')['Portfolio_Pct'].rank(ascending=False, method='min')
+
+    # 2. Calculate Fund_Concentration_Ratio (Sum of Portfolio_Pct for top 10 holdings) for each fund
+    concentration_map = df_fund_quarter[df_fund_quarter['Portfolio_Pct_Rank'] <= 10].groupby('Fund')['Portfolio_Pct'].sum().to_dict()
+    df_fund_quarter['Fund_Concentration_Ratio'] = df_fund_quarter['Fund'].map(concentration_map)
+
+    # 3. Calculate Shares_Delta_Pct (Velocity of accumulation)
+    # We only care about existing positions to avoid inflating new entry numbers
+    previous_shares = df_fund_quarter['Shares'] - df_fund_quarter['Delta_Shares']
+    df_fund_quarter['Shares_Delta_Pct'] = np.where(
+        (previous_shares > 0) & (df_fund_quarter['Shares'] > 0),
+        (df_fund_quarter['Delta_Shares'] / previous_shares) * 100,
+        0
+    )
+
+    # Calculate 'Delta' based on aggregated values (for display/legacy compatibility)
     df_fund_quarter['Delta'] = df_fund_quarter.apply(
         lambda row:
         'CLOSE' if row['Shares'] == 0
@@ -113,6 +129,10 @@ def _calculate_fund_level_flags(df_fund_quarter: pd.DataFrame) -> pd.DataFrame:
     df['is_holder'] = df['Shares'] > 0
     df['is_new'] = (df['Shares'] > 0) & (df['Shares'] == df['Delta_Shares'])
     df['is_closed'] = df['Shares'] == 0
+    
+    # High Conviction Signal: NEW position in Top 10 OR > 3% weighting
+    df['is_high_conviction'] = df['is_new'] & ((df['Portfolio_Pct_Rank'] <= 10) | (df['Portfolio_Pct'] > 3.0))
+    
     return df
 
 
@@ -138,19 +158,35 @@ def _aggregate_stock_data(df_fund_quarter_with_flags: pd.DataFrame) -> pd.DataFr
         'Holder_Count': ('is_holder', 'sum'),
         'New_Holder_Count': ('is_new', 'sum'),
         'Close_Count': ('is_closed', 'sum'),
+        'High_Conviction_Count': ('is_high_conviction', 'sum'),
+        'Avg_Fund_Concentration': ('Fund_Concentration_Ratio', 'mean'),
     }
-    return df_fund_quarter_with_flags.groupby(['Ticker', 'Company']).agg(**aggregation_rules).reset_index()
+    
+    df_agg = df_fund_quarter_with_flags.groupby(['Ticker', 'Company']).agg(**aggregation_rules).reset_index()
+
+    # Calculate Avg_Ownership_Delta only for funds that increased their position (is_buyer)
+    # but excluding NEW positions (to get a clean velocity of accumulation for existing holders)
+    mask_accumulation = df_fund_quarter_with_flags['is_buyer'] & ~df_fund_quarter_with_flags['is_new']
+    avg_delta_map = df_fund_quarter_with_flags[mask_accumulation].groupby(['Ticker'])['Shares_Delta_Pct'].mean().to_dict()
+    df_agg['Ownership_Delta_Avg'] = df_agg['Ticker'].map(avg_delta_map).fillna(0)
+
+    return df_agg
 
 
 def _calculate_derived_metrics(df_analysis: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculates derived metrics like Net_Buyers, Delta, and Buyer_Seller_Ratio.
+    Calculates derived metrics like Net_Buyers, Delta, and modern institutional KPIs.
     """
     df = df_analysis.copy()
     df['Net_Buyers'] = df['Buyer_Count'] - df['Seller_Count']
     df['Buyer_Seller_Ratio'] = np.where(df['Seller_Count'] > 0, df['Buyer_Count'] / df['Seller_Count'], np.inf)
+    
     previous_total_value = np.where(df['Total_Value'] - df['Total_Delta_Value'] == 0, np.nan, df['Total_Value'] - df['Total_Delta_Value'])
     df['Delta'] = np.where((df_analysis['New_Holder_Count'] == df_analysis['Holder_Count']) & (df_analysis['Close_Count'] == 0), np.inf, df_analysis['Total_Delta_Value'] / previous_total_value * 100)
+    
+    # KPIs for AI Prompt Analysis
+    df['Portfolio_Concentration_Avg'] = df['Avg_Fund_Concentration']
+    
     return df
 
 

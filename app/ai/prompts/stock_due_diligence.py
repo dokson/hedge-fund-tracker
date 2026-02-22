@@ -30,7 +30,11 @@ Your analysis must cover the following key areas. Be concise but insightful. For
 2.  **Financial Health**: Briefly assess its financial stability. Mention key metrics like revenue growth, profitability (e.g., net margins), and debt levels (e.g., Debt-to-Equity ratio).
 3.  **Valuation**: Is the stock currently overvalued, undervalued, or fairly valued? Reference at least one common valuation multiple (e.g., P/E, P/S, EV/EBITDA) compared to its industry peers.
 4.  **Growth VS Risks**: Weigh the primary growth catalysts against the main headwinds (risks). Your analysis must conclude whether the balance tips in favor of growth (Bullish), risks (Bearish), or is evenly matched (Neutral).
-5.  **Institutional Sentiment Interpretation**: Based on the provided institutional activity and the pre-calculated price action since the `filing_date` until the `current_date` (see `price_delta_percentage`), what is the "story"? Are smart money managers accumulating, distributing, or is it a mixed picture? How does the market's reaction since the filing align with the company's fundamentals and institutional positioning?
+5.  **Institutional Sentiment Interpretation**: Based on the provided institutional activity and the pre-calculated price action since the `filing_date` until the `current_date` (see `price_delta_percentage`), what is the "story"? 
+    - Pay special attention to **`high_conviction_new_entries`**: These are NEW positions that immediately jumped into a fund's Top 10 or >3% weighting. 
+    - Analyze **`ownership_delta_avg`**: A high value indicates existing holders are aggressively expanding their positions.
+    - Consider `portfolio_concentration_avg`: High concentration among holders suggests a "Pure Play" high-conviction environment.
+    - Are smart money managers accumulating, distributing, or is it a mixed picture? How does the market's reaction since the filing align with the company's fundamentals and institutional positioning?
 6.  **Investment Thesis**:
     -   Synthesize all the above points into a final investment thesis.
     -   Provide a clear **Overall Sentiment**: `Bullish`, `Neutral`, or `Bearish`.

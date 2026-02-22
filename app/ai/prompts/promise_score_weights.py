@@ -29,20 +29,24 @@ Seller_Count: "Number of institutions reducing positions (measures selling activ
 Close_Count: "Number of institutions fully exiting their positions (strong negative signal)."
 Holder_Count: "Total number of institutions currently holding the stock (measures popularity/consensus)."
 New_Holder_Count: "Number of institutions initiating new positions (captures emerging interest)."
+High_Conviction_Count: "Number of top-tier funds opening large (>3%) or Top 10 positions. This is a HIGH conviction signal."
+Ownership_Delta_Avg: "Average percentage increase in shares for existing holders (measures velocity of accumulation)."
+Portfolio_Concentration_Avg: "Average concentration (Top 10 holdings / AUM) of the funds holding this stock (distinguishes pure-plays from diversified managers)."
 Net_Buyers: "Buyer_Count minus Seller_Count (shows net institutional sentiment)."
 Delta: "Percentage change in total value held (magnitude of institutional shift)."
-Buyer_Seller_Ratio: "Ratio of buyers to sellers (indicates consensus direction)."
+Buyer_Seller_Ratio: "Ratio of buyers to sellers. USE WITH CAUTION: can be misleading during IPO cycles or massive market shifts."
 ```
 
 # WEIGHTING PHILOSOPHY
 Emphasize input features that are most predictive of future outperformance:
-- Prefer signals of high-conviction capital flows.
-- Prioritize new institutional accumulation over consensus or existing popularity.
-- Favor breadth and scale of buying activity, and penalize strong negative flows.
-- Use forward-looking momentum proxies.
+- **Prioritize High Conviction**: `High_Conviction_Count` and `Max_Portfolio_Pct` are the strongest indicators of serious research and commitment.
+- **Velocity of Accumulation**: `Ownership_Delta_Avg` shows how aggressively existing holders are doubling down.
+- **Breadth vs. Quality**: Favor `High_Conviction_Count` over simple `Buyer_Count` when identifying elite opportunities.
+- **Concentration Context**: A high `Portfolio_Concentration_Avg` combined with buying suggests "Stock Picking" aggression.
 
-**Caution:**
-`New_Holder_Count` can be large for recent IPOs or highly active stocks. Although a critical signal, avoid overweighting it to prevent skew towards IPOs.
+**Cautions:**
+- `New_Holder_Count` can be skewed by IPOs. Prefer `High_Conviction_Count` for serious signals.
+- `Buyer_Seller_Ratio` is secondary to raw high-conviction numbers.
 
 # CONSTRAINTS
 - **CRITICAL**: The sum of all weights *must* be exactly 1.0. This is a non-negotiable rule.
