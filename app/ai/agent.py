@@ -228,6 +228,7 @@ class AnalystAgent:
         if filing_date_price:
             print(f"💲 Price on filing date ({self.filing_date}): ${filing_date_price:,.2f}")
             price_delta_pct = ((current_price - filing_date_price) / filing_date_price) * 100
+            print(f"{'📈' if price_delta_pct >= 0 else '📉'} Price change since filing: {price_delta_pct:+.2f}%")
 
         total_value = stock_df['Value'].sum()
         total_delta_value = stock_df['Delta_Value'].sum()
