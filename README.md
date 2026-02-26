@@ -292,6 +292,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 * *Israel Englander*'s [Millennium Management](https://www.mlp.com/)
 * *Frank Sands*'s [Sands Capital Management](https://www.sandscapital.com/)
 * *Murray Stahl*'s [Horizon Kinetics](https://horizonkinetics.com/)
+* *Edward Mule*'s [Silver Point Capital](https://www.silverpointcapital.com/)
 * *David Abrams*'s [Abrams Capital Management](https://www.abramscapital.com/)
 * *Jeffrey Ubben*'s [ValueAct Capital](https://valueact.com/)
 * *Paul Singer*'s [Elliott Investment](https://www.elliottmgmt.com/)
@@ -327,7 +328,6 @@ The quality of the output analysis is directly tied to the quality of the input 
 * *Mario Gabelli*'s [GAMCO Investors](https://gabelli.com/)
 * *John Overdeck*'s [Two Sigma](https://www.twosigma.com/)
 * *Richard Pzena*'s [Pzena Investment Management](https://www.pzena.com/)
-* *Bill Nygren*'s [Harris Associates](https://harrisassoc.com/)
 * and many more... (see [`database/excluded_hedge_funds.csv`](/database/excluded_hedge_funds.csv) for the full list)
 <!-- EXCLUDED_FUNDS_LIST_END -->
 
