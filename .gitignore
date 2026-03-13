@@ -1,5 +1,9 @@
 __llmcache__
 __pycache__
+__reports__
+.claude
 .env
+.idea
 .vscode
+data
 gh-md-toc
