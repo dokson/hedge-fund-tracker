@@ -14,14 +14,17 @@ pipenv run python -m app.main
 # Run the database management CLI
 pipenv run python -m database.updater
 
-# Run all tests
-pipenv run python -m pytest tests/
+# Run all tests (as in CI)
+pipenv run python -m unittest discover
 
 # Run a single test file
-pipenv run python -m pytest tests/analysis/test_quarterly_report.py
+pipenv run python -m unittest tests.stocks.test_price_fetcher
 
-# Run a specific test
-pipenv run python -m pytest tests/analysis/test_quarterly_report.py::test_function_name
+# Run a specific test class
+pipenv run python -m unittest tests.stocks.test_price_fetcher.TestPriceFetcher
+
+# Run a specific test method
+pipenv run python -m unittest tests.stocks.test_price_fetcher.TestPriceFetcher.test_get_current_price_returns_price_from_first_library
 ```
 
 ## Architecture
@@ -179,17 +182,17 @@ The test suite is extensive (30+ test files covering all major modules):
 
 **Running tests:**
 ```bash
-# Run all tests
-pipenv run python -m pytest tests/
+# Run all tests (as in CI)
+pipenv run python -m unittest discover
 
-# Run a specific module
-pipenv run python -m pytest tests/analysis/test_quarterly_report.py
+# Run a specific test file
+pipenv run python -m unittest tests.stocks.test_price_fetcher
 
-# Run a specific test
-pipenv run python -m pytest tests/analysis/test_quarterly_report.py::test_function_name
+# Run a specific test class
+pipenv run python -m unittest tests.stocks.test_price_fetcher.TestPriceFetcher
 
-# Watch for failures (if pytest-watch installed)
-pipenv run ptw tests/
+# Run a specific test method
+pipenv run python -m unittest tests.stocks.test_price_fetcher.TestPriceFetcher.test_get_current_price_returns_price_from_first_library
 ```
 
 **When adding features or fixing bugs:**

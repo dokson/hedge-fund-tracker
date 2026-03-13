@@ -57,36 +57,57 @@ class TestDatabase(unittest.TestCase):
 
 
     def test_get_all_quarters(self):
+        """
+        Returns only valid quarter directories, sorted in descending order, excluding non-quarter folders.
+        """
         self.assertEqual(get_all_quarters(), ['2025Q1', '2024Q4'])
 
 
     def test_get_last_quarter(self):
+        """
+        Returns the most recent quarter folder name.
+        """
         self.assertEqual(get_last_quarter(), '2025Q1')
 
 
     def test_count_funds_in_quarter(self):
+        """
+        Returns the count of CSV files in a given quarter folder; 0 for non-existent quarters.
+        """
         self.assertEqual(count_funds_in_quarter('2025Q1'), 2)
         self.assertEqual(count_funds_in_quarter('2023Q1'), 0)
 
 
     def test_get_last_quarter_for_fund(self):
+        """
+        Returns the most recent quarter with data for a fund; None if no data found.
+        """
         self.assertEqual(get_last_quarter_for_fund('Fund A'), '2025Q1')
         self.assertIsNone(get_last_quarter_for_fund('Fund C'))
 
 
     def test_get_quarters_for_fund(self):
+        """
+        Returns all quarters where a fund has data, in descending order.
+        """
         self.assertEqual(get_quarters_for_fund('Fund A'), ['2025Q1', '2024Q4'])
         self.assertEqual(get_quarters_for_fund('Fund B'), ['2025Q1'])
         self.assertEqual(get_quarters_for_fund('Fund C'), [])
 
 
     def test_get_most_recent_quarter(self):
+        """
+        Returns the most recent quarter containing a holding for the given ticker; None if unknown.
+        """
         self.assertEqual(get_most_recent_quarter('TICKA'), '2025Q1')
         self.assertEqual(get_most_recent_quarter('TICKB'), '2025Q1')
         self.assertIsNone(get_most_recent_quarter('UNKNOWN'))
 
 
     def test_load_fund_holdings(self):
+        """
+        Loads holdings excluding the 'Total' row and computes Reported_Price as Value/Shares.
+        """
         df = load_fund_holdings('Fund A', '2025Q1')
         self.assertEqual(len(df), 1) # Total row excluded
         self.assertIn('Reported_Price', df.columns)
@@ -94,30 +115,45 @@ class TestDatabase(unittest.TestCase):
 
 
     def test_load_hedge_funds(self):
+        """
+        Parses hedge_funds.csv into a list of fund dicts.
+        """
         funds = load_hedge_funds(f'./{self.test_db_folder}/{HEDGE_FUNDS_FILE}')
         self.assertEqual(len(funds), 1)
         self.assertEqual(funds[0]['Fund'], 'Fund A')
 
 
     def test_load_models(self):
+        """
+        Parses models.csv into a list of model dicts.
+        """
         models = load_models(f'./{self.test_db_folder}/{MODELS_FILE}')
         self.assertEqual(len(models), 1)
         self.assertEqual(models[0]['ID'], 'model-1')
 
 
     def test_load_non_quarterly_data(self):
+        """
+        Loads non-quarterly filings (13D/G, Form 4) from the CSV file.
+        """
         df = load_non_quarterly_data(f'./{self.test_db_folder}/{LATEST_SCHEDULE_FILINGS_FILE}')
         self.assertEqual(len(df), 1)
         self.assertEqual(df.iloc[0]['Ticker'], 'TICKA')
 
 
     def test_load_gics_hierarchy(self):
+        """
+        Loads the GICS classification hierarchy from CSV.
+        """
         df = load_gics_hierarchy(f'./{self.test_db_folder}/{GICS_HIERARCHY_FILE}')
         self.assertEqual(len(df), 1)
         self.assertEqual(df.iloc[0]['Sector'], 'Tech')
 
 
     def test_save_stock_and_sort(self):
+        """
+        Saves a new stock to the database and verifies it appears after sort.
+        """
         save_stock('789', 'TICKC', 'Company C')
         sort_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
         df = load_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
@@ -126,94 +162,94 @@ class TestDatabase(unittest.TestCase):
 
 
     def test_find_cusips_for_ticker(self):
+        """
+        Returns all CUSIP records matching a given ticker symbol.
+        """
         res = find_cusips_for_ticker('TICKA')
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0]['CUSIP'], '123')
 
 
     def test_update_ticker(self):
-        # Update TICKA to TICKNEW
+        """
+        Propagates a ticker rename across stocks.csv, all quarterly CSVs, and non_quarterly.csv.
+        """
         update_ticker('TICKA', 'TICKNEW')
-        
-        # Check stocks.csv
+
         df_stocks = load_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
         self.assertEqual(df_stocks.loc['123', 'Ticker'], 'TICKNEW')
-        
-        # Check quarterly filings
+
         df_q = load_fund_holdings('Fund A', '2025Q1')
         self.assertEqual(df_q.iloc[0]['Ticker'], 'TICKNEW')
-        
-        # Check non-quarterly
+
         df_nq = load_non_quarterly_data(f'./{self.test_db_folder}/{LATEST_SCHEDULE_FILINGS_FILE}')
         self.assertEqual(df_nq.iloc[0]['Ticker'], 'TICKNEW')
 
 
     def test_concurrent_save_stocks(self):
+        """
+        All records written by concurrent threads must be durably saved with no data loss.
+        """
         num_threads = 10
         iterations = 20
         stocks_path = f'./{self.test_db_folder}/{STOCKS_FILE}'
-        
+
         def worker(thread_idx):
             for i in range(iterations):
-                cusip = f"C_{thread_idx}_{i}"
-                ticker = f"T_{thread_idx}_{i}"
-                company = f"Co_{thread_idx}_{i}"
-                save_stock(cusip, ticker, company)
-                
-        threads = []
-        for i in range(num_threads):
-            t = threading.Thread(target=worker, args=(i,))
-            threads.append(t)
-            
+                save_stock(f"C_{thread_idx}_{i}", f"T_{thread_idx}_{i}", f"Co_{thread_idx}_{i}")
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
         for t in threads:
             t.start()
-            
         for t in threads:
             t.join()
-            
-        # Verify all records are present
+
         df = load_stocks(stocks_path)
-        actual_count = len(df)
-        # Initial 2 records + 200 new ones
-        expected_count = 2 + (num_threads * iterations)
-        self.assertEqual(actual_count, expected_count)
+        # Initial 2 records + 200 new ones (10 threads × 20 iterations)
+        self.assertEqual(len(df), 2 + num_threads * iterations)
 
 
     def test_concurrent_save_and_sort(self):
+        """
+        Concurrent saves and sorts must not corrupt the CSV or raise unhandled exceptions.
+        Uses a 1-second window: long enough to exercise real contention, short enough for CI.
+        """
+        # Saver sleeps 10ms between writes; sorter sleeps 20ms between sorts.
+        # In 1 second this exercises ~100 writes and ~50 sorts with real lock contention.
+        SAVER_INTERVAL_S = 0.01
+        SORTER_INTERVAL_S = 0.02
+        RUN_DURATION_S = 1
+
         stocks_path = f'./{self.test_db_folder}/{STOCKS_FILE}'
-        # One thread keeps saving, another keeps sorting
         stop_event = threading.Event()
-        
+
         def saver():
             i = 0
             while not stop_event.is_set():
                 save_stock(f"S_{i}", f"T_{i}", "Co")
                 i += 1
-                time.sleep(0.01)
-                
+                time.sleep(SAVER_INTERVAL_S)
+
         def sorter():
             while not stop_event.is_set():
                 try:
                     sort_stocks(stocks_path)
-                except Exception as e:
+                except Exception:
                     pass
-                time.sleep(0.02)
-                
+                time.sleep(SORTER_INTERVAL_S)
+
         t1 = threading.Thread(target=saver)
         t2 = threading.Thread(target=sorter)
-        
         t1.start()
         t2.start()
-        
-        time.sleep(1) # Run for 1 second is enough for this combined test
+
+        time.sleep(RUN_DURATION_S)
         stop_event.set()
-        
         t1.join()
         t2.join()
-        
-        # Verify it didn't crash
+
         df = load_stocks(stocks_path)
-        self.assertTrue(len(df) > 0)
+        self.assertGreater(len(df), 0)
 
 
     def test_delete_fund_from_database(self):
