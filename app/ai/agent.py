@@ -269,6 +269,8 @@ class AnalystAgent:
         if not parsed_data:
             raise InvalidAIResponseError("AI returned an empty or invalid TOON structure")
 
-        parsed_data['current_price'] = current_price
+        parsed_data['current_price'] = stock_data['current_price']
+        parsed_data['filing_date_price'] = stock_data['filing_date_price']
+        parsed_data['price_delta_percentage'] = stock_data['price_delta_percentage']
 
         return parsed_data

@@ -4,7 +4,7 @@
 [![repo size](https://img.shields.io/github/repo-size/dokson/hedge-fund-tracker)](https://github.com/dokson/hedge-fund-tracker/tree/master)
 [![last commit](https://img.shields.io/github/last-commit/dokson/hedge-fund-tracker)](https://github.com/dokson/hedge-fund-tracker/commits/master/)
 [![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/release/python-3130/)
-[![License: MIT](https://img.shields.io/github/license/dokson/hedge-fund-tracker)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/license-Source%20Available-blue)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/dokson/hedge-fund-tracker.svg?style=social&label=Star)](https://github.com/dokson/hedge-fund-tracker/stargazers)
 [![GitHub watchers](https://img.shields.io/github/watchers/dokson/hedge-fund-tracker.svg)](https://github.com/dokson/hedge-fund-tracker/watchers)
 [![GitHub forks](https://img.shields.io/github/forks/dokson/hedge-fund-tracker.svg)](https://github.com/dokson/hedge-fund-tracker/network/members)
@@ -61,14 +61,17 @@ A comprehensive **Python tool** for tracking **hedge fund portfolios** through *
 git clone https://github.com/dokson/hedge-fund-tracker.git
 cd hedge-fund-tracker
 
-# Install dependencies
+# Install Python dependencies
 pipenv install
+
+# Install and build the React frontend
+cd app/frontend && npm install && npm run build && cd ../..
 
 # Set up environment variables
 cp .env.example .env
 # Add your tokens/API keys (FinnHub, GitHub, Google AI Studio, Groq, HuggingFace, OpenRouter) to the .env file
 
-# Run the application
+# Run the application (opens web UI in your browser)
 pipenv run python -m app.main
 ```
 
@@ -76,6 +79,7 @@ pipenv run python -m app.main
 
 | Feature | Description |
 | --------- | ------------- |
+| **🌐 Web UI** | React-based browser interface with real-time streaming terminal output for AI and database operations |
 | **🆚 Comparative Analysis** | Combines quarterly (13F) and non-quarterly (13D/G, Form 4) filings for an up-to-date view |
 | **📋 Detailed Reports** | Generates clear, console-based reports with intuitive formatting |
 | **🗄️ Curated Database** | Includes list of top hedge funds and AI models, both easily editable via CSV files |
@@ -122,27 +126,30 @@ pipenv run python -m app.main
    # OPENROUTER_API_KEY="your_openrouter_api_key"
    ```
 
-4. **▶️ Run the script:** Execute within the project's virtual environment:
+4. **🔨 Build the frontend:** Compile the React web UI (required once after cloning, and after any UI source changes):
+
+    ```bash
+    cd app/frontend && npm install && npm run build && cd ../..
+    ```
+
+5. **▶️ Run the application:** Execute within the project's virtual environment:
 
     ```bash
     pipenv run python -m app.main
     ```
 
-5. **📜 Choose an action:** Once the script starts, you'll see the main interactive menu for data analysis:
+    This starts a FastAPI server on `http://localhost:8000` and opens the **web UI** in your browser automatically. To use the original terminal CLI instead, add the `--cli` flag:
 
-    ```txt
-    ┌───────────────────────────────────────────────────────────────────────────────────┐
-    │                                 Hedge Fund Tracker                                │
-    ├───────────────────────────────────────────────────────────────────────────────────┤
-    │  0. Exit                                                                          │
-    │  1. View latest non-quarterly filings activity by funds (from 13D/G, Form 4)      │
-    │  2. Analyze overall hedge-funds stock trends for a quarter                        │
-    │  3. Analyze a specific fund's quarterly portfolio                                 │
-    │  4. Analyze a specific stock's activity for a quarter                             │
-    │  5. Run AI Analyst to find most promising stocks                                  │
-    │  6. Run AI Due Diligence on a stock                                               │
-    └───────────────────────────────────────────────────────────────────────────────────┘
+    ```bash
+    pipenv run python -m app.main --cli
     ```
+
+6. **📜 Use the web UI:** The browser interface provides:
+   - **Most Promising Stocks** — AI-generated Promise Score ranking with real-time streaming output
+   - **Stock Due Diligence** — Detailed AI analysis for a specific ticker with live terminal output
+   - **Funds Configuration** — Browse and edit the tracked hedge funds and AI models lists
+   - **AI Settings** — Configure API keys for all supported AI providers
+   - **Database Operations** — Trigger 13F report generation and non-quarterly filings fetch with streaming progress
 
 ### Data Management
 
@@ -208,7 +215,15 @@ hedge-fund-tracker/
 │       ├── ⚙️ filings-fetch.yml    # GitHub Actions: Filings fetching job
 │       └── ⚙️ python-tests.yml     # GitHub Actions: Unit tests
 ├── 📁 app/                          # Main application logic
-│   └── ▶️ main.py                  # Main entry point for Data & AI analysis
+│   ├── 📁 frontend/                 # React + Vite web UI
+│   │   ├── 📁 src/
+│   │   │   ├── 📁 components/       # Shared UI components (ModelSelector, TerminalOutput, etc.)
+│   │   │   ├── 📁 lib/              # dataService.ts (CSV I/O), aiClient.ts (SSE streaming)
+│   │   │   └── 📁 pages/            # AIRanking, AIDueDiligence, FundsConfig, AISettings, DatabaseOperations
+│   │   ├── 📦 package.json
+│   │   └── ⚙️ vite.config.ts
+│   ├── 🐍 server.py                 # FastAPI server (serves frontend + all API endpoints)
+│   └── ▶️ main.py                  # Entry point: web server (default) or CLI (--cli)
 ├── 📁 database/                     # Data storage
 │   ├── 📁 2025Q1/                  # Quarterly reports
 │   │   ├── 📊 fund_1.csv           # Individual fund quarterly report
@@ -429,6 +444,8 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 | 🗂️ Category | 🦾 Technology |
 | ---------- | ------------ |
 | **Core** | [Python 3.13](https://www.python.org/downloads/release/python-3130/)+, [pipenv](https://pipenv.pypa.io/) |
+| **Web Server** | [FastAPI](https://fastapi.tiangolo.com/), [uvicorn](https://www.uvicorn.org/) (SSE streaming, static file serving) |
+| **Web UI** | [React 18](https://react.dev/), [Vite](https://vitejs.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/), [Recharts](https://recharts.org/), [TanStack Query](https://tanstack.com/query) |
 | **Web Scraping** | [Requests](https://2.python-requests.org/en/master/), [Beautiful Soup](https://pypi.org/project/beautifulsoup4/), [lxml](https://lxml.de/) |
 | **Reliability** | [Tenacity](https://github.com/jd/tenacity) (Smart retries for API rate-limiting and AI responses) |
 | **Config** | [python-dotenv](https://github.com/theskumar/python-dotenv) |
@@ -467,4 +484,9 @@ This project began as a fork of [sec-web-scraper-13f](https://github.com/CodeWri
 
 ## 📄 License
 
-This project is released under the MIT License, an open-source license that grants you the freedom to use, modify, and distribute the software. For the full terms, please see the [LICENSE](LICENSE) file.
+This project uses a **dual license**:
+
+- **Original work** (Gary Pang's [sec-web-scraper-13f](https://github.com/CodeWritingCow/sec-web-scraper-13f)): MIT License.
+- **All new work** (everything added by Alessandro Colace): Copyright © 2025 Alessandro Colace — All Rights Reserved. Personal and educational use is permitted; redistribution and commercial use require written permission.
+
+See the [LICENSE](LICENSE) file for the full terms.

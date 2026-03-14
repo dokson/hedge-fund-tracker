@@ -1,9 +1,9 @@
 __llmcache__
 __pycache__
 __reports__
-.claude
+.claude/
+.vscode/
+node_modules/
+app/frontend/dist/
 .env
-.idea
-.vscode
-data
 gh-md-toc

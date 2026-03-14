@@ -1,22 +1,50 @@
-MIT License
+Copyright (c) 2025 Alessandro Colace. All Rights Reserved.
 
-Copyright (c) 2019 Gary Pang
-Copyright (c) 2025 Alessandro Colace
+## Original Work
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Portions of this software are based on [sec-web-scraper-13f](https://github.com/CodeWritingCow/sec-web-scraper-13f)
+by Gary Pang, licensed under the MIT License:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+    MIT License
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+    Copyright (c) 2019 Gary Pang
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+## New Work
+
+All contributions, additions, modifications, and new components authored by
+Alessandro Colace and not present in the original project listed above are
+Copyright (c) 2025 Alessandro Colace. All Rights Reserved.
+
+You may:
+- View and study this source code for personal, educational, and non-commercial
+  research purposes.
+- Fork this repository on GitHub for the sole purpose of submitting pull
+  requests back to the original repository.
+
+You may NOT, without prior written permission from Alessandro Colace:
+- Redistribute, publish, or make available this software or any substantial
+  portion of it in source or compiled form.
+- Use this software or any substantial portion of it in any commercial product
+  or service.
+- Create derivative works based on the new additions described above.
+
+To request permission, open an issue or contact the author through GitHub:
+https://github.com/dokson

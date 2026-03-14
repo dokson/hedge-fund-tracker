@@ -1,0 +1,11 @@
+# Normalize line endings for all text files
+* text=auto
+
+# Force LF for frontend source files
+app/frontend/src/**/*.ts  text eol=lf
+app/frontend/src/**/*.tsx text eol=lf
+app/frontend/src/**/*.css text eol=lf
+app/frontend/*.ts         text eol=lf
+app/frontend/*.js         text eol=lf
+app/frontend/*.json       text eol=lf
+app/frontend/*.html       text eol=lf

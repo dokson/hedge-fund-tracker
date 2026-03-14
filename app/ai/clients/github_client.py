@@ -5,7 +5,7 @@ class GitHubClient(OpenAIClient):
     """
     GitHub Models client implementation using the Azure AI Inference API.
     """
-    DEFAULT_MODEL = "openai/gpt-5-mini"
+    DEFAULT_MODEL = "xai/grok-3-mini"
 
 
     def __init__(self, model: str = DEFAULT_MODEL):

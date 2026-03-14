@@ -8,8 +8,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies
 pipenv install
 
-# Run the main interactive application
+# Build the React frontend (required before first run or after UI changes)
+cd app/frontend && npm install && npm run build && cd ../..
+
+# Run the web UI (default — opens browser at http://localhost:8000)
 pipenv run python -m app.main
+
+# Run the legacy CLI menu instead of the web UI
+pipenv run python -m app.main --cli
 
 # Run the database management CLI
 pipenv run python -m database.updater
@@ -39,7 +45,7 @@ SEC EDGAR → app/scraper/ (13F, 13D/G, Form 4) → app/analysis/ → app/ai/ (P
                 database/ (CSV files)
 ```
 
-**Key Insight**: The tool integrates multiple filing types to provide a *more current* view than 13F-only trackers. Latest 13D/G and Form 4 activity is merged into quarterly analysis to show recent institutional activity within 10 days of occurrence (vs 45+ days delay for 13F).
+**Key Insight**: The tool integrates multiple filing types to provide a _more current_ view than 13F-only trackers. Latest 13D/G and Form 4 activity is merged into quarterly analysis to show recent institutional activity within 10 days of occurrence (vs 45+ days delay for 13F).
 
 ### Filing Types Tracked
 
@@ -47,9 +53,32 @@ SEC EDGAR → app/scraper/ (13F, 13D/G, Form 4) → app/analysis/ → app/ai/ (P
 - **13D/G** (non-quarterly): Significant ownership change (5%+); filed within 10 days
 - **Form 4** (non-quarterly): Insider/large shareholder trades; filed within 2 business days
 
+### Web UI
+
+The application ships a **React + Vite frontend** (`app/frontend/`) served by the FastAPI backend. Running `python -m app.main` (default) starts the FastAPI server on port 8000, builds/serves the React dist, and opens the browser automatically. The `--cli` flag falls back to the original terminal menu.
+
+**Frontend stack**: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui (subset), Recharts, TanStack Query, react-router-dom.
+
+**Key frontend files:**
+- `app/frontend/src/lib/dataService.ts` — all CSV reads/writes via HTTP; single source of truth for analysis logic
+- `app/frontend/src/lib/aiClient.ts` — SSE streaming calls to `/api/ai/*` endpoints; no hardcoded model list
+- `app/frontend/src/components/ModelSelector.tsx` — reads models from `database/models.csv` via `getModels()`
+- `app/frontend/src/components/TerminalOutput.tsx` — macOS-style terminal for streaming AI/DB output
+- `app/frontend/src/pages/` — AIRanking, AIDueDiligence, FundsConfig, AISettings, DatabaseOperations
+
+**SSE streaming pattern** (`app/server.py → _make_sse_stream`):
+- Redirects `sys.stdout` in a background thread to capture all print output
+- Sends each line as `data: {"type": "log", "text": "..."}` SSE events
+- Sends final result as `data: {"type": "result", "data": ...}` then closes stream
+- `os.environ.setdefault("COLUMNS", "80")` ensures terminal width consistency
+
+**AI provider routing**: Every AI request includes both `model_id` and `provider_id`. The backend uses `provider_id` to select the exact client class; falls back to first available provider only when `provider_id` is absent.
+
+**models.csv as single source of truth**: No hardcoded model arrays anywhere in TypeScript or Python. All model data flows from `database/models.csv`. The `Client` column maps to provider ID strings via `CLIENT_TO_PROVIDER_ID` in `ModelSelector.tsx`.
+
 ### Entry Points
 
-- **`app/main.py`** — Interactive CLI for analysis with 6 options:
+- **`app/main.py`** — Starts FastAPI web server (default) or interactive CLI (`--cli`) for analysis with 6 options:
   1. View latest non-quarterly filings (13D/G, Form 4) from past 30 days
   2. Analyze hedge fund stock trends for a quarter
   3. Analyze specific fund's quarterly portfolio
@@ -62,16 +91,19 @@ SEC EDGAR → app/scraper/ (13F, 13D/G, Form 4) → app/analysis/ → app/ai/ (P
 ### Key Modules
 
 **`app/scraper/`** — SEC EDGAR data retrieval
+
 - `sec_scraper.py`: Fetches 13F-HR, 13D/G, Form 4 filings with retry logic and custom User-Agent
 - `xml_processor.py`: Parses 13F XML holdings into DataFrames
 
 **`app/analysis/`** — Financial analysis
+
 - `quarterly_report.py`: Compares consecutive 13F filings; computes delta shares/values, identifies NEW/CLOSE positions
 - `stocks.py`: Aggregates multi-fund consensus metrics by ticker or fund (buyer/seller/holder counts)
 - `non_quarterly.py`: Processes 13D/G and Form 4 ownership changes and integrates them into quarterly views
 - `performance_evaluator.py`: Holding-Based Return (HBR) calculations
 
 **`app/stocks/`** — CUSIP → Ticker resolution with fallback chain
+
 1. yfinance (free, no API key)
 2. Finnhub (optional, requires `FINNHUB_API_KEY`)
 3. FinanceDatabase (free)
@@ -80,6 +112,7 @@ SEC EDGAR → app/scraper/ (13F, 13D/G, Form 4) → app/analysis/ → app/ai/ (P
 Maintains `stocks.csv` master database; automatically sorted on exit.
 
 **`app/ai/`** — Multi-provider LLM integration
+
 - `agent.py`: `AnalystAgent` — generates "Promise Scores" for stocks
   - **Two-phase analysis**:
     1. AI determines optimal metric weights (strategist role) for current market conditions
@@ -87,7 +120,7 @@ Maintains `stocks.csv` master database; automatically sorted on exit.
   - Retries up to 7 times if AI response is invalid
 
 - `clients/`: Abstract base + 5 implementations:
-  - GitHub Models (free tier, GPT-5, Grok-3)
+  - GitHub Models (free tier, Grok-3)
   - Google Gemini (free API key)
   - Groq (free, various OSS models)
   - HuggingFace Inference API (free tier)
@@ -125,6 +158,7 @@ All persistent data lives in `database/`:
 ### GitHub Actions Automation
 
 **`.github/workflows/filings-fetch.yml`**
+
 - Runs 4× daily Mon–Fri (01:30, 13:30, 17:30, 21:30 UTC) + once Saturday (04:00 UTC)
 - Fetches new 13F, 13D/G, Form 4 filings for tracked funds
 - Commits to **`automated/filings-fetch` branch** (not main) for user review
@@ -132,6 +166,7 @@ All persistent data lives in `database/`:
 - Enables non-blocking background updates
 
 **`.github/workflows/python-tests.yml`**
+
 - Runs full test suite on push/PR
 - Tests all AI clients, analysis modules, scrapers, stock resolution
 
@@ -152,6 +187,7 @@ See `excluded_hedge_funds.csv` for a full list of excluded funds (and their CIKs
 - **Form 4 filings** are current within ~2 business days
 
 The tool mitigates 13F staleness by automatically merging recent 13D/G and Form 4 data into quarterly analyses. However, understand:
+
 - Only US long equity positions shown (no shorts, no derivatives, no non-US holdings)
 - Non-quarterly filings require correct `Denomination` to match reliably
 - Data is incomplete by design (represents only institutional activity in US equities)
@@ -173,6 +209,7 @@ The tool mitigates 13F staleness by automatically merging recent 13D/G and Form 
 ### Testing
 
 The test suite is extensive (30+ test files covering all major modules):
+
 - AI clients and response parsing
 - Financial analysis calculations
 - Data I/O and CSV handling
@@ -181,6 +218,7 @@ The test suite is extensive (30+ test files covering all major modules):
 - GICS utilities
 
 **Running tests:**
+
 ```bash
 # Run all tests (as in CI)
 pipenv run python -m unittest discover
@@ -196,6 +234,7 @@ pipenv run python -m unittest tests.stocks.test_price_fetcher.TestPriceFetcher.t
 ```
 
 **When adding features or fixing bugs:**
+
 1. Write the test that demonstrates the required behavior
 2. Run it and confirm it fails for the expected reason
 3. Write minimal code to pass the test
@@ -233,6 +272,7 @@ Before marking work complete:
 - [ ] No rationalizations like "I'll test after" or "I already manually tested"
 
 **Red flags:**
+
 - Code exists before a test exists → delete code, start with TDD
 - Test passes immediately → you're testing existing behavior, not new behavior
 - Can't explain why the test failed initially → test isn't proving your code works
@@ -240,6 +280,7 @@ Before marking work complete:
 ## Environment Variables
 
 Copy `.env.example` to `.env`. All API keys are optional — the app degrades gracefully:
+
 - `FINNHUB_API_KEY` — improves CUSIP → ticker resolution
 - `GITHUB_TOKEN` — enables GitHub Models provider (free tier)
 - `GOOGLE_API_KEY` — enables Google Gemini models

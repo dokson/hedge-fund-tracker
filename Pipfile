@@ -16,6 +16,10 @@ financedatabase = "~=2.3"
 tradingview-datafeed = "~=2.1"
 google-genai = "~=1.67"
 openai = "~=2.28"
+fastapi = "~=0.115"
+uvicorn = {extras = ["standard"], version = "~=0.34"}
+python-multipart = "~=0.0"
+psutil = "~=6.0"
 
 [dev-packages]
 

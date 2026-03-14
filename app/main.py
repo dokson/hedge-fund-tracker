@@ -368,7 +368,7 @@ def run_ai_due_diligence():
         print(f"❌ An unexpected error occurred while running AI Due Diligence: {e}")
 
 
-if __name__ == "__main__":
+def run_cli():
     actions = {
         '0': lambda: False,
         '1': run_view_nq_filings,
@@ -406,3 +406,66 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("\nOperation cancelled by user. Bye! 👋")
             break
+
+
+def _free_port(port: int) -> None:
+    """Kill any process currently listening on the given port."""
+    import subprocess, sys
+    try:
+        if sys.platform == "win32":
+            result = subprocess.run(
+                ["netstat", "-ano"],
+                capture_output=True, text=True
+            )
+            for line in result.stdout.splitlines():
+                if f":{port}" in line and "LISTENING" in line:
+                    parts = line.split()
+                    pid = int(parts[-1])
+                    subprocess.run(["taskkill", "/F", "/PID", str(pid)],
+                                   capture_output=True)
+                    print(f"⚠️  Terminated existing process on port {port} (PID {pid})")
+        else:
+            result = subprocess.run(
+                ["lsof", "-ti", f"tcp:{port}"],
+                capture_output=True, text=True
+            )
+            for pid in result.stdout.strip().splitlines():
+                subprocess.run(["kill", "-9", pid], capture_output=True)
+                print(f"⚠️  Terminated existing process on port {port} (PID {pid})")
+    except Exception:
+        pass
+
+
+def run_server(host: str = "127.0.0.1", port: int = 8000):
+    import subprocess
+    import sys
+    import webbrowser
+    import threading
+    from pathlib import Path
+
+    frontend_dist = Path(__file__).parent / "frontend" / "dist"
+    if not frontend_dist.exists():
+        print("🔨 Building frontend…")
+        frontend_dir = Path(__file__).parent / "frontend"
+        result = subprocess.run(["npm", "run", "build"], cwd=frontend_dir, shell=True)
+        if result.returncode != 0:
+            print("❌ Frontend build failed. Run 'npm run build' manually inside app/frontend/.")
+            sys.exit(1)
+        print("✅ Frontend built.")
+
+    _free_port(port)
+
+    url = f"http://{host}:{port}"
+    print(f"🚀 Starting {APP_NAME} at {url}")
+    threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+
+    import uvicorn
+    uvicorn.run("app.server:app", host=host, port=port, reload=False)
+
+
+if __name__ == "__main__":
+    import sys
+    if "--cli" in sys.argv:
+        run_cli()
+    else:
+        run_server()

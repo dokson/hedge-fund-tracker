@@ -1,0 +1,233 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 14% 96%;
+    --foreground: 220 15% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
+
+    --primary: 217 85% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 10% 93%;
+    --secondary-foreground: 220 15% 25%;
+
+    --muted: 220 10% 94%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 217 85% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 10% 88%;
+    --input: 220 10% 88%;
+    --ring: 217 85% 48%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 10% 40%;
+    --sidebar-primary: 217 85% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 10% 94%;
+    --sidebar-accent-foreground: 220 15% 15%;
+    --sidebar-border: 220 10% 90%;
+    --sidebar-ring: 217 85% 48%;
+
+    /* Custom semantic tokens */
+    --positive: 142 71% 35%;
+    --positive-foreground: 0 0% 100%;
+    --negative: 0 80% 50%;
+    --negative-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 0%;
+    --info: 217 85% 48%;
+
+    --chart-1: 217 85% 48%;
+    --chart-2: 142 71% 35%;
+    --chart-3: 0 80% 50%;
+    --chart-4: 38 92% 45%;
+    --chart-5: 280 60% 50%;
+
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(217 85% 48%) 0%, hsl(230 75% 45%) 100%);
+    --shadow-card: 0 1px 3px 0 hsl(0 0% 0% / 0.06), 0 1px 2px -1px hsl(0 0% 0% / 0.06);
+    --shadow-glow: 0 0 15px -5px hsl(217 85% 48% / 0.1);
+  }
+
+  .dark {
+    --background: 220 20% 7%;
+    --foreground: 210 20% 95%;
+
+    --card: 220 18% 10%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 220 18% 10%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 16% 16%;
+    --secondary-foreground: 210 20% 90%;
+
+    --muted: 220 14% 14%;
+    --muted-foreground: 215 15% 55%;
+
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 18%;
+    --input: 220 13% 18%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 220 20% 5%;
+    --sidebar-foreground: 215 15% 65%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 16% 12%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 220 13% 14%;
+    --sidebar-ring: 217 91% 60%;
+
+    --positive: 142 71% 45%;
+    --positive-foreground: 0 0% 100%;
+    --negative: 0 84% 60%;
+    --negative-foreground: 0 0% 100%;
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 0%;
+    --info: 217 91% 60%;
+
+    --chart-1: 217 91% 60%;
+    --chart-2: 142 71% 45%;
+    --chart-3: 0 84% 60%;
+    --chart-4: 45 93% 47%;
+    --chart-5: 280 65% 60%;
+
+    --gradient-card: linear-gradient(135deg, hsl(220 18% 10%) 0%, hsl(220 20% 8%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(230 80% 55%) 100%);
+    --shadow-card: 0 4px 24px -4px hsl(0 0% 0% / 0.4);
+    --shadow-glow: 0 0 20px -5px hsl(217 91% 60% / 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer components {
+  .kpi-card {
+    @apply rounded-lg border border-border p-5 transition-all duration-200 flex flex-col justify-center;
+    background: var(--gradient-card);
+    box-shadow: var(--shadow-card);
+  }
+  .kpi-card:hover {
+    box-shadow: var(--shadow-glow);
+    border-color: hsl(var(--primary) / 0.3);
+  }
+
+  .data-table-row {
+    @apply border-b border-border transition-colors duration-150;
+  }
+  .data-table-row:hover {
+    background: hsl(var(--muted) / 0.5);
+  }
+
+  .delta-positive {
+    color: hsl(var(--positive));
+  }
+  .delta-negative {
+    color: hsl(var(--negative));
+  }
+
+  .badge-new {
+    @apply inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold;
+    background: hsl(142, 71%, 45%, 0.15);
+    color: hsl(142, 71%, 45%);
+  }
+  .badge-closed {
+    @apply inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold;
+    background: hsl(0, 84%, 60%, 0.15);
+    color: hsl(0, 84%, 60%);
+  }
+  .badge-nochange {
+    @apply inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap;
+    background: hsl(0, 0%, 50%, 0.15);
+    color: hsl(0, 0%, 55%);
+  }
+  .badge-bullish {
+    @apply inline-flex items-center rounded px-2 py-0.5 text-xs font-bold;
+    background: hsl(var(--positive) / 0.15);
+    color: hsl(var(--positive));
+  }
+  .badge-bearish {
+    @apply inline-flex items-center rounded px-2 py-0.5 text-xs font-bold;
+    background: hsl(var(--negative) / 0.15);
+    color: hsl(var(--negative));
+  }
+  .badge-neutral {
+    @apply inline-flex items-center rounded px-2 py-0.5 text-xs font-bold;
+    background: hsl(var(--warning) / 0.15);
+    color: hsl(var(--warning));
+  }
+
+  .section-title {
+    @apply text-lg font-semibold tracking-tight text-foreground;
+  }
+
+  .ticker-link {
+    @apply font-mono font-semibold text-primary hover:underline cursor-pointer;
+  }
+
+  .fund-link {
+    @apply font-medium text-foreground hover:text-primary cursor-pointer transition-colors;
+  }
+
+  /* Number input spinners — hide default, use custom approach */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
