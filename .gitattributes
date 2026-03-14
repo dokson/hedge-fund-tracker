@@ -1,11 +1,10 @@
-# Normalize line endings for all text files
-* text=auto
+# Normalize line endings for all text files to LF
+* text=auto eol=lf
 
-# Force LF for frontend source files
-app/frontend/src/**/*.ts  text eol=lf
-app/frontend/src/**/*.tsx text eol=lf
-app/frontend/src/**/*.css text eol=lf
-app/frontend/*.ts         text eol=lf
-app/frontend/*.js         text eol=lf
-app/frontend/*.json       text eol=lf
-app/frontend/*.html       text eol=lf
+# Binary files - no conversion
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+*.svg  binary
+*.lock binary
