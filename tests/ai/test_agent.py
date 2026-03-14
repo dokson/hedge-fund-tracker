@@ -392,7 +392,7 @@ class TestRunStockDueDiligence(unittest.TestCase):
         result = self.agent.run_stock_due_diligence('AAPL')
 
         self.assertIn('thesis', result)
-        self.assertEqual(result['current_price'], 150.0)
+        self.assertEqual(result['current_price'], '$150.00')
 
     @patch('app.ai.agent.encode')
     @patch('app.ai.agent.ResponseParser.extract_and_decode_toon')
