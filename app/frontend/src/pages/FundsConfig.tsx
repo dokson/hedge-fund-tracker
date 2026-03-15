@@ -100,8 +100,10 @@ export default function FundsConfig() {
     setEditDraft({ fund: f.fund, manager: f.manager, denomination: f.denomination, cik: f.cik, ciks: f.ciks });
   };
   const cancelEdit = () => { setEditingCik(null); setEditDraft({}); };
+  const isEditDraftValid = () =>
+    !!(editDraft.fund?.trim() && editDraft.manager?.trim() && editDraft.denomination?.trim() && editDraft.cik?.trim());
   const saveEdit = async () => {
-    if (!editingCik) return;
+    if (!editingCik || !isEditDraftValid()) return;
     const updated = funds.map((f) =>
       f.cik === editingCik
         ? { ...f, fund: editDraft.fund, manager: editDraft.manager, denomination: editDraft.denomination, cik: editDraft.cik, ciks: editDraft.ciks }
@@ -125,8 +127,10 @@ export default function FundsConfig() {
     setEditExcludedDraft({ fund: f.fund, manager: f.manager, denomination: f.denomination, cik: f.cik, ciks: f.ciks, url: f.url });
   };
   const cancelExcludedEdit = () => { setEditingExcludedCik(null); setEditExcludedDraft({}); };
+  const isExcludedDraftValid = () =>
+    !!(editExcludedDraft.fund?.trim() && editExcludedDraft.manager?.trim() && editExcludedDraft.denomination?.trim() && editExcludedDraft.cik?.trim());
   const saveExcludedEdit = async () => {
-    if (!editingExcludedCik) return;
+    if (!editingExcludedCik || !isExcludedDraftValid()) return;
     if (editExcludedDraft.url && !isValidUrl(editExcludedDraft.url)) {
       toast.error("Website URL must start with https://");
       return;
@@ -303,7 +307,7 @@ export default function FundsConfig() {
                                 <td className="p-2"><InlineInput value={f.cik} field="cik" draft={editDraft} setDraft={setEditDraft} className="font-mono" /></td>
                                 <td className="p-2"><InlineInput value={f.ciks} field="ciks" draft={editDraft} setDraft={setEditDraft} className="font-mono" /></td>
                                 <td className="p-2 text-right whitespace-nowrap">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-500/10" onClick={saveEdit} title="Save">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-500/10" onClick={saveEdit} title="Save" disabled={!isEditDraftValid()}>
                                     <Check className="h-3.5 w-3.5" />
                                   </Button>
                                   <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={cancelEdit} title="Cancel">
@@ -387,7 +391,7 @@ export default function FundsConfig() {
                                 <td className="p-2"><InlineInput value={f.ciks} field="ciks" draft={editExcludedDraft} setDraft={setEditExcludedDraft} className="font-mono" /></td>
                                 <td className="p-2"><InlineInput value={f.url} field="url" draft={editExcludedDraft} setDraft={setEditExcludedDraft} /></td>
                                 <td className="p-2 text-right whitespace-nowrap">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-500/10" onClick={saveExcludedEdit} title="Save">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-500/10" onClick={saveExcludedEdit} title="Save" disabled={!isExcludedDraftValid()}>
                                     <Check className="h-3.5 w-3.5" />
                                   </Button>
                                   <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={cancelExcludedEdit} title="Cancel">

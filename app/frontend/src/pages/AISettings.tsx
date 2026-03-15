@@ -87,6 +87,8 @@ function APIKeysTab() {
   const [envKeys, setEnvKeys] = useState<Record<string, string>>({});
   const [visible, setVisible] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [providerToDelete, setProviderToDelete] = useState<typeof AI_PROVIDERS[number] | null>(null);
   const { data: allModels = [] } = useQuery({ queryKey: ["models"], queryFn: getModels });
 
   useEffect(() => {
@@ -134,15 +136,23 @@ function APIKeysTab() {
     }
   };
 
-  const handleDelete = async (providerId: string) => {
+  const handleDeleteRequest = (providerId: string) => {
     const provider = AI_PROVIDERS.find((p) => p.id === providerId)!;
-    setDrafts((prev) => ({ ...prev, [providerId]: "" }));
+    setProviderToDelete(provider);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!providerToDelete) return;
+    setDrafts((prev) => ({ ...prev, [providerToDelete.id]: "" }));
     try {
-      await saveToEnv({ [provider.envKey]: "" });
+      await saveToEnv({ [providerToDelete.envKey]: "" });
       toast.success("API key removed");
     } catch {
       toast.error("Failed to remove key");
     }
+    setDeleteDialogOpen(false);
+    setProviderToDelete(null);
   };
 
   const configuredCount = configuredProviders.filter(({ hasKey }) => hasKey).length;
@@ -151,7 +161,8 @@ function APIKeysTab() {
     <div className="space-y-5">
       {/* Source info */}
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-        📄 Source: <code className="font-mono bg-muted px-1 py-0.5 rounded">.env</code> — API keys are read from environment variables and can be overridden via localStorage from this UI.
+        📄 Source: <code className="font-mono bg-muted px-1 py-0.5 rounded">.env</code> — API keys are read from and written directly to the configuration file on disk.{" "}
+        <span className="font-semibold text-foreground">This file is not tracked by Git.</span>
       </div>
 
       {/* Security notice */}
@@ -194,6 +205,32 @@ function APIKeysTab() {
 
         <p className="text-xs text-muted-foreground">Each AI page lets you select which model to use from the available providers.</p>
       </div>
+
+      {/* Delete API Key Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" /> Remove API Key
+            </DialogTitle>
+            <DialogDescription>
+              You are about to remove the API key for <strong>{providerToDelete?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 text-sm text-muted-foreground space-y-2">
+            <p>
+              This will permanently delete the key from the <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">.env</code> file on disk.
+              Since <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">.env</code> is not tracked by Git,{" "}
+              <strong className="text-foreground">this operation cannot be undone</strong> — the key cannot be recovered from version history.
+            </p>
+            <p>Make sure you have a copy of the key before proceeding.</p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>Remove Key</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* API Keys management */}
       <div className="space-y-3">
@@ -239,7 +276,7 @@ function APIKeysTab() {
                 </div>
                 
                 {hasKey ? (
-                  <Button variant="outline" size="icon" onClick={() => handleDelete(provider.id)} title="Remove key" className="shrink-0 text-destructive hover:text-destructive">
+                  <Button variant="outline" size="icon" onClick={() => handleDeleteRequest(provider.id)} title="Remove key" className="shrink-0 text-destructive hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 ) : (

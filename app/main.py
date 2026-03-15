@@ -447,7 +447,7 @@ def run_server(host: str = "127.0.0.1", port: int = 8000):
     if not frontend_dist.exists():
         print("🔨 Building frontend…")
         frontend_dir = Path(__file__).parent / "frontend"
-        result = subprocess.run(["npm", "run", "build"], cwd=frontend_dir, shell=True)
+        result = subprocess.run(["npm", "run", "build"], cwd=frontend_dir)
         if result.returncode != 0:
             print("❌ Frontend build failed. Run 'npm run build' manually inside app/frontend/.")
             sys.exit(1)

@@ -292,11 +292,9 @@ export default function AIRanking() {
           <p className="text-muted-foreground">
             Select a model and click "Run" to generate stock rankings.
           </p>
-          {false && (
-            <Button variant="link" className="mt-2" onClick={() => navigate("/ai-settings")}>
-              <Settings className="h-4 w-4 mr-1" /> Configure .env file
-            </Button>
-          )}
+          <Button variant="link" className="mt-2" onClick={() => navigate("/ai-settings")}>
+            <Settings className="h-4 w-4 mr-1" /> Configure .env file
+          </Button>
         </div>
       )}
     </div>

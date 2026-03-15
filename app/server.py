@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import queue
+import re
 import sys
 import threading
 from pathlib import Path
@@ -11,8 +12,7 @@ os.environ.setdefault("COLUMNS", "80")
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, StreamingResponse
 
 DATABASE_DIR = Path(__file__).parent.parent / "database"
 FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
@@ -28,11 +28,45 @@ app.add_middleware(
 )
 
 
+# ── Input validation helpers ───────────────────────────────────────────────────
+
+_DB_ROOT = DATABASE_DIR.resolve()
+_QUARTER_RE = re.compile(r"^\d{4}Q[1-4]$")
+_TICKER_RE  = re.compile(r"^[A-Z0-9.\-]{1,10}$")
+_CUSIP_RE   = re.compile(r"^[A-Z0-9]{9}$")
+
+
+def _safe_db_path(filepath: str) -> Path:
+    """Resolve filepath inside DATABASE_DIR; raise 400 on path traversal."""
+    resolved = (_DB_ROOT / filepath).resolve()
+    if _DB_ROOT != resolved and _DB_ROOT not in resolved.parents:
+        raise HTTPException(status_code=400, detail="Invalid file path")
+    return resolved
+
+
+def _require_quarter(quarter: str | None) -> str:
+    if not quarter or not _QUARTER_RE.match(quarter):
+        raise HTTPException(status_code=422, detail="quarter must be in YYYYQ[1-4] format")
+    return quarter
+
+
+def _require_ticker(ticker: str | None) -> str:
+    if not ticker or not _TICKER_RE.match(ticker.upper()):
+        raise HTTPException(status_code=422, detail="Invalid ticker format")
+    return ticker.upper()
+
+
+def _require_cusip(cusip: str | None) -> str:
+    if not cusip or not _CUSIP_RE.match(cusip.upper()):
+        raise HTTPException(status_code=422, detail="CUSIP must be 9 alphanumeric characters")
+    return cusip.upper()
+
+
 # ── Database file serving ──────────────────────────────────────────────────────
 
 @app.get("/database/{filepath:path}")
 async def get_database_file(filepath: str):
-    file_path = DATABASE_DIR / filepath
+    file_path = _safe_db_path(filepath)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {filepath}")
     content = file_path.read_text(encoding="utf-8")
@@ -42,7 +76,7 @@ async def get_database_file(filepath: str):
 
 @app.put("/database/{filepath:path}")
 async def put_database_file(filepath: str, request: Request):
-    file_path = DATABASE_DIR / filepath
+    file_path = _safe_db_path(filepath)
     file_path.parent.mkdir(parents=True, exist_ok=True)
     body = await request.body()
     file_path.write_text(body.decode("utf-8"), encoding="utf-8")
@@ -53,7 +87,8 @@ async def put_database_file(filepath: str, request: Request):
 
 @app.get("/api/database/quarters/{quarter}")
 async def list_quarter_funds(quarter: str):
-    quarter_dir = DATABASE_DIR / quarter
+    _require_quarter(quarter)
+    quarter_dir = _safe_db_path(quarter)
     if not quarter_dir.exists() or not quarter_dir.is_dir():
         raise HTTPException(status_code=404, detail=f"Quarter not found: {quarter}")
     return [f.stem for f in sorted(quarter_dir.glob("*.csv"))]
@@ -88,10 +123,8 @@ async def put_env(request: Request):
 async def ai_promise_score(request: Request):
     from app.ai.agent import AnalystAgent
     body = await request.json()
-    quarter = body.get("quarter")
+    quarter = _require_quarter(body.get("quarter"))
     top_n = body.get("top_n", 20)
-    if not quarter:
-        raise HTTPException(status_code=422, detail="quarter is required")
     ai_client = _build_ai_client(body.get("model_id"), body.get("provider_id"))
     agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
     df = agent.generate_scored_list(top_n=top_n)
@@ -102,10 +135,8 @@ async def ai_promise_score(request: Request):
 async def ai_due_diligence(request: Request):
     from app.ai.agent import AnalystAgent
     body = await request.json()
-    ticker = body.get("ticker")
-    quarter = body.get("quarter")
-    if not ticker or not quarter:
-        raise HTTPException(status_code=422, detail="ticker and quarter are required")
+    ticker = _require_ticker(body.get("ticker"))
+    quarter = _require_quarter(body.get("quarter"))
     ai_client = _build_ai_client(body.get("model_id"), body.get("provider_id"))
     agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
     result = agent.run_stock_due_diligence(ticker=ticker)
@@ -156,10 +187,8 @@ async def fetch_nq_stream():
 async def update_ticker_endpoint(request: Request):
     from app.utils.database import update_ticker
     body = await request.json()
-    old_ticker = body.get("old_ticker", "").strip().upper()
-    new_ticker = body.get("new_ticker", "").strip().upper()
-    if not old_ticker or not new_ticker:
-        raise HTTPException(status_code=422, detail="old_ticker and new_ticker are required")
+    old_ticker = _require_ticker(body.get("old_ticker", "").strip())
+    new_ticker = _require_ticker(body.get("new_ticker", "").strip())
     update_ticker(old_ticker, new_ticker)
     return {"message": f"Ticker updated: {old_ticker} → {new_ticker}"}
 
@@ -168,10 +197,8 @@ async def update_ticker_endpoint(request: Request):
 async def update_cusip_ticker_endpoint(request: Request):
     from app.utils.database import update_ticker_for_cusip
     body = await request.json()
-    cusip = body.get("cusip", "").strip()
-    new_ticker = body.get("new_ticker", "").strip().upper()
-    if not cusip or not new_ticker:
-        raise HTTPException(status_code=422, detail="cusip and new_ticker are required")
+    cusip = _require_cusip(body.get("cusip", "").strip())
+    new_ticker = _require_ticker(body.get("new_ticker", "").strip())
     update_ticker_for_cusip(cusip, new_ticker)
     return {"message": f"CUSIP {cusip} ticker updated to {new_ticker}"}
 
@@ -227,10 +254,8 @@ def _make_sse_stream(target_fn):
 async def ai_promise_score_stream(request: Request):
     from app.ai.agent import AnalystAgent
     body = await request.json()
-    quarter = body.get("quarter")
+    quarter = _require_quarter(body.get("quarter"))
     top_n = body.get("top_n", 20)
-    if not quarter:
-        raise HTTPException(status_code=422, detail="quarter is required")
     ai_client = _build_ai_client(body.get("model_id"), body.get("provider_id"))
 
     def run():
@@ -245,10 +270,8 @@ async def ai_promise_score_stream(request: Request):
 async def ai_due_diligence_stream(request: Request):
     from app.ai.agent import AnalystAgent
     body = await request.json()
-    ticker = body.get("ticker")
-    quarter = body.get("quarter")
-    if not ticker or not quarter:
-        raise HTTPException(status_code=422, detail="ticker and quarter are required")
+    ticker = _require_ticker(body.get("ticker"))
+    quarter = _require_quarter(body.get("quarter"))
     ai_client = _build_ai_client(body.get("model_id"), body.get("provider_id"))
 
     def run():
@@ -260,8 +283,29 @@ async def ai_due_diligence_stream(request: Request):
 
 # ── Static frontend ────────────────────────────────────────────────────────────
 
-if FRONTEND_DIST.exists():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import HTTPException as StarletteHTTPException
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    # For 404s on non-API routes, serve the SPA index.html (React Router handles routing)
+    if exc.status_code == 404 and not request.url.path.startswith(("/api/", "/database/")):
+        index = FRONTEND_DIST / "index.html"
+        if index.exists():
+            return FileResponse(str(index))
+    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+
+
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    file = FRONTEND_DIST / full_path
+    if file.exists() and file.is_file():
+        return FileResponse(str(file))
+    index = FRONTEND_DIST / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    raise HTTPException(status_code=503, detail="Frontend not built. Run: cd app/frontend && npm run build")
 
 
 # ── AI client factory ──────────────────────────────────────────────────────────
