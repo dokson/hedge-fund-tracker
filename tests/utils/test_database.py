@@ -192,11 +192,22 @@ class TestDatabase(unittest.TestCase):
         """
         num_threads = 10
         iterations = 20
-        stocks_path = f'./{self.test_db_folder}/{STOCKS_FILE}'
+        stocks_path = os.path.join(self.test_db_folder, STOCKS_FILE)
+        
+        barrier = threading.Barrier(num_threads)
+        errors = []
 
         def worker(thread_idx):
-            for i in range(iterations):
-                save_stock(f"C_{thread_idx}_{i}", f"T_{thread_idx}_{i}", f"Co_{thread_idx}_{i}")
+            try:
+                barrier.wait()
+                for i in range(iterations):
+                    save_stock(
+                        f"C_{thread_idx}_{i}", 
+                        f"T_{thread_idx}_{i}", 
+                        f"Company_{thread_idx}_{i}"
+                    )
+            except Exception as e:
+                errors.append(f"Thread {thread_idx}: {str(e)}")
 
         threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
         for t in threads:
@@ -204,9 +215,18 @@ class TestDatabase(unittest.TestCase):
         for t in threads:
             t.join()
 
+        self.assertEqual(len(errors), 0, f"Errori rilevati nei thread: {errors}")
+
         df = load_stocks(stocks_path)
-        # Initial 2 records + 200 new ones (10 threads × 20 iterations)
-        self.assertEqual(len(df), 2 + num_threads * iterations)
+        expected_new_records = num_threads * iterations
+        self.assertEqual(len(df), 2 + expected_new_records)
+
+        for t_idx in range(num_threads):
+            for i in range(iterations):
+                cusip = f"C_{t_idx}_{i}"
+                ticker = f"T_{t_idx}_{i}"
+                self.assertIn(cusip, df.index, f"CUSIP mancante: {cusip}")
+                self.assertEqual(df.loc[cusip, 'Ticker'], ticker)
 
 
     def test_concurrent_save_and_sort(self):

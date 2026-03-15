@@ -30,14 +30,28 @@ def _get_db_root() -> Path:
 def _safe_db_join(*segments: str) -> Path:
     """
     Safely join segments to DB_FOLDER and verify boundary.
+
+    Each segment is validated via os.path.basename() — the CodeQL-recognised
+    sanitizer for py/path-injection.  If basename(s) != s, the segment contained
+    a path separator and is rejected.  Only the validated names are joined to the
+    root, so no raw user input appears in the path construction.
     """
     root = _get_db_root()
+    safe: list[str] = []
     for s in segments:
-        if ".." in s or "/" in s or "\\" in s:
-            raise ValueError(f"Unsafe path segment: {s}")
-    resolved = root.joinpath(*segments).resolve()
-    if root != resolved and root not in resolved.parents:
+        clean = os.path.basename(s)
+        if not clean or clean in (".", "..") or clean != s:
+            raise ValueError(f"Unsafe path segment: {s!r}")
+        if ":" in clean or "\x00" in clean:
+            raise ValueError(f"Unsafe path segment: {s!r}")
+        safe.append(clean)
+
+    resolved = root.joinpath(*safe).resolve()
+
+    # Belt-and-suspenders boundary check
+    if not resolved.is_relative_to(root):
         raise ValueError(f"Path traversal detected: {resolved}")
+
     return resolved
 
 

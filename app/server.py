@@ -37,45 +37,70 @@ _TICKER_RE  = re.compile(r"^[A-Z0-9.\-]{1,10}$")
 _CUSIP_RE   = re.compile(r"^[A-Z0-9]{9}$")
 
 
-def _is_path_safe(path_str: str) -> bool:
+def _sanitize_path_parts(filepath: str) -> list[str]:
     """
-    Check if the string contains path traversal characters.
+    Split filepath into parts and validate each with os.path.basename().
+
+    os.path.basename() is the CodeQL-recognised sanitizer for py/path-injection:
+    if basename(part) != part, the part contained a directory separator and is
+    rejected.  All parts are then used to reconstruct the path from a safe root,
+    so no user-controlled string ever appears directly in a joinpath() call.
     """
-    # Basic protection against .. and absolute paths
-    if ".." in path_str or path_str.startswith(("/", "\\")):
-        return False
-    # Avoid protocol handlers or other suspicious patterns
-    if ":" in path_str and not path_str[1:3] == ":\\": # Allow for Windows root but flag elsewhere
-        if len(path_str) > 1 and path_str[1] == ":":
-            return False
-    return True
+    if not filepath:
+        raise ValueError("Empty path")
+    parts = Path(filepath).parts
+    safe: list[str] = []
+    for part in parts:
+        clean = os.path.basename(part)
+        # Reject if basename changed (contained separator) or is a traversal token
+        if not clean or clean in (".", "..") or clean != part:
+            raise ValueError(f"Unsafe path component: {part!r}")
+        # Reject drive letters, colons, and null bytes
+        if ":" in clean or "\x00" in clean:
+            raise ValueError(f"Unsafe path component: {part!r}")
+        safe.append(clean)
+    return safe
 
 
 def _safe_db_path(filepath: str) -> Path:
     """
     Resolve filepath inside DATABASE_DIR; raise 400 on path traversal.
+
+    Each component is validated via os.path.basename() before being joined to
+    the database root, breaking the taint chain that CodeQL (py/path-injection)
+    tracks from the HTTP parameter.
     """
-    if not _is_path_safe(filepath):
+    try:
+        parts = _sanitize_path_parts(filepath)
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid path characters")
-        
-    # lstrip avoids absolute path joins; resolve handles any remaining ..
-    resolved = (_DB_ROOT / filepath.lstrip("/\\")).resolve()
-    if _DB_ROOT != resolved and _DB_ROOT not in resolved.parents:
+
+    # Reconstruct entirely from the safe root + validated parts (no raw user input)
+    resolved = _DB_ROOT.joinpath(*parts).resolve()
+
+    # Belt-and-suspenders boundary check
+    if not resolved.is_relative_to(_DB_ROOT):
         raise HTTPException(status_code=400, detail="Invalid file path")
+
     return resolved
 
 
 def _safe_frontend_path(filepath: str) -> Path:
     """
     Resolve filepath inside FRONTEND_DIST; raise 403 on path traversal.
+
+    Same basename()-based sanitisation as _safe_db_path.
     """
-    if not _is_path_safe(filepath):
+    try:
+        parts = _sanitize_path_parts(filepath)
+    except ValueError:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    # lstrip avoids absolute path joins; resolve handles ..
-    resolved = (_FRONTEND_ROOT / filepath.lstrip("/\\")).resolve()
-    if _FRONTEND_ROOT != resolved and _FRONTEND_ROOT not in resolved.parents:
+    resolved = _FRONTEND_ROOT.joinpath(*parts).resolve()
+
+    if not resolved.is_relative_to(_FRONTEND_ROOT):
         raise HTTPException(status_code=403, detail="Forbidden")
+
     return resolved
 
 
@@ -122,10 +147,10 @@ async def put_database_file(filepath: str, request: Request):
 
 @app.get("/api/database/quarters/{quarter}")
 async def list_quarter_funds(quarter: str):
-    _require_quarter(quarter)
-    quarter_dir = _safe_db_path(quarter)
+    sanitized_quarter = _require_quarter(quarter)
+    quarter_dir = _safe_db_path(sanitized_quarter)
     if not quarter_dir.exists() or not quarter_dir.is_dir():
-        raise HTTPException(status_code=404, detail=f"Quarter not found: {quarter}")
+        raise HTTPException(status_code=404, detail=f"Quarter not found: {sanitized_quarter}")
     return [f.stem for f in sorted(quarter_dir.glob("*.csv"))]
 
 
