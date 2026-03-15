@@ -3,6 +3,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { Github, BarChart3, Sun, Moon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
+import { BASE_PATH } from "@/lib/config";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className="flex items-center gap-3 cursor-pointer"
             onClick={() => navigate("/")}
           >
-            <img src="/logo.png" alt="Hedge Fund Tracker" className="h-9 w-9 rounded-lg shrink-0" />
+            <img src={`${BASE_PATH}/logo.png`} alt="Hedge Fund Tracker" className="h-9 w-9 rounded-lg shrink-0" />
             <div>
               <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">Hedge Fund Tracker</h1>
               <p className="text-[9px] text-muted-foreground leading-tight">by <a href="https://github.com/dokson" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Alessandro Colace</a></p>

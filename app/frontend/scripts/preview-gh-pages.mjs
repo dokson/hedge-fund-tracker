@@ -6,7 +6,7 @@
 
 import { createServer } from "http";
 import { readFileSync, existsSync, statSync } from "fs";
-import { join, extname } from "path";
+import { join, extname, basename } from "path";
 import { resolve } from "path";
 
 const distDir = resolve(import.meta.dirname, "../dist");
@@ -32,14 +32,21 @@ const server = createServer((req, res) => {
     url = url.slice(BASE.length) || "/";
   }
 
-  const filePath = resolve(distDir, "." + url);
-
-  // Prevent path traversal: ensure resolved path stays within distDir
-  if (!filePath.startsWith(distDir + "/") && filePath !== distDir) {
-    res.writeHead(403);
-    res.end("Forbidden");
-    return;
+  // Sanitize each path component via basename() — CodeQL-recognised taint barrier.
+  // Reconstruct the path from distDir + validated parts only; no raw user input
+  // ever reaches readFileSync/existsSync.
+  const rawParts = url.split("/").filter(Boolean);
+  const safeParts = [];
+  for (const part of rawParts) {
+    const clean = basename(part);
+    if (!clean || clean === "." || clean === "..") {
+      res.writeHead(403);
+      res.end("Forbidden");
+      return;
+    }
+    safeParts.push(clean);
   }
+  const filePath = safeParts.length > 0 ? join(distDir, ...safeParts) : distDir;
 
   // If file exists, serve it
   if (existsSync(filePath) && statSync(filePath).isFile()) {

@@ -5,7 +5,7 @@
  * Provider/model metadata is kept here for display purposes in the UI.
  */
 
-const API_BASE = "http://localhost:8000";
+import { API_BASE, IS_GH_PAGES_MODE } from "./config";
 
 export interface AIProvider {
   id: string;
@@ -123,6 +123,9 @@ export async function runDueDiligenceStream(
 // ─── Env-based provider status ─────────────────────────────────────────────────
 
 export async function getConfiguredProviders(): Promise<{ provider: AIProvider; hasKey: boolean }[]> {
+  if (IS_GH_PAGES_MODE) {
+    return AI_PROVIDERS.map((provider) => ({ provider, hasKey: false }));
+  }
   try {
     const res = await fetch(`${API_BASE}/api/settings/env`);
     const env: Record<string, string> = res.ok ? await res.json() : {};

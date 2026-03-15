@@ -4,9 +4,9 @@ on:
   push:
     branches: [master]
     paths:
-      - 'app/frontend/**'
-      - 'database/**'
-      - '.github/workflows/deploy-pages.yml'
+      - "app/frontend/**"
+      - "database/**"
+      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -28,8 +28,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "24"
+          cache: "npm"
           cache-dependency-path: app/frontend/package-lock.json
 
       - name: Install dependencies
