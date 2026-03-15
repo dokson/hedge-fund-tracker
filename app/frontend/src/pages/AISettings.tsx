@@ -29,6 +29,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { IS_GH_PAGES_MODE } from "@/lib/config";
 
 export default function AISettingsPage() {
   const [activeTab, setActiveTab] = useState<"keys" | "models">("keys");
@@ -170,6 +171,18 @@ function APIKeysTab() {
         <Shield className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
         <span>API keys are stored locally and never sent to any server except the AI provider's API.</span>
       </div>
+
+      {IS_GH_PAGES_MODE && (
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 flex gap-3 items-start">
+          <Brain className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-primary">Read-Only Mode</p>
+            <p className="text-muted-foreground mt-0.5">
+              Configuration is disabled in this web demo. To manage API keys and models, please run the application in your local environment.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Provider status overview */}
       <div className="rounded-lg border border-border bg-card p-5 space-y-4">

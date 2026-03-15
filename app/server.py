@@ -359,14 +359,12 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
-    # Security: prevent path traversal (CodeQL alert #14)
     try:
         if full_path:
             file_path = _safe_frontend_path(full_path)
             if file_path.exists() and file_path.is_file():
                 return FileResponse(str(file_path))
     except (HTTPException, ValueError, OSError):
-        # On security error or invalid path, just fall through to index.html
         pass
 
     # Fallback to index.html for SPA routes (React Router handles the rest)

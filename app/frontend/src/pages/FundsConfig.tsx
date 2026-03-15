@@ -14,7 +14,8 @@ import {
   type HedgeFund,
   type ExcludedHedgeFund,
 } from "@/lib/dataService";
-import { Settings2, Users, ExternalLink, Search, Trash2, AlertTriangle, Undo2, UserX, Plus, Info, Pencil, Check, X } from "lucide-react";
+import { IS_GH_PAGES_MODE } from "@/lib/config";
+import { Settings2, Users, ExternalLink, Search, Trash2, AlertTriangle, Undo2, UserX, Plus, Info, Pencil, Check, X, Eye } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -233,9 +234,19 @@ export default function FundsConfig() {
           <Settings2 className="h-6 w-6" /> Hedge Funds Configuration
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Manage the monitored hedge funds. Click the edit icon to modify a fund inline.
+          {IS_GH_PAGES_MODE
+            ? "View the monitored hedge funds. This is a read-only view of the bundled data."
+            : "Manage the monitored hedge funds. Click the edit icon to modify a fund inline."
+          }
         </p>
       </div>
+
+      {IS_GH_PAGES_MODE && (
+        <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3 text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+          <Eye className="h-4 w-4 shrink-0" />
+          Read-only mode. To modify the hedge funds list, run the application locally.
+        </div>
+      )}
 
       {/* Tab navigation */}
       <div className="flex gap-1 border-b border-border">
@@ -268,9 +279,11 @@ export default function FundsConfig() {
               <Input placeholder="Search fund, manager, CIK…" value={fundSearch} onChange={(e) => setFundSearch(e.target.value)} className="pl-8 bg-card border-border" />
             </div>
             <span className="text-xs text-muted-foreground">{filteredFunds.length} / {funds.length} funds</span>
-            <Button size="sm" className="gap-1.5 ml-auto" onClick={() => { resetAddForm(); setAddDialogOpen(true); }}>
-              <Plus className="h-3.5 w-3.5" /> Add Fund
-            </Button>
+            {!IS_GH_PAGES_MODE && (
+              <Button size="sm" className="gap-1.5 ml-auto" onClick={() => { resetAddForm(); setAddDialogOpen(true); }}>
+                <Plus className="h-3.5 w-3.5" /> Add Fund
+              </Button>
+            )}
           </div>
           <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
             📄 Source: <code className="font-mono bg-muted px-1 py-0.5 rounded">database/hedge_funds.csv</code>
@@ -290,7 +303,7 @@ export default function FundsConfig() {
                       <ColumnHeader label="Denomination" tooltip="Full legal name as it appears in SEC filings. Used to identify positions in non-quarterly filings that may contain multiple institutional entities." />
                       <ColumnHeader label="CIK" tooltip="Central Index Key — unique SEC identifier for filing entities." />
                       <ColumnHeader label="CIKs" tooltip="Comma-separated list of additional CIKs associated with this fund (e.g. for related filing entities)." />
-                      <th className="text-right p-3 font-medium w-24"></th>
+                      {!IS_GH_PAGES_MODE && <th className="text-right p-3 font-medium w-24"></th>}
                     </tr>
                   </thead>
                     <tbody>
@@ -322,14 +335,16 @@ export default function FundsConfig() {
                                 <td className="p-3 text-muted-foreground text-xs max-w-[250px] truncate fund-link cursor-pointer" onClick={() => navigate(`/funds/${encodeURIComponent(f.fund)}`)}>{f.denomination}</td>
                                 <td className="p-3"><CikLink cik={f.cik} /></td>
                                 <td className="p-3 font-mono text-xs text-muted-foreground max-w-[150px] truncate">{f.ciks || "—"}</td>
-                                <td className="p-3 text-right whitespace-nowrap">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground" onClick={() => startEdit(f)} title="Edit fund">
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { setFundToDelete(f); setWebsiteUrl(""); setDeleteDialogOpen(true); }} title="Delete fund">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </td>
+                                {!IS_GH_PAGES_MODE && (
+                                  <td className="p-3 text-right whitespace-nowrap">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground" onClick={() => startEdit(f)} title="Edit fund">
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { setFundToDelete(f); setWebsiteUrl(""); setDeleteDialogOpen(true); }} title="Delete fund">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </td>
+                                )}
                               </>
                             )}
                           </tr>
@@ -373,7 +388,7 @@ export default function FundsConfig() {
                       <ColumnHeader label="CIK" tooltip="Central Index Key — unique SEC identifier for filing entities." />
                       <ColumnHeader label="CIKs" tooltip="Comma-separated list of additional CIKs associated with this fund." />
                       <ColumnHeader label="Website" tooltip="Official website URL of the excluded fund. Must start with https://." />
-                      <th className="text-right p-3 font-medium w-24"></th>
+                      {!IS_GH_PAGES_MODE && <th className="text-right p-3 font-medium w-24"></th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -413,14 +428,16 @@ export default function FundsConfig() {
                                     </a>
                                   ) : <span className="text-xs text-muted-foreground">—</span>}
                                 </td>
-                                <td className="p-3 text-right whitespace-nowrap">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground" onClick={() => startExcludedEdit(f)} title="Edit fund">
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary hover:bg-primary/10" onClick={() => { setFundToRestore(f); setRestoreDialogOpen(true); }} title="Restore fund">
-                                    <Undo2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </td>
+                                {!IS_GH_PAGES_MODE && (
+                                  <td className="p-3 text-right whitespace-nowrap">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground" onClick={() => startExcludedEdit(f)} title="Edit fund">
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary hover:bg-primary/10" onClick={() => { setFundToRestore(f); setRestoreDialogOpen(true); }} title="Restore fund">
+                                      <Undo2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </td>
+                                )}
                               </>
                             )}
                           </tr>
@@ -434,6 +451,8 @@ export default function FundsConfig() {
         </div>
       ) : null}
 
+      {!IS_GH_PAGES_MODE && (
+        <>
       {/* ── Delete Dialog ── */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -522,6 +541,8 @@ export default function FundsConfig() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </>
+      )}
     </div>
   );
 }

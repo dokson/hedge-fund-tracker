@@ -84,6 +84,7 @@ pipenv run python -m app.main
 | **🔍 Smart Ticker Resolution** | Multi-fallback system (yfinance, Finnhub, FinanceDatabase) to resolve CUSIPs into actionable stock symbols. |
 | **🤖 AI Financial Analyst** | Leverages top-tier LLMs to calculate "Promise Scores" and perform deep due diligence on high-conviction opportunities. |
 | **⚙️ Automated Data Pipeline** | Scheduled GitHub Actions to fetch, process, and commit the latest SEC filings directly to your repository. |
+| **🌐 GitHub Pages Demo** | Static deployment with bundled data — all analysis features work without a backend. |
 | **⭐ Personalized Watchlist** | Star your favorite funds or stocks for quick access and personalized tracking across the platform. |
 | **🗃️ GICS Hierarchy** | Autonomous parser to build a granular [GICS](https://www.msci.com/indexes/index-resources/gics) classification database. |
 
@@ -190,13 +191,16 @@ hedge-fund-tracker/
 │   ├── 📁 scripts/
 │   │   └── 🐍 fetcher.py           # Daily script for data fetching (scheduled by workflows/daily-fetch.yml)
 │   └── 📁 workflows/                # GitHub Actions for automation
+│       ├── ⚙️ deploy-pages.yml     # GitHub Actions: Deploy to GitHub Pages
 │       ├── ⚙️ filings-fetch.yml    # GitHub Actions: Filings fetching job
 │       └── ⚙️ python-tests.yml     # GitHub Actions: Unit tests
 ├── 📁 app/                          # Main application logic
 │   ├── 📁 frontend/                 # React + Vite web UI
+│   │   ├── 📁 public/               # Static assets (404.html, logo.png)
+│   │   ├── 📁 scripts/              # copy-database.mjs (bundles CSVs for GH Pages)
 │   │   ├── 📁 src/
-│   │   │   ├── 📁 components/       # Shared UI components (ModelSelector, TerminalOutput, etc.)
-│   │   │   ├── 📁 lib/              # dataService.ts (CSV I/O), aiClient.ts (SSE streaming)
+│   │   │   ├── 📁 components/       # Shared UI components (ModelSelector, TerminalOutput, FeatureNotAvailable, etc.)
+│   │   │   ├── 📁 lib/              # config.ts (IS_GH_PAGES_MODE), dataService.ts (CSV I/O), aiClient.ts (SSE)
 │   │   │   └── 📁 pages/            # AIRanking, AIDueDiligence, FundsConfig, AISettings, DatabaseOperations
 │   │   ├── 📦 package.json
 │   │   └── ⚙️ vite.config.ts
@@ -395,6 +399,44 @@ Many tracking websites rely solely on quarterly 13F filings, which means their d
 
 This tracker helps overcome that limitation by **integrating multiple filing types**. When analyzing the most recent quarter, the tool automatically incorporates the latest data from 13D/G and Form 4 filings. As a result, the holdings, deltas, and portfolio percentages reflect not just the static 13F snapshot, but also any significant trades that have occurred since. This provides a more dynamic and complete picture of institutional activity.
 
+## 🌐 GitHub Pages Deployment
+
+The frontend can be deployed as a **static demo on GitHub Pages** — no Python backend required. AI features and data updates are disabled in this mode, but all core analysis pages work with bundled data.
+
+**Live demo**: `https://{username}.github.io/hedge-fund-tracker/`
+
+### What's Available in GitHub Pages Mode
+
+| Page | Status |
+| :--- | :--- |
+| Dashboard (Latest Filings) | Fully functional |
+| Quarterly Trends | Fully functional |
+| Hedge Fund Portfolios | Fully functional |
+| Stocks Browser | Fully functional |
+| Funds Config | Read-only (data visible, no edits) |
+| AI Ranking | Disabled (requires local backend) |
+| AI Due Diligence | Disabled (requires local backend) |
+| AI Settings | Hidden |
+| Database Operations | Hidden |
+
+### How to Deploy
+
+1. **Fork the repository** on GitHub
+2. **Enable GitHub Pages**: Go to Settings > Pages > Source: **"GitHub Actions"**
+3. **Push to `master`** — the deploy workflow (`.github/workflows/deploy-pages.yml`) runs automatically
+
+The build step (`npm run build:gh-pages`) bundles all CSV data into `dist/database/` so the static site is fully self-contained.
+
+### Local Development
+
+For full functionality (AI analysis, data updates, file editing), run locally:
+
+```bash
+pipenv install
+cd app/frontend && npm install && npm run build && cd ../..
+pipenv run python -m app.main
+```
+
 ## ⚙️ Automation with GitHub Actions
 
 This repository includes a [GitHub Actions](https://github.com/features/actions) workflow (`.github/workflows/filings-fetch.yml`) designed to keep your data effortlessly up-to-date by automatically fetching the latest SEC filings.
@@ -403,6 +445,7 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 - **Scheduled Runs**: The workflow runs automatically to check for **new 13F, 13D/G, and Form 4 filings** from the funds you are tracking (`hedge_funds.csv`). It runs four times a day from Monday to Friday (at 01:30, 13:30, 17:30, and 21:30 UTC) and once on Saturday (at 04:00 UTC).
 - **Safe Branching Strategy**: Instead of committing directly to your main branch, the workflow pushes all new data to a dedicated branch named `automated/filings-fetch`.
+- **GitHub Pages Deploy**: A separate workflow (`.github/workflows/deploy-pages.yml`) automatically rebuilds and deploys the static frontend to GitHub Pages whenever frontend or database files change on `master`.
 - **User-Controlled Merging**: This approach gives you full control. You can review the changes committed by the bot and then merge them into your main branch whenever you're ready. This prevents unexpected changes and allows you to manage updates at your own pace.
 - **Automated Alerts**: If the script encounters a non-quarterly filing where it cannot identify the fund owner based on your `hedge_funds.csv` configuration, it will automatically open a GitHub Issue in your repository, alerting you to a potential data mismatch that needs investigation.
 

@@ -1,18 +1,30 @@
 <!doctype html>
 <html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="/logo.png" type="image/png" />
-    <title>Hedge Fund Tracker — SEC Filing Tracker & Hedge Fund Analytics</title>
-    <meta name="description" content="Track institutional investor activity through SEC filings. Surface high-conviction stock ideas from top hedge funds." />
-    <meta property="og:title" content="Hedge Fund Tracker" />
-    <meta property="og:description" content="SEC Filing Tracker & Hedge Fund Analytics" />
-    <meta property="og:type" content="website" />
-  </head>
-
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" href="/logo.png" type="image/png" />
+        <title>Hedge Fund Tracker — SEC Filing Tracker & Hedge Fund Analytics</title>
+        <meta name="description" content="Track institutional investor activity through SEC filings. Surface high-conviction stock ideas from top hedge funds." />
+        <meta property="og:title" content="Hedge Fund Tracker" />
+        <meta property="og:description" content="SEC Filing Tracker & Hedge Fund Analytics" />
+        <meta property="og:type" content="website" />
+        <!-- GitHub Pages SPA redirect: restore path from query parameter -->
+        <script>
+        (function(l) {
+            if (l.search[1] === '/') {
+                var decoded = l.search.slice(1).split('&').map(function(s) {
+                    return s.replace(/~and~/g, '&');
+                }).join('?');
+                window.history.replaceState(null, null,
+                l.pathname.slice(0, -1) + decoded + l.hash
+                );
+            }
+        }(window.location));
+        </script>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module" src="/src/main.tsx"></script>
+    </body>
 </html>

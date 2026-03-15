@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "copy:data": "node scripts/copy-database.mjs",
+    "build:gh-pages": "vite build --mode gh-pages && npm run copy:data",
+    "preview:gh-pages": "node scripts/preview-gh-pages.mjs"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.11",

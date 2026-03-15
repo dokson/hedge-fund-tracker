@@ -1,6 +1,5 @@
 import Papa from "papaparse";
-
-const BASE_URL = "http://localhost:8000/database";
+import { DATABASE_URL, IS_GH_PAGES_MODE, BASE_PATH } from "./config";
 
 // ---------- Raw CSV row types ----------
 
@@ -166,7 +165,10 @@ export interface StockQuarterAnalysis {
 // ---------- CSV fetch + parse helper ----------
 
 async function fetchCSV<T>(url: string): Promise<T[]> {
-  const response = await fetch(url);
+  const fullUrl = IS_GH_PAGES_MODE 
+    ? `${BASE_PATH}${url}` 
+    : `${DATABASE_URL}${url.replace(/^\/database/, "")}`;
+  const response = await fetch(fullUrl);
   if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
   const text = await response.text();
 
@@ -395,6 +397,11 @@ export function generateModelsCSV(models: AIModel[]): string {
 }
 
 export async function saveFileToDisk(content: string, filePath: string): Promise<void> {
+  if (IS_GH_PAGES_MODE) {
+    // In GitHub Pages mode, download the file instead of saving to server
+    downloadFile(content, filePath.split("/").pop() || filePath);
+    return;
+  }
   const res = await fetch(`http://localhost:8000/database/${filePath}`, {
     method: "PUT",
     headers: { "Content-Type": "text/plain" },
@@ -514,6 +521,12 @@ export async function getFundAvailableQuarters(fundName: string): Promise<string
 
 export async function getQuarterFundList(quarter: string): Promise<string[]> {
   return cachedFetch(`quarter_funds_${quarter}`, async () => {
+    if (IS_GH_PAGES_MODE) {
+      // In GH Pages mode, read from bundled manifest.json
+      const response = await fetch(`${BASE_PATH}/database/${quarter}/manifest.json`);
+      if (!response.ok) throw new Error(`No data available for ${quarter}`);
+      return response.json();
+    }
     const response = await fetch(
       `http://localhost:8000/api/database/quarters/${quarter}`
     );
@@ -530,7 +543,7 @@ export async function getFundQuarterlyHoldings(
   const key = `holdings_${quarter}_${fundName}`;
   return cachedFetch(key, async () => {
     const raw = await fetchCSV<RawQuarterlyHolding>(
-      `${BASE_URL}/${quarter}/${encodeURIComponent(fundNameToFileName(fundName))}.csv`
+      `/database/${quarter}/${encodeURIComponent(fundNameToFileName(fundName))}.csv`
     );
     return raw.map((r) => ({
       cusip: r.CUSIP,

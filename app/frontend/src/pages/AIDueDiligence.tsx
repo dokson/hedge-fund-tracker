@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { toast } from "sonner";
+import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { useQuery } from "@tanstack/react-query";
 import {
   AVAILABLE_QUARTERS,
@@ -21,7 +23,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { toast } from "sonner";
 
 interface DueDiligenceReport {
   ticker: string;
@@ -73,6 +74,7 @@ export default function AIDueDiligence() {
   const [statusMsg, setStatusMsg] = useState("");
   const [modelUsed, setModelUsed] = useState("");
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
+  const isReadOnly = IS_GH_PAGES_MODE;
 
   const { data: stocks = [] } = useQuery({
     queryKey: ["stocks"],
@@ -129,11 +131,6 @@ export default function AIDueDiligence() {
             Comprehensive AI-generated analysis
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigate("/ai-settings")}>
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
 
       {/* Controls */}
@@ -150,9 +147,9 @@ export default function AIDueDiligence() {
         </div>
         <div className="space-y-1">
           <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Model</label>
-          <ModelSelector value={selectedModel} onChange={setSelectedModel} onProviderChange={setSelectedProviderId} className="w-56" />
+          <ModelSelector value={selectedModel} onChange={setSelectedModel} onProviderChange={setSelectedProviderId} className="w-56" disabled={isReadOnly} />
         </div>
-        <Button onClick={runDiligence} disabled={loading || !inputTicker || !isValidTicker}>
+        <Button onClick={runDiligence} disabled={loading || !inputTicker || !isValidTicker || isReadOnly}>
           <Brain className="h-4 w-4 mr-1" /> {report ? "Re-run" : "Run"}
         </Button>
       </div>
@@ -282,12 +279,20 @@ export default function AIDueDiligence() {
       {!report && !loading && (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
           <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-30" />
-          <p className="text-muted-foreground">
-            Select a model, enter a ticker and click "Run" to generate a comprehensive analysis.
-          </p>
-          <Button variant="link" className="mt-2" onClick={() => navigate("/ai-settings")}>
-            <Settings className="h-4 w-4 mr-1" /> Configure .env file
-          </Button>
+          {isReadOnly ? (
+            <div className="max-w-2xl mx-auto p-6 rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800 space-y-2">
+              <p className="font-semibold text-blue-700 dark:text-blue-300 flex items-center justify-center gap-2">
+                <Brain className="h-4 w-4" /> Local-Only Feature
+              </p>
+              <p className="text-sm text-blue-600/80 dark:text-blue-400/80 leading-relaxed">
+                Stock Due Diligence requires a local Python backend to analyze data via LLMs. This live demo shows the interface only. To use this feature, run the app locally with your own API keys.
+              </p>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              Select a model, enter a ticker and click "Run" to generate a comprehensive analysis.
+            </p>
+          )}
         </div>
       )}
     </div>

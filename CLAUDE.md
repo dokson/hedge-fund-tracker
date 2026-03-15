@@ -11,6 +11,9 @@ pipenv install
 # Build the React frontend (required before first run or after UI changes)
 cd app/frontend && npm install && npm run build && cd ../..
 
+# Build the frontend for GitHub Pages deployment
+cd app/frontend && npm run build:gh-pages && cd ../..
+
 # Run the web UI (default — opens browser at http://localhost:8000)
 pipenv run python -m app.main
 
@@ -57,7 +60,27 @@ SEC EDGAR → app/scraper/ (13F, 13D/G, Form 4) → app/analysis/ → app/ai/ (P
 
 The application ships a **React + Vite frontend** (`app/frontend/`) served by the FastAPI backend. Running `python -m app.main` (default) starts the FastAPI server on port 8000, builds/serves the React dist, and opens the browser automatically. The `--cli` flag falls back to the original terminal menu.
 
-**Frontend stack**: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui (subset), Recharts, TanStack Query, react-router-dom.
+**Frontend stack**: React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui (subset), Recharts, TanStack Query, react-router-dom.
+
+### GitHub Pages Deployment
+
+The frontend can be deployed as a **static site on GitHub Pages** via `npm run build:gh-pages`. A `IS_GH_PAGES_MODE` flag (injected at build time via Vite `define`) distinguishes local vs production:
+
+- **Hidden pages** (`IS_GH_PAGES_MODE=true`): `/database`, `/ai-settings` — routes not registered
+- **Disabled pages**: `/ai-ranking`, `/ai-diligence` — show `FeatureNotAvailable` component with setup instructions
+- **Read-only pages**: `/funds-config` — data visible, action buttons hidden
+
+**Static data**: CSV files are bundled into `dist/database/` during build via `scripts/copy-database.mjs`. This script also generates `manifest.json` per quarter (fund list) and `metadata.json` (latest quarter info).
+
+**SPA routing**: `public/404.html` redirects unmatched paths back to `index.html` with path encoded as query parameter. A script in `index.html` restores the original path via `history.replaceState`.
+
+**Environment config** (`app/frontend/src/lib/config.ts`):
+- `IS_GH_PAGES_MODE` — build-time boolean (`true` when `--mode gh-pages`)
+- `BASE_PATH` — `'/hedge-fund-tracker'` in GH Pages mode, `''` locally
+- `DATABASE_URL` — relative paths in GH Pages mode, `http://localhost:8000/database` locally
+- `API_BASE` — `null` in GH Pages mode (no backend), `http://localhost:8000` locally
+
+**Deploy workflow** (`.github/workflows/deploy-pages.yml`): triggers on push to `master` when `app/frontend/**` or `database/**` change. Uses `actions/deploy-pages@v4` (no `gh-pages` branch — direct upload to GitHub Pages).
 
 **Key frontend files:**
 - `app/frontend/src/lib/dataService.ts` — all CSV reads/writes via HTTP; single source of truth for analysis logic
@@ -156,6 +179,13 @@ All persistent data lives in `database/`:
   - Provides granular industry context to AI analyst
 
 ### GitHub Actions Automation
+
+**`.github/workflows/deploy-pages.yml`**
+
+- Triggers on push to `master` when `app/frontend/**` or `database/**` change (+ manual dispatch)
+- Builds frontend with `--mode gh-pages`, copies database CSVs to `dist/database/`
+- Deploys to GitHub Pages using `actions/deploy-pages@v4` (no `gh-pages` branch)
+- Requires Settings > Pages > Source = "GitHub Actions"
 
 **`.github/workflows/filings-fetch.yml`**
 

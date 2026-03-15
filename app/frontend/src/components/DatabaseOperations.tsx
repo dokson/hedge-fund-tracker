@@ -22,6 +22,8 @@ import TickerAutocomplete from "@/components/TickerAutocomplete";
 import CusipAutocomplete from "@/components/CusipAutocomplete";
 import TerminalOutput from "@/components/TerminalOutput";
 
+import { IS_GH_PAGES_MODE } from "@/lib/config";
+
 const API_BASE = "http://localhost:8000/api";
 
 type JobStatus = "idle" | "running" | "success" | "error";
@@ -335,11 +337,11 @@ export default function DatabaseOperations() {
                 <Button
                   size="sm"
                   className="w-full gap-1.5"
-                  disabled={isRunDisabled(op, isRunning)}
+                  disabled={isRunDisabled(op, isRunning) || IS_GH_PAGES_MODE}
                   onClick={() => handleRun(op)}
                 >
                   {isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                  {isRunning ? "Running…" : "Run"}
+                  {IS_GH_PAGES_MODE ? "Disabled in Demo" : isRunning ? "Running…" : "Run"}
                 </Button>
               </CardContent>
             </Card>

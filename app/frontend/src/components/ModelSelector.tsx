@@ -18,9 +18,10 @@ interface ModelSelectorProps {
   onChange: (modelId: string) => void;
   onProviderChange?: (providerId: string) => void;
   className?: string;
+  disabled?: boolean;
 }
 
-export default function ModelSelector({ value, onChange, onProviderChange, className }: ModelSelectorProps) {
+export default function ModelSelector({ value, onChange, onProviderChange, className, disabled }: ModelSelectorProps) {
   const { data: allModels = [] } = useQuery({ queryKey: ["models"], queryFn: getModels });
   const [configuredProviderIds, setConfiguredProviderIds] = useState<string[] | null>(null);
 
@@ -73,7 +74,7 @@ export default function ModelSelector({ value, onChange, onProviderChange, class
   }
 
   return (
-    <Select value={effectiveValue} onValueChange={handleChange}>
+    <Select value={effectiveValue} onValueChange={handleChange} disabled={disabled}>
       <SelectTrigger className={`bg-card border-border ${className || "w-64"}`}>
         <SelectValue placeholder="Select model…" />
       </SelectTrigger>

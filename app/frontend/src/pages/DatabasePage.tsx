@@ -1,5 +1,6 @@
-import { Database } from "lucide-react";
+import { Database, Terminal, AlertTriangle } from "lucide-react";
 import DatabaseOperations from "@/components/DatabaseOperations";
+import { IS_GH_PAGES_MODE } from "@/lib/config";
 
 export default function DatabasePage() {
   return (
@@ -12,6 +13,18 @@ export default function DatabasePage() {
           Invoke local Python commands from <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">database/updater.py</code>.
         </p>
       </div>
+
+      {IS_GH_PAGES_MODE && (
+        <div className="rounded-lg border border-warning/20 bg-warning/5 p-4 flex gap-3 items-start">
+          <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+          <div className="text-sm text-warning-foreground">
+            <p className="font-semibold text-warning">Backend Restricted</p>
+            <p className="text-muted-foreground mt-0.5">
+              Database operations require direct access to the local filesystem and Python environment. These operations are disabled in this static web version.
+            </p>
+          </div>
+        </div>
+      )}
 
       <DatabaseOperations />
     </div>
