@@ -31,16 +31,51 @@ app.add_middleware(
 # ── Input validation helpers ───────────────────────────────────────────────────
 
 _DB_ROOT = DATABASE_DIR.resolve()
+_FRONTEND_ROOT = FRONTEND_DIST.resolve()
 _QUARTER_RE = re.compile(r"^\d{4}Q[1-4]$")
 _TICKER_RE  = re.compile(r"^[A-Z0-9.\-]{1,10}$")
 _CUSIP_RE   = re.compile(r"^[A-Z0-9]{9}$")
 
 
+def _is_path_safe(path_str: str) -> bool:
+    """
+    Check if the string contains path traversal characters.
+    """
+    # Basic protection against .. and absolute paths
+    if ".." in path_str or path_str.startswith(("/", "\\")):
+        return False
+    # Avoid protocol handlers or other suspicious patterns
+    if ":" in path_str and not path_str[1:3] == ":\\": # Allow for Windows root but flag elsewhere
+        if len(path_str) > 1 and path_str[1] == ":":
+            return False
+    return True
+
+
 def _safe_db_path(filepath: str) -> Path:
-    """Resolve filepath inside DATABASE_DIR; raise 400 on path traversal."""
-    resolved = (_DB_ROOT / filepath).resolve()
+    """
+    Resolve filepath inside DATABASE_DIR; raise 400 on path traversal.
+    """
+    if not _is_path_safe(filepath):
+        raise HTTPException(status_code=400, detail="Invalid path characters")
+        
+    # lstrip avoids absolute path joins; resolve handles any remaining ..
+    resolved = (_DB_ROOT / filepath.lstrip("/\\")).resolve()
     if _DB_ROOT != resolved and _DB_ROOT not in resolved.parents:
         raise HTTPException(status_code=400, detail="Invalid file path")
+    return resolved
+
+
+def _safe_frontend_path(filepath: str) -> Path:
+    """
+    Resolve filepath inside FRONTEND_DIST; raise 403 on path traversal.
+    """
+    if not _is_path_safe(filepath):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # lstrip avoids absolute path joins; resolve handles ..
+    resolved = (_FRONTEND_ROOT / filepath.lstrip("/\\")).resolve()
+    if _FRONTEND_ROOT != resolved and _FRONTEND_ROOT not in resolved.parents:
+        raise HTTPException(status_code=403, detail="Forbidden")
     return resolved
 
 
@@ -291,7 +326,7 @@ from fastapi.exceptions import HTTPException as StarletteHTTPException
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     # For 404s on non-API routes, serve the SPA index.html (React Router handles routing)
     if exc.status_code == 404 and not request.url.path.startswith(("/api/", "/database/")):
-        index = FRONTEND_DIST / "index.html"
+        index = _FRONTEND_ROOT / "index.html"
         if index.exists():
             return FileResponse(str(index))
     return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
@@ -299,10 +334,18 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
-    file = FRONTEND_DIST / full_path
-    if file.exists() and file.is_file():
-        return FileResponse(str(file))
-    index = FRONTEND_DIST / "index.html"
+    # Security: prevent path traversal (CodeQL alert #14)
+    try:
+        if full_path:
+            file_path = _safe_frontend_path(full_path)
+            if file_path.exists() and file_path.is_file():
+                return FileResponse(str(file_path))
+    except (HTTPException, ValueError, OSError):
+        # On security error or invalid path, just fall through to index.html
+        pass
+
+    # Fallback to index.html for SPA routes (React Router handles the rest)
+    index = _FRONTEND_ROOT / "index.html"
     if index.exists():
         return FileResponse(str(index))
     raise HTTPException(status_code=503, detail="Frontend not built. Run: cd app/frontend && npm run build")

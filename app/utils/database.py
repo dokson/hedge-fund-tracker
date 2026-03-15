@@ -17,6 +17,30 @@ MODELS_FILE = 'models.csv'
 STOCKS_FILE = 'stocks.csv'
 
 
+def _get_db_root() -> Path:
+    """
+    Return the resolved Path of DB_FOLDER. Supports dynamic changes (e.g. tests).
+    """
+    try:
+        return Path(DB_FOLDER).resolve()
+    except Exception:
+        return Path('.').resolve()
+
+
+def _safe_db_join(*segments: str) -> Path:
+    """
+    Safely join segments to DB_FOLDER and verify boundary.
+    """
+    root = _get_db_root()
+    for s in segments:
+        if ".." in s or "/" in s or "\\" in s:
+            raise ValueError(f"Unsafe path segment: {s}")
+    resolved = root.joinpath(*segments).resolve()
+    if root != resolved and root not in resolved.parents:
+        raise ValueError(f"Path traversal detected: {resolved}")
+    return resolved
+
+
 def get_all_quarters() -> list[str]:
     """
     Returns a sorted (descending order) list of all quarter directories (e.g., '2025Q1')
@@ -26,7 +50,7 @@ def get_all_quarters() -> list[str]:
         list: A list of strings, each representing a quarter directory name.
     """
     return sorted([
-        path.name for path in Path(DB_FOLDER).iterdir()
+        path.name for path in _get_db_root().iterdir()
         if path.is_dir() and re.match(r'^\d{4}Q[1-4]$', path.name)
     ], reverse=True)
 
@@ -81,7 +105,7 @@ def get_quarters_for_fund(fund_name: str) -> list[str]:
     fund_filename = f"{fund_name.replace(' ', '_')}.csv"
     return [
         quarter for quarter in get_all_quarters()
-        if (Path(DB_FOLDER) / quarter / fund_filename).exists()
+        if _safe_db_join(quarter, fund_filename).exists()
     ]
 
 
@@ -124,14 +148,13 @@ def get_all_quarter_files(quarter: str) -> list[str]:
     Returns:
         list: The list of each .csv file in the quarter folder, or an empty list if the directory does not exist.
     """
-    quarter_dir = Path(DB_FOLDER) / quarter
-
-    if not quarter_dir.is_dir():
+    try:
+        quarter_dir = _safe_db_join(quarter)
+        if not quarter_dir.is_dir():
+            return []
+        return [str(file_path) for file_path in quarter_dir.glob('*.csv')]
+    except ValueError:
         return []
-
-    return [
-        str(file_path) for file_path in quarter_dir.glob('*.csv')
-    ]
 
 
 def load_fund_data(fund: str, quarter: str) -> pd.DataFrame:
@@ -146,11 +169,14 @@ def load_fund_data(fund: str, quarter: str) -> pd.DataFrame:
         pd.DataFrame: A DataFrame containing the fund's holdings for that quarter, or an empty DataFrame if not found.
     """
     fund_filename = f"{fund.replace(' ', '_')}.csv"
-    filepath = Path(DB_FOLDER) / quarter / fund_filename
-    if filepath.exists():
-        df = pd.read_csv(filepath)
-        df['Fund'] = fund
-        return df[df['CUSIP'] != 'Total']
+    try:
+        filepath = _safe_db_join(quarter, fund_filename)
+        if filepath.exists():
+            df = pd.read_csv(filepath)
+            df['Fund'] = fund
+            return df[df['CUSIP'] != 'Total']
+    except ValueError:
+        pass
     return pd.DataFrame()
 
 
@@ -308,13 +334,15 @@ def save_comparison(comparison_dataframe: pd.DataFrame, date: str, fund_name: st
         fund_name (str): The name of the fund, used for the filename.
     """
     try:
-        quarter_folder = Path(DB_FOLDER) / get_quarter(date)
+        quarter_name = get_quarter(date)
+        quarter_folder = _safe_db_join(quarter_name)
         quarter_folder.mkdir(parents=True, exist_ok=True)
 
-        filename = quarter_folder / f"{fund_name.replace(' ', '_')}.csv"
+        filename = _safe_db_join(quarter_name, f"{fund_name.replace(' ', '_')}.csv")
         comparison_dataframe.to_csv(filename, index=False)
         print(f"Created {filename}")
-    except Exception as e:
+    except (Exception, ValueError) as e:
+        print(f"❌ An error occurred while writing comparison file for '{fund_name}': {e}")
         print(f"❌ An error occurred while writing comparison file for '{fund_name}': {e}")
 
 
@@ -764,13 +792,13 @@ def delete_fund_from_database(fund_info: dict, url: str = "") -> None:
     # 1. Delete quarterly filing files
     fund_filename = f"{fund_name.replace(' ', '_')}.csv"
     for quarter in get_all_quarters():
-        filepath = Path(DB_FOLDER) / quarter / fund_filename
-        if filepath.exists():
-            try:
+        try:
+            filepath = _safe_db_join(quarter, fund_filename)
+            if filepath.exists():
                 filepath.unlink()
                 print(f"  - Deleted: {quarter}/{fund_filename}")
-            except Exception as e:
-                print(f"  - ❌ Error deleting {filepath}: {e}")
+        except Exception as e:
+            print(f"  - ❌ Error deleting record in {quarter}: {e}")
 
     # 2. Update CSV files
     hedge_funds_path = Path(DB_FOLDER) / HEDGE_FUNDS_FILE
