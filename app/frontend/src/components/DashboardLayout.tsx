@@ -25,7 +25,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3">
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
+              className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded cursor-pointer"
               aria-label="Toggle theme"
             >
               <Sun className="h-5 w-5 hidden dark:block" />

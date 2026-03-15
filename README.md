@@ -1,19 +1,32 @@
 # 📊 Hedge Fund Tracker
 
-[![repo views](https://komarev.com/ghpvc/?username=dokson&repo=hedge-fund-tracker&label=views&color=orange)](https://github.com/dokson/hedge-fund-tracker)
-[![repo size](https://img.shields.io/github/repo-size/dokson/hedge-fund-tracker)](https://github.com/dokson/hedge-fund-tracker/tree/master)
-[![last commit](https://img.shields.io/github/last-commit/dokson/hedge-fund-tracker)](https://github.com/dokson/hedge-fund-tracker/commits/master/)
-[![latest release](https://img.shields.io/github/v/release/dokson/hedge-fund-tracker?label=version&color=green)](https://github.com/dokson/hedge-fund-tracker/releases)
-[![Python](https://img.shields.io/badge/Python-3.13+-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/release/python-3130/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![License](https://img.shields.io/badge/license-Source%20Available-blue)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/dokson/hedge-fund-tracker.svg?style=social&label=Star)](https://github.com/dokson/hedge-fund-tracker/stargazers)
-[![GitHub watchers](https://img.shields.io/github/watchers/dokson/hedge-fund-tracker.svg)](https://github.com/dokson/hedge-fund-tracker/watchers)
-[![GitHub forks](https://img.shields.io/github/forks/dokson/hedge-fund-tracker.svg)](https://github.com/dokson/hedge-fund-tracker/network/members)
+[![repo views](https://komarev.com/ghpvc/?username=dokson&repo=hedge-fund-tracker&label=views&color=orange&style=for-the-badge)](https://github.com/dokson/hedge-fund-tracker)
+[![repo size](https://img.shields.io/github/repo-size/dokson/hedge-fund-tracker?style=for-the-badge&color=4E5D94)](https://github.com/dokson/hedge-fund-tracker/tree/master)
+[![last commit](https://img.shields.io/github/last-commit/dokson/hedge-fund-tracker?style=for-the-badge&color=3C873A)](https://github.com/dokson/hedge-fund-tracker/commits/master/)
+[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/dokson/hedge-fund-tracker/run-tests.yml?style=for-the-badge&label=tests&color=brightgreen)](https://github.com/dokson/hedge-fund-tracker/actions/workflows/run-tests.yml)
+[![latest release](https://img.shields.io/github/v/release/dokson/hedge-fund-tracker?label=version&color=blue&style=for-the-badge)](https://github.com/dokson/hedge-fund-tracker/releases)
+
+[![GitHub stars](https://img.shields.io/github/stars/dokson/hedge-fund-tracker?style=for-the-badge&logo=github&color=FFAC33)](https://github.com/dokson/hedge-fund-tracker/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/dokson/hedge-fund-tracker?style=for-the-badge&logo=github&color=1B9AAA)](https://github.com/dokson/hedge-fund-tracker/network/members)
+[![GitHub watchers](https://img.shields.io/github/watchers/dokson/hedge-fund-tracker?style=for-the-badge&logo=github&color=9C27B0)](https://github.com/dokson/hedge-fund-tracker/watchers)
+[![License](https://img.shields.io/badge/license-Source_Available-blue?style=for-the-badge&logo=creativecommons&logoColor=white)](LICENSE)
+
+[![Python](https://img.shields.io/badge/Python-3.13+-3776AB?logo=python&logoColor=white&style=for-the-badge)](https://www.python.org/downloads/release/python-3130/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white&style=for-the-badge)](https://nodejs.org/)
+[![FastAPI](https://img.shields.io/github/pipenv/locked/dependency-version/dokson/hedge-fund-tracker/fastapi?style=for-the-badge&logo=fastapi&logoColor=white&color=009688)](https://fastapi.tiangolo.com/)
+[![Pandas](https://img.shields.io/pypi/v/pandas?style=for-the-badge&logo=pandas&logoColor=white&label=Pandas&color=150458)](https://pandas.pydata.org/)
+[![Requests](https://img.shields.io/pypi/v/requests?style=for-the-badge&logo=readthedocs&logoColor=white&label=Requests&color=C21325)](https://requests.readthedocs.io/)
+[![Google AI](https://img.shields.io/github/pipenv/locked/dependency-version/dokson/hedge-fund-tracker/google-genai?style=for-the-badge&logo=google&logoColor=white&color=4285F4)](https://ai.google.dev/)
+
+[![TypeScript](https://img.shields.io/github/package-json/dependency-version/dokson/hedge-fund-tracker/typescript?filename=app%2Ffrontend%2Fpackage.json&style=for-the-badge&logo=typescript&logoColor=white&label=TypeScript&color=3178C6)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/github/package-json/dependency-version/dokson/hedge-fund-tracker/react?filename=app%2Ffrontend%2Fpackage.json&style=for-the-badge&logo=react&logoColor=black&color=61DAFB)](https://react.dev/)
+[![Vite](https://img.shields.io/github/package-json/dependency-version/dokson/hedge-fund-tracker/vite?filename=app%2Ffrontend%2Fpackage.json&style=for-the-badge&logo=vite&label=Vite&logoColor=white&color=646CFF)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/github/package-json/dependency-version/dokson/hedge-fund-tracker/tailwindcss?filename=app%2Ffrontend%2Fpackage.json&style=for-the-badge&logo=tailwind-css&label=Tailwind-CSS&logoColor=white&color=06B6D4)](https://tailwindcss.com/)
+[![Radix UI](https://img.shields.io/github/package-json/dependency-version/dokson/hedge-fund-tracker/%40radix-ui%2Freact-dialog?filename=app%2Ffrontend%2Fpackage.json&style=for-the-badge&logo=radix-ui&label=Radix&logoColor=white&color=161618)](https://www.radix-ui.com/)
+[![Lucide](https://img.shields.io/github/package-json/dependency-version/dokson/hedge-fund-tracker/lucide-react?filename=app%2Ffrontend%2Fpackage.json&style=for-the-badge&logo=lucide&label=Lucide&logoColor=white&color=F56565)](https://lucide.dev/)
+[![TanStack Query](https://img.shields.io/npm/v/%40tanstack/react-query?style=for-the-badge&logo=reactquery&logoColor=white&label=TanStack%20Query&color=FF4154)](https://tanstack.com/query/latest)
+[![React Router](https://img.shields.io/npm/v/react-router-dom?style=for-the-badge&logo=reactrouter&logoColor=white&label=React%20Router&color=CA4245)](https://reactrouter.com/)
+
 
 **If this tool is helping you, please ⭐ the repo!** It really helps discoverability.
 
@@ -35,7 +48,7 @@ A comprehensive **Python tool** for tracking **hedge fund portfolios** through *
     - [GICS Classification](#gics-classification)
     - [API Configuration](#api-configuration)
   - [📁 Project Structure](#-project-structure)
-  - [👨🏻‍💻 How This Tool Tracks Hedge Funds](#-how-this-tool-tracks-hedge-funds)
+  - [👨🏻‍💻 How This Tool Tracks Hedge Funds](#%E2%80%8D-how-this-tool-tracks-hedge-funds)
   - [🏢 Hedge Funds Selection](#-hedge-funds-selection)
     - [Selection Methodology](#selection-methodology)
     - [List Management](#list-management)
@@ -43,18 +56,19 @@ A comprehensive **Python tool** for tracking **hedge fund portfolios** through *
       - [Adding Custom Funds](#adding-custom-funds)
   - [🧠 AI Models Selection](#-ai-models-selection)
     - [Adding Custom AI Models](#adding-custom-ai-models)
-  - [⚠️ Limitations & Considerations](#-limitations--considerations)
+  - [⚠️ Limitations & Considerations](#%EF%B8%8F-limitations--considerations)
     - [A Truly Up-to-Date View](#a-truly-up-to-date-view)
-  - [⚙️ Automation with GitHub Actions](#-automation-with-github-actions)
+  - [⚙️ Automation with GitHub Actions](#%EF%B8%8F-automation-with-github-actions)
     - [How It Works](#how-it-works)
     - [How to Enable It](#how-to-enable-it)
-  - [🗃️ Technical Stack](#-technical-stack)
+  - [🗃️ Technical Stack](#%EF%B8%8F-technical-stack)
   - [🤝🏼 Contributing & Support](#-contributing--support)
     - [💬 Loved it? Help it grow](#-loved-it-help-it-grow)
     - [✍🏻 Feedback](#-feedback)
   - [📚 References](#-references)
   - [🙏🏼 Acknowledgments](#-acknowledgments)
   - [📄 License](#-license)
+  - [⭐ Star History](#-star-history)
 
 ## 🚀 Quick Start
 
@@ -93,6 +107,7 @@ pipenv run python -m app.main
 ### Prerequisites
 
 - [Python 3.13](https://www.python.org/downloads/release/python-3130/)+
+- [Node.js](https://nodejs.org/) 20+ (for the React frontend)
 - [pipenv](https://pipenv.pypa.io/) (install with `pip install pipenv`)
 
 1. **📥 Clone and navigate:**
@@ -461,7 +476,7 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 | :--- | :--- |
 | **Core** | [Python 3.13](https://www.python.org/downloads/release/python-3130/)+, [pipenv](https://pipenv.pypa.io/) |
 | **Backend** | [FastAPI](https://fastapi.tiangolo.com/), [uvicorn](https://www.uvicorn.org/) |
-| **Frontend** | [React 18](https://react.dev/), [Vite](https://vitejs.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/) |
+| **Frontend** | [React 19](https://react.dev/), [Vite](https://vitejs.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/) |
 | **UI Components** | [shadcn/ui](https://ui.shadcn.com/), [Radix UI](https://www.radix-ui.com/), [Lucide](https://lucide.dev/), [Sonner](https://sonner.emilkowal.ski/) |
 | **Data Viz & State** | [Recharts](https://recharts.github.io/), [TanStack Query v5](https://tanstack.com/query/latest) |
 | **Web Scraping** | [Requests](https://2.python-requests.org/en/master/), [Beautiful Soup 4](https://pypi.org/project/beautifulsoup4/), [lxml](https://lxml.de/) |
@@ -506,3 +521,7 @@ This project uses a **dual license**:
 - **All new work** (everything added by Alessandro Colace): Copyright © 2025 Alessandro Colace — All Rights Reserved. Personal and educational use is permitted; redistribution and commercial use require written permission.
 
 See the [LICENSE](LICENSE) file for the full terms.
+
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=dokson/hedge-fund-tracker&type=Date)](https://star-history.com/#dokson/hedge-fund-tracker&Date)

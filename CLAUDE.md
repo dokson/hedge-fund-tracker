@@ -23,7 +23,7 @@ pipenv run python -m app.main --cli
 # Run the database management CLI
 pipenv run python -m database.updater
 
-# Run all tests (as in CI)
+# Run all Python tests (as in CI)
 pipenv run python -m unittest discover
 
 # Run a single test file
@@ -34,6 +34,12 @@ pipenv run python -m unittest tests.stocks.test_price_fetcher.TestPriceFetcher
 
 # Run a specific test method
 pipenv run python -m unittest tests.stocks.test_price_fetcher.TestPriceFetcher.test_get_current_price_returns_price_from_first_library
+
+# Run all frontend tests
+cd app/frontend && npm test
+
+# Run frontend tests in watch mode
+cd app/frontend && npm run test:watch
 ```
 
 ## Architecture
@@ -223,6 +229,25 @@ The tool mitigates 13F staleness by automatically merging recent 13D/G and Form 
 - Data is incomplete by design (represents only institutional activity in US equities)
 
 ## Development Notes
+
+### Docstring Convention
+
+Every function and method must have a docstring. No exceptions — undocumented code is not acceptable.
+
+All docstrings must use triple-double-quote format with the description on its own line between the delimiters:
+
+```python
+def my_function():
+    """
+    Description of what this function does.
+    """
+```
+
+Not inline: `"""description"""` — always break onto a separate line.
+
+### Language
+
+All code comments, docstrings, commit messages, and user-facing text in this repository must be in **English** only.
 
 ### Test-Driven Development (TDD)
 
