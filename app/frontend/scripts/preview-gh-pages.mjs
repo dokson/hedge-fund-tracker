@@ -32,7 +32,14 @@ const server = createServer((req, res) => {
     url = url.slice(BASE.length) || "/";
   }
 
-  const filePath = join(distDir, url);
+  const filePath = resolve(distDir, "." + url);
+
+  // Prevent path traversal: ensure resolved path stays within distDir
+  if (!filePath.startsWith(distDir + "/") && filePath !== distDir) {
+    res.writeHead(403);
+    res.end("Forbidden");
+    return;
+  }
 
   // If file exists, serve it
   if (existsSync(filePath) && statSync(filePath).isFile()) {
