@@ -36,8 +36,6 @@
 
 A comprehensive **Python tool** for tracking **hedge fund portfolios** through **SEC filings** (13F, 13D/G, Form 4). Transform raw [SEC EDGAR](https://www.sec.gov/edgar) data into actionable **investment insights**. Built for **financial analysts**, **quantitative traders**, and **retail investors** seeking to analyze **institutional investor strategies**, **portfolio changes**, and discover **stock opportunities** by following elite fund managers.
 
-**Keywords**: SEC filings tracker, 13F analysis, hedge fund portfolio, institutional investors, stock research, investment intelligence, CUSIP converter, financial data scraper, AI stock analysis
-
 ## ⫶☰ Table of Contents
 
 - [📊 Hedge Fund Tracker](#-hedge-fund-tracker)
@@ -83,10 +81,10 @@ cd hedge-fund-tracker
 pipenv install
 
 # Install and build the React frontend
-cd app/frontend && npm install && npm run build && cd ../..
+pipenv run build-frontend
 
 # Run the application (opens web UI in your browser)
-pipenv run python -m app.main
+pipenv run app
 ```
 
 ## ✨ Key Features
@@ -130,13 +128,13 @@ pipenv run python -m app.main
 3. **🔨 Build the frontend:** Build the React interface (required once before first run):
 
    ```bash
-   cd app/frontend && npm install && npm run build && cd ../..
+   pipenv run build-frontend
    ```
 
 4. **▶️ Run the application:** Execute within the project's virtual environment:
 
    ```bash
-   pipenv run python -m app.main
+   pipenv run app
    ```
 
    This starts a FastAPI server on `http://localhost:8000` and opens the **web UI** in your browser automatically.
@@ -292,7 +290,6 @@ However, despite their strong performance, several funds with portfolios predomi
 The quality of the output analysis is directly tied to the quality of the input data. To enhance the accuracy of the insights and opportunities identified, many popular high-profile funds have been intentionally excluded by design (the list below is automatically managed and capped to 50 funds, but you can see the full list in `excluded_hedge_funds.csv`):
 
 <!-- EXCLUDED_FUNDS_LIST_START -->
-
 - _Warren Buffett_'s [Berkshire Hathaway](https://www.berkshirehathaway.com/)
 - _Ken Griffin_'s [Citadel Advisors](https://www.citadel.com/)
 - _Ray Dalio_'s [Bridgewater Associates](https://www.bridgewater.com/)
@@ -450,8 +447,8 @@ For full functionality (AI analysis, data updates, file editing), run locally:
 
 ```bash
 pipenv install
-cd app/frontend && npm install && npm run build && cd ../..
-pipenv run python -m app.main
+pipenv run build-frontend
+pipenv run app
 ```
 
 ## ⚙️ Automation with GitHub Actions

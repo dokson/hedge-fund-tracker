@@ -3,25 +3,37 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
+[requires]
+python_version = "3.13"
+
 [packages]
-requests = "~=2.32"
 beautifulsoup4 = "~=4.14"
-lxml = "~=6.0"
-tabulate = "~=0.10"
-pandas = "~=2.3"
-python-dotenv = "~=1.2"
-python-toon = "~=0.1"
-finnhub-python = "~=2.4"
-financedatabase = "~=2.3"
-tradingview-datafeed = "~=2.1"
-google-genai = "~=1.67"
-openai = "~=2.28"
 fastapi = "~=0.115"
-uvicorn = {extras = ["standard"], version = "~=0.34"}
-python-multipart = "~=0.0"
+financedatabase = "~=2.3"
+finnhub-python = "~=2.4"
+google-genai = "~=1.67"
+lxml = "~=6.0"
+openai = "~=2.28"
+pandas = "~=2.3"
 psutil = "~=6.0"
+python-dotenv = "~=1.2"
+python-multipart = "~=0.0"
+python-toon = "~=0.1"
+requests = "~=2.32"
+tabulate = "~=0.10"
+tradingview-datafeed = "~=2.1"
+uvicorn = {extras = ["standard"], version = "~=0.34"}
 
 [dev-packages]
 
-[requires]
-python_version = "3.13"
+[pipenv]
+allow_prereleases = false
+
+[scripts]
+app = "python -m app.main"
+app-cli = "python -m app.main --cli"
+build-frontend = "cd app/frontend && npm install && npm run build"
+build-gh-pages = "cd app/frontend && npm install && npm run build:gh-pages"
+test = "python -m unittest discover"
+test-frontend = "cd app/frontend && npm test"
+update = "python -m database.updater"

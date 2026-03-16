@@ -9,19 +9,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pipenv install
 
 # Build the React frontend (required before first run or after UI changes)
-cd app/frontend && npm install && npm run build && cd ../..
+pipenv run build-frontend
 
 # Build the frontend for GitHub Pages deployment
-cd app/frontend && npm run build:gh-pages && cd ../..
+pipenv run build-gh-pages
 
 # Run the web UI (default — opens browser at http://localhost:8000)
-pipenv run python -m app.main
+pipenv run app
 
 # Run the legacy CLI menu instead of the web UI
-pipenv run python -m app.main --cli
+pipenv run app-cli
 
 # Run the database management CLI
-pipenv run python -m database.updater
+pipenv run update
 
 # Run all Python tests (as in CI)
 pipenv run python -m unittest discover
