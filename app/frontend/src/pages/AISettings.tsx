@@ -29,7 +29,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { IS_GH_PAGES_MODE } from "@/lib/config";
+import { IS_GH_PAGES_MODE, API_BASE } from "@/lib/config";
 
 export default function AISettingsPage() {
   const [activeTab, setActiveTab] = useState<"keys" | "models">("keys");
@@ -75,19 +75,20 @@ export default function AISettingsPage() {
 }
 
 /* ═══════════════════════════════════════════
-   API Keys Tab
-   ═══════════════════════════════════════════ */
-const API_BASE = "http://localhost:8000";
+    API Keys Tab
+    ═══════════════════════════════════════════ */
 
 const CLIENT_TO_PROVIDER_ID: Record<string, string> = {
   "GitHub": "github", "Google": "google", "Groq": "groq",
   "HuggingFace": "huggingface", "OpenRouter": "openrouter",
+  "Custom": "custom",
 };
 
 function APIKeysTab() {
   const [envKeys, setEnvKeys] = useState<Record<string, string>>({});
   const [visible, setVisible] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [customUrlDraft, setCustomUrlDraft] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [providerToDelete, setProviderToDelete] = useState<typeof AI_PROVIDERS[number] | null>(null);
   const { data: allModels = [] } = useQuery({ queryKey: ["models"], queryFn: getModels });
@@ -100,14 +101,21 @@ function APIKeysTab() {
         const init: Record<string, string> = {};
         for (const p of AI_PROVIDERS) init[p.id] = data[p.envKey] || "";
         setDrafts(init);
+        setCustomUrlDraft(data["CUSTOM_OPENAI_URL"] || "");
       })
       .catch(() => {});
   }, []);
 
-  const configuredProviders = AI_PROVIDERS.map((provider) => ({
-    provider,
-    hasKey: Boolean(envKeys[provider.envKey]),
-  }));
+  const configuredProviders = AI_PROVIDERS.map((provider) => {
+    // Custom provider requires BOTH URL and key
+    if (provider.id === "custom") {
+      return {
+        provider,
+        hasKey: Boolean(envKeys[provider.envKey]) && Boolean(envKeys["CUSTOM_OPENAI_URL"]),
+      };
+    }
+    return { provider, hasKey: Boolean(envKeys[provider.envKey]) };
+  });
 
   const toggleVisibility = (id: string) =>
     setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -118,6 +126,17 @@ function APIKeysTab() {
     for (const k of Object.keys(newEnv)) {
       if (!newEnv[k]) delete newEnv[k];
     }
+    await fetch(`${API_BASE}/api/settings/env`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newEnv),
+    });
+    setEnvKeys(newEnv);
+  };
+
+  const saveCustomUrl = async (url: string) => {
+    const newEnv = { ...envKeys, CUSTOM_OPENAI_URL: url };
+    if (!url) delete newEnv.CUSTOM_OPENAI_URL;
     await fetch(`${API_BASE}/api/settings/env`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -146,8 +165,14 @@ function APIKeysTab() {
   const handleConfirmDelete = async () => {
     if (!providerToDelete) return;
     setDrafts((prev) => ({ ...prev, [providerToDelete.id]: "" }));
+    if (providerToDelete.id === "custom") {
+      setCustomUrlDraft("");
+    }
     try {
       await saveToEnv({ [providerToDelete.envKey]: "" });
+      if (providerToDelete.id === "custom") {
+        await saveCustomUrl("");
+      }
       toast.success("API key removed");
     } catch {
       toast.error("Failed to remove key");
@@ -246,78 +271,178 @@ function APIKeysTab() {
       </Dialog>
 
       {/* API Keys management */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold">API Keys</h2>
+       <div className="space-y-3">
+         <h2 className="text-sm font-semibold">API Keys</h2>
 
-        {AI_PROVIDERS.map((provider) => {
-          const { hasKey } = configuredProviders.find((cp) => cp.provider.id === provider.id)!;
-          const isVisible = visible[provider.id] || false;
-          const draft = drafts[provider.id] || "";
+         {AI_PROVIDERS.map((provider) => {
+           const { hasKey } = configuredProviders.find((cp) => cp.provider.id === provider.id)!;
+           const isVisible = visible[provider.id] || false;
+           const draft = drafts[provider.id] || "";
+           const isCustom = provider.id === "custom";
 
-          return (
-            <div key={provider.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {hasKey ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-muted-foreground" />}
-                  <span className="text-sm font-medium">{provider.name}</span>
-                  <code className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{provider.envKey}</code>
-                </div>
-                <a href={provider.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-                  Get key <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
+           if (isCustom) {
+             const hasUrl = Boolean(envKeys["CUSTOM_OPENAI_URL"]);
+             const customUrlVisible = visible["custom-url"] || false;
+             const customUrl = envKeys["CUSTOM_OPENAI_URL"] || "";
 
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    type={isVisible ? "text" : "password"}
-                    value={hasKey ? (isVisible ? (envKeys[provider.envKey] || "") : "••••••••••••") : draft}
-                    onChange={hasKey ? undefined : (e) => setDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))}
-                    placeholder={hasKey ? "" : provider.hint}
-                    className="pr-10 bg-background border-border font-mono text-xs"
-                    autoComplete="off"
-                    spellCheck={false}
-                    readOnly={hasKey}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => toggleVisibility(provider.id)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
-                  >
-                    {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                
-                {hasKey ? (
-                  <Button variant="outline" size="icon" onClick={() => handleDeleteRequest(provider.id)} title="Remove key" className="shrink-0 text-destructive hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button 
-                    variant={draft.trim() ? "default" : "outline"}
-                    size="icon" 
-                    onClick={() => handleSave(provider.id)} 
-                    title="Save key" 
-                    className="shrink-0"
-                    disabled={!draft.trim()}
-                  >
-                    <Save className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+             return (
+               <div key={provider.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                     {hasUrl && hasKey ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-muted-foreground" />}
+                     <span className="text-sm font-medium">{provider.name}</span>
+                     <span className="text-xs text-muted-foreground">OpenAI-compatible endpoint</span>
+                   </div>
+                 </div>
 
-              {hasKey && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  <span className="text-[10px] text-muted-foreground mr-1">Models:</span>
-                  {allModels.filter((m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id).map((m) => (
-                    <Badge key={m.id} variant="secondary" className="text-[10px] font-mono">{m.description}</Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                 <div className="space-y-2">
+                   <div className="flex gap-2">
+                     <Label className="w-24 text-xs">Base URL</Label>
+                     <div className="relative flex-1">
+                       <Input
+                         type={customUrlVisible ? "text" : "password"}
+                         value={hasUrl ? (customUrlVisible ? customUrl : "••••••••••••") : customUrlDraft}
+                         onChange={hasUrl ? undefined : (e) => setCustomUrlDraft(e.target.value)}
+                         placeholder="http://localhost:11434/v1"
+                         className="bg-background border-border font-mono text-xs"
+                         readOnly={hasUrl}
+                       />
+                       <button
+                         type="button"
+                         onClick={() => setVisible((prev) => ({ ...prev, "custom-url": !prev["custom-url"] }))}
+                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                       >
+                         {customUrlVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                       </button>
+                     </div>
+                   </div>
+
+                   <div className="flex gap-2">
+                     <Label className="w-24 text-xs">API Key</Label>
+                     <div className="relative flex-1">
+                       <Input
+                         type={isVisible ? "text" : "password"}
+                         value={hasKey ? (isVisible ? (envKeys[provider.envKey] || "") : "••••••••••••") : draft}
+                         onChange={hasKey ? undefined : (e) => setDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))}
+                         placeholder={hasKey ? "" : provider.hint}
+                         className="bg-background border-border font-mono text-xs"
+                         autoComplete="off"
+                         spellCheck={false}
+                         readOnly={hasKey}
+                       />
+                       <button
+                         type="button"
+                         onClick={() => toggleVisibility(provider.id)}
+                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                       >
+                         {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+
+                 <div className="flex gap-2">
+                   {hasUrl && hasKey ? (
+                     <Button variant="outline" size="sm" onClick={() => handleDeleteRequest(provider.id)} title="Remove configuration">
+                       <Trash2 className="h-4 w-4 mr-1" /> Remove
+                     </Button>
+                   ) : (
+                     <Button 
+                       variant={(customUrlDraft.trim() || draft.trim()) ? "default" : "outline"}
+                       size="sm"
+                       onClick={async () => {
+                         await saveCustomUrl(customUrlDraft.trim());
+                         await handleSave(provider.id);
+                       }} 
+                       title="Save configuration"
+                       disabled={!customUrlDraft.trim() && !draft.trim()}
+                     >
+                       <Save className="h-4 w-4 mr-1" /> Save
+                     </Button>
+                   )}
+                   {hasUrl && (
+                     <span className="text-xs text-muted-foreground ml-auto">
+                       {customUrlVisible ? customUrl : "••••••••••••"}
+                     </span>
+                   )}
+                 </div>
+
+                 {hasKey && hasUrl && (
+                   <div className="flex flex-wrap gap-1.5 pt-1">
+                     <span className="text-[10px] text-muted-foreground mr-1">Models:</span>
+                     {allModels.filter((m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id).map((m) => (
+                       <Badge key={m.id} variant="secondary" className="text-[10px] font-mono">{m.description}</Badge>
+                     ))}
+                   </div>
+                 )}
+               </div>
+             );
+           }
+
+           return (
+             <div key={provider.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
+               <div className="flex items-center justify-between">
+                 <div className="flex items-center gap-2">
+                   {hasKey ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-muted-foreground" />}
+                   <span className="text-sm font-medium">{provider.name}</span>
+                   <code className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{provider.envKey}</code>
+                 </div>
+                 <a href={provider.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                   Get key <ExternalLink className="h-3 w-3" />
+                 </a>
+               </div>
+
+               <div className="flex gap-2">
+                 <div className="relative flex-1">
+                   <Input
+                     type={isVisible ? "text" : "password"}
+                     value={hasKey ? (isVisible ? (envKeys[provider.envKey] || "") : "••••••••••••") : draft}
+                     onChange={hasKey ? undefined : (e) => setDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))}
+                     placeholder={hasKey ? "" : provider.hint}
+                     className="pr-10 bg-background border-border font-mono text-xs"
+                     autoComplete="off"
+                     spellCheck={false}
+                     readOnly={hasKey}
+                   />
+                   <button
+                     type="button"
+                     onClick={() => toggleVisibility(provider.id)}
+                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                   >
+                     {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                   </button>
+                 </div>
+                 
+                 {hasKey ? (
+                   <Button variant="outline" size="icon" onClick={() => handleDeleteRequest(provider.id)} title="Remove key" className="shrink-0 text-destructive hover:text-destructive">
+                     <Trash2 className="h-4 w-4" />
+                   </Button>
+                 ) : (
+                   <Button 
+                     variant={draft.trim() ? "default" : "outline"}
+                     size="icon" 
+                     onClick={() => handleSave(provider.id)} 
+                     title="Save key" 
+                     className="shrink-0"
+                     disabled={!draft.trim()}
+                   >
+                     <Save className="h-4 w-4" />
+                   </Button>
+                 )}
+               </div>
+
+               {hasKey && (
+                 <div className="flex flex-wrap gap-1.5 pt-1">
+                   <span className="text-[10px] text-muted-foreground mr-1">Models:</span>
+                   {allModels.filter((m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id).map((m) => (
+                     <Badge key={m.id} variant="secondary" className="text-[10px] font-mono">{m.description}</Badge>
+                   ))}
+                 </div>
+               )}
+             </div>
+           );
+         })}
+       </div>
     </div>
   );
 }
@@ -407,6 +532,7 @@ function ModelsTab() {
     Google: "bg-blue-500/10 text-blue-500",
     HuggingFace: "bg-yellow-500/10 text-yellow-600",
     OpenRouter: "bg-purple-500/10 text-purple-500",
+    Custom: "bg-emerald-500/10 text-emerald-500",
   };
 
   const displayName = (client: string) => PROVIDER_DISPLAY_NAMES[client] || client;

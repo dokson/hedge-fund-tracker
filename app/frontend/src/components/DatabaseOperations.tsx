@@ -22,9 +22,7 @@ import TickerAutocomplete from "@/components/TickerAutocomplete";
 import CusipAutocomplete from "@/components/CusipAutocomplete";
 import TerminalOutput from "@/components/TerminalOutput";
 
-import { IS_GH_PAGES_MODE } from "@/lib/config";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE, IS_GH_PAGES_MODE } from "@/lib/config";
 
 type JobStatus = "idle" | "running" | "success" | "error";
 

@@ -11,6 +11,7 @@ const CLIENT_TO_PROVIDER_ID: Record<string, string> = {
   "Groq":        "groq",
   "HuggingFace": "huggingface",
   "OpenRouter":  "openrouter",
+  "Custom":      "custom",
 };
 
 interface ModelSelectorProps {

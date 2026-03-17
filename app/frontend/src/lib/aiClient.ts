@@ -21,6 +21,7 @@ export const AI_PROVIDERS: AIProvider[] = [
   { id: "groq",        name: "Groq",             envKey: "GROQ_API_KEY",       link: "https://console.groq.com/keys",           hint: "gsk_…" },
   { id: "huggingface", name: "HuggingFace",      envKey: "HF_TOKEN",           link: "https://huggingface.co/settings/tokens",  hint: "hf_…" },
   { id: "openrouter",  name: "OpenRouter",       envKey: "OPENROUTER_API_KEY", link: "https://openrouter.ai/settings/keys",     hint: "sk-or-…" },
+  { id: "custom",      name: "Custom OpenAI",    envKey: "CUSTOM_OPENAI_KEY",  link: "#",                                   hint: "your-api-key" },
 ];
 
 // ─── Python backend AI calls ───────────────────────────────────────────────────
@@ -129,10 +130,16 @@ export async function getConfiguredProviders(): Promise<{ provider: AIProvider; 
   try {
     const res = await fetch(`${API_BASE}/api/settings/env`);
     const env: Record<string, string> = res.ok ? await res.json() : {};
-    return AI_PROVIDERS.map((provider) => ({
-      provider,
-      hasKey: Boolean(env[provider.envKey]),
-    }));
+    return AI_PROVIDERS.map((provider) => {
+      // Custom provider requires BOTH URL and key
+      if (provider.id === "custom") {
+        return {
+          provider,
+          hasKey: Boolean(env[provider.envKey]) && Boolean(env["CUSTOM_OPENAI_URL"]),
+        };
+      }
+      return { provider, hasKey: Boolean(env[provider.envKey]) };
+    });
   } catch {
     return AI_PROVIDERS.map((provider) => ({ provider, hasKey: false }));
   }

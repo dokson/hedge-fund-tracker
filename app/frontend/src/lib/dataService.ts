@@ -1,5 +1,5 @@
 import Papa from "papaparse";
-import { DATABASE_URL, IS_GH_PAGES_MODE, BASE_PATH } from "./config";
+import { DATABASE_URL, IS_GH_PAGES_MODE, BASE_PATH, API_BASE } from "./config";
 
 // ---------- Raw CSV row types ----------
 
@@ -377,7 +377,7 @@ export function generateRestoreFundCSVs(
   return { hedgeFundsCSV, excludedCSV };
 }
 
-export const MODEL_PROVIDERS = ["GitHub", "Groq", "Google", "HuggingFace", "OpenRouter"] as const;
+export const MODEL_PROVIDERS = ["GitHub", "Groq", "Google", "HuggingFace", "OpenRouter", "Custom"] as const;
 
 /** Display names for CSV client values (used in UI only) */
 export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
@@ -386,6 +386,7 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   Groq: "Groq",
   HuggingFace: "HuggingFace",
   OpenRouter: "OpenRouter",
+  Custom: "Custom OpenAI",
 };
 export type ModelProvider = typeof MODEL_PROVIDERS[number];
 
@@ -402,7 +403,7 @@ export async function saveFileToDisk(content: string, filePath: string): Promise
     downloadFile(content, filePath.split("/").pop() || filePath);
     return;
   }
-  const res = await fetch(`http://localhost:8000/database/${filePath}`, {
+  const res = await fetch(`${DATABASE_URL}/${filePath}`, {
     method: "PUT",
     headers: { "Content-Type": "text/plain" },
     body: content,
@@ -527,9 +528,7 @@ export async function getQuarterFundList(quarter: string): Promise<string[]> {
       if (!response.ok) throw new Error(`No data available for ${quarter}`);
       return response.json();
     }
-    const response = await fetch(
-      `http://localhost:8000/api/database/quarters/${quarter}`
-    );
+    const response = await fetch(`${API_BASE}/api/database/quarters/${quarter}`);
     if (!response.ok) throw new Error(`Failed to list funds for ${quarter}`);
     const files: string[] = await response.json();
     return files;
