@@ -388,7 +388,7 @@ def _build_ai_client(model_id: str | None = None, provider_id: str | None = None
     """Build the AI client for the requested provider, falling back to first available."""
     from app.ai.clients import (
         GitHubClient, GoogleAIClient, GroqClient,
-        HuggingFaceClient, OpenRouterClient,
+        HuggingFaceClient, OpenRouterClient, CustomOpenAIClient,
     )
     provider_map = {
         "github":      ("GITHUB_TOKEN",       GitHubClient),
@@ -396,6 +396,7 @@ def _build_ai_client(model_id: str | None = None, provider_id: str | None = None
         "groq":        ("GROQ_API_KEY",       GroqClient),
         "huggingface": ("HF_TOKEN",           HuggingFaceClient),
         "openrouter":  ("OPENROUTER_API_KEY", OpenRouterClient),
+        "custom":      ("CUSTOM_OPENAI_KEY",  CustomOpenAIClient),
     }
     # If provider is known, use it directly (if its key is present)
     if provider_id and provider_id in provider_map:

@@ -130,16 +130,7 @@ export async function getConfiguredProviders(): Promise<{ provider: AIProvider; 
   try {
     const res = await fetch(`${API_BASE}/api/settings/env`);
     const env: Record<string, string> = res.ok ? await res.json() : {};
-    return AI_PROVIDERS.map((provider) => {
-      // Custom provider requires BOTH URL and key
-      if (provider.id === "custom") {
-        return {
-          provider,
-          hasKey: Boolean(env[provider.envKey]) && Boolean(env["CUSTOM_OPENAI_URL"]),
-        };
-      }
-      return { provider, hasKey: Boolean(env[provider.envKey]) };
-    });
+    return AI_PROVIDERS.map((provider) => ({ provider, hasKey: Boolean(env[provider.envKey]) }));
   } catch {
     return AI_PROVIDERS.map((provider) => ({ provider, hasKey: false }));
   }
