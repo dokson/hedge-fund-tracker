@@ -436,12 +436,17 @@ def _free_port(port: int) -> None:
         pass
 
 
-def run_server(host: str = "127.0.0.1", port: int = 8000):
+def run_server(host: str = None, port: int = 8000):
+    import os
     import subprocess
     import sys
     import webbrowser
     import threading
     from pathlib import Path
+
+    # Default to 0.0.0.0 in Docker/container environments, 127.0.0.1 otherwise
+    if host is None:
+        host = "0.0.0.0" if os.getenv("DOCKER_ENV") else "127.0.0.1"
 
     frontend_dist = Path(__file__).parent / "frontend" / "dist"
     if not frontend_dist.exists():
@@ -457,7 +462,8 @@ def run_server(host: str = "127.0.0.1", port: int = 8000):
 
     url = f"http://{host}:{port}"
     print(f"🚀 Starting {APP_NAME} at {url}")
-    threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+    if host == "127.0.0.1":
+        threading.Timer(1.5, lambda: webbrowser.open(url)).start()
 
     import uvicorn
     uvicorn.run("app.server:app", host=host, port=port, reload=False)

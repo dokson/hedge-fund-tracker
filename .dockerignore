@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Python
+__pycache__
+*.py[cod]
+*.pyo
+.Pipfile.lock
+.venv
+venv
+ENV
+env
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+app/frontend/dist
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Documentation
+README.md
+LICENSE
+CLAUDE.md
+
+# Test coverage
+.coverage
+htmlcov
+.pytest_cache
+
+# Project specific
+__llmcache__
+__reports__
+nul
+
+# Temporary files
+*.tmp
+*.log

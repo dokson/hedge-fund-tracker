@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  hedge-fund-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hedge-fund-tracker
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount database directory for persistent data
+      - ./database:/app/database
+      # Mount cache directories for AI responses and reports
+      - ./__llmcache__:/app/__llmcache__
+      - ./__reports__:/app/__reports__
+      # Mount .env file for API keys configuration
+      - ./.env:/app/.env
+    environment:
+      # Docker environment flag for host binding
+      - DOCKER_ENV=1
+      # API keys (alternatively load from mounted .env file)
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - HF_TOKEN=${HF_TOKEN:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
