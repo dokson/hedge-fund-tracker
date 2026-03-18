@@ -7,3 +7,4 @@ node_modules/
 app/frontend/dist/
 .env
 gh-md-toc
+.idea/

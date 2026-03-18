@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   hedge-fund-tracker:
     build:
@@ -27,6 +25,7 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - HF_TOKEN=${HF_TOKEN:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - CUSTOM_OPENAI_URL=${CUSTOM_OPENAI_URL:-}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
