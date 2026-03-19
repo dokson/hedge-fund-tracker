@@ -12,6 +12,7 @@ import os
 
 
 APP_NAME = "HEDGE FUND TRACKER - DATABASE UPDATER"
+MIN_REFERENCE_DATE = "2025-03-31"
 
 
 def exit():
@@ -27,7 +28,7 @@ def exit():
     return False
 
 
-def process_fund(fund_info, offset=0):
+def process_fund(fund_info, offset=0, skip_old=False):
     """
     Fetches 13F filings for a single fund and generates a comparison report.
 
@@ -44,8 +45,19 @@ def process_fund(fund_info, offset=0):
 
     try:
         # Step 1: Fetch the primary filing for the given offset.
-        filings = fetch_latest_two_13f_filings(cik, offset)
-        latest_date = filings[0]['reference_date']
+        while True:
+            filings = fetch_latest_two_13f_filings(cik, offset)
+            if not filings:
+                return
+
+            latest_date = filings[0]['reference_date']
+
+            if skip_old and latest_date < MIN_REFERENCE_DATE:
+                print(f"⏩ {fund_name}: latest filing found at offset {offset} ({latest_date}) is before {MIN_REFERENCE_DATE[:4]}. Searching next...")
+                offset += 1
+                continue
+            break
+
         dataframe_latest = xml_to_dataframe_13f(filings[0]['xml_content'])
 
         # Step 2: Find the filing for the immediately preceding quarter.
@@ -106,7 +118,7 @@ def run_all_funds_report():
         print("Running sequentially (GitHub Actions detected).")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(process_fund, fund): fund for fund in hedge_funds}
+        futures = {executor.submit(process_fund, fund, skip_old=True): fund for fund in hedge_funds}
 
         for i, future in enumerate(as_completed(futures)):
             fund = futures[future]
