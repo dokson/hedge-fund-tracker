@@ -44,7 +44,7 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/typography": "^0.5.16",
-    "@tanstack/react-query": "^5.91.2",
+    "@tanstack/react-query": "^5.91.3",
     "@types/papaparse": "^5.5.2",
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
@@ -73,7 +73,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "jsdom": "^29.0.0",
+    "jsdom": "^29.0.1",
     "vitest": "^4.1.0"
   }
 }
