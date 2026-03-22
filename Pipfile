@@ -12,7 +12,7 @@ fastapi = "~=0.115"
 financedatabase = "~=2.3"
 finnhub-python = "~=2.4"
 google-genai = "~=1.68"
-httptools = {version = "==0.7.*", markers = "sys_platform != 'win32'"}
+httptools = {version = "==0.7.1", markers = "sys_platform != 'win32'"}
 lxml = "~=6.0"
 openai = "~=2.29"
 pandas = "~=2.3"
@@ -24,7 +24,7 @@ requests = "~=2.32"
 tabulate = "~=0.10"
 tradingview-datafeed = "~=2.1"
 uvicorn = "~=0.42"
-uvloop = {version = "==0.22.*", markers = "sys_platform != 'win32'"}
+uvloop = {version = "==0.22.1", markers = "sys_platform != 'win32'"}
 watchfiles = "~=1.1"
 websockets = "~=16.0"
 
