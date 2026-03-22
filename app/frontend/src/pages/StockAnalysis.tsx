@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Brain, Loader2, CandlestickChart, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
+import TradingViewWidget from "@/components/TradingViewWidget";
 
 export default function StockAnalysis() {
   const { ticker = "NVDA" } = useParams();
@@ -154,6 +155,11 @@ export default function StockAnalysis() {
         </div>
       ) : (
         <>
+          {/* TradingView Widget */}
+          <div className="rounded-lg border border-border bg-card overflow-hidden" style={{ height: "400px" }}>
+            <TradingViewWidget symbolTicker={ticker || "NVDA"} height="400px" />
+          </div>
+
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="kpi-card">
