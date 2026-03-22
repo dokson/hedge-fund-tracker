@@ -44,7 +44,7 @@ function TradingViewWidget({ symbolTicker, height = '400px' }: TradingViewWidget
       "changeMode": "price-and-percent",
       "symbols": [
         [
-          `${symbolTicker}|1D`
+          `${symbolTicker}|1Y`
         ]
       ],
       "dateRanges": [
@@ -78,10 +78,6 @@ function TradingViewWidget({ symbolTicker, height = '400px' }: TradingViewWidget
     <div className="tradingview-widget-container" ref={container} style={{ height }}>
       <div className="tradingview-widget-container__widget"></div>
       <div className="tradingview-widget-copyright">
-        <a href={`https://www.tradingview.com/symbols/${symbolTicker}/`} rel="noopener nofollow" target="_blank">
-          <span className="blue-text">{symbolTicker}</span>
-        </a>
-        <span className="and">&nbsp;and&nbsp;</span>
         <a href={`https://www.tradingview.com/symbols/${symbolTicker}/`} rel="noopener nofollow" target="_blank">
           <span className="blue-text">{symbolTicker} stock price</span>
         </a>
