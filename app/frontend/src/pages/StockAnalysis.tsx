@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Brain, Loader2, CandlestickChart, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
-import TradingViewWidget from "@/components/TradingViewWidget";
+import TradingViewDeltaWidget from "@/components/TradingViewWidget";
 
 export default function StockAnalysis() {
   const { ticker = "NVDA" } = useParams();
@@ -31,6 +31,46 @@ export default function StockAnalysis() {
     queryFn: () => runStockAnalysis(ticker, quarter, (msg, pct) => setProgress({ msg, pct })),
     staleTime: 10 * 60 * 1000,
   });
+
+  const lastFourQuarters = AVAILABLE_QUARTERS.slice(-4);
+  const { data: historicalDeltas = [] } = useQuery({
+    queryKey: ["historicalDeltas", ticker, [...lastFourQuarters]],
+    queryFn: async () => {
+      const deltas = await Promise.all(
+        lastFourQuarters.map(async (q) => {
+          const data = await runStockAnalysis(ticker, q, () => {});
+          const totalValue = data.reduce((s, h) => s + h.value, 0);
+          const totalDeltaValue = data.reduce((s, h) => s + h.deltaValue, 0);
+          const previousTotal = totalValue - totalDeltaValue;
+          const deltaPct =
+            data.length === 0 || (data.every((h) => h.isNew) && data.every((h) => !h.isClosed))
+              ? Infinity
+              : previousTotal !== 0
+              ? (totalDeltaValue / previousTotal) * 100
+              : 0;
+          const quarterEnd = getQuarterEndDate(q);
+          return {
+            quarter: q,
+            totalValue,
+            totalDeltaValue,
+            deltaPct,
+            date: quarterEnd,
+          };
+        })
+      );
+      return deltas.filter(d => d.totalValue > 0);
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
+  function getQuarterEndDate(quarter: string): string {
+    const match = quarter.match(/(\d{4})Q(\d)/);
+    if (!match) return "2025-03-31";
+    const year = parseInt(match[1], 10);
+    const q = parseInt(match[2], 10);
+    const months = { 1: 2, 2: 5, 3: 8, 4: 11 };
+    return `${year}-${String(months[q] + 1).padStart(2, "0")}-31`;
+  }
 
   // Compute KPIs from holdings
   const company = holdings[0]?.company || ticker;
@@ -155,9 +195,36 @@ export default function StockAnalysis() {
         </div>
       ) : (
         <>
-          {/* TradingView Widget */}
+          {/* Historical Deltas */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            {historicalDeltas.map((d) => {
+              const absValue = Math.abs(d.totalDeltaValue);
+              let valueStr: string;
+              if (absValue >= 1e9) valueStr = `$${(absValue / 1e9).toFixed(1)}B`;
+              else if (absValue >= 1e6) valueStr = `$${(absValue / 1e6).toFixed(1)}M`;
+              else if (absValue >= 1e3) valueStr = `$${(absValue / 1e3).toFixed(0)}K`;
+              else valueStr = `$${absValue.toFixed(0)}`;
+
+              return (
+                <div key={d.quarter} className="kpi-card">
+                  <p className="text-xs text-muted-foreground">{d.quarter}</p>
+                  <p className={`text-lg font-bold font-mono mt-1 ${d.totalDeltaValue > 0 ? 'delta-positive' : d.totalDeltaValue < 0 ? 'delta-negative' : ''}`}>
+                    {d.totalDeltaValue > 0 ? '+' : ''}{valueStr}
+                  </p>
+                  <p className={`text-xs font-mono mt-1 ${d.totalDeltaValue > 0 ? 'delta-positive' : d.totalDeltaValue < 0 ? 'delta-negative' : ''}`}>
+                    ({d.totalDeltaValue > 0 ? '+' : ''}{isFinite(d.deltaPct) ? d.deltaPct.toFixed(1) : 'N/A'}%)
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* TradingView Chart */}
           <div className="rounded-lg border border-border bg-card overflow-hidden" style={{ height: "400px" }}>
-            <TradingViewWidget symbolTicker={ticker || "NVDA"} height="400px" />
+            <TradingViewDeltaWidget
+              symbolTicker={ticker || "NVDA"}
+              height="400px"
+            />
           </div>
 
           {/* KPI Cards */}
