@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2bd3365fb5d2911bc28698643a5cd9247a071ed9c240b6b50bf0e29797afe005"
+            "sha256": "1f0db5d42cbb8192583d545916be85498f52ca11cb72b137472aab1c4f238516"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -537,12 +537,12 @@
         },
         "fastapi": {
             "hashes": [
-                "sha256:46e2fc5745924b7c840f71ddd277382af29ce1cdb7d5eab5bf697e3fb9999c9e",
-                "sha256:d04115b508d936d254cea545b7312ecaa58a7b3a0f84952535b4c9afae7668cd"
+                "sha256:0af0447d541867e8db2a6a25c23a8c4bd80e2394ac5529bd87501bbb9e240ca5",
+                "sha256:88a832095359755527b7f63bb4c6bc9edb8329a026189eed83d6c1afcf419d56"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==0.135.1"
+            "version": "==0.135.2"
         },
         "financedatabase": {
             "hashes": [
