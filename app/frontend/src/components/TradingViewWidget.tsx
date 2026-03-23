@@ -39,6 +39,7 @@ function TradingViewWidget({ symbolTicker, height = '400px' }: TradingViewDeltaW
         '60m|1W',
         'all|1M'
       ],
+      range: '3m',
       defaultDateRange: '3m',
     };
 
