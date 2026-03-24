@@ -211,6 +211,84 @@ async def ai_due_diligence(request: Request):
     return result
 
 
+# ── Report management endpoints ────────────────────────────────────────────────
+
+@app.get("/api/reports/promise-score")
+async def list_promise_score_reports(quarter: str | None = None):
+    from app.ai.report_saver import list_reports
+    reports = list_reports("promise-score")
+    if quarter:
+        reports = [r for r in reports if r.get("quarter") == quarter]
+    return reports
+
+
+@app.get("/api/reports/due-diligence")
+async def list_due_diligence_reports(ticker: str | None = None):
+    from app.ai.report_saver import list_reports
+    reports = list_reports("due-diligence")
+    if ticker:
+        reports = [r for r in reports if r.get("ticker") == ticker.upper()]
+    return reports
+
+
+@app.get("/api/reports/{report_type}/{filename}")
+async def get_report(report_type: str, filename: str):
+    from app.ai.report_saver import get_report, PROMISE_SCORE_DIR, DUE_DILIGENCE_DIR
+    import os
+    
+    if report_type == "promise-score":
+        directory = PROMISE_SCORE_DIR
+    elif report_type == "due-diligence":
+        directory = DUE_DILIGENCE_DIR
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid report type: {report_type}")
+    
+    # Validate filename (prevent path traversal)
+    safe_filename = os.path.basename(filename)
+    if safe_filename != filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
+    filepath = directory / safe_filename
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            import json
+            content = json.load(f)
+        return content
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read report: {str(e)}")
+
+
+@app.delete("/api/reports/{report_type}/{filename}")
+async def delete_report(report_type: str, filename: str):
+    from app.ai.report_saver import delete_report, PROMISE_SCORE_DIR, DUE_DILIGENCE_DIR
+    import os
+    
+    if report_type == "promise-score":
+        directory = PROMISE_SCORE_DIR
+    elif report_type == "due-diligence":
+        directory = DUE_DILIGENCE_DIR
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid report type: {report_type}")
+    
+    # Validate filename (prevent path traversal)
+    safe_filename = os.path.basename(filename)
+    if safe_filename != filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
+    filepath = directory / safe_filename
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    try:
+        filepath.unlink()
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete report: {str(e)}")
+
+
 # ── Database operations ────────────────────────────────────────────────────────
 
 @app.post("/api/database/fetch")

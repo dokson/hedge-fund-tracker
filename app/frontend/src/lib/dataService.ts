@@ -1115,3 +1115,129 @@ export async function getEnrichedNQFilings(
 }
 
 // clearCache is defined above (line ~311)
+
+// ---------- Report types ----------
+
+export interface PromiseScoreReportMetadata {
+  filename: string;
+  filepath: string;
+  generated_at: string;
+  quarter: string;
+  top_n: number;
+  model_id: string | null;
+  provider_id: string | null;
+}
+
+export interface DueDiligenceReportMetadata {
+  filename: string;
+  filepath: string;
+  generated_at: string;
+  quarter: string;
+  ticker: string;
+  top_n?: number | null;
+  model_id: string | null;
+  provider_id: string | null;
+}
+
+export interface PromiseScoreReportData {
+  metadata: {
+    generated_at: string;
+    quarter: string;
+    top_n: number;
+    model_id: string | null;
+    provider_id: string | null;
+  };
+  weights: Record<string, number>;
+  stocks: any[];
+}
+
+export interface DueDiligenceReportData {
+  metadata: {
+    generated_at: string;
+    ticker: string;
+    quarter: string;
+    model_id: string | null;
+    provider_id: string | null;
+  };
+  current_price: string;
+  filing_date_price: string;
+  price_delta_percentage: string;
+  analysis: {
+    business_summary: string;
+    financial_health: string;
+    financial_health_sentiment: string;
+    valuation: string;
+    valuation_sentiment: string;
+    growth_vs_risks: string;
+    growth_vs_risks_sentiment: string;
+    institutional_sentiment: string;
+    institutional_sentiment_sentiment: string;
+  };
+  investment_thesis: {
+    overall_sentiment: string;
+    thesis: string;
+    price_target: string;
+  };
+}
+
+// ---------- Report API functions ----------
+
+export async function getPromiseScoreReports(quarter?: string): Promise<PromiseScoreReportMetadata[]> {
+  const params = quarter ? `?quarter=${quarter}` : "";
+  const res = await fetch(`${API_BASE}/api/reports/promise-score${params}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to fetch promise score reports: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getDueDiligenceReports(ticker?: string): Promise<DueDiligenceReportMetadata[]> {
+  const params = ticker ? `?ticker=${ticker.toUpperCase()}` : "";
+  const res = await fetch(`${API_BASE}/api/reports/due-diligence${params}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to fetch due diligence reports: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getReport(
+  reportType: "promise-score" | "due-diligence",
+  filename: string
+): Promise<PromiseScoreReportData | DueDiligenceReportData> {
+  // Sanitize filename to prevent path traversal
+  const safeFilename = filename.split("/").pop() || filename;
+  const res = await fetch(`${API_BASE}/api/reports/${reportType}/${safeFilename}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to fetch report: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteReport(
+  reportType: "promise-score" | "due-diligence",
+  filename: string
+): Promise<void> {
+  // Sanitize filename to prevent path traversal
+  const safeFilename = filename.split("/").pop() || filename;
+  const res = await fetch(`${API_BASE}/api/reports/${reportType}/${safeFilename}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to delete report: ${res.status}`);
+  }
+}
+
+export function exportReportJson(report: PromiseScoreReportData | DueDiligenceReportData, filename: string): void {
+  const content = JSON.stringify(report, null, 2);
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

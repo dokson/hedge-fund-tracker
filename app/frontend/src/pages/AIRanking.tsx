@@ -2,11 +2,14 @@ import { useState } from "react";
 import {
   AVAILABLE_QUARTERS,
   formatValue,
+  getPromiseScoreReports,
 } from "@/lib/dataService";
 import { runPromiseScoreStream } from "@/lib/aiClient";
 import { getModels } from "@/lib/dataService";
 import TerminalOutput from "@/components/TerminalOutput";
 import { TickerLink } from "@/components/EntityLinks";
+import PromiseScoreReportList from "@/components/PromiseScoreReportList";
+import { QuarterSelector } from "@/components/QuarterSelector";
 
 import { Button } from "@/components/ui/button";
 import ModelSelector from "@/components/ModelSelector";
@@ -15,6 +18,7 @@ import { Brain, ChevronDown, ChevronUp, Settings, Search } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
+import { useQuery } from "@tanstack/react-query";
 
 interface RankedStock {
   rank: number;
@@ -47,7 +51,7 @@ function ScoreBadge({ score }: { score: number }) {
 
 export default function AIRanking() {
   const navigate = useNavigate();
-  const quarter = AVAILABLE_QUARTERS[AVAILABLE_QUARTERS.length - 1];
+  const [quarter, setQuarter] = useState(AVAILABLE_QUARTERS[AVAILABLE_QUARTERS.length - 1]);
   const [topN, setTopN] = useState(20);
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedProviderId, setSelectedProviderId] = useState("");
@@ -59,6 +63,13 @@ export default function AIRanking() {
   const [weights, setWeights] = useState<Record<string, number> | null>(null);
   const [modelUsed, setModelUsed] = useState("");
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
+
+  const { data: savedReports = [], refetch: refetchReports } = useQuery({
+    queryKey: ["promise-score-reports", quarter],
+    queryFn: () => getPromiseScoreReports(quarter),
+    enabled: !!quarter,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const runAnalysis = async () => {
     setLoading(true);
@@ -99,6 +110,9 @@ export default function AIRanking() {
       setProgressPct(100);
       setStatusMsg("Complete");
       toast.success(`AI ranking complete: ${ranked.length} stocks analyzed`);
+      
+      // Refresh saved reports list
+      refetchReports();
     } catch (err: any) {
       toast.error(`AI Error: ${err.message}`);
       console.error(err);
@@ -124,6 +138,10 @@ export default function AIRanking() {
 
       {/* Controls */}
       <div className="flex gap-3 items-end flex-wrap">
+        <div className="space-y-1">
+          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Quarter</label>
+          <QuarterSelector value={quarter} onChange={setQuarter} disabled={loading || isReadOnly} />
+        </div>
         <div className="space-y-1">
           <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Model</label>
           <ModelSelector value={selectedModel} onChange={setSelectedModel} onProviderChange={setSelectedProviderId} className="w-56" disabled={isReadOnly} />
@@ -168,8 +186,9 @@ export default function AIRanking() {
       )}
 
       {hasResults && !loading && (
-        <div className="rounded-lg border border-border bg-card overflow-hidden">
-          <table className="w-full text-sm">
+        <>
+          <div className="rounded-lg border border-border bg-card overflow-hidden">
+            <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
                 <th className="text-left p-3 font-medium w-12">#</th>
@@ -282,6 +301,13 @@ export default function AIRanking() {
             </tbody>
           </table>
         </div>
+
+          <PromiseScoreReportList
+            reports={savedReports}
+            title={`Previous Reports for ${quarter}`}
+            onRefresh={refetchReports}
+          />
+        </>
       )}
 
       {!hasResults && !loading && (
@@ -302,6 +328,14 @@ export default function AIRanking() {
             </p>
           )}
         </div>
+      )}
+
+      {savedReports.length > 0 && !hasResults && !loading && (
+        <PromiseScoreReportList
+          reports={savedReports}
+          title={`Previous Reports for ${quarter}`}
+          onRefresh={refetchReports}
+        />
       )}
     </div>
   );

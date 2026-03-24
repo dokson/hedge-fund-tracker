@@ -1,6 +1,7 @@
 from app.ai.clients import AIClient
 from app.ai.promise_score_validator import PromiseScoreValidator
 from app.ai.prompts import promise_score_weights_prompt, quantivative_scores_prompt, stock_due_diligence_prompt
+from app.ai.report_saver import save_promise_score_report, save_due_diligence_report
 from app.ai.response_parser import ResponseParser
 from app.analysis.performance_evaluator import PerformanceEvaluator
 from app.analysis.stocks import quarter_analysis, stock_analysis
@@ -161,9 +162,14 @@ class AnalystAgent:
         # 3. Get LLM scores (Momentum, Volatility, Risk)
         stocks_context = []
         for ticker in tickers:
+            suggestions_df_for_ticker = suggestions_df[suggestions_df['Ticker'] == ticker]
+            if not suggestions_df_for_ticker.empty:
+                company = suggestions_df_for_ticker['Company'].iloc[0]
+            else:
+                company = ticker
             stocks_context.append({
                 'ticker': ticker,
-                'company': suggestions_df[suggestions_df['Ticker'] == ticker]['Company'].iloc[0],
+                'company': company,
                 'industry': autonomous_scores[ticker]['Industry'],
                 'filing_date': self.filing_date,
                 'filing_price': autonomous_scores[ticker]['Filing_Price'],
@@ -185,11 +191,28 @@ class AnalystAgent:
         except RetryError as e:
             print(f"❌ ERROR: Failed to get valid AI scores after multiple attempts: {e.last_attempt.exception()}")
             # Set defaults if AI fails
+            suggestions_df = suggestions_df.copy()
             suggestions_df['Industry'] = suggestions_df['Ticker'].map(lambda t: autonomous_scores.get(t, {}).get('Industry', 'N/A'))
             suggestions_df['Growth_Score'] = suggestions_df['Ticker'].map(lambda t: autonomous_scores.get(t, {}).get('Growth_Score', 0))
             suggestions_df['Risk_Score'] = 0
             suggestions_df['Momentum_Score'] = 0
             suggestions_df['Low_Volatility_Score'] = 0
+
+        # Save report
+        model_id = self.ai_client.model if hasattr(self.ai_client, 'model') else None
+        provider_id = self.ai_client.provider_id if hasattr(self.ai_client, 'provider_id') else None
+        try:
+            report_path = save_promise_score_report(
+                quarter=self.quarter,
+                top_n=top_n,
+                df=suggestions_df,
+                model_id=model_id,
+                provider_id=provider_id,
+                weights=promise_weights
+            )
+            print(f"💾 Report saved to: {report_path}")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to save report: {e}")
 
         return suggestions_df
 
@@ -272,5 +295,20 @@ class AnalystAgent:
         parsed_data['current_price'] = stock_data['current_price']
         parsed_data['filing_date_price'] = stock_data['filing_date_price']
         parsed_data['price_delta_percentage'] = stock_data['price_delta_percentage']
+
+        # Save report
+        model_id = self.ai_client.model if hasattr(self.ai_client, 'model') else None
+        provider_id = self.ai_client.provider_id if hasattr(self.ai_client, 'provider_id') else None
+        try:
+            report_path = save_due_diligence_report(
+                ticker=ticker,
+                quarter=self.quarter,
+                result=parsed_data,
+                model_id=model_id,
+                provider_id=provider_id
+            )
+            print(f"💾 Report saved to: {report_path}")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to save report: {e}")
 
         return parsed_data
