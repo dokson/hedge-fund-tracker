@@ -58,6 +58,8 @@ A comprehensive **Python tool** for tracking **hedge fund portfolios** through *
     - [Adding Custom AI Models](#adding-custom-ai-models)
   - [⚠️ Limitations & Considerations](#%EF%B8%8F-limitations--considerations)
     - [A Truly Up-to-Date View](#a-truly-up-to-date-view)
+  - [🌐 GitHub Pages Deployment](#-github-pages-deployment)
+  - [🐳 Docker Deployment](#-docker-deployment)
   - [⚙️ Automation with GitHub Actions](#%EF%B8%8F-automation-with-github-actions)
     - [How It Works](#how-it-works)
     - [How to Enable It](#how-to-enable-it)
@@ -137,7 +139,7 @@ pipenv run app
    pipenv run app
    ```
 
-   This starts a FastAPI server on `http://localhost:8000` and opens the **web UI** in your browser automatically.
+   This starts a FastAPI server (default `http://localhost:8000`, auto-increments if port is busy) and opens the **web UI** in your browser automatically.
 
    > **⚠️ Note on CLI mode (Legacy):** The terminal CLI is a **deprecated version** of the tool, built before the development of the modern Web UI. While still functional, it requires a manual `.env` configuration. This file is **automatically generated** the first time you launch the Web UI. So, if you still wish to use the "old school" CLI, just run:
    >
@@ -451,6 +453,34 @@ pipenv run build-frontend
 pipenv run app
 ```
 
+## 🐳 Docker Deployment
+
+You can run the full application in Docker — no Python or Node.js installation required.
+
+### Quick Start with Docker Compose
+
+```bash
+# Copy and configure your API keys
+cp .env.example .env
+
+# Build and run
+docker compose up --build
+```
+
+The app will be available at `http://localhost:8000`.
+
+### What Docker Provides
+
+- **Multi-stage build**: frontend compiled in Node, served by Python — single optimized image
+- **Persistent data**: `database/`, `__llmcache__/`, and `__reports__/` are mounted as volumes
+- **Health check**: `/health` endpoint monitored by Docker
+- **Non-root user**: runs as `hedgefund` user inside the container
+- **API keys**: read from mounted `.env` file or passed as environment variables
+
+### Cloud Deployment
+
+The Docker setup works with any container platform (Railway, Fly.io, Render, etc.). Set `DOCKER_ENV=1` and pass API keys as environment variables. The `entrypoint.sh` script automatically seeds the database and generates `.env` from environment variables on first deploy.
+
 ## ⚙️ Automation with GitHub Actions
 
 This repository includes a [GitHub Actions](https://github.com/features/actions) workflow (`.github/workflows/filings-fetch.yml`) designed to keep your data effortlessly up-to-date by automatically fetching the latest SEC filings.
@@ -473,14 +503,14 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 | 🗂️ Category | 🦾 Technology |
 | :--- | :--- |
-| **Core** | [Python 3.13](https://www.python.org/downloads/release/python-3130/)+, [pipenv](https://pipenv.pypa.io/) |
+| **Core** | [Python 3.13](https://www.python.org/downloads/release/python-3130/)+, [pipenv](https://pipenv.pypa.io/), [Docker](https://www.docker.com/) (optional) |
 | **Backend** | [FastAPI](https://fastapi.tiangolo.com/), [uvicorn](https://www.uvicorn.org/) |
 | **Frontend** | [React 19](https://react.dev/), [Vite](https://vitejs.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/) |
 | **UI Components** | [shadcn/ui](https://ui.shadcn.com/), [Radix UI](https://www.radix-ui.com/), [Lucide](https://lucide.dev/), [Sonner](https://sonner.emilkowal.ski/) |
 | **Data Viz & State** | [Recharts](https://recharts.github.io/), [TanStack Query v5](https://tanstack.com/query/latest) |
 | **Web Scraping** | [Requests](https://2.python-requests.org/en/master/), [Beautiful Soup 4](https://pypi.org/project/beautifulsoup4/), [lxml](https://lxml.de/) |
 | **Reliability** | [Tenacity](https://github.com/jd/tenacity), [Python-Dotenv](https://github.com/theskumar/python-dotenv) |
-| **Stocks Data** | [yfinance](https://github.com/ranaroussi/yfinance), [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/) |
+| **Stocks Data** | [yfinance](https://github.com/ranaroussi/yfinance), [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/), [Nasdaq API](https://www.nasdaq.com/) |
 | **Gen AI** | [python-toon](https://github.com/xaviviro/python-toon), [Google AI SDK](https://googleapis.github.io/python-genai/), [OpenAI SDK](https://github.com/openai/openai-python) |
 
 ## 🤝🏼 Contributing & Support

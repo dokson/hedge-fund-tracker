@@ -1,3 +1,5 @@
+import os
+
 from app.ai.agent import AnalystAgent
 from app.analysis.performance_evaluator import PerformanceEvaluator
 from app.analysis.stocks import aggregate_quarter_by_fund, fund_analysis, get_quarter_data, quarter_analysis, stock_analysis
@@ -421,12 +423,25 @@ def _find_available_port(port: int, max_attempts: int = 10) -> int:
     raise RuntimeError(f"No available port found in range {port}–{port + max_attempts - 1}")
 
 
-def run_server(host: str = "127.0.0.1", port: int = 8000):
+def run_server(host: str = None, port: int = None):
+    """
+    Starts the FastAPI web server with uvicorn.
+
+    In production (e.g. Railway), reads HOST/PORT from environment variables.
+    Locally, defaults to 127.0.0.1:8000 with auto-port discovery and browser open.
+    """
     import subprocess
     import sys
     import webbrowser
     import threading
     from pathlib import Path
+
+    host = host or os.environ.get("HOST", "127.0.0.1")
+    port = port or int(os.environ.get("PORT", "8000"))
+    is_production = os.environ.get("DOCKER_ENV") is not None
+
+    if is_production:
+        host = "0.0.0.0"
 
     frontend_dist = Path(__file__).parent / "frontend" / "dist"
     if not frontend_dist.exists():
@@ -438,11 +453,14 @@ def run_server(host: str = "127.0.0.1", port: int = 8000):
             sys.exit(1)
         print("✅ Frontend built.")
 
-    port = _find_available_port(port)
+    if not is_production:
+        port = _find_available_port(port)
 
     url = f"http://{host}:{port}"
     print(f"🚀 Starting {APP_NAME} at {url}")
-    threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+
+    if not is_production:
+        threading.Timer(1.5, lambda: webbrowser.open(url)).start()
 
     import uvicorn
     uvicorn.run("app.server:app", host=host, port=port, reload=False)

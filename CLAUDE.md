@@ -14,8 +14,11 @@ pipenv run build-frontend
 # Build the frontend for GitHub Pages deployment
 pipenv run build-gh-pages
 
-# Run the web UI (default — opens browser at http://localhost:8000)
+# Run the web UI (default — opens browser, auto-discovers free port from 8000)
 pipenv run app
+
+# Run with Docker (alternative to pipenv)
+docker compose up --build
 
 # Run the legacy CLI menu instead of the web UI
 pipenv run app-cli
@@ -88,6 +91,10 @@ The frontend can be deployed as a **static site on GitHub Pages** via `npm run b
 
 **Deploy workflow** (`.github/workflows/deploy-pages.yml`): triggers on push to `master` when `app/frontend/**` or `database/**` change. Uses `actions/deploy-pages@v4` (no `gh-pages` branch — direct upload to GitHub Pages).
 
+### Docker
+
+Multi-stage `Dockerfile` (Node frontend build → Python runtime). `docker-compose.yml` mounts `database/`, `__llmcache__/`, `__reports__/`, and `.env` as volumes. `entrypoint.sh` seeds the database from `database-seed/` on first run and generates `.env` from environment variables if not mounted.
+
 **Key frontend files:**
 - `app/frontend/src/lib/dataService.ts` — all CSV reads/writes via HTTP; single source of truth for analysis logic
 - `app/frontend/src/lib/aiClient.ts` — SSE streaming calls to `/api/ai/*` endpoints; no hardcoded model list
@@ -97,9 +104,14 @@ The frontend can be deployed as a **static site on GitHub Pages** via `npm run b
 
 **SSE streaming pattern** (`app/server.py → _make_sse_stream`):
 - Redirects `sys.stdout` in a background thread to capture all print output
+- Uses a `threading.Lock` (`_sse_lock`) to prevent concurrent stdout redirections from mixing streams
 - Sends each line as `data: {"type": "log", "text": "..."}` SSE events
 - Sends final result as `data: {"type": "result", "data": ...}` then closes stream
 - `os.environ.setdefault("COLUMNS", "80")` ensures terminal width consistency
+
+**Server port**: `run_server()` auto-discovers a free port starting from 8000 (locally). In Docker/production (`DOCKER_ENV=1`), binds to `0.0.0.0` on the configured `PORT` without port scanning or browser open. A `/health` endpoint is available for container health checks.
+
+**Frontend API base**: All frontend code uses `window.location.origin` instead of hardcoded `localhost:8000`, so it works on any port.
 
 **AI provider routing**: Every AI request includes both `model_id` and `provider_id`. The backend uses `provider_id` to select the exact client class; falls back to first available provider only when `provider_id` is absent.
 
@@ -139,6 +151,8 @@ The frontend can be deployed as a **static site on GitHub Pages** via `npm run b
 4. TradingView (free)
 
 Maintains `stocks.csv` master database; automatically sorted on exit.
+
+**Price fetching** (`PriceFetcher`) uses a separate fallback chain: yfinance → TradingView → Nasdaq API. The Nasdaq fallback covers mutual funds (e.g., FMSMX) that other sources miss.
 
 **`app/ai/`** — Multi-provider LLM integration
 

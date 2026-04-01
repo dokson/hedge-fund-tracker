@@ -1,0 +1,22 @@
+services:
+  hedge-fund-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hedge-fund-tracker
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./database:/app/database
+      - ./__llmcache__:/app/__llmcache__
+      - ./__reports__:/app/__reports__
+      - ./.env:/app/.env:ro
+    environment:
+      - DOCKER_ENV=1
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - HF_TOKEN=${HF_TOKEN:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}

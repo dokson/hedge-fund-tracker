@@ -28,6 +28,14 @@ app.add_middleware(
 )
 
 
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint for Docker and load balancers.
+    """
+    return {"status": "healthy"}
+
+
 # ── Input validation helpers ───────────────────────────────────────────────────
 
 _DB_ROOT = DATABASE_DIR.resolve()
