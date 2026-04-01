@@ -265,6 +265,8 @@ async def update_cusip_ticker_endpoint(request: Request):
 
 # ── AI streaming endpoints ─────────────────────────────────────────────────
 
+_sse_lock = threading.Lock()
+
 def _make_sse_stream(target_fn):
     """Run target_fn in a thread, capture its stdout, and stream each line as SSE."""
     log_q: queue.Queue = queue.SimpleQueue()
@@ -277,15 +279,20 @@ def _make_sse_stream(target_fn):
         def flush(self): pass
 
     def run():
-        old = sys.stdout
-        sys.stdout = _Writer()
-        try:
-            result = target_fn()
-            log_q.put(("result", result))
-        except Exception as e:
-            log_q.put(("error", str(e)))
-        finally:
-            sys.stdout = old
+        """
+        Executes target_fn while capturing stdout. Uses a lock to prevent concurrent
+        sys.stdout redirections from mixing output across SSE streams.
+        """
+        with _sse_lock:
+            old = sys.stdout
+            sys.stdout = _Writer()
+            try:
+                result = target_fn()
+                log_q.put(("result", result))
+            except Exception as e:
+                log_q.put(("error", str(e)))
+            finally:
+                sys.stdout = old
 
     threading.Thread(target=run, daemon=True).start()
 

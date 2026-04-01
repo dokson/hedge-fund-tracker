@@ -63,6 +63,10 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_
 
     for index, row in non_quarterly_filings_df.iterrows():
         ticker = row['Ticker']
+        if ticker is None or pd.isna(ticker):
+            if row['Shares'] == 0:
+                non_quarterly_filings_df.at[index, 'Value'] = 0
+            continue
         date = row['Date'].date()
         price = PriceFetcher.get_avg_price(ticker, date)
         if price:

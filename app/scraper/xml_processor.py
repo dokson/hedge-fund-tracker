@@ -107,7 +107,7 @@ def xml_to_dataframe_schedule(xml_content):
 
     form_data = soup_xml.find('formdata')
     company = _get_tag_text(form_data, 'issuername')
-    cusip = _get_tag_text(form_data, 'issuercusip')
+    cusip = _get_tag_text(form_data, 'issuercusipnumber') or _get_tag_text(form_data, 'issuercusip')
     cik = _get_tag_text(form_data, 'issuercik')
     date = _get_tag_text(form_data, 'dateofevent') or _get_tag_text(form_data, 'eventdaterequiresfilingthisstatement')
 

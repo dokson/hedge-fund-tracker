@@ -175,10 +175,19 @@ class TestSecScraper(unittest.TestCase):
     @patch('app.scraper.sec_scraper._get_request')
     def test_fetch_non_quarterly_after_date(self, mock_get_request):
         """Test fetch_non_quarterly_after_date aggregates filings."""
-        # Mock search page responses for SCHEDULE and Form 4
-        mock_response = MagicMock()
-        mock_response.text = '<a id="documentsbutton" href="/doc">Format</a>'
-        mock_get_request.return_value = mock_response
+        # Mock search page responses — must include <tr><td> with filing type for type filtering
+        def make_response(filing_type_label):
+            """
+            Creates a mock response with the correct EDGAR table structure.
+            """
+            resp = MagicMock()
+            resp.text = f'<tr><td>{filing_type_label}</td><td><a id="documentsbutton" href="/doc">Format</a></td></tr>'
+            return resp
+
+        mock_get_request.side_effect = [
+            make_response('SC 13D'),  # SCHEDULE search
+            make_response('4'),       # Form 4 search
+        ]
 
         with patch('app.scraper.sec_scraper._scrape_filing') as mock_scrape:
             mock_scrape.return_value = {'data': 'test'}
