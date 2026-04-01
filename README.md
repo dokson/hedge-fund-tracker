@@ -58,8 +58,13 @@ A comprehensive **Python tool** for tracking **hedge fund portfolios** through *
     - [Adding Custom AI Models](#adding-custom-ai-models)
   - [⚠️ Limitations & Considerations](#%EF%B8%8F-limitations--considerations)
     - [A Truly Up-to-Date View](#a-truly-up-to-date-view)
-  - [🌐 GitHub Pages Deployment](#-github-pages-deployment)
   - [🐳 Docker Deployment](#-docker-deployment)
+    - [What Docker Provides](#what-docker-provides)
+    - [Cloud Deployment](#cloud-deployment)
+  - [🌐 GitHub Pages Deployment](#-github-pages-deployment)
+    - [What's Available in GitHub Pages Mode](#whats-available-in-github-pages-mode)
+    - [How to Deploy](#how-to-deploy)
+    - [Local Development](#local-development)
   - [⚙️ Automation with GitHub Actions](#%EF%B8%8F-automation-with-github-actions)
     - [How It Works](#how-it-works)
     - [How to Enable It](#how-to-enable-it)
@@ -88,6 +93,15 @@ pipenv run build-frontend
 # Run the application (opens web UI in your browser)
 pipenv run app
 ```
+
+### 🐳 Or use Docker (no Python/Node required)
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+The app will be available at `http://localhost:8000`.
 
 ## ✨ Key Features
 
@@ -415,6 +429,22 @@ Many tracking websites rely solely on quarterly 13F filings, which means their d
 
 This tracker helps overcome that limitation by **integrating multiple filing types**. When analyzing the most recent quarter, the tool automatically incorporates the latest data from 13D/G and Form 4 filings. As a result, the holdings, deltas, and portfolio percentages reflect not just the static 13F snapshot, but also any significant trades that have occurred since. This provides a more dynamic and complete picture of institutional activity.
 
+## 🐳 Docker Deployment
+
+You can run the full application in Docker — no Python or Node.js installation required.
+
+### What Docker Provides
+
+- **Multi-stage build**: frontend compiled in Node, served by Python — single optimized image
+- **Persistent data**: `database/`, `__llmcache__/`, and `__reports__/` are mounted as volumes
+- **Health check**: `/health` endpoint monitored by Docker
+- **Non-root user**: runs as `hedgefund` user inside the container
+- **API keys**: read from mounted `.env` file or passed as environment variables
+
+### Cloud Deployment
+
+The Docker setup works with any container platform (Railway, Fly.io, Render, etc.). Set `DOCKER_ENV=1` and pass API keys as environment variables. The `entrypoint.sh` script automatically seeds the database and generates `.env` from environment variables on first deploy.
+
 ## 🌐 GitHub Pages Deployment
 
 The frontend can be deployed as a **static demo on GitHub Pages** — no Python backend required. AI features and data updates are disabled in this mode, but all core analysis pages work with bundled data.
@@ -452,34 +482,6 @@ pipenv install
 pipenv run build-frontend
 pipenv run app
 ```
-
-## 🐳 Docker Deployment
-
-You can run the full application in Docker — no Python or Node.js installation required.
-
-### Quick Start with Docker Compose
-
-```bash
-# Copy and configure your API keys
-cp .env.example .env
-
-# Build and run
-docker compose up --build
-```
-
-The app will be available at `http://localhost:8000`.
-
-### What Docker Provides
-
-- **Multi-stage build**: frontend compiled in Node, served by Python — single optimized image
-- **Persistent data**: `database/`, `__llmcache__/`, and `__reports__/` are mounted as volumes
-- **Health check**: `/health` endpoint monitored by Docker
-- **Non-root user**: runs as `hedgefund` user inside the container
-- **API keys**: read from mounted `.env` file or passed as environment variables
-
-### Cloud Deployment
-
-The Docker setup works with any container platform (Railway, Fly.io, Render, etc.). Set `DOCKER_ENV=1` and pass API keys as environment variables. The `entrypoint.sh` script automatically seeds the database and generates `.env` from environment variables on first deploy.
 
 ## ⚙️ Automation with GitHub Actions
 
@@ -553,4 +555,4 @@ See the [LICENSE](LICENSE) file for the full terms.
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=dokson/hedge-fund-tracker&type=Date)](https://star-history.com/#dokson/hedge-fund-tracker&Date)
+[![Star History Chart](https://api.star-history.com/image?repos=dokson/hedge-fund-tracker&type=date&legend=top-left)](https://www.star-history.com/?repos=dokson%2Fhedge-fund-tracker&type=date&legend=top-left)
