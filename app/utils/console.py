@@ -68,7 +68,7 @@ def print_centered_table(table):
         print_centered(line)
 
 
-def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters={}, ascending_sort=False):
+def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters=None, ascending_sort=False):
     """
     Sorts, formats, and prints a DataFrame as a centered, responsive table in the console.
 
@@ -83,6 +83,9 @@ def print_dataframe(dataframe, top_n, title, sort_by, cols=None, formatters={}, 
                                      e.g., {'Value': format_value}
         ascending_sort (bool, optional): Whether to sort in ascending order. Defaults to False.
     """
+    if formatters is None:
+        formatters = {}
+
     print("\n")
     print_centered(title, "-")
 

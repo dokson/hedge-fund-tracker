@@ -1,6 +1,6 @@
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { Github, BarChart3, Sun, Moon } from "lucide-react";
+import { GithubIcon, BarChart3, Sun, Moon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { BASE_PATH } from "@/lib/config";
@@ -37,7 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Github className="h-5 w-5" />
+              <GithubIcon className="h-5 w-5" />
             </a>
           </div>
         </header>

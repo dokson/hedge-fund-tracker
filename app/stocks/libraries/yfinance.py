@@ -129,7 +129,7 @@ class YFinance(FinanceLibrary):
                         price = _get_single_avg_price(fallback_ticker)
                         if price is not None:
                             return price
-                    except:
+                    except Exception:
                         continue
 
             print(f"🚨 Using latest available price for {ticker} (requested date {date} not available)")
@@ -171,7 +171,7 @@ class YFinance(FinanceLibrary):
                             price = yf.Ticker(fallback_ticker).info.get('currentPrice')
                         if price is not None:
                             break
-                    except:
+                    except Exception:
                         continue
 
             return float(price) if price is not None else None

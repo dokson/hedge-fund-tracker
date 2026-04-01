@@ -22,8 +22,9 @@ class TestPriceFetcher(unittest.TestCase):
         """
         libraries = PriceFetcher.get_libraries()
 
-        self.assertEqual(len(libraries), 2)
+        self.assertEqual(len(libraries), 3)
         self.assertEqual(libraries[1].__name__, 'TradingView')
+        self.assertEqual(libraries[2].__name__, 'Nasdaq')
 
     # --- get_current_price ---
 

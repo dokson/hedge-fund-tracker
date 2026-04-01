@@ -7,8 +7,9 @@ allowing `from app.stocks.libraries import YFinance, Finnhub`, etc.
 from app.stocks.libraries.base_library import FinanceLibrary
 from app.stocks.libraries.finance_database import FinanceDatabase
 from app.stocks.libraries.finnhub import Finnhub
+from app.stocks.libraries.nasdaq import Nasdaq
 from app.stocks.libraries.trading_view import TradingView
 from app.stocks.libraries.yfinance import YFinance
 
 # Defines the public API of this package
-__all__ = ["FinanceLibrary", "FinanceDatabase", "Finnhub", "TradingView", "YFinance"]
+__all__ = ["FinanceLibrary", "FinanceDatabase", "Finnhub", "Nasdaq", "TradingView", "YFinance"]

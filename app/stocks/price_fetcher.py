@@ -1,4 +1,4 @@
-from app.stocks.libraries import FinanceLibrary, YFinance, TradingView
+from app.stocks.libraries import FinanceLibrary, YFinance, TradingView, Nasdaq
 from datetime import date
 
 
@@ -11,7 +11,7 @@ class PriceFetcher:
         """
         Returns an ordered list of FinanceLibrary instances for price fetching.
         """
-        return [YFinance, TradingView]
+        return [YFinance, TradingView, Nasdaq]
 
 
     @staticmethod
