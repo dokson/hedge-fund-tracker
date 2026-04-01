@@ -402,7 +402,7 @@ export async function saveFileToDisk(content: string, filePath: string): Promise
     downloadFile(content, filePath.split("/").pop() || filePath);
     return;
   }
-  const res = await fetch(`http://localhost:8000/database/${filePath}`, {
+  const res = await fetch(`${window.location.origin}/database/${filePath}`, {
     method: "PUT",
     headers: { "Content-Type": "text/plain" },
     body: content,
@@ -528,7 +528,7 @@ export async function getQuarterFundList(quarter: string): Promise<string[]> {
       return response.json();
     }
     const response = await fetch(
-      `http://localhost:8000/api/database/quarters/${quarter}`
+      `${window.location.origin}/api/database/quarters/${quarter}`
     );
     if (!response.ok) throw new Error(`Failed to list funds for ${quarter}`);
     const files: string[] = await response.json();

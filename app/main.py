@@ -408,32 +408,17 @@ def run_cli():
             break
 
 
-def _free_port(port: int) -> None:
-    """Kill any process currently listening on the given port."""
-    import subprocess, sys
-    try:
-        if sys.platform == "win32":
-            result = subprocess.run(
-                ["netstat", "-ano"],
-                capture_output=True, text=True
-            )
-            for line in result.stdout.splitlines():
-                if f":{port}" in line and "LISTENING" in line:
-                    parts = line.split()
-                    pid = int(parts[-1])
-                    subprocess.run(["taskkill", "/F", "/PID", str(pid)],
-                                   capture_output=True)
-                    print(f"⚠️  Terminated existing process on port {port} (PID {pid})")
-        else:
-            result = subprocess.run(
-                ["lsof", "-ti", f"tcp:{port}"],
-                capture_output=True, text=True
-            )
-            for pid in result.stdout.strip().splitlines():
-                subprocess.run(["kill", "-9", pid], capture_output=True)
-                print(f"⚠️  Terminated existing process on port {port} (PID {pid})")
-    except Exception:
-        pass
+def _find_available_port(port: int, max_attempts: int = 10) -> int:
+    """
+    Returns the given port if it is free, otherwise scans upward until an available one is found.
+    """
+    import socket
+    for offset in range(max_attempts):
+        candidate = port + offset
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(("127.0.0.1", candidate)) != 0:
+                return candidate
+    raise RuntimeError(f"No available port found in range {port}–{port + max_attempts - 1}")
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8000):
@@ -453,7 +438,7 @@ def run_server(host: str = "127.0.0.1", port: int = 8000):
             sys.exit(1)
         print("✅ Frontend built.")
 
-    _free_port(port)
+    port = _find_available_port(port)
 
     url = f"http://{host}:{port}"
     print(f"🚀 Starting {APP_NAME} at {url}")

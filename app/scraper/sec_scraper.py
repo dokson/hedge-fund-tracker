@@ -13,15 +13,16 @@ SEC_URL = 'https://' + SEC_HOST
 FILING_SPECS = {
     '13F-HR': {
         'xml_link_index': 3,
-        'accepted_types': {'13F-HR', '13F-HR/A'},
+        'type_prefix': '13F-HR',
     },
     'SCHEDULE': {
         'xml_link_index': 1,
-        'accepted_types': {'SC 13D', 'SC 13D/A', 'SC 13G', 'SC 13G/A'},
+        'type_prefix': 'SC',
     },
     '4': {
         'xml_link_index': 1,
-        'accepted_types': {'4', '4/A'},
+        'type_prefix': '4',
+        'type_reject': {'40-', '425'},
     },
 }
 
@@ -223,20 +224,22 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
                 if not all_tags_on_page:
                     break
 
-                # Filter by exact filing type to avoid EDGAR prefix-matching false positives
+                # Filter by filing type prefix to avoid EDGAR prefix-matching false positives
                 # (e.g. searching for type=4 also returns 40-APP, 40-APP/A)
-                accepted_types = FILING_SPECS[filing_type].get('accepted_types')
-                if accepted_types:
-                    filtered_tags = []
-                    for tag in all_tags_on_page:
-                        row = tag.find_parent('tr')
-                        cells = row.find_all('td') if row else []
-                        actual_type = cells[0].get_text(strip=True) if cells else ''
-                        if actual_type in accepted_types:
-                            filtered_tags.append(tag)
-                    all_type_tags.extend([(tag, filing_type) for tag in filtered_tags])
-                else:
-                    all_type_tags.extend([(tag, filing_type) for tag in all_tags_on_page])
+                spec = FILING_SPECS[filing_type]
+                type_prefix = spec.get('type_prefix')
+                type_reject = spec.get('type_reject', set())
+                filtered_tags = []
+                for tag in all_tags_on_page:
+                    row = tag.find_parent('tr')
+                    cells = row.find_all('td') if row else []
+                    actual_type = cells[0].get_text(strip=True) if cells else ''
+                    if type_prefix and not actual_type.startswith(type_prefix):
+                        continue
+                    if any(actual_type.startswith(r) for r in type_reject):
+                        continue
+                    filtered_tags.append(tag)
+                all_type_tags.extend([(tag, filing_type) for tag in filtered_tags])
 
                 # Pagination based on pre-filter count (EDGAR returns pages of 100)
                 if len(all_tags_on_page) == 100:

@@ -77,7 +77,7 @@ export default function AISettingsPage() {
 /* ═══════════════════════════════════════════
    API Keys Tab
    ═══════════════════════════════════════════ */
-const API_BASE = "http://localhost:8000";
+const API_BASE = window.location.origin;
 
 const CLIENT_TO_PROVIDER_ID: Record<string, string> = {
   "GitHub": "github", "Google": "google", "Groq": "groq",

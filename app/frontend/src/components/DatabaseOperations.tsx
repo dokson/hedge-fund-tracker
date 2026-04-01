@@ -24,7 +24,7 @@ import TerminalOutput from "@/components/TerminalOutput";
 
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = `${window.location.origin}/api`;
 
 type JobStatus = "idle" | "running" | "success" | "error";
 
