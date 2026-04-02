@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "4dddc957c0dd05b4b6c6c376e57e067546e53a4e285d670c11eb4b9354e225d0"
+            "sha256": "1598c70e1668b4be703be6558f98aa5e8713e00d6a9322f39d6c55c5b1b2b9d1"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -537,12 +537,12 @@
         },
         "fastapi": {
             "hashes": [
-                "sha256:0af0447d541867e8db2a6a25c23a8c4bd80e2394ac5529bd87501bbb9e240ca5",
-                "sha256:88a832095359755527b7f63bb4c6bc9edb8329a026189eed83d6c1afcf419d56"
+                "sha256:9b0f590c813acd13d0ab43dd8494138eb58e484bfac405db1f3187cfc5810d98",
+                "sha256:bd6d7caf1a2bdd8d676843cdcd2287729572a1ef524fc4d65c17ae002a1be654"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==0.135.2"
+            "version": "==0.135.3"
         },
         "financedatabase": {
             "hashes": [
@@ -735,12 +735,12 @@
         },
         "google-genai": {
             "hashes": [
-                "sha256:252e714d724aba74949647b9de511a6a6f7804b3b317ab39ddee9cc2f001cacc",
-                "sha256:5f1a6a478e0c5851506a3d337534bab27b3c33120e27bf9174507ea79dfb8673"
+                "sha256:36b67b0fc6f319e08d1f1efd808b790107b1809c8743a05d55dfcf9d9fad7719",
+                "sha256:b74c24549d8b4208f4c736fd11857374788e1ffffc725de45d706e35c97fceee"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==1.69.0"
+            "version": "==1.70.0"
         },
         "h11": {
             "hashes": [

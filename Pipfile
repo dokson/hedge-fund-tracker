@@ -11,7 +11,7 @@ beautifulsoup4 = "~=4.14"
 fastapi = "~=0.135"
 financedatabase = "~=2.3"
 finnhub-python = "~=2.4"
-google-genai = "~=1.69"
+google-genai = "~=1.70"
 httptools = {version = "==0.7.1", markers = "sys_platform != 'win32'"}
 lxml = "~=6.0"
 openai = "~=2.30"
