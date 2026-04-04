@@ -450,7 +450,7 @@ def save_stock(cusip: str, ticker: str, company: str) -> None:
 
             with open(Path(DB_FOLDER) / STOCKS_FILE, 'a', newline='', encoding='utf-8') as stocks_file:
                 writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
-                writer.writerow([cusip, ticker, company])
+                writer.writerow([cusip.strip(), ticker.strip(), company.strip()])
     except Exception as e:
         print(f"❌ An error occurred while writing to '{STOCKS_FILE}': {e}")
 

@@ -161,6 +161,18 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(df.loc['789', 'Ticker'], 'TICKC')
 
 
+    def test_save_stock_strips_whitespace(self):
+        """
+        Strips leading/trailing whitespace from all fields when saving a stock.
+        """
+        save_stock(' 999 ', ' TRIM ', ' Trimmed Company ')
+        sort_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
+        df = load_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
+        self.assertIn('999', df.index)
+        self.assertEqual(df.loc['999', 'Ticker'], 'TRIM')
+        self.assertEqual(df.loc['999', 'Company'], 'Trimmed Company')
+
+
     def test_find_cusips_for_ticker(self):
         """
         Returns all CUSIP records matching a given ticker symbol.
