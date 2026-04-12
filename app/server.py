@@ -257,7 +257,8 @@ async def update_ticker_endpoint(request: Request):
     body = await request.json()
     old_ticker = _require_ticker(body.get("old_ticker", "").strip())
     new_ticker = _require_ticker(body.get("new_ticker", "").strip())
-    update_ticker(old_ticker, new_ticker)
+    new_company = body.get("new_company", "").strip() or None
+    update_ticker(old_ticker, new_ticker, new_company=new_company)
     return {"message": f"Ticker updated: {old_ticker} → {new_ticker}"}
 
 
@@ -267,8 +268,52 @@ async def update_cusip_ticker_endpoint(request: Request):
     body = await request.json()
     cusip = _require_cusip(body.get("cusip", "").strip())
     new_ticker = _require_ticker(body.get("new_ticker", "").strip())
-    update_ticker_for_cusip(cusip, new_ticker)
+    new_company = body.get("new_company", "").strip() or None
+    update_ticker_for_cusip(cusip, new_ticker, new_company=new_company)
     return {"message": f"CUSIP {cusip} ticker updated to {new_ticker}"}
+
+
+@app.get("/api/detect-ticker-changes")
+async def detect_ticker_changes_endpoint():
+    """
+    Fetches recent symbol changes from NASDAQ and returns those applicable to stocks.csv.
+    """
+    from app.stocks.libraries.nasdaq import Nasdaq
+    from app.utils.database import find_cusips_for_ticker
+    changes = Nasdaq.get_symbol_changes()
+    applicable = []
+    for change in changes:
+        old_symbol = change.get("oldSymbol", "")
+        matching = find_cusips_for_ticker(old_symbol)
+        if matching:
+            applicable.append({
+                "oldSymbol": old_symbol,
+                "newSymbol": change.get("newSymbol", ""),
+                "companyName": change.get("companyName", ""),
+                "cusips": [s["CUSIP"] for s in matching],
+            })
+    return {"total_changes": len(changes), "applicable": applicable}
+
+
+@app.post("/api/apply-ticker-changes")
+async def apply_ticker_changes_endpoint():
+    """
+    Detects and applies all applicable ticker changes from NASDAQ across the entire database.
+    """
+    from app.stocks.libraries.nasdaq import Nasdaq
+    from app.stocks.libraries.yfinance import YFinance
+    from app.utils.database import find_cusips_for_ticker, update_ticker
+    changes = Nasdaq.get_symbol_changes()
+    applied = []
+    for change in changes:
+        old_symbol = change.get("oldSymbol", "")
+        new_symbol = change.get("newSymbol", "")
+        matching = find_cusips_for_ticker(old_symbol)
+        if matching:
+            company = YFinance.get_company('', ticker=new_symbol) or change.get("companyName", "")
+            update_ticker(old_symbol, new_symbol, new_company=company)
+            applied.append({"old": old_symbol, "new": new_symbol, "companyName": company})
+    return {"applied": applied}
 
 
 # ── AI streaming endpoints ─────────────────────────────────────────────────

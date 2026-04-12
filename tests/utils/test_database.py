@@ -197,6 +197,26 @@ class TestDatabase(unittest.TestCase):
         df_nq = load_non_quarterly_data(f'./{self.test_db_folder}/{LATEST_SCHEDULE_FILINGS_FILE}')
         self.assertEqual(df_nq.iloc[0]['Ticker'], 'TICKNEW')
 
+    def test_update_ticker_with_new_company_name(self):
+        """
+        Propagates a ticker rename with a new company name across stocks.csv.
+        """
+        update_ticker('TICKA', 'TICKNEW', new_company='New Company Name')
+
+        df_stocks = load_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
+        self.assertEqual(df_stocks.loc['123', 'Ticker'], 'TICKNEW')
+        self.assertEqual(df_stocks.loc['123', 'Company'], 'New Company Name')
+
+    def test_update_ticker_without_company_preserves_existing(self):
+        """
+        When no new company name is given, the existing company name is preserved.
+        """
+        update_ticker('TICKA', 'TICKNEW')
+
+        df_stocks = load_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
+        self.assertEqual(df_stocks.loc['123', 'Ticker'], 'TICKNEW')
+        self.assertEqual(df_stocks.loc['123', 'Company'], 'Company A')
+
 
     def test_concurrent_save_stocks(self):
         """

@@ -455,6 +455,20 @@ def save_stock(cusip: str, ticker: str, company: str) -> None:
         print(f"❌ An error occurred while writing to '{STOCKS_FILE}': {e}")
 
 
+def save_stocks(stocks_df: pd.DataFrame, filepath=f"./{DB_FOLDER}/{STOCKS_FILE}") -> None:
+    """
+    Overwrites the master stocks CSV file with the given DataFrame.
+
+    Args:
+        stocks_df (pd.DataFrame): A DataFrame with CUSIP as the index and 'Ticker', 'Company' columns.
+        filepath (str, optional): The path to the stocks CSV file.
+    """
+    try:
+        stocks_df.to_csv(filepath, quoting=csv.QUOTE_ALL)
+    except Exception as e:
+        print(f"❌ An error occurred while writing to '{STOCKS_FILE}': {e}")
+
+
 def clean_stocks(filepath=f'./database/{STOCKS_FILE}') -> None:
     """
     Identifies and removes orphan CUSIPs from the master stocks CSV file.
@@ -568,44 +582,47 @@ def find_cusips_for_ticker(old_ticker: str) -> list[dict[str, str]]:
     return matching_stocks
 
 
-def update_stocks_csv(old_ticker: str, new_ticker: str) -> int:
+def update_stocks_csv(old_ticker: str, new_ticker: str, new_company: str | None = None) -> int:
     """
-    Updates the ticker in stocks.csv for all matching CUSIPs.
-    
+    Updates the ticker (and optionally company name) in stocks.csv for all matching CUSIPs.
+
     Args:
         old_ticker (str): The current ticker to replace.
         new_ticker (str): The new ticker to use.
-        
+        new_company (str, optional): The new company name. If None, the existing name is preserved.
+
     Returns:
         int: The number of rows updated.
     """
     stocks_path = Path(DB_FOLDER) / STOCKS_FILE
-    
+
     if not stocks_path.exists():
         print(f"❌ Error: {STOCKS_FILE} not found")
         return 0
-    
+
     # Read all rows
     rows = []
     updated_count = 0
-    
+
     with open(stocks_path, 'r', encoding='utf-8', newline='') as f:
         reader = csv.DictReader(f)
         fieldnames = reader.fieldnames
-        
+
         for row in reader:
             if row['Ticker'] == old_ticker:
                 row['Ticker'] = new_ticker
+                if new_company:
+                    row['Company'] = new_company
                 updated_count += 1
             rows.append(row)
-    
+
     # Write back
     with stocks_lock():
         with open(stocks_path, 'w', encoding='utf-8', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
             writer.writeheader()
             writer.writerows(rows)
-    
+
     return updated_count
 
 
@@ -699,40 +716,43 @@ def update_non_quarterly_filings(cusips: list[str], new_ticker: str) -> int:
     return updated_count
 
 
-def update_ticker_for_cusip(cusip: str, new_ticker: str) -> None:
+def update_ticker_for_cusip(cusip: str, new_ticker: str, new_company: str | None = None) -> None:
     """
     Updates the ticker for a single CUSIP across the entire database.
-    
+
     This function:
-    1. Updates the ticker for the specified CUSIP in stocks.csv
+    1. Updates the ticker (and optionally company name) for the specified CUSIP in stocks.csv
     2. Updates all quarterly filings for that CUSIP
     3. Updates the non_quarterly.csv file
-    
+
     Args:
         cusip (str): The CUSIP to update.
         new_ticker (str): The new ticker to use.
+        new_company (str, optional): The new company name. If None, the existing name is preserved.
     """
     stocks_path = Path(DB_FOLDER) / STOCKS_FILE
-    
+
     if not stocks_path.exists():
         print(f"❌ Error: {STOCKS_FILE} not found")
         return
-    
+
     # Update stocks.csv
     rows = []
     found = False
     old_ticker = None
     company = None
-    
+
     with open(stocks_path, 'r', encoding='utf-8', newline='') as f:
         reader = csv.DictReader(f)
         fieldnames = reader.fieldnames
-        
+
         for row in reader:
             if row['CUSIP'] == cusip:
                 old_ticker = row['Ticker']
                 company = row['Company']
                 row['Ticker'] = new_ticker
+                if new_company:
+                    row['Company'] = new_company
                 found = True
             rows.append(row)
     
@@ -740,7 +760,7 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str) -> None:
         print(f"❌ CUSIP '{cusip}' not found in {STOCKS_FILE}")
         return
     
-    print(f"  - CUSIP: {cusip}, Company: {company}, Old Ticker: {old_ticker} → New Ticker: {new_ticker}")
+    print(f"  - CUSIP: {cusip}, Company: {company}, Old Ticker: {old_ticker} -> New Ticker: {new_ticker}")
     
     # Write back stocks.csv
     with stocks_lock():
@@ -754,32 +774,33 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str) -> None:
     update_non_quarterly_filings([cusip], new_ticker)
 
 
-def update_ticker(old_ticker: str, new_ticker: str) -> None:
+def update_ticker(old_ticker: str, new_ticker: str, new_company: str | None = None) -> None:
     """
     Updates a ticker across the entire database.
-    
+
     This function:
     1. Finds all CUSIPs associated with the old ticker in stocks.csv
-    2. Updates the ticker in stocks.csv
+    2. Updates the ticker (and optionally company name) in stocks.csv
     3. Updates all quarterly filings for those CUSIPs
     4. Updates the non_quarterly.csv file
-    
+
     Args:
         old_ticker (str): The current ticker to replace.
         new_ticker (str): The new ticker to use.
+        new_company (str, optional): The new company name. If None, the existing name is preserved.
     """
     matching_stocks = find_cusips_for_ticker(old_ticker)
-    
+
     if not matching_stocks:
         print(f"❌ No stocks found with ticker '{old_ticker}'")
         return
-    
+
     for stock in matching_stocks:
         print(f"  - CUSIP: {stock['CUSIP']}, Company: {stock['Company']}")
-    
+
     cusips = [stock['CUSIP'] for stock in matching_stocks]
-    
-    update_stocks_csv(old_ticker, new_ticker)
+
+    update_stocks_csv(old_ticker, new_ticker, new_company)
     update_quarterly_filings(cusips, new_ticker)
     update_non_quarterly_filings(cusips, new_ticker)
 

@@ -13,6 +13,25 @@ class Nasdaq(FinanceLibrary):
     ASSET_CLASSES = ["mutualfunds"]
 
 
+    SYMBOL_CHANGE_URL = "https://api.nasdaq.com/api/quote/list-type-extended/symbolchangehistory"
+
+
+    @staticmethod
+    def get_symbol_changes() -> list[dict]:
+        """
+        Fetches the list of recent ticker symbol changes from the NASDAQ API.
+        Returns a list of dicts with 'oldSymbol', 'newSymbol', and 'companyName' keys.
+        """
+        try:
+            resp = requests.get(Nasdaq.SYMBOL_CHANGE_URL, headers=Nasdaq.HEADERS, timeout=10)
+            data = resp.json().get("data")
+            if not data:
+                return []
+            return data.get("symbolChangeHistoryTable", {}).get("rows", [])
+        except Exception:
+            return []
+
+
     @staticmethod
     def get_ticker(cusip: str, **kwargs) -> str | None:
         """

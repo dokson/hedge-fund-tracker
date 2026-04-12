@@ -272,5 +272,109 @@ class TestTickerResolverAssignCUSIP(unittest.TestCase):
         self.assertEqual(result.loc[1, 'CUSIP'], '594918104')
 
 
+class TestTickerResolverUpdateChangedTickers(unittest.TestCase):
+
+    def _stocks_with(self, entries):
+        """
+        Returns a stocks DataFrame from a list of (cusip, ticker, company) tuples.
+        """
+        if not entries:
+            return _empty_stocks()
+        df = pd.DataFrame(entries, columns=['CUSIP', 'Ticker', 'Company']).set_index('CUSIP')
+        return df
+
+    @patch('app.stocks.ticker_resolver.Nasdaq.get_symbol_changes')
+    @patch('app.stocks.ticker_resolver.load_stocks')
+    def test_updates_ticker_when_old_symbol_found_in_stocks(self, mock_load, mock_changes):
+        """
+        Updates the ticker in stocks.csv when an oldSymbol matches a known ticker.
+        """
+        mock_load.return_value = self._stocks_with([('123456789', 'BITF', 'Bitfarms Ltd')])
+        mock_changes.return_value = [
+            {"oldSymbol": "BITF", "newSymbol": "KEEL", "companyName": "Keel Infrastructure Corp."},
+        ]
+
+        with patch('app.stocks.ticker_resolver.save_stocks') as mock_save:
+            updates = TickerResolver.update_changed_tickers()
+
+        self.assertEqual(len(updates), 1)
+        self.assertEqual(updates[0]['old'], 'BITF')
+        self.assertEqual(updates[0]['new'], 'KEEL')
+        self.assertEqual(updates[0]['cusip'], '123456789')
+        mock_save.assert_called_once()
+
+    @patch('app.stocks.ticker_resolver.Nasdaq.get_symbol_changes')
+    @patch('app.stocks.ticker_resolver.load_stocks')
+    def test_skips_changes_not_in_stocks(self, mock_load, mock_changes):
+        """
+        Ignores ticker changes for symbols not present in stocks.csv.
+        """
+        mock_load.return_value = self._stocks_with([('037833100', 'AAPL', 'Apple Inc')])
+        mock_changes.return_value = [
+            {"oldSymbol": "BITF", "newSymbol": "KEEL", "companyName": "Keel Infrastructure Corp."},
+        ]
+
+        with patch('app.stocks.ticker_resolver.save_stocks') as mock_save:
+            updates = TickerResolver.update_changed_tickers()
+
+        self.assertEqual(len(updates), 0)
+        mock_save.assert_not_called()
+
+    @patch('app.stocks.ticker_resolver.Nasdaq.get_symbol_changes')
+    @patch('app.stocks.ticker_resolver.load_stocks')
+    def test_returns_empty_list_when_no_changes(self, mock_load, mock_changes):
+        """
+        Returns an empty list when NASDAQ reports no symbol changes.
+        """
+        mock_load.return_value = self._stocks_with([('037833100', 'AAPL', 'Apple Inc')])
+        mock_changes.return_value = []
+
+        with patch('app.stocks.ticker_resolver.save_stocks') as mock_save:
+            updates = TickerResolver.update_changed_tickers()
+
+        self.assertEqual(updates, [])
+        mock_save.assert_not_called()
+
+    @patch('app.stocks.ticker_resolver.Nasdaq.get_symbol_changes')
+    @patch('app.stocks.ticker_resolver.load_stocks')
+    def test_updates_multiple_cusips_with_same_old_ticker(self, mock_load, mock_changes):
+        """
+        Updates all CUSIPs that share the same old ticker symbol.
+        """
+        mock_load.return_value = self._stocks_with([
+            ('111111111', 'BITF', 'Bitfarms Ltd'),
+            ('222222222', 'BITF', 'Bitfarms Ltd Warrant'),
+        ])
+        mock_changes.return_value = [
+            {"oldSymbol": "BITF", "newSymbol": "KEEL", "companyName": "Keel Infrastructure Corp."},
+        ]
+
+        with patch('app.stocks.ticker_resolver.save_stocks') as mock_save:
+            updates = TickerResolver.update_changed_tickers()
+
+        self.assertEqual(len(updates), 2)
+        mock_save.assert_called_once()
+
+    @patch('app.stocks.ticker_resolver.Nasdaq.get_symbol_changes')
+    @patch('app.stocks.ticker_resolver.load_stocks')
+    def test_updates_company_name_from_nasdaq(self, mock_load, mock_changes):
+        """
+        Updates the company name alongside the ticker when a change is applied.
+        """
+        mock_load.return_value = self._stocks_with([('123456789', 'NBY', 'NovaBay Pharmaceuticals')])
+        mock_changes.return_value = [
+            {"oldSymbol": "NBY", "newSymbol": "SDEV", "companyName": "Stablecoin Development Corporation Common Stock"},
+        ]
+
+        with patch('app.stocks.ticker_resolver.save_stocks') as mock_save:
+            updates = TickerResolver.update_changed_tickers()
+
+        # Verify the DataFrame passed to save_stocks has the new ticker and company
+        saved_df = mock_save.call_args[0][0]
+        row = saved_df.loc['123456789']
+        self.assertEqual(row['Ticker'], 'SDEV')
+        self.assertEqual(row['Company'], 'Stablecoin Development Corporation Common Stock')
+
+
 if __name__ == '__main__':
     unittest.main()

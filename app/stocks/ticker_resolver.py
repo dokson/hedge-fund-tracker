@@ -1,5 +1,6 @@
 from app.stocks.libraries import FinanceLibrary, FinanceDatabase, Finnhub, YFinance, TradingView
-from app.utils.database import load_stocks, save_stock
+from app.stocks.libraries.nasdaq import Nasdaq
+from app.utils.database import load_stocks, save_stock, save_stocks
 from app.utils.github import open_issue
 from pandas import Series
 import pandas as pd
@@ -92,6 +93,47 @@ class TickerResolver:
                 df.at[index, 'Company'] = stocks.loc[cusip, 'Company']
 
         return df
+
+    @staticmethod
+    def update_changed_tickers() -> list[dict]:
+        """
+        Fetches recent ticker symbol changes from NASDAQ and updates stocks.csv accordingly.
+        Returns a list of dicts describing each applied update (cusip, old, new, company).
+        """
+        changes = Nasdaq.get_symbol_changes()
+        if not changes:
+            return []
+
+        stocks = load_stocks()
+        if stocks.empty:
+            return []
+
+        updates = []
+        for change in changes:
+            old_symbol = change.get("oldSymbol")
+            new_symbol = change.get("newSymbol")
+            company_name = change.get("companyName", "")
+
+            if not old_symbol or not new_symbol:
+                continue
+
+            # Find all CUSIPs with the old ticker
+            matching = stocks[stocks["Ticker"] == old_symbol]
+            for cusip in matching.index:
+                stocks.at[cusip, "Ticker"] = new_symbol
+                stocks.at[cusip, "Company"] = company_name
+                updates.append({
+                    "cusip": cusip,
+                    "old": old_symbol,
+                    "new": new_symbol,
+                    "company": company_name,
+                })
+                print(f"🔄 {old_symbol} → {new_symbol} (CUSIP {cusip}) — {company_name}")
+
+        if updates:
+            save_stocks(stocks)
+
+        return updates
 
     @staticmethod
     def assign_cusip(df: pd.DataFrame) -> pd.DataFrame:

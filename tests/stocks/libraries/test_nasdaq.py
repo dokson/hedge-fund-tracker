@@ -252,5 +252,72 @@ class TestNasdaqGetCurrentPrice(unittest.TestCase):
         self.assertEqual(price, 248.80)
 
 
+class TestNasdaqGetSymbolChanges(unittest.TestCase):
+
+    @patch("app.stocks.libraries.nasdaq.requests.get")
+    def test_returns_list_of_old_new_ticker_pairs(self, mock_get):
+        """
+        Returns a list of dicts with oldSymbol, newSymbol, and companyName.
+        """
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": {
+                "symbolChangeHistoryTable": {
+                    "rows": [
+                        {"oldSymbol": "BITF", "newSymbol": "KEEL", "companyName": "Keel Infrastructure Corp."},
+                        {"oldSymbol": "NBY", "newSymbol": "SDEV", "companyName": "Stablecoin Development Corp."},
+                    ]
+                }
+            }
+        }
+        mock_get.return_value = mock_resp
+
+        changes = Nasdaq.get_symbol_changes()
+
+        self.assertEqual(len(changes), 2)
+        self.assertEqual(changes[0]["oldSymbol"], "BITF")
+        self.assertEqual(changes[0]["newSymbol"], "KEEL")
+        self.assertEqual(changes[1]["oldSymbol"], "NBY")
+
+    @patch("app.stocks.libraries.nasdaq.requests.get")
+    def test_returns_empty_list_when_no_data(self, mock_get):
+        """
+        Returns an empty list when the API returns null data.
+        """
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": None}
+        mock_get.return_value = mock_resp
+
+        changes = Nasdaq.get_symbol_changes()
+
+        self.assertEqual(changes, [])
+
+    @patch("app.stocks.libraries.nasdaq.requests.get")
+    def test_returns_empty_list_when_request_fails(self, mock_get):
+        """
+        Returns an empty list when the HTTP request raises an exception.
+        """
+        mock_get.side_effect = Exception("Network error")
+
+        changes = Nasdaq.get_symbol_changes()
+
+        self.assertEqual(changes, [])
+
+    @patch("app.stocks.libraries.nasdaq.requests.get")
+    def test_calls_correct_api_endpoint(self, mock_get):
+        """
+        Calls the NASDAQ symbol change history API with correct URL and headers.
+        """
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"symbolChangeHistoryTable": {"rows": []}}}
+        mock_get.return_value = mock_resp
+
+        Nasdaq.get_symbol_changes()
+
+        mock_get.assert_called_once()
+        call_url = mock_get.call_args[0][0]
+        self.assertIn("symbolchangehistory", call_url)
+
+
 if __name__ == "__main__":
     unittest.main()

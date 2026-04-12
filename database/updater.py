@@ -3,7 +3,7 @@ from app.analysis.quarterly_report import generate_comparison
 from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_non_quarterly_after_date, get_latest_13f_filing_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
 from app.utils.console import horizontal_rule, print_centered, print_centered_table, select_fund, select_period
-from app.utils.database import clean_stocks, get_funds_missing_quarters, delete_fund_from_database, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
+from app.utils.database import clean_stocks, find_cusips_for_ticker, get_funds_missing_quarters, delete_fund_from_database, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
 from app.utils.readme import update_readme
 from app.utils.strings import get_previous_quarter_end_date
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
@@ -277,13 +277,15 @@ def run_ticker_update():
     if not old_ticker:
         print("❌ Old ticker cannot be empty.")
         return
-    
+
     new_ticker = input("Enter the NEW ticker: ").strip().upper()
     if not new_ticker:
         print("❌ New ticker cannot be empty.")
         return
-    
-    update_ticker(old_ticker, new_ticker)
+
+    new_company = input("Enter the NEW company name (leave empty to keep current): ").strip() or None
+
+    update_ticker(old_ticker, new_ticker, new_company=new_company)
 
 
 def run_cusip_ticker_update():
@@ -305,18 +307,72 @@ def run_cusip_ticker_update():
     if not cusip:
         print("❌ CUSIP cannot be empty.")
         return
-    
+
     new_ticker = input("Enter the NEW ticker: ").strip().upper()
     if not new_ticker:
         print("❌ New ticker cannot be empty.")
         return
+
+    new_company = input("Enter the NEW company name (leave empty to keep current): ").strip() or None
+
+    update_ticker_for_cusip(cusip, new_ticker, new_company=new_company)
     
-    update_ticker_for_cusip(cusip, new_ticker)
-    
+
+def run_auto_ticker_update():
+    """
+    8. Automatically detects and applies recent ticker symbol changes from NASDAQ.
+
+    Fetches the NASDAQ symbol change history, cross-references with stocks.csv,
+    and updates all matching tickers across the entire database (stocks.csv, quarterly filings, non-quarterly filings).
+    """
+    horizontal_rule()
+    print_centered("AUTO TICKER UPDATE (NASDAQ)")
+    horizontal_rule()
+    print("Fetching recent symbol changes from NASDAQ...")
+
+    from app.stocks.libraries.nasdaq import Nasdaq
+    changes = Nasdaq.get_symbol_changes()
+
+    if not changes:
+        print("❌ Could not fetch symbol changes from NASDAQ.")
+        return
+
+    from app.utils.database import find_cusips_for_ticker
+    applicable = []
+    for change in changes:
+        old_symbol = change.get("oldSymbol", "")
+        new_symbol = change.get("newSymbol", "")
+        company_name = change.get("companyName", "")
+        matching = find_cusips_for_ticker(old_symbol)
+        if matching:
+            applicable.append((old_symbol, new_symbol, company_name, matching))
+
+    if not applicable:
+        print(f"✅ No ticker changes apply to the {len(changes)} changes found. stocks.csv is up to date.")
+        return
+
+    print(f"Found {len(applicable)} applicable change(s):")
+    for old, new, company, stocks in applicable:
+        for stock in stocks:
+            print(f"  🔄 {old} → {new} (CUSIP {stock['CUSIP']}) — {company}")
+
+    horizontal_rule()
+    confirm = input("Apply these changes? (y/N): ").strip().lower()
+    if confirm != 'y':
+        print("Cancelled.")
+        return
+
+    from app.stocks.libraries.yfinance import YFinance
+    for old, new, nasdaq_company, _ in applicable:
+        company = YFinance.get_company('', ticker=new) or nasdaq_company
+        update_ticker(old, new, new_company=company)
+
+    print_centered("All ticker changes applied successfully", "-")
+
 
 def run_delete_fund():
     """
-    7. Deletes a hedge fund from the database and adds it to the excluded list.
+    8. Deletes a hedge fund from the database and adds it to the excluded list.
     """
     selected_fund = select_fund("Select the hedge fund to DELETE:")
     if not selected_fund:
@@ -333,7 +389,7 @@ def run_delete_fund():
 
 def print_missing_quarters_report():
     """
-    8. Shows funds with missing quarters.
+    9. Shows funds with missing quarters.
     """
     horizontal_rule()
     print_centered("MISSING QUARTERS REPORT")
@@ -360,8 +416,9 @@ if __name__ == "__main__":
         '4': run_manual_cik_report,
         '5': run_ticker_update,
         '6': run_cusip_ticker_update,
-        '7': run_delete_fund,
-        '8': print_missing_quarters_report
+        '7': run_auto_ticker_update,
+        '8': run_delete_fund,
+        '9': print_missing_quarters_report
     }
 
     while True:
@@ -376,11 +433,12 @@ if __name__ == "__main__":
             print("4. Manually enter a hedge fund CIK to generate a 13F report")
             print("5. Update a stock ticker across the entire database")
             print("6. Update a stock ticker for a single CUSIP")
-            print("7. Delete a hedge fund from the database")
-            print("8. Show funds with missing quarters")
+            print("7. Auto-detect and apply ticker changes (NASDAQ)")
+            print("8. Delete a hedge fund from the database")
+            print("9. Show funds with missing quarters")
             horizontal_rule()
 
-            choice = input("Choose an option (0-8): ")
+            choice = input("Choose an option (0-9): ")
             action = actions.get(choice)
             if action:
                 if action() is False:
