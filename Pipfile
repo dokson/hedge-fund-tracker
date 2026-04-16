@@ -8,13 +8,13 @@ python_version = "3.13"
 
 [packages]
 beautifulsoup4 = "~=4.14"
-fastapi = "~=0.135"
+fastapi = "~=0.136"
 financedatabase = "~=2.3"
 finnhub-python = "~=2.4"
 google-genai = "~=1.73"
 httptools = {version = "==0.7.1", markers = "sys_platform != 'win32'"}
 lxml = "~=6.0"
-openai = "~=2.31"
+openai = "~=2.32"
 pandas = "~=2.3"
 psutil = "~=7.2"
 python-dotenv = "~=1.2"
