@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "f97306f0e4d39a9bf3c38023a233d2cb083142b85e9f7fd1372f4140ef6251ca"
+            "sha256": "f2946f1300f61fdf1cea97da245394d991d0c920d7a661a7702a7e5d77ceaa02"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -537,12 +537,12 @@
         },
         "fastapi": {
             "hashes": [
-                "sha256:9b0f590c813acd13d0ab43dd8494138eb58e484bfac405db1f3187cfc5810d98",
-                "sha256:bd6d7caf1a2bdd8d676843cdcd2287729572a1ef524fc4d65c17ae002a1be654"
+                "sha256:8793d44ec7378e2be07f8a013cf7f7aa47d6327d0dfe9804862688ec4541a6b4",
+                "sha256:cf08e067cc66e106e102d9ba659463abfac245200752f8a5b7b1e813de4ff73e"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==0.135.3"
+            "version": "==0.136.0"
         },
         "financedatabase": {
             "hashes": [
@@ -1481,12 +1481,12 @@
         },
         "openai": {
             "hashes": [
-                "sha256:43ca59a88fc973ad1848d86b98d7fac207e265ebbd1828b5e4bdfc85f79427a5",
-                "sha256:44e1344d87e56a493d649b17e2fac519d1368cbb0745f59f1957c4c26de50a0a"
+                "sha256:4dcc9badeb4bf54ad0d187453742f290226d30150890b7890711bda4f32f192f",
+                "sha256:c54b27a9e4cb8d51f0dd94972ffd1a04437efeb259a9e60d8922b8bd26fe55e0"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==2.31.0"
+            "version": "==2.32.0"
         },
         "openpyxl": {
             "hashes": [
