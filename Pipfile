@@ -13,7 +13,7 @@ financedatabase = "~=2.3"
 finnhub-python = "~=2.4"
 google-genai = "~=1.73"
 httptools = {version = "==0.7.1", markers = "sys_platform != 'win32'"}
-lxml = "~=6.0"
+lxml = "~=6.1"
 openai = "~=2.32"
 pandas = "~=2.3"
 psutil = "~=7.2"
