@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   runQuarterAnalysis,
+  getQuarterFundList,
   formatValue,
   formatPct,
   type StockQuarterAnalysis,
@@ -233,6 +234,14 @@ export default function QuarterlyTrends() {
     staleTime: 10 * 60 * 1000,
   });
 
+  const { data: quarterFundList = [] } = useQuery({
+    queryKey: ["quarterFundList", quarter],
+    queryFn: () => getQuarterFundList(quarter!),
+    enabled: !!quarter,
+    staleTime: Infinity,
+  });
+  const defaultMinHolders = Math.max(1, Math.ceil(quarterFundList.length * 0.1));
+
   const data = useMemo(() => {
     if (filterStarredStocks && starredStocks.size > 0) {
       return rawData.filter((s) => starredStocks.has(s.ticker));
@@ -356,7 +365,7 @@ export default function QuarterlyTrends() {
               data={data}
               defaultSort="delta"
               defaultFilterInfinite
-              defaultMinHolders={20}
+              defaultMinHolders={defaultMinHolders}
               disableFilters={anyStarredFilter}
               columns={[
                 { key: "newHolderCount", label: "New Holders", tooltip: "Funds that opened a brand-new position this quarter." },
@@ -374,7 +383,7 @@ export default function QuarterlyTrends() {
               data={data}
               defaultSort="delta"
               defaultDir="asc"
-              defaultMinHolders={20}
+              defaultMinHolders={defaultMinHolders}
               disableFilters={anyStarredFilter}
               columns={[
                 { key: "closeCount", label: "Closers", tooltip: "Funds that completely exited their position this quarter." },
@@ -406,7 +415,7 @@ export default function QuarterlyTrends() {
              <AnalysisTable
               data={data}
               defaultSort="avgPortfolioPct"
-              defaultMinHolders={20}
+              defaultMinHolders={defaultMinHolders}
               disableFilters={anyStarredFilter}
               columns={[
                 { key: "avgPortfolioPct", label: "Avg Ptf %", format: (v) => `${v.toFixed(2)}%`, tooltip: "Average portfolio weight across all holding funds." },
