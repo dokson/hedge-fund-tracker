@@ -1,8 +1,6 @@
 import { useState } from "react";
-import {
-  AVAILABLE_QUARTERS,
-  formatValue,
-} from "@/lib/dataService";
+import { formatValue } from "@/lib/dataService";
+import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { runPromiseScoreStream } from "@/lib/aiClient";
 import { getModels } from "@/lib/dataService";
 import TerminalOutput from "@/components/TerminalOutput";
@@ -47,7 +45,7 @@ function ScoreBadge({ score }: { score: number }) {
 
 export default function AIRanking() {
   const navigate = useNavigate();
-  const quarter = AVAILABLE_QUARTERS[AVAILABLE_QUARTERS.length - 1];
+  const { latestQuarter: quarter } = useAvailableQuarters();
   const [topN, setTopN] = useState(20);
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedProviderId, setSelectedProviderId] = useState("");
@@ -61,6 +59,10 @@ export default function AIRanking() {
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
 
   const runAnalysis = async () => {
+    if (!quarter) {
+      toast.error("No quarters available");
+      return;
+    }
     setLoading(true);
     setResults([]);
     setWeights(null);

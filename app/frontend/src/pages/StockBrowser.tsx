@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   getStocks,
-  AVAILABLE_QUARTERS,
   runQuarterAnalysis,
   formatValue,
   type Stock,
 } from "@/lib/dataService";
+import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Search, Loader2, TreePine, SortAsc, TrendingDown, TrendingUp, DollarSign, CandlestickChart, Star } from "lucide-react";
@@ -46,10 +46,11 @@ export default function StockBrowser() {
     queryFn: getStocks,
   });
 
-  const latestQuarter = AVAILABLE_QUARTERS[AVAILABLE_QUARTERS.length - 1];
+  const { latestQuarter } = useAvailableQuarters();
   const { data: quarterData = [], isLoading: quarterLoading } = useQuery({
     queryKey: ["quarterAnalysis", latestQuarter],
-    queryFn: () => runQuarterAnalysis(latestQuarter),
+    queryFn: () => runQuarterAnalysis(latestQuarter!),
+    enabled: !!latestQuarter,
     staleTime: 10 * 60 * 1000,
   });
 

@@ -4,12 +4,13 @@ import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AVAILABLE_QUARTERS,
   runStockAnalysis,
   formatValue,
   formatPct,
   type FundTickerHolding,
 } from "@/lib/dataService";
+import type { Quarter } from "@/lib/quarters";
+import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { FundLink } from "@/components/EntityLinks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -22,12 +23,15 @@ export default function StockAnalysis() {
   const { ticker = "NVDA" } = useParams();
   const navigate = useNavigate();
   const { isStarred, toggle: toggleStar } = useStarred("stock");
-  const [quarter, setQuarter] = useState(AVAILABLE_QUARTERS[AVAILABLE_QUARTERS.length - 1]);
+  const { quarters, latestQuarter } = useAvailableQuarters();
+  const [selectedQuarter, setSelectedQuarter] = useState<Quarter | undefined>();
+  const quarter = selectedQuarter ?? latestQuarter;
   const [progress, setProgress] = useState({ msg: "", pct: 0 });
 
   const { data: holdings = [], isLoading } = useQuery({
     queryKey: ["stockAnalysis", ticker, quarter],
-    queryFn: () => runStockAnalysis(ticker, quarter, (msg, pct) => setProgress({ msg, pct })),
+    queryFn: () => runStockAnalysis(ticker, quarter!, (msg, pct) => setProgress({ msg, pct })),
+    enabled: !!quarter,
     staleTime: 10 * 60 * 1000,
   });
 
@@ -124,12 +128,12 @@ export default function StockAnalysis() {
           </div>
         </div>
         <div className="flex gap-3">
-          <Select value={quarter} onValueChange={setQuarter}>
+          <Select value={quarter ?? ""} onValueChange={(v) => setSelectedQuarter(v as Quarter)}>
             <SelectTrigger className="w-36 bg-card border-border">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[...AVAILABLE_QUARTERS].reverse().map((q) => (
+              {[...quarters].reverse().map((q) => (
                 <SelectItem key={q} value={q}>{q.replace("Q", " Q")}</SelectItem>
               ))}
             </SelectContent>

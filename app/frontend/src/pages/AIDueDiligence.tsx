@@ -4,11 +4,11 @@ import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AVAILABLE_QUARTERS,
   runStockAnalysis,
   getStocks,
   formatValue,
 } from "@/lib/dataService";
+import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { runDueDiligenceStream } from "@/lib/aiClient";
 import { getModels } from "@/lib/dataService";
 import TerminalOutput from "@/components/TerminalOutput";
@@ -65,7 +65,7 @@ export default function AIDueDiligence() {
   const initialTicker = searchParams.get("ticker") || "";
   const [ticker, setTicker] = useState(initialTicker);
   const [inputTicker, setInputTicker] = useState(initialTicker);
-  const [quarter] = useState(AVAILABLE_QUARTERS[AVAILABLE_QUARTERS.length - 1]);
+  const { latestQuarter: quarter } = useAvailableQuarters();
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [report, setReport] = useState<DueDiligenceReport | null>(null);
@@ -87,12 +87,16 @@ export default function AIDueDiligence() {
 
   const { data: holdings = [] } = useQuery({
     queryKey: ["stockAnalysis", ticker, quarter],
-    queryFn: () => runStockAnalysis(ticker, quarter),
+    queryFn: () => runStockAnalysis(ticker, quarter!),
     staleTime: 10 * 60 * 1000,
-    enabled: !!ticker && validTickers.has(ticker),
+    enabled: !!ticker && !!quarter && validTickers.has(ticker),
   });
 
   const runDiligence = async () => {
+    if (!quarter) {
+      toast.error("No quarters available");
+      return;
+    }
     const t = inputTicker.toUpperCase();
     setTicker(t);
     setLoading(true);

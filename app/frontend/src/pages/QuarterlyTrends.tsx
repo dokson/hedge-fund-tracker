@@ -2,12 +2,13 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AVAILABLE_QUARTERS,
   runQuarterAnalysis,
   formatValue,
   formatPct,
   type StockQuarterAnalysis,
 } from "@/lib/dataService";
+import type { Quarter } from "@/lib/quarters";
+import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { TickerLink } from "@/components/EntityLinks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -212,7 +213,9 @@ const netColor = (v: number) => v > 0 ? "delta-positive" : v < 0 ? "delta-negati
 
 export default function QuarterlyTrends() {
   const navigate = useNavigate();
-  const [quarter, setQuarter] = useState(AVAILABLE_QUARTERS[AVAILABLE_QUARTERS.length - 1]);
+  const { quarters, latestQuarter } = useAvailableQuarters();
+  const [selectedQuarter, setSelectedQuarter] = useState<Quarter | undefined>();
+  const quarter = selectedQuarter ?? latestQuarter;
   const [progress, setProgress] = useState({ msg: "", pct: 0 });
   const { starred: starredStocks } = useStarred("stock");
   const { starred: starredFunds } = useStarred("fund");
@@ -225,7 +228,8 @@ export default function QuarterlyTrends() {
 
   const { data: rawData = [], isLoading } = useQuery({
     queryKey: ["quarterAnalysis", quarter, activeFundFilter ? [...activeFundFilter].sort().join(",") : "all"],
-    queryFn: () => runQuarterAnalysis(quarter, (msg, pct) => setProgress({ msg, pct }), activeFundFilter),
+    queryFn: () => runQuarterAnalysis(quarter!, (msg, pct) => setProgress({ msg, pct }), activeFundFilter),
+    enabled: !!quarter,
     staleTime: 10 * 60 * 1000,
   });
 
@@ -251,12 +255,12 @@ export default function QuarterlyTrends() {
               )}
             </p>
           </div>
-          <Select value={quarter} onValueChange={setQuarter}>
+          <Select value={quarter ?? ""} onValueChange={(v) => setSelectedQuarter(v as Quarter)}>
             <SelectTrigger className="w-36 bg-card border-border">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[...AVAILABLE_QUARTERS].reverse().map((q) => (
+              {[...quarters].reverse().map((q) => (
                 <SelectItem key={q} value={q}>{q.replace("Q", " Q")}</SelectItem>
               ))}
             </SelectContent>

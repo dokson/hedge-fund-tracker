@@ -1,5 +1,8 @@
 import Papa from "papaparse";
 import { DATABASE_URL, IS_GH_PAGES_MODE, BASE_PATH } from "./config";
+import { parseQuarters, type Quarter } from "./quarters";
+
+export type { Quarter } from "./quarters";
 
 // ---------- Raw CSV row types ----------
 
@@ -488,8 +491,24 @@ export async function getGICSHierarchy(): Promise<GICSEntry[]> {
   });
 }
 
-/** Available quarters in the repository */
-export const AVAILABLE_QUARTERS = ["2025Q1", "2025Q2", "2025Q3", "2025Q4"];
+/**
+ * Fetches the list of available quarter folders, sorted chronologically.
+ * Derives from /api/database/quarters locally or metadata.json in GH Pages mode.
+ */
+export async function getAvailableQuarters(): Promise<readonly Quarter[]> {
+  return cachedFetch("available_quarters", async () => {
+    if (IS_GH_PAGES_MODE) {
+      const response = await fetch(`${BASE_PATH}/database/metadata.json`);
+      if (!response.ok) throw new Error("Failed to load metadata.json");
+      const metadata: { quarters?: string[] } = await response.json();
+      return parseQuarters(metadata.quarters ?? []);
+    }
+    const response = await fetch(`${window.location.origin}/api/database/quarters`);
+    if (!response.ok) throw new Error("Failed to list quarters");
+    const raw: string[] = await response.json();
+    return parseQuarters(raw);
+  });
+}
 
 /** Converts a fund name to its filename form (spaces → underscores). */
 function fundNameToFileName(name: string): string {
@@ -502,11 +521,12 @@ function fileNameToFundName(name: string): string {
 }
 
 /** Returns only the quarters where a specific fund has data (sorted chronologically). */
-export async function getFundAvailableQuarters(fundName: string): Promise<string[]> {
+export async function getFundAvailableQuarters(fundName: string): Promise<Quarter[]> {
   return cachedFetch(`fund_quarters_${fundName}`, async () => {
     const fileName = fundNameToFileName(fundName);
+    const quarters = await getAvailableQuarters();
     const results = await Promise.all(
-      AVAILABLE_QUARTERS.map(async (q) => {
+      quarters.map(async (q) => {
         try {
           const fundList = await getQuarterFundList(q);
           return fundList.includes(fileName) ? q : null;
@@ -515,7 +535,7 @@ export async function getFundAvailableQuarters(fundName: string): Promise<string
         }
       })
     );
-    return results.filter((q): q is string => q !== null);
+    return results.filter((q): q is Quarter => q !== null);
   });
 }
 
@@ -986,12 +1006,13 @@ export async function getEnrichedNQFilings(
 
     // Find latest available quarter
     onProgress?.("Finding latest quarter…", 10);
-    let latestQuarter: string | null = null;
-    for (let i = AVAILABLE_QUARTERS.length - 1; i >= 0; i--) {
+    let latestQuarter: Quarter | null = null;
+    const quarters = await getAvailableQuarters();
+    for (let i = quarters.length - 1; i >= 0; i--) {
       try {
-        const funds = await getQuarterFundList(AVAILABLE_QUARTERS[i]);
+        const funds = await getQuarterFundList(quarters[i]);
         if (funds.length > 0) {
-          latestQuarter = AVAILABLE_QUARTERS[i];
+          latestQuarter = quarters[i];
           break;
         }
       } catch {

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getStocks, runQuarterAnalysis, AVAILABLE_QUARTERS } from "@/lib/dataService";
+import { getStocks, runQuarterAnalysis } from "@/lib/dataService";
+import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 import { Loader2, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -29,7 +30,7 @@ interface SectorGroup {
 
 export default function GICSSectorHeatmap() {
   const navigate = useNavigate();
-  const latestQuarter = AVAILABLE_QUARTERS[AVAILABLE_QUARTERS.length - 1];
+  const { latestQuarter } = useAvailableQuarters();
 
   const { data: stocks = [], isLoading: stocksLoading } = useQuery({
     queryKey: ["stocks"],
@@ -38,7 +39,8 @@ export default function GICSSectorHeatmap() {
 
   const { data: quarterData = [], isLoading: quarterLoading } = useQuery({
     queryKey: ["quarterAnalysis", latestQuarter],
-    queryFn: () => runQuarterAnalysis(latestQuarter),
+    queryFn: () => runQuarterAnalysis(latestQuarter!),
+    enabled: !!latestQuarter,
     staleTime: 10 * 60 * 1000,
   });
 

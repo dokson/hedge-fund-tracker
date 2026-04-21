@@ -153,6 +153,19 @@ async def put_database_file(filepath: str, request: Request):
 
 # ── Quarter fund listing ───────────────────────────────────────────────────────
 
+@app.get("/api/database/quarters")
+async def list_quarters() -> list[str]:
+    """
+    List all available quarter folders (YYYYQ[1-4]) in the database directory, sorted chronologically.
+    """
+    if not DATABASE_DIR.exists():
+        return []
+    return sorted(
+        d.name for d in DATABASE_DIR.iterdir()
+        if d.is_dir() and _QUARTER_RE.match(d.name)
+    )
+
+
 @app.get("/api/database/quarters/{quarter}")
 async def list_quarter_funds(quarter: str):
     sanitized_quarter = _require_quarter(quarter)
