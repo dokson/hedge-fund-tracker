@@ -23,7 +23,7 @@ python-toon = "~=0.1"
 requests = "~=2.33"
 tabulate = "~=0.10"
 tradingview-datafeed = "~=2.1"
-uvicorn = "~=0.45"
+uvicorn = "~=0.46"
 uvloop = {version = "==0.22.1", markers = "sys_platform != 'win32'"}
 watchfiles = "~=1.1"
 websockets = "~=16.0"
