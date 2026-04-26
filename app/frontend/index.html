@@ -3,6 +3,12 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- Force browsers to revalidate index.html on every load so newly hashed bundles
+             get picked up immediately after a GH Pages deploy (assets/*.js are content-hashed
+             and remain safely long-cached). -->
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta http-equiv="Pragma" content="no-cache" />
+        <meta http-equiv="Expires" content="0" />
         <link rel="icon" href="/logo.png" type="image/png" />
         <title>Hedge Fund Tracker — SEC Filing Tracker & Hedge Fund Analytics</title>
         <meta name="description" content="Track institutional investor activity through SEC filings. Surface high-conviction stock ideas from top hedge funds." />

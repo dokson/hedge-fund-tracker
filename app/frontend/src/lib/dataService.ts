@@ -1054,40 +1054,13 @@ export async function getEnrichedNQFilings(
     }
     const filings = [...latestMap.values()];
 
-    // Find latest available quarter
-    onProgress?.("Finding latest quarter…", 10);
-    let latestQuarter: Quarter | null = null;
-    const quarters = await getAvailableQuarters();
-    for (let i = quarters.length - 1; i >= 0; i--) {
-      try {
-        const funds = await getQuarterFundList(quarters[i]);
-        if (funds.length > 0) {
-          latestQuarter = quarters[i];
-          break;
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    if (!latestQuarter) {
-      // No quarterly data; return filings with unknown delta
-      return filings.map((f) => ({
-        ...f,
-        quarterShares: null,
-        deltaShares: null,
-        deltaType: "UNKNOWN" as const,
-        deltaPct: null,
-        quarterPortfolioPct: null,
-      }));
-    }
-
-    onProgress?.(`Loading ${latestQuarter} data…`, 15);
+    onProgress?.("Resolving per-fund latest quarter…", 10);
 
     // Get unique fund names from filings
     const uniqueFunds = [...new Set(filings.map((f) => f.fund))];
 
-    // Load quarterly holdings for each fund that appears in NQ filings
+    // Load quarterly holdings for each fund using its OWN latest quarter (which may be
+    // older than the overall latest quarter, e.g. early in a Q1 13F filing window).
     // Map: fund → ticker → { shares, portfolioPct } (aggregated across CUSIPs)
     const fundQuarterlyMap = new Map<string, Map<string, { shares: number; portfolioPct: number }>>();
     const batchSize = 10;
@@ -1097,7 +1070,15 @@ export async function getEnrichedNQFilings(
       const results = await Promise.all(
         batch.map(async (fundName) => {
           try {
-            const holdings = await getFundQuarterlyHoldings(latestQuarter!, fundName);
+            const fundQuarters = await getFundAvailableQuarters(fundName);
+            const fundLatest = fundQuarters[fundQuarters.length - 1];
+            if (!fundLatest) {
+              return {
+                fundName,
+                tickerMap: new Map<string, { shares: number; portfolioPct: number }>(),
+              };
+            }
+            const holdings = await getFundQuarterlyHoldings(fundLatest, fundName);
             const tickerMap = new Map<string, { shares: number; portfolioPct: number }>();
             for (const h of holdings) {
               if (h.cusip !== "Total" && h.ticker) {

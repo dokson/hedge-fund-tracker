@@ -260,12 +260,15 @@ export default function Dashboard() {
                   >
                     <span className="inline-flex items-center justify-end">Value <SortIcon field="value" /></span>
                   </th>
+                  <th className="text-right p-3 font-medium" title="Position weight in the fund's last 13F portfolio">
+                    Portfolio %
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={8} className="p-8 text-center text-muted-foreground">
                       No filings match your filters.
                     </td>
                   </tr>
@@ -316,6 +319,9 @@ export default function Dashboard() {
                           {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}
                         </td>
                         <td className="p-3 text-right font-mono">{f.value}</td>
+                        <td className="p-3 text-right font-mono text-muted-foreground">
+                          {f.quarterPortfolioPct !== null ? `${f.quarterPortfolioPct.toFixed(2)}%` : "—"}
+                        </td>
                       </tr>
                     );
                   })
