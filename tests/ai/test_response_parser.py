@@ -154,3 +154,54 @@ Final conclusion.
         expected = {'score': 0.85, 'status': 'final'}
         result = ResponseParser.extract_and_decode_toon(response_text)
         self.assertEqual(result, expected)
+
+
+    def test_repairs_two_known_keys_glued_on_same_line(self):
+        """
+        Two known field keys appearing on the same line (LLM dropped a newline) are
+        split, and the second key inherits the first key's leading indent.
+        """
+        response_text = """```toon
+LIF:
+  industry: "Software"
+  momentum_score: 65  low_volatility_score: 70
+  risk_score: 60
+```"""
+        result = ResponseParser.extract_and_decode_toon(response_text)
+        self.assertEqual(
+            result,
+            {'LIF': {'industry': 'Software', 'momentum_score': 65, 'low_volatility_score': 70, 'risk_score': 60}},
+        )
+
+
+    def test_repairs_ticker_glued_to_previous_value(self):
+        """
+        A ticker block-header that is glued to the previous numeric value
+        (e.g. "risk_score: 90KRRO:") is moved onto its own line at column 0.
+        """
+        response_text = """```toon
+OKYO:
+  industry: "Biotechnology"
+  risk_score: 90KRRO:
+  industry: "Biotechnology"
+  risk_score: 95
+```"""
+        result = ResponseParser.extract_and_decode_toon(response_text)
+        self.assertEqual(result.get('OKYO', {}).get('risk_score'), 90)
+        self.assertEqual(result.get('KRRO', {}).get('risk_score'), 95)
+
+
+    def test_repairs_are_idempotent_on_clean_input(self):
+        """
+        Already-well-formed TOON must parse identically; the repair regexes must not
+        alter clean key-value lines.
+        """
+        response_text = """```toon
+AVGO:
+  industry: "Semiconductors"
+  momentum_score: 92
+  low_volatility_score: 40
+  risk_score: 50
+```"""
+        expected = {'AVGO': {'industry': 'Semiconductors', 'momentum_score': 92, 'low_volatility_score': 40, 'risk_score': 50}}
+        self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)

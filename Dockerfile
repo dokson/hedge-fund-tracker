@@ -50,7 +50,7 @@ ENV PORT=8000
 EXPOSE ${PORT}
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+    CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://localhost:{os.environ[\"PORT\"]}/health')" || exit 1
 
 ENTRYPOINT ["./entrypoint.sh"]
 CMD ["python", "-m", "app.main"]

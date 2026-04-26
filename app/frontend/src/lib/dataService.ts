@@ -496,18 +496,68 @@ export async function getGICSHierarchy(): Promise<GICSEntry[]> {
  * Derives from /api/database/quarters locally or metadata.json in GH Pages mode.
  */
 export async function getAvailableQuarters(): Promise<readonly Quarter[]> {
-  return cachedFetch("available_quarters", async () => {
-    if (IS_GH_PAGES_MODE) {
-      const response = await fetch(`${BASE_PATH}/database/metadata.json`);
-      if (!response.ok) throw new Error("Failed to load metadata.json");
-      const metadata: { quarters?: string[] } = await response.json();
-      return parseQuarters(metadata.quarters ?? []);
-    }
-    const response = await fetch(`${window.location.origin}/api/database/quarters`);
-    if (!response.ok) throw new Error("Failed to list quarters");
-    const raw: string[] = await response.json();
-    return parseQuarters(raw);
-  });
+  if (IS_GH_PAGES_MODE) {
+    const response = await fetch(`${BASE_PATH}/database/metadata.json`);
+    if (!response.ok) throw new Error("Failed to load metadata.json");
+    const metadata: { quarters?: string[] } = await response.json();
+    return parseQuarters(metadata.quarters ?? []);
+  }
+  const response = await fetch(`${window.location.origin}/api/database/quarters`);
+  if (!response.ok) throw new Error("Failed to list quarters");
+  const raw: string[] = await response.json();
+  return parseQuarters(raw);
+}
+
+/**
+ * Fetch the pre-aggregated quarter analysis from the backend (single request).
+ *
+ * Returns null in GH Pages mode (no backend); callers should fall back to the
+ * client-side `runQuarterAnalysis` which fetches each fund CSV individually.
+ */
+export async function fetchQuarterAnalysis(
+  quarter: string,
+): Promise<readonly StockQuarterAnalysis[] | null> {
+  if (IS_GH_PAGES_MODE) return null;
+  const url = `${window.location.origin}/api/database/quarters/${encodeURIComponent(quarter)}/analysis`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Failed to fetch quarter analysis");
+  const raw: Record<string, any>[] = await response.json();
+  return raw.map((r) => ({
+    ticker: r.Ticker ?? "",
+    company: r.Company ?? "",
+    totalValue: r.Total_Value ?? 0,
+    totalDeltaValue: r.Total_Delta_Value ?? 0,
+    maxPortfolioPct: r.Max_Portfolio_Pct ?? 0,
+    avgPortfolioPct: r.Avg_Portfolio_Pct ?? 0,
+    buyerCount: r.Buyer_Count ?? 0,
+    sellerCount: r.Seller_Count ?? 0,
+    holderCount: r.Holder_Count ?? 0,
+    newHolderCount: r.New_Holder_Count ?? 0,
+    closeCount: r.Close_Count ?? 0,
+    highConvictionCount: r.High_Conviction_Count ?? 0,
+    netBuyers: r.Net_Buyers ?? 0,
+    buyerSellerRatio: r.Buyer_Seller_Ratio ?? 0,
+    ownershipDeltaAvg: r.Ownership_Delta_Avg ?? 0,
+    fundConcentrationAvg: r.Avg_Fund_Concentration ?? 0,
+    delta: r.Delta ?? 0,
+  }));
+}
+
+/**
+ * Returns the most recent quarter as resolved by the backend, or null if none exist.
+ * Backend is the single source of truth; frontend does not sort the quarter list itself.
+ * Caching is intentionally delegated to react-query at the call site.
+ */
+export async function getLatestQuarter(): Promise<Quarter | null> {
+  if (IS_GH_PAGES_MODE) {
+    const quarters = await getAvailableQuarters();
+    return quarters.at(-1) ?? null;
+  }
+  const response = await fetch(`${window.location.origin}/api/database/quarters/latest`);
+  if (!response.ok) throw new Error("Failed to fetch latest quarter");
+  const data: { quarter: string | null } = await response.json();
+  if (!data.quarter) return null;
+  return parseQuarters([data.quarter])[0] ?? null;
 }
 
 /** Converts a fund name to its filename form (spaces → underscores). */

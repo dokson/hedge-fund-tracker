@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from app.ai.agent import AnalystAgent
 from app.analysis.performance_evaluator import PerformanceEvaluator
@@ -423,6 +424,42 @@ def _find_available_port(port: int, max_attempts: int = 10) -> int:
     raise RuntimeError(f"No available port found in range {port}–{port + max_attempts - 1}")
 
 
+def _frontend_sources_changed(frontend_dir: Path, dist_dir: Path) -> bool:
+    """
+    Returns True if any frontend source file is newer than the built dist.
+
+    Watches src/, public/, and the top-level config files (package.json, vite/tsconfig,
+    tailwind config). Uses dist/index.html as the build marker. Errors are treated as
+    "needs rebuild" to avoid silently serving a stale bundle.
+    """
+    marker = dist_dir / "index.html"
+    if not marker.exists():
+        return True
+    try:
+        dist_mtime = marker.stat().st_mtime
+    except OSError:
+        return True
+
+    watched_dirs = [frontend_dir / "src", frontend_dir / "public"]
+    watched_files = [
+        frontend_dir / name
+        for name in ("package.json", "package-lock.json", "vite.config.ts", "tsconfig.json", "tsconfig.app.json", "tailwind.config.js")
+    ]
+
+    for d in watched_dirs:
+        if not d.exists():
+            continue
+        for path in d.rglob("*"):
+            if path.is_file() and path.stat().st_mtime > dist_mtime:
+                return True
+
+    for f in watched_files:
+        if f.exists() and f.stat().st_mtime > dist_mtime:
+            return True
+
+    return False
+
+
 def run_server(host: str = None, port: int = None):
     """
     Starts the FastAPI web server with uvicorn.
@@ -434,7 +471,6 @@ def run_server(host: str = None, port: int = None):
     import sys
     import webbrowser
     import threading
-    from pathlib import Path
 
     host = host or os.environ.get("HOST", "127.0.0.1")
     port = port or int(os.environ.get("PORT", "8000"))
@@ -443,11 +479,12 @@ def run_server(host: str = None, port: int = None):
     if is_production:
         host = "0.0.0.0"
 
-    frontend_dist = Path(__file__).parent / "frontend" / "dist"
-    if not frontend_dist.exists():
-        print("🔨 Building frontend…")
-        frontend_dir = Path(__file__).parent / "frontend"
-        result = subprocess.run(["npm", "run", "build"], cwd=frontend_dir)
+    frontend_dir = Path(__file__).parent / "frontend"
+    frontend_dist = frontend_dir / "dist"
+    if not frontend_dist.exists() or _frontend_sources_changed(frontend_dir, frontend_dist):
+        reason = "missing" if not frontend_dist.exists() else "stale"
+        print(f"🔨 Building frontend ({reason})…")
+        result = subprocess.run(["npm", "run", "build"], cwd=frontend_dir, shell=(os.name == "nt"))
         if result.returncode != 0:
             print("❌ Frontend build failed. Run 'npm run build' manually inside app/frontend/.")
             sys.exit(1)

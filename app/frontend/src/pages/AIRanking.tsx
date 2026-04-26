@@ -13,6 +13,7 @@ import { Brain, ChevronDown, ChevronUp, Settings, Search } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
+import sampleRanking from "@/data/sampleRanking.json";
 
 interface RankedStock {
   rank: number;
@@ -109,8 +110,25 @@ export default function AIRanking() {
     }
   };
 
-  const hasResults = results.length > 0;
   const isReadOnly = IS_GH_PAGES_MODE;
+  const sampleResults: RankedStock[] = isReadOnly && results.length === 0
+    ? sampleRanking.stocks.map((s: any, i: number) => ({
+        rank: i + 1,
+        ticker: s.Ticker,
+        company: s.Company,
+        promiseScore: Math.round(s.Promise_Score ?? 0),
+        momentumScore: Math.round(s.Momentum_Score ?? 50),
+        lowVolatilityScore: Math.round(s.Low_Volatility_Score ?? 50),
+        riskScore: Math.round(s.Risk_Score ?? 50),
+        totalValue: s.Total_Value ?? 0,
+        holderCount: s.Holder_Count ?? 0,
+        netBuyers: s.Net_Buyers ?? 0,
+        highConvictionCount: s.High_Conviction_Count ?? 0,
+      }))
+    : [];
+  const displayResults = results.length > 0 ? results : sampleResults;
+  const hasResults = displayResults.length > 0;
+  const isSample = isReadOnly && results.length === 0;
 
   return (
     <div className="space-y-5 max-w-7xl">
@@ -134,6 +152,20 @@ export default function AIRanking() {
           <Brain className="h-4 w-4 mr-1" /> {hasResults ? "Re-run" : "Run"}
         </Button>
       </div>
+
+      {isReadOnly && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800 px-4 py-3">
+          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
+            <Brain className="h-4 w-4" /> Local-Only Feature
+          </p>
+          <p className="text-xs text-blue-600/80 dark:text-blue-400/80 leading-relaxed mt-1">
+            AI-powered discovery requires a local Python backend and API keys. This live demo shows the interface only. To use this feature, run the app locally with your own API keys.
+            {isSample && (
+              <> Below is a sample ranking for {sampleRanking.quarter}.</>
+            )}
+          </p>
+        </div>
+      )}
 
       {(loading || terminalLines.length > 0) && !hasResults && (
         <TerminalOutput lines={terminalLines} running={loading} />
@@ -188,7 +220,7 @@ export default function AIRanking() {
               </tr>
             </thead>
             <tbody>
-              {results.map((s) => (
+              {displayResults.map((s) => (
                 <>
                   <tr
                     key={s.ticker}
@@ -289,20 +321,9 @@ export default function AIRanking() {
       {!hasResults && !loading && (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
           <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-30" />
-          {isReadOnly ? (
-            <div className="max-w-2xl mx-auto p-6 rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800 space-y-2">
-              <p className="font-semibold text-blue-700 dark:text-blue-300 flex items-center justify-center gap-2">
-                <Brain className="h-4 w-4" /> Local-Only Feature
-              </p>
-              <p className="text-sm text-blue-600/80 dark:text-blue-400/80 leading-relaxed">
-                AI-powered discovery requires a local Python backend and API keys. This live demo shows the interface only. To use this feature, run the app locally with your own API keys.
-              </p>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">
-              Select a model and click "Run" to generate stock rankings.
-            </p>
-          )}
+          <p className="text-muted-foreground">
+            Select a model and click "Run" to generate stock rankings.
+          </p>
         </div>
       )}
     </div>

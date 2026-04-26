@@ -23,6 +23,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import sampleDueDiligence from "@/data/sampleDueDiligence.json";
 
 interface DueDiligenceReport {
   ticker: string;
@@ -47,6 +48,7 @@ interface DueDiligenceReport {
     price_target: string;
   };
 }
+
 
 function SentimentBadge({ sentiment }: { sentiment: string }) {
   if (!sentiment) return null;
@@ -126,6 +128,10 @@ export default function AIDueDiligence() {
     }
   };
 
+  const sample = sampleDueDiligence as DueDiligenceReport & { quarter?: string; generated_by?: string };
+  const displayReport: DueDiligenceReport | null = report ?? (isReadOnly ? sample : null);
+  const isSample = isReadOnly && !report;
+
   return (
     <div className="space-y-5 max-w-7xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -158,44 +164,78 @@ export default function AIDueDiligence() {
         </Button>
       </div>
 
+      {isReadOnly && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800 px-4 py-3">
+          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
+            <Brain className="h-4 w-4" /> Local-Only Feature
+          </p>
+          <p className="text-xs text-blue-600/80 dark:text-blue-400/80 leading-relaxed mt-1">
+            Stock Due Diligence requires a local Python backend to analyze data via LLMs. This live demo shows the interface only. To use this feature, run the app locally with your own API keys.
+            {isSample && (
+              <> Below is a sample output for <span className="font-mono font-semibold">{sample.ticker}</span> — top-ranked stock for {sample.quarter ?? "the latest quarter"}.</>
+            )}
+          </p>
+        </div>
+      )}
+
       {(loading || terminalLines.length > 0) && !report && (
         <TerminalOutput lines={terminalLines} running={loading} />
       )}
 
-      {report && !loading && (
+      {displayReport && !loading && (
         <div className="animate-slide-up space-y-5">
           <div className="rounded-lg border border-border bg-card p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <SentimentBadge sentiment={report.investment_thesis.overall_sentiment} />
+                <SentimentBadge sentiment={displayReport.investment_thesis.overall_sentiment} />
                 <div>
                   <p className="text-sm text-muted-foreground">3-Month Price Target</p>
-                  <p className="text-xl font-bold font-mono">
-                    {report.investment_thesis.price_target || "N/A"}
+                  <p className="text-xl font-bold font-mono flex items-baseline gap-2">
+                    <span>{displayReport.investment_thesis.price_target || "N/A"}</span>
+                    {(() => {
+                      const parseUsd = (v: string | undefined) => {
+                        if (!v) return NaN;
+                        const m = v.replace(/[,$\s]/g, "").match(/-?\d+(?:\.\d+)?/);
+                        return m ? parseFloat(m[0]) : NaN;
+                      };
+                      const target = parseUsd(displayReport.investment_thesis.price_target);
+                      const current = parseUsd(displayReport.current_price);
+                      if (!isFinite(target) || !isFinite(current) || current === 0) return null;
+                      const pct = ((target - current) / current) * 100;
+                      const cls = pct >= 0 ? "text-green-500" : "text-red-500";
+                      return (
+                        <span
+                          className={`text-sm font-semibold tabular-nums ${cls}`}
+                          title={`${pct >= 0 ? "Upside" : "Downside"} vs current price`}
+                        >
+                          {pct >= 0 ? "↗" : "↘"} {Math.abs(pct).toFixed(1)}%
+                        </span>
+                      );
+                    })()}
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-mono font-bold text-lg">{report.ticker}</p>
-                <p className="text-xs text-muted-foreground">{report.company}</p>
+                <p className="font-mono font-bold text-lg">{displayReport.ticker}</p>
+                <p className="text-xs text-muted-foreground">{displayReport.company}</p>
               </div>
             </div>
             <div className="flex gap-6 pt-1 border-t border-border">
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Current Price</p>
-                <p className="font-mono font-bold">{report.current_price || "N/A"}</p>
+                <p className="font-mono font-bold">{displayReport.current_price || "N/A"}</p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Price on Filing Date</p>
-                <p className="font-mono font-bold">{report.filing_date_price || "N/A"}</p>
+                <p className="font-mono font-bold">{displayReport.filing_date_price || "N/A"}</p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Change Since Filing</p>
                 <p className={`font-mono font-bold flex items-center gap-1 ${
-                  report.price_delta_percentage?.startsWith("+") ? "text-green-500" : "text-red-500"
+                  displayReport.price_delta_percentage?.startsWith("+") ? "text-green-500" : "text-red-500"
                 }`}>
-                  {report.price_delta_percentage?.startsWith("+") ? "📈" : "📉"}
-                  {report.price_delta_percentage || "N/A"}
+                  {displayReport.price_delta_percentage?.startsWith("+") ? "📈" : "📉"}
+                  {displayReport.price_delta_percentage || "N/A"}
                 </p>
               </div>
             </div>
@@ -209,7 +249,7 @@ export default function AIDueDiligence() {
             <AccordionItem value="business" className="rounded-lg border border-border bg-card px-5">
               <AccordionTrigger className="text-sm font-semibold">Business Summary</AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {report.analysis.business_summary}
+                {displayReport.analysis.business_summary}
               </AccordionContent>
             </AccordionItem>
 
@@ -217,11 +257,11 @@ export default function AIDueDiligence() {
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Financial Health
-                  <SentimentBadge sentiment={report.analysis.financial_health_sentiment} />
+                  <SentimentBadge sentiment={displayReport.analysis.financial_health_sentiment} />
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {report.analysis.financial_health}
+                {displayReport.analysis.financial_health}
               </AccordionContent>
             </AccordionItem>
 
@@ -229,11 +269,11 @@ export default function AIDueDiligence() {
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Valuation
-                  <SentimentBadge sentiment={report.analysis.valuation_sentiment} />
+                  <SentimentBadge sentiment={displayReport.analysis.valuation_sentiment} />
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {report.analysis.valuation}
+                {displayReport.analysis.valuation}
               </AccordionContent>
             </AccordionItem>
 
@@ -241,11 +281,11 @@ export default function AIDueDiligence() {
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Growth vs. Risks
-                  <SentimentBadge sentiment={report.analysis.growth_vs_risks_sentiment} />
+                  <SentimentBadge sentiment={displayReport.analysis.growth_vs_risks_sentiment} />
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {report.analysis.growth_vs_risks}
+                {displayReport.analysis.growth_vs_risks}
               </AccordionContent>
             </AccordionItem>
 
@@ -253,11 +293,11 @@ export default function AIDueDiligence() {
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Institutional Sentiment
-                  <SentimentBadge sentiment={report.analysis.institutional_sentiment_sentiment} />
+                  <SentimentBadge sentiment={displayReport.analysis.institutional_sentiment_sentiment} />
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {report.analysis.institutional_sentiment}
+                {displayReport.analysis.institutional_sentiment}
               </AccordionContent>
             </AccordionItem>
 
@@ -265,38 +305,29 @@ export default function AIDueDiligence() {
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Investment Thesis
-                  <SentimentBadge sentiment={report.investment_thesis.overall_sentiment} />
+                  <SentimentBadge sentiment={displayReport.investment_thesis.overall_sentiment} />
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {report.investment_thesis.thesis}
+                {displayReport.investment_thesis.thesis}
               </AccordionContent>
             </AccordionItem>
           </Accordion>
 
           <p className="text-xs text-muted-foreground text-center">
-            Generated by {modelUsed} on {new Date().toISOString().split("T")[0]}
+            {isSample
+              ? `Sample output · ${sample.quarter ?? ""}${sample.generated_by ? " · " + sample.generated_by : ""}`
+              : `Generated by ${modelUsed} on ${new Date().toISOString().split("T")[0]}`}
           </p>
         </div>
       )}
 
-      {!report && !loading && (
+      {!displayReport && !loading && (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
           <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-30" />
-          {isReadOnly ? (
-            <div className="max-w-2xl mx-auto p-6 rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800 space-y-2">
-              <p className="font-semibold text-blue-700 dark:text-blue-300 flex items-center justify-center gap-2">
-                <Brain className="h-4 w-4" /> Local-Only Feature
-              </p>
-              <p className="text-sm text-blue-600/80 dark:text-blue-400/80 leading-relaxed">
-                Stock Due Diligence requires a local Python backend to analyze data via LLMs. This live demo shows the interface only. To use this feature, run the app locally with your own API keys.
-              </p>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">
-              Select a model, enter a ticker and click "Run" to generate a comprehensive analysis.
-            </p>
-          )}
+          <p className="text-muted-foreground">
+            Select a model, enter a ticker and click "Run" to generate a comprehensive analysis.
+          </p>
         </div>
       )}
     </div>

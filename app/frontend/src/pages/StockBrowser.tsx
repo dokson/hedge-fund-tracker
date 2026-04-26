@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getStocks,
   runQuarterAnalysis,
+  fetchQuarterAnalysis,
   formatValue,
   type Stock,
 } from "@/lib/dataService";
@@ -49,7 +50,10 @@ export default function StockBrowser() {
   const { latestQuarter } = useAvailableQuarters();
   const { data: quarterData = [], isLoading: quarterLoading } = useQuery({
     queryKey: ["quarterAnalysis", latestQuarter],
-    queryFn: () => runQuarterAnalysis(latestQuarter!),
+    queryFn: async () => {
+      const fromBackend = await fetchQuarterAnalysis(latestQuarter!);
+      return fromBackend ?? (await runQuarterAnalysis(latestQuarter!));
+    },
     enabled: !!latestQuarter,
     staleTime: 10 * 60 * 1000,
   });

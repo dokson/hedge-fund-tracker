@@ -47,6 +47,12 @@ class AnalystAgent:
 
         response_text = self.ai_client.generate_content(prompt)
         parsed_weights = ResponseParser().extract_and_decode_toon(response_text)
+
+        try:
+            parsed_weights = {k: float(v) for k, v in parsed_weights.items()}
+        except (TypeError, ValueError) as e:
+            raise InvalidAIResponseError(f"AI returned non-numeric weight value: {e}") from e
+
         total = sum(parsed_weights.values())
 
         if not PromiseScoreValidator.validate_weights(parsed_weights):

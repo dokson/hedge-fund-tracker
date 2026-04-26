@@ -69,6 +69,8 @@ SEC EDGAR → app/scraper/ (13F, 13D/G, Form 4) → app/analysis/ → app/ai/ (P
 
 The application ships a **React + Vite frontend** (`app/frontend/`) served by the FastAPI backend. Running `python -m app.main` (default) starts the FastAPI server on port 8000, builds/serves the React dist, and opens the browser automatically. The `--cli` flag falls back to the original terminal menu.
 
+**Auto-rebuild on stale dist**: `run_server()` calls `_frontend_sources_changed()` to compare mtimes of `frontend/src/`, `frontend/public/`, and config files (`package.json`, `vite.config.ts`, `tsconfig*.json`, `tailwind.config.js`) against `frontend/dist/index.html`. If any source is newer, the dist is rebuilt automatically. This avoids the footgun where editing `.tsx` or `src/data/*.json` files silently serves a stale bundle.
+
 **Frontend stack**: React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui (subset), Recharts, TanStack Query, react-router-dom.
 
 ### GitHub Pages Deployment

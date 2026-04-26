@@ -6,6 +6,10 @@ import re
 import sys
 import threading
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 # Fix terminal width for output streamed to the web UI
 os.environ.setdefault("COLUMNS", "80")
@@ -166,6 +170,23 @@ async def list_quarters() -> list[str]:
     )
 
 
+@app.get("/api/database/quarters/latest")
+async def latest_quarter() -> dict[str, str | None]:
+    """
+    Return the most recent quarter present in the database, or {"quarter": None} if empty.
+
+    Centralizes "latest quarter" resolution on the backend so the frontend doesn't have
+    to sort the list itself.
+    """
+    if not DATABASE_DIR.exists():
+        return {"quarter": None}
+    quarters = sorted(
+        d.name for d in DATABASE_DIR.iterdir()
+        if d.is_dir() and _QUARTER_RE.match(d.name)
+    )
+    return {"quarter": quarters[-1] if quarters else None}
+
+
 @app.get("/api/database/quarters/{quarter}")
 async def list_quarter_funds(quarter: str):
     sanitized_quarter = _require_quarter(quarter)
@@ -173,6 +194,25 @@ async def list_quarter_funds(quarter: str):
     if not quarter_dir.exists() or not quarter_dir.is_dir():
         raise HTTPException(status_code=404, detail=f"Quarter not found: {sanitized_quarter}")
     return [f.stem for f in sorted(quarter_dir.glob("*.csv"))]
+
+
+@app.get("/api/database/quarters/{quarter}/analysis")
+async def quarter_analysis_endpoint(quarter: str) -> list[dict[str, object]]:
+    """
+    Return the per-ticker aggregated quarter analysis.
+
+    Replaces the per-fund CSV fan-out previously done client-side: the frontend gets
+    a pre-aggregated leaderboard in a single request instead of fetching every fund's CSV.
+    """
+    from app.analysis.stocks import quarter_analysis
+    sanitized_quarter = _require_quarter(quarter)
+    quarter_dir = _safe_db_path(sanitized_quarter)
+    if not quarter_dir.exists() or not quarter_dir.is_dir():
+        raise HTTPException(status_code=404, detail=f"Quarter not found: {sanitized_quarter}")
+    df = quarter_analysis(sanitized_quarter)
+    if df is None or df.empty:
+        return []
+    return _df_to_json_safe_records(df)
 
 
 # ── .env read/write ────────────────────────────────────────────────────────────
@@ -200,6 +240,23 @@ async def put_env(request: Request):
 
 # ── AI endpoints ───────────────────────────────────────────────────────────────
 
+def _df_to_json_safe_records(df: "pd.DataFrame") -> list[dict[str, object]]:
+    """
+    Convert a pandas DataFrame to a list of records, replacing values that are not
+    valid in standard JSON (±Infinity, NaN) with None so the browser's JSON.parse accepts them.
+
+    Args:
+        df: Input DataFrame; arbitrary dtypes are supported (numeric, object, datetime).
+
+    Returns:
+        Records ready for JSON serialization, with ±Infinity and NaN replaced by None.
+    """
+    import numpy as np
+
+    cleaned = df.replace([np.inf, -np.inf], np.nan).astype(object)
+    return cleaned.where(cleaned.notna(), None).to_dict(orient="records")
+
+
 @app.post("/api/ai/promise-score")
 async def ai_promise_score(request: Request):
     from app.ai.agent import AnalystAgent
@@ -209,7 +266,7 @@ async def ai_promise_score(request: Request):
     ai_client = _build_ai_client(body.get("model_id"), body.get("provider_id"))
     agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
     df = agent.generate_scored_list(top_n=top_n)
-    return df.to_dict(orient="records")
+    return _df_to_json_safe_records(df)
 
 
 @app.post("/api/ai/due-diligence")
@@ -394,7 +451,7 @@ async def ai_promise_score_stream(request: Request):
     def run():
         agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
         df = agent.generate_scored_list(top_n=top_n)
-        return df.to_dict(orient="records")
+        return _df_to_json_safe_records(df)
 
     return _make_sse_stream(run)
 

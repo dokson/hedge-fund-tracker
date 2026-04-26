@@ -255,6 +255,43 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         with self.assertRaises(Exception):
             self.agent._get_promise_score_weights()
 
+    @patch('app.ai.agent.PromiseScoreValidator.validate_metrics')
+    @patch('app.ai.agent.PromiseScoreValidator.validate_weights')
+    @patch('app.ai.agent.ResponseParser.extract_and_decode_toon')
+    @patch('app.ai.agent.promise_score_weights_prompt')
+    def test_coerces_string_numeric_weights_to_float(self, mock_prompt, mock_parse, mock_val_weights, mock_val_metrics):
+        """
+        String values that look like numbers (e.g. '0.5') are coerced to float so the
+        downstream sum() and arithmetic don't crash with 'unsupported operand types'.
+        """
+        self.agent.ai_client.generate_content.return_value = 'mock_response'
+        mock_parse.return_value = {'Metric1': '0.5', 'Metric2': 0.5}
+        mock_val_weights.return_value = True
+        mock_val_metrics.return_value = None
+
+        result = self.agent._get_promise_score_weights()
+
+        self.assertEqual(result, {'Metric1': 0.5, 'Metric2': 0.5})
+        for v in result.values():
+            self.assertIsInstance(v, float)
+
+    @patch('app.ai.agent.PromiseScoreValidator.validate_weights')
+    @patch('app.ai.agent.ResponseParser.extract_and_decode_toon')
+    @patch('app.ai.agent.promise_score_weights_prompt')
+    def test_raises_invalid_response_error_on_non_numeric_weight(self, mock_prompt, mock_parse, mock_val_weights):
+        """
+        A weight value that cannot be coerced to float (e.g. malformed parser output
+        such as '0.30Max_Portfolio_Pct') triggers InvalidAIResponseError so tenacity
+        retries instead of letting a TypeError propagate.
+        """
+        self.agent.ai_client.generate_content.return_value = 'mock_response'
+        mock_parse.return_value = {'Metric1': '0.30Max_Portfolio_Pct'}
+
+        with self.assertRaises(Exception):
+            self.agent._get_promise_score_weights()
+        # validate_weights must NOT be called: rejection happens at coercion.
+        mock_val_weights.assert_not_called()
+
 
 class TestGetAIScores(unittest.TestCase):
 
