@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { isQuarter } from "@/lib/quarters";
 import { useQuery } from "@tanstack/react-query";
 import {
   getHedgeFunds,
@@ -283,9 +284,9 @@ function FundDetail({ fundName }: { fundName: string }) {
   });
 
   // Auto-select latest available quarter
-  const selectedQuarter = quarter && availableQuarters.includes(quarter)
+  const selectedQuarter = quarter && isQuarter(quarter) && availableQuarters.includes(quarter)
     ? quarter
-    : availableQuarters[availableQuarters.length - 1] || null;
+    : availableQuarters[availableQuarters.length - 1] ?? null;
 
   const { data: fund } = useQuery({
     queryKey: ["hedgeFunds"],

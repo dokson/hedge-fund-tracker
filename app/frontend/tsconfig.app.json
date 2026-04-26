@@ -4,7 +4,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "lib": [
-      "ES2020",
+      "ES2022",
       "DOM",
       "DOM.Iterable"
     ],
@@ -17,6 +17,7 @@
     "noImplicitAny": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
+    "strictNullChecks": true,
     "paths": {
       "@/*": [
         "./src/*"

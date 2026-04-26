@@ -318,7 +318,7 @@ export default function StockBrowser() {
               </button>
             ) : (
               <p className="text-xs text-muted-foreground">
-                {latestQuarter.replace("Q", " Q")} · Total institutional holdings value
+                {latestQuarter?.replace("Q", " Q") ?? ""} · Total institutional holdings value
               </p>
             )}
           </div>

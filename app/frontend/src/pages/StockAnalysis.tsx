@@ -154,7 +154,7 @@ export default function StockAnalysis() {
         </div>
       ) : holdings.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">
-          No fund holds {ticker} in {quarter.replace("Q", " Q")}. Try a different quarter.
+          No fund holds {ticker} in {quarter?.replace("Q", " Q") ?? "this quarter"}. Try a different quarter.
         </div>
       ) : (
         <>
