@@ -4,6 +4,7 @@ Tests for scripts.docker_up port discovery.
 
 import socket
 import unittest
+from unittest.mock import patch
 
 from scripts.docker_up import find_available_port
 
@@ -76,19 +77,28 @@ class TestFindAvailablePort(unittest.TestCase):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind(("127.0.0.1", port))
 
-    def test_detects_wildcard_bound_port_as_busy(self):
+    def test_skips_port_with_active_listener_via_connect_probe(self):
         """
-        A port held on 0.0.0.0 by another process must be reported as busy
-        when probing 127.0.0.1 — this is the scenario the loopback probe
-        is designed to catch (Docker publishes on the wildcard address).
-        """
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as wildcard:
-            wildcard.bind(("0.0.0.0", 0))
-            wildcard.listen(1)
-            busy_port = wildcard.getsockname()[1]
+        A port with an active listener (e.g. a Docker container publishing
+        on the wildcard address) must be reported as busy by the connect
+        probe and skipped, even when a fresh loopback bind would succeed.
 
-            result = find_available_port(start=busy_port, max_attempts=20)
-            self.assertNotEqual(result, busy_port)
+        The connect probe is mocked so the test does not need to bind to
+        any wildcard address itself.
+        """
+        busy_candidates = {19000}
+
+        def fake_is_port_in_use(port: int) -> bool:
+            """
+            Simulate an external listener occupying a specific port.
+            """
+            return port in busy_candidates
+
+        with patch("scripts.docker_up._is_port_in_use", side_effect=fake_is_port_in_use):
+            result = find_available_port(start=19000, max_attempts=20)
+
+        self.assertNotIn(result, busy_candidates)
+        self.assertEqual(result, 19001)
 
 
 if __name__ == "__main__":
