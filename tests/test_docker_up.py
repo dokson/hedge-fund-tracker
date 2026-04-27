@@ -86,19 +86,20 @@ class TestFindAvailablePort(unittest.TestCase):
         The connect probe is mocked so the test does not need to bind to
         any wildcard address itself.
         """
-        busy_candidates = {19000}
+        start_port = 8000
+        busy_candidates = {start_port}
 
         def fake_is_port_in_use(port: int) -> bool:
             """
-            Simulate an external listener occupying a specific port.
+            Simulate an external listener occupying the start port.
             """
             return port in busy_candidates
 
         with patch("scripts.docker_up._is_port_in_use", side_effect=fake_is_port_in_use):
-            result = find_available_port(start=19000, max_attempts=20)
+            result = find_available_port(start=start_port, max_attempts=20)
 
         self.assertNotIn(result, busy_candidates)
-        self.assertEqual(result, 19001)
+        self.assertEqual(result, start_port + 1)
 
 
 if __name__ == "__main__":
