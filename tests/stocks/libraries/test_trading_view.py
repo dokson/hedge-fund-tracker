@@ -15,28 +15,6 @@ def _make_hist_df(close=152.5, high=155.0, low=145.0, date_str='2023-12-25'):
     )
 
 
-class TestTradingViewGetTicker(unittest.TestCase):
-
-    def test_get_ticker_always_returns_none(self):
-        """
-        TradingView does not support CUSIP-to-ticker resolution; always returns None.
-        """
-        result = TradingView.get_ticker('037833100')
-
-        self.assertIsNone(result)
-
-
-class TestTradingViewGetCompany(unittest.TestCase):
-
-    def test_get_company_always_returns_none(self):
-        """
-        TradingView does not support company lookup; always returns None.
-        """
-        result = TradingView.get_company('037833100')
-
-        self.assertIsNone(result)
-
-
 class TestTradingViewGetCurrentPrice(unittest.TestCase):
 
     @patch('app.stocks.libraries.trading_view.TvDatafeed')

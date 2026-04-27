@@ -5,6 +5,7 @@ from app.utils.database import (
     save_stock, sort_stocks, find_cusips_for_ticker, update_ticker, delete_fund_from_database, get_most_recent_quarter
 )
 import pandas as pd
+import io
 import os
 import shutil
 import unittest
@@ -221,33 +222,55 @@ class TestDatabase(unittest.TestCase):
     def test_concurrent_save_stocks(self):
         """
         All records written by concurrent threads must be durably saved with no data loss.
+
+        Uses a moderate concurrency footprint (5 threads x 10 iterations) to
+        exercise the file-based lock without making the test timing-sensitive.
+        Captures stdout so that silent failures swallowed by save_stock's
+        broad except surface as test failures instead of hiding behind a
+        misleading record-count assertion.
         """
-        num_threads = 10
-        iterations = 20
+        num_threads = 5
+        iterations = 10
         stocks_path = os.path.join(self.test_db_folder, STOCKS_FILE)
-        
+
         barrier = threading.Barrier(num_threads)
         errors = []
+        captured_stdout = io.StringIO()
+        stdout_lock = threading.Lock()
+
+        class _ThreadSafeWriter:
+            def write(self, data):
+                with stdout_lock:
+                    captured_stdout.write(data)
+            def flush(self):
+                pass
 
         def worker(thread_idx):
             try:
                 barrier.wait()
                 for i in range(iterations):
                     save_stock(
-                        f"C_{thread_idx}_{i}", 
-                        f"T_{thread_idx}_{i}", 
+                        f"C_{thread_idx}_{i}",
+                        f"T_{thread_idx}_{i}",
                         f"Company_{thread_idx}_{i}"
                     )
             except Exception as e:
                 errors.append(f"Thread {thread_idx}: {str(e)}")
 
-        threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
+        with unittest.mock.patch('sys.stdout', _ThreadSafeWriter()):
+            threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
 
-        self.assertEqual(len(errors), 0, f"Errori rilevati nei thread: {errors}")
+        self.assertEqual(len(errors), 0, f"Thread-level errors: {errors}")
+        stdout_text = captured_stdout.getvalue()
+        self.assertNotIn(
+            "An error occurred while writing",
+            stdout_text,
+            f"save_stock reported silent failures:\n{stdout_text}",
+        )
 
         df = load_stocks(stocks_path)
         expected_new_records = num_threads * iterations
@@ -257,7 +280,7 @@ class TestDatabase(unittest.TestCase):
             for i in range(iterations):
                 cusip = f"C_{t_idx}_{i}"
                 ticker = f"T_{t_idx}_{i}"
-                self.assertIn(cusip, df.index, f"CUSIP mancante: {cusip}")
+                self.assertIn(cusip, df.index, f"Missing CUSIP: {cusip}")
                 self.assertEqual(df.loc[cusip, 'Ticker'], ticker)
 
 

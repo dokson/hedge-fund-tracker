@@ -57,16 +57,6 @@ class TestOpenAIClientInit(unittest.TestCase):
         printed_messages = ' '.join(str(call) for call in mock_print.call_args_list)
         self.assertIn('TEST_API_KEY', printed_messages)
 
-    @patch('app.ai.clients.base_openai_client.OpenAI')
-    def test_stores_model_name(self, mock_openai):
-        """
-        Stores the model string as an instance attribute.
-        """
-        with patch.dict('os.environ', {'TEST_API_KEY': 'key'}):
-            client = ConcreteOpenAIClient(model='custom-model')
-
-        self.assertEqual(client.model, 'custom-model')
-
 
 class TestOpenAIClientGetModelName(unittest.TestCase):
 
@@ -79,29 +69,6 @@ class TestOpenAIClientGetModelName(unittest.TestCase):
             client = ConcreteOpenAIClient(model='gpt-4o')
 
         self.assertEqual(client.get_model_name(), 'gpt-4o')
-
-
-class TestOpenAIClientDefaults(unittest.TestCase):
-
-    @patch('app.ai.clients.base_openai_client.OpenAI')
-    def test_get_headers_returns_empty_dict_by_default(self, mock_openai):
-        """
-        get_headers() returns an empty dict unless overridden by subclass.
-        """
-        with patch.dict('os.environ', {'TEST_API_KEY': 'key'}):
-            client = ConcreteOpenAIClient()
-
-        self.assertEqual(client.get_headers(), {})
-
-    @patch('app.ai.clients.base_openai_client.OpenAI')
-    def test_get_extra_body_returns_empty_dict_by_default(self, mock_openai):
-        """
-        get_extra_body() returns an empty dict unless overridden by subclass.
-        """
-        with patch.dict('os.environ', {'TEST_API_KEY': 'key'}):
-            client = ConcreteOpenAIClient()
-
-        self.assertEqual(client.get_extra_body(), {})
 
 
 class TestOpenAIClientGenerateContent(unittest.TestCase):

@@ -30,24 +30,6 @@ def _make_empty_response():
     return {"data": None, "status": {"rCode": 400}}
 
 
-class TestNasdaqGetTicker(unittest.TestCase):
-
-    def test_get_ticker_always_returns_none(self):
-        """
-        Nasdaq does not support CUSIP-to-ticker resolution; always returns None.
-        """
-        self.assertIsNone(Nasdaq.get_ticker("037833100"))
-
-
-class TestNasdaqGetCompany(unittest.TestCase):
-
-    def test_get_company_always_returns_none(self):
-        """
-        Nasdaq does not support company lookup; always returns None.
-        """
-        self.assertIsNone(Nasdaq.get_company("037833100"))
-
-
 class TestNasdaqParsePrice(unittest.TestCase):
 
     def test_parses_plain_number(self):

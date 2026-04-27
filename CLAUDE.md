@@ -20,6 +20,9 @@ pipenv run app
 # Run with Docker (alternative to pipenv)
 docker compose up --build
 
+# Run with Docker + auto-port discovery (mirrors local server behavior)
+pipenv run docker-up
+
 # Run the legacy CLI menu instead of the web UI
 pipenv run app-cli
 
@@ -96,6 +99,8 @@ The frontend can be deployed as a **static site on GitHub Pages** via `npm run b
 ### Docker
 
 Multi-stage `Dockerfile` (Node frontend build → Python runtime). `docker-compose.yml` mounts `database/`, `__llmcache__/`, `__reports__/`, and `.env` as volumes. `entrypoint.sh` seeds the database from `database-seed/` on first run and generates `.env` from environment variables if not mounted.
+
+`scripts/docker_up.py` is a thin wrapper that probes a free host port (loopback bind + connect-probe — never binds `0.0.0.0`) and sets `HOST_PORT` before invoking `docker compose up`, so concurrent containers don't collide on 8000.
 
 **Key frontend files:**
 - `app/frontend/src/lib/dataService.ts` — all CSV reads/writes via HTTP; single source of truth for analysis logic

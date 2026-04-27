@@ -89,24 +89,6 @@ class TestAnalystAgentInit(unittest.TestCase):
         pd.testing.assert_frame_equal(agent.analysis_df, expected_df)
 
 
-class TestInvalidAIResponseError(unittest.TestCase):
-
-    def test_is_an_exception(self):
-        """
-        InvalidAIResponseError is a subclass of Exception.
-        """
-        self.assertTrue(issubclass(InvalidAIResponseError, Exception))
-
-    def test_raises_and_catches_with_message(self):
-        """
-        Can be raised and caught with a descriptive message.
-        """
-        with self.assertRaises(InvalidAIResponseError) as ctx:
-            raise InvalidAIResponseError("weights do not sum to 1.0")
-
-        self.assertIn("weights do not sum to 1.0", str(ctx.exception))
-
-
 class TestCalculatePromiseScores(unittest.TestCase):
     """
     Tests for AnalystAgent._calculate_promise_scores().

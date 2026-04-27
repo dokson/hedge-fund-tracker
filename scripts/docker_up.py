@@ -14,20 +14,38 @@ import subprocess
 import sys
 
 
+def _is_port_in_use(port: int) -> bool:
+    """
+    Return True if `port` is currently held by a listener on the host.
+
+    Uses a connect probe against the loopback address: if a TCP handshake
+    completes, something is listening (covers wildcard 0.0.0.0 binds, which
+    a loopback bind probe alone cannot detect on Windows).
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.1)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
 def find_available_port(start: int = 8000, max_attempts: int = 20) -> int:
     """
     Scan upward from `start` and return the first port that's free on the host.
 
-    Tries to bind on 0.0.0.0 (the address Docker uses) so phantom reservations on
-    127.0.0.1 don't get a false positive. Raises RuntimeError if nothing is free
-    within `max_attempts` candidates.
+    Combines two probes without exposing a socket on all interfaces:
+      1. A connect probe to detect any active listener (including services
+         bound to 0.0.0.0 by Docker on other platforms).
+      2. A loopback bind probe to confirm the kernel will accept a fresh
+         listener on the candidate port.
+
+    Raises RuntimeError if nothing is free within `max_attempts` candidates.
     """
     for offset in range(max_attempts):
         candidate = start + offset
+        if _is_port_in_use(candidate):
+            continue
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
-                s.bind(("0.0.0.0", candidate))
+                s.bind(("127.0.0.1", candidate))
                 return candidate
             except OSError:
                 continue

@@ -6,7 +6,10 @@ import csv
 import os
 import pandas as pd
 import re
+import threading
 import time
+
+_stocks_thread_lock = threading.Lock()
 
 DB_FOLDER = './database'
 HEDGE_FUNDS_FILE = 'hedge_funds.csv'
@@ -384,48 +387,53 @@ def save_non_quarterly_filings(schedule_filings: list, filepath=f"./{DB_FOLDER}/
 @contextmanager
 def stocks_lock(timeout=30):
     """
-    A simple file-based lock to synchronize access to stocks.csv.
-    Uses a .lock file to ensure only one process/thread can modify the file at a time.
+    Synchronize access to stocks.csv across both threads (in-process) and
+    processes (cross-process).
+
+    Same-process threads serialize on a module-level threading.Lock first,
+    which is fair and instantaneous. Cross-process callers then contend on a
+    .lock file via O_CREAT|O_EXCL with bounded retry. Without the in-process
+    lock, sibling threads on Windows can starve waiting for the lock-file
+    creation/removal cycle to settle.
     """
     lock_path = Path(DB_FOLDER) / f"{STOCKS_FILE}.lock"
     start_time = time.time()
-    acquired = False
-    
-    try:
-        while True:
-            try:
-                # Atomic creation of a lock file
-                fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                os.close(fd)
-                acquired = True
-                break
-            except FileExistsError:
-                if time.time() - start_time > timeout:
-                    raise TimeoutError(f"Could not acquire lock for {STOCKS_FILE} within {timeout} seconds.")
-                
-                # Check for stale lock (older than 60 seconds)
+    acquired_file = False
+
+    with _stocks_thread_lock:
+        try:
+            while True:
                 try:
-                    if time.time() - os.path.getmtime(lock_path) > 60:
-                        try:
-                            os.remove(lock_path)
-                            continue
-                        except OSError:
-                            pass
+                    fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                    os.close(fd)
+                    acquired_file = True
+                    break
+                except FileExistsError:
+                    if time.time() - start_time > timeout:
+                        raise TimeoutError(f"Could not acquire lock for {STOCKS_FILE} within {timeout} seconds.")
+
+                    # Reclaim a stale lock that outlived its owner (>60s).
+                    try:
+                        if time.time() - os.path.getmtime(lock_path) > 60:
+                            try:
+                                os.remove(lock_path)
+                                continue
+                            except OSError:
+                                pass
+                    except OSError:
+                        pass
+
+                    time.sleep(0.05)
+                except OSError:
+                    time.sleep(0.05)
+
+            yield
+        finally:
+            if acquired_file:
+                try:
+                    os.remove(lock_path)
                 except OSError:
                     pass
-                    
-                time.sleep(0.05)
-            except OSError:
-                # Handle potential permission errors or other weird OS-level issues
-                time.sleep(0.05)
-                
-        yield
-    finally:
-        if acquired:
-            try:
-                os.remove(lock_path)
-            except OSError:
-                pass
 
 
 def save_stock(cusip: str, ticker: str, company: str) -> None:

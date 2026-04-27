@@ -78,75 +78,36 @@ class TestServer(unittest.TestCase):
         from app.server import app
         self.assertIsInstance(app, FastAPI)
 
-    def test_database_get_route_exists(self):
+    def test_expected_routes_are_registered(self):
         """
-        Verify that the GET endpoint for serving database files is registered.
-        """
-        from app.server import app
-        routes = [r.path for r in app.routes]
-        self.assertIn("/database/{filepath:path}", routes)
-
-    def test_database_put_route_exists(self):
-        """
-        Verify that the PUT endpoint for updating database files is registered.
-        """
-        from app.server import app
-        routes = [r.path for r in app.routes]
-        # PUT uses same path as GET
-        self.assertIn("/database/{filepath:path}", routes)
-
-    def test_env_get_route_exists(self):
-        """
-        Verify that the endpoint for reading environment variables is registered.
-        """
-        from app.server import app
-        routes = [r.path for r in app.routes]
-        self.assertIn("/api/settings/env", routes)
-
-    def test_ai_promise_score_route_exists(self):
-        """
-        Verify that the AI Promise Score analysis endpoint is registered.
-        """
-        from app.server import app
-        routes = [r.path for r in app.routes]
-        self.assertIn("/api/ai/promise-score", routes)
-
-    def test_ai_due_diligence_route_exists(self):
-        """
-        Verify that the AI Due Diligence analysis endpoint is registered.
-        """
-        from app.server import app
-        routes = [r.path for r in app.routes]
-        self.assertIn("/api/ai/due-diligence", routes)
-
-    def test_database_fetch_route_exists(self):
-        """
-        Verify that the database fetch endpoint is registered.
-        """
-        from app.server import app
-        routes = [r.path for r in app.routes]
-        self.assertIn("/api/database/fetch", routes)
-
-    def test_latest_quarter_route_exists(self):
-        """
-        Verify that the dedicated latest-quarter endpoint is registered, and that
-        it is registered BEFORE the parameterized /{quarter} route so FastAPI
-        matches the literal "latest" path first.
+        Verify that all expected API and database routes are registered on the FastAPI app.
         """
         from app.server import app
         paths = [r.path for r in app.routes]
-        self.assertIn("/api/database/quarters/latest", paths)
+
+        expected_paths = [
+            "/database/{filepath:path}",
+            "/api/settings/env",
+            "/api/ai/promise-score",
+            "/api/ai/due-diligence",
+            "/api/database/fetch",
+            "/api/database/quarters/latest",
+            "/api/database/quarters/{quarter}/analysis",
+        ]
+        for path in expected_paths:
+            with self.subTest(path=path):
+                self.assertIn(path, paths)
+
+    def test_latest_quarter_route_is_registered_before_parameterized_quarter(self):
+        """
+        FastAPI matches routes in registration order, so the literal "/latest"
+        endpoint must precede "/{quarter}" to avoid being shadowed.
+        """
+        from app.server import app
+        paths = [r.path for r in app.routes]
         latest_idx = paths.index("/api/database/quarters/latest")
         param_idx = paths.index("/api/database/quarters/{quarter}")
         self.assertLess(latest_idx, param_idx)
-
-    def test_quarter_analysis_route_exists(self):
-        """
-        Verify that the per-quarter aggregated analysis endpoint is registered.
-        """
-        from app.server import app
-        routes = [r.path for r in app.routes]
-        self.assertIn("/api/database/quarters/{quarter}/analysis", routes)
 
 
 if __name__ == "__main__":
