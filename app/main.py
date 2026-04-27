@@ -477,7 +477,10 @@ def run_server(host: str = None, port: int = None):
     is_production = os.environ.get("DOCKER_ENV") is not None
 
     if is_production:
-        host = "0.0.0.0"
+        # Docker containers must bind the wildcard address to be reachable
+        # from the host network; loopback would isolate the server inside
+        # the container. Triggered only when DOCKER_ENV is set.
+        host = "0.0.0.0"  # lgtm[py/bind-socket-all-network-interfaces]
 
     frontend_dir = Path(__file__).parent / "frontend"
     frontend_dist = frontend_dir / "dist"
