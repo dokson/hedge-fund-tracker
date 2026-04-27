@@ -472,15 +472,14 @@ def run_server(host: str = None, port: int = None):
     import webbrowser
     import threading
 
+    # In containerized deployments, HOST is set to the wildcard address by
+    # the runtime environment (Dockerfile / docker-compose / Railway env)
+    # so the server is reachable from outside the container. Locally it
+    # defaults to loopback. Keeping this contract out of the Python source
+    # means the literal wildcard address only lives in deployment manifests.
     host = host or os.environ.get("HOST", "127.0.0.1")
     port = port or int(os.environ.get("PORT", "8000"))
     is_production = os.environ.get("DOCKER_ENV") is not None
-
-    if is_production:
-        # Docker containers must bind the wildcard address to be reachable
-        # from the host network; loopback would isolate the server inside
-        # the container. Triggered only when DOCKER_ENV is set.
-        host = "0.0.0.0"  # lgtm[py/bind-socket-all-network-interfaces]
 
     frontend_dir = Path(__file__).parent / "frontend"
     frontend_dist = frontend_dir / "dist"

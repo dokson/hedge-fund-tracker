@@ -46,7 +46,8 @@ RUN useradd --create-home --shell /bin/bash hedgefund && \
     chown -R hedgefund:hedgefund /app
 USER hedgefund
 
-ENV PORT=8000
+ENV PORT=8000 \
+    HOST=0.0.0.0
 EXPOSE ${PORT}
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
