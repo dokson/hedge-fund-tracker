@@ -1,0 +1,7 @@
+CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
+74767V109,QS,Quantumscape Corp.,14794635,0,182.27M,0,NO CHANGE,21.7%
+72703X106,PL,Planet Labs,7141130,0,92.69M,0,NO CHANGE,11%
+63942X106,NVTS,Navitas Semiconductor,9181581,0,66.29M,0,NO CHANGE,7.9%
+00BLPK443,RNEW,Ecofin US Renewables Infrastructure PLC,22500000,0,5.54M,0,NO CHANGE,0.66%
+G65163100,JOBY,Joby Aviation,30270438,-10090153,493.64M,-164.55M,-25%,58.7%
+Total,,,,,840.42M,-164.55M,-27%,100%
