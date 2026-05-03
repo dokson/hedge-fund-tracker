@@ -26,7 +26,7 @@ CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
 77311W101,RKT,"Rocket Companies, Inc.",10,10,194,194,NEW,<.01%
 82846H405,QXO,"QXO, Inc.",10,10,191,191,NEW,<.01%
 74766W108,QUBT,Quantum Computing Inc.,10,10,184,184,NEW,<.01%
-G2949D104,ETHM,Dynamix Corporation Class A,10,10,104,104,NEW,<.01%
+G2949D104,DYNC,Dynamix Corporation Class A,10,10,104,104,NEW,<.01%
 683712103,OPEN,"Opendoor Technologies, Inc.",10,10,80,80,NEW,<.01%
 58733R102,MELI,"MercadoLibre, Inc. (Argentina)",10,0,23.37K,0,NO CHANGE,<.01%
 64110L106,NFLX,"Netflix, Inc.",10,0,11.99K,0,NO CHANGE,<.01%
