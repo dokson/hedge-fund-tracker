@@ -366,10 +366,10 @@ The quality of the output analysis is directly tied to the quality of the input 
 Want to track additional funds? Simply edit `database/hedge_funds.csv` and add your preferred institutional investors. For example, to add [Berkshire Hathaway](https://www.berkshirehathaway.com/), [Pershing Square](https://pershingsquareholdings.com/) and [ARK-Invest](https://www.ark-invest.com/), you would add the following lines:
 
 ```csv
-"CIK","Fund","Manager","Denomination","CIKs"
-"0001067983","Berkshire Hathaway","Warren Buffett","Berkshire Hathaway Inc",""
-"0001336528","Pershing Square","Bill Ackman","Pershing Square Capital Management, L.P.",""
-"0001697748","ARK Invest","Cathie Wood","ARK Investment Management LLC",""
+"CIK","Fund","Manager","Denomination","CIKs","URL"
+"0001067983","Berkshire Hathaway","Warren Buffett","Berkshire Hathaway Inc","","https://www.berkshirehathaway.com/"
+"0001336528","Pershing Square","Bill Ackman","Pershing Square Capital Management, L.P.","","https://pershingsquareholdings.com/"
+"0001697748","ARK Invest","Cathie Wood","ARK Investment Management LLC","","https://www.ark-invest.com/"
 ```
 
 > **💡 Note**: `hedge_funds.csv` currently includes **not only _traditional hedge funds_** but also **other institutional investors** _(private equity funds, large banks, VCs, pension funds, etc., that file 13F to the [SEC](http://sec.gov/))_ selected from what I consider the **top 5%** of performers.
@@ -384,9 +384,11 @@ Want to track additional funds? Simply edit `database/hedge_funds.csv` and add y
   _Example:_ [Jeffrey Ubben](https://en.wikipedia.org/wiki/Jeffrey_W._Ubben)'s [ValueAct Holdings _(CIK = `0001418814`)_](https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001418814) also has filings under [ValueAct Capital Management _(CIK = `0001418812`)_](https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001418812). By adding `0001418812` to the `CIKs` column, the tool aggregates **non-quarterly filings** from both entities for a complete view.
 
   ```csv
-  "CIK","Fund","Manager","Denomination","CIKs"
-  "0001418814","ValueAct","Jeffrey Ubben","ValueAct Holdings, L.P.","0001418812"
+  "CIK","Fund","Manager","Denomination","CIKs","URL"
+  "0001418814","ValueAct","Jeffrey Ubben","ValueAct Holdings, L.P.","0001418812","https://valueact.com/"
   ```
+
+- **`URL`** _(optional)_: Official fund website.
 
 ## 🧠 AI Models Selection
 

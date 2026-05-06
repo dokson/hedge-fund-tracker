@@ -37,7 +37,7 @@ class TestDatabase(unittest.TestCase):
 
         # Create dummy main db files
         with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), 'w', newline='') as f:
-            f.write("CIK,Fund,Manager,Denomination,CIKs\n001,Fund A,Manager A,Denom A,\n")
+            f.write("CIK,Fund,Manager,Denomination,CIKs,URL\n001,Fund A,Manager A,Denom A,,https://fund-a.example.com/\n")
         
         with open(os.path.join(self.test_db_folder, MODELS_FILE), 'w', newline='') as f:
             f.write("ID,Description,Client\nmodel-1,Google Model,Google\n")
@@ -117,11 +117,12 @@ class TestDatabase(unittest.TestCase):
 
     def test_load_hedge_funds(self):
         """
-        Parses hedge_funds.csv into a list of fund dicts.
+        Parses hedge_funds.csv into a list of fund dicts, including the URL column.
         """
         funds = load_hedge_funds(f'./{self.test_db_folder}/{HEDGE_FUNDS_FILE}')
         self.assertEqual(len(funds), 1)
         self.assertEqual(funds[0]['Fund'], 'Fund A')
+        self.assertEqual(funds[0]['URL'], 'https://fund-a.example.com/')
 
 
     def test_load_models(self):
@@ -328,26 +329,29 @@ class TestDatabase(unittest.TestCase):
 
 
     def test_delete_fund_from_database(self):
-        fund_info = {'Fund': 'Fund B', 'CIK': '002'}
-        # Create Fund B in hedge_funds.csv first
+        """
+        Moves the fund to excluded_hedge_funds.csv carrying its URL from hedge_funds.csv.
+        """
+        fund_info = {'Fund': 'Fund B', 'CIK': '002', 'URL': 'https://fund-b.example.com/'}
+        # Create Fund B in hedge_funds.csv first (with URL column)
         with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), 'a', newline='') as f:
-            f.write("002,Fund B,Manager B,Denom B,\n")
-            
-        delete_fund_from_database(fund_info, "http://example.com")
-        
+            f.write("002,Fund B,Manager B,Denom B,,https://fund-b.example.com/\n")
+
+        delete_fund_from_database(fund_info)
+
         # Check file deleted
         self.assertFalse(os.path.exists(os.path.join(self.test_db_folder, '2025Q1', 'Fund_B.csv')))
-        
+
         # Check removed from hedge_funds.csv
         funds = load_hedge_funds()
         self.assertTrue(all(f['Fund'] != 'Fund B' for f in funds))
-        
-        # Check added to excluded_hedge_funds.csv
+
+        # Check added to excluded_hedge_funds.csv with URL preserved from hedge_funds.csv
         excluded_path = os.path.join(self.test_db_folder, 'excluded_hedge_funds.csv')
         self.assertTrue(os.path.exists(excluded_path))
         df_ex = pd.read_csv(excluded_path)
         self.assertIn('Fund B', df_ex['Fund'].values)
-        self.assertIn('http://example.com', df_ex['URL'].values)
+        self.assertIn('https://fund-b.example.com/', df_ex['URL'].values)
 
 
     def tearDown(self):

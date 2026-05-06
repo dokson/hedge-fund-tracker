@@ -378,13 +378,20 @@ def run_delete_fund():
     if not selected_fund:
         return
 
-    print(f"To confirm deletion of '{selected_fund['Fund']}', please enter its website URL.")
-    url = input("Website URL (must start with 'http'): ").strip()
-    
-    if url.lower().startswith('http'):
-        delete_fund_from_database(selected_fund, url=url)
+    fund_name = selected_fund['Fund']
+    fund_url = selected_fund.get('URL', '')
+    if fund_url:
+        print(f"Fund URL on record: {fund_url}")
     else:
-        print("❌ Invalid URL or operation cancelled. Deletion aborted.")
+        print("⚠️  No URL on record for this fund.")
+
+    print(f"To confirm deletion of '{fund_name}', please retype its name.")
+    typed = input("Fund name: ").strip()
+
+    if typed == fund_name:
+        delete_fund_from_database(selected_fund)
+    else:
+        print("❌ Name mismatch. Deletion aborted.")
 
 
 def print_missing_quarters_report():

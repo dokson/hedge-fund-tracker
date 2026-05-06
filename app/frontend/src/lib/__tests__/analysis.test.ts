@@ -15,14 +15,15 @@ describe("generateHedgeFundsCSV", () => {
         manager: "John Doe",
         denomination: "Test Fund LP",
         ciks: "",
+        url: "https://test-fund.example.com/",
       },
     ];
 
     const csv = generateHedgeFundsCSV(funds);
 
     expect(csv).toBe(
-      '"CIK","Fund","Manager","Denomination","CIKs"\n' +
-      '"0001234567","Test Fund","John Doe","Test Fund LP",""\n'
+      '"CIK","Fund","Manager","Denomination","CIKs","URL"\n' +
+      '"0001234567","Test Fund","John Doe","Test Fund LP","","https://test-fund.example.com/"\n'
     );
   });
 
@@ -34,6 +35,7 @@ describe("generateHedgeFundsCSV", () => {
         manager: "Manager A",
         denomination: "Fund A LP",
         ciks: "",
+        url: "",
       },
       {
         cik: "0002222222",
@@ -41,6 +43,7 @@ describe("generateHedgeFundsCSV", () => {
         manager: "Manager B",
         denomination: "Fund B LLC",
         ciks: "0003333333",
+        url: "https://fund-b.example.com/",
       },
     ];
 
@@ -49,14 +52,16 @@ describe("generateHedgeFundsCSV", () => {
 
     expect(lines).toHaveLength(3);
     expect(lines[0]).toContain("CIK");
+    expect(lines[0]).toContain("URL");
     expect(lines[1]).toContain("Fund A");
     expect(lines[2]).toContain("0003333333");
+    expect(lines[2]).toContain("https://fund-b.example.com/");
   });
 
   it("should handle empty funds array with trailing newline", () => {
     const csv = generateHedgeFundsCSV([]);
 
-    expect(csv).toBe('"CIK","Fund","Manager","Denomination","CIKs"\n\n');
+    expect(csv).toBe('"CIK","Fund","Manager","Denomination","CIKs","URL"\n\n');
   });
 });
 

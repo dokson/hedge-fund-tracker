@@ -183,9 +183,10 @@ Maintains `stocks.csv` master database; automatically sorted on exit.
 
 All persistent data lives in `database/`:
 
-- **`hedge_funds.csv`** — Curated list of tracked institutional investors (CIK, name, manager, denomination, additional CIKs)
+- **`hedge_funds.csv`** — Curated list of tracked institutional investors (CIK, name, manager, denomination, additional CIKs, URL)
   - `Denomination`: The exact legal name used in non-quarterly filings; critical for matching 13D/G and Form 4 records
   - `CIKs`: Optional comma-separated list of related entity CIKs (some firms have multiple filing entities)
+  - `URL`: Optional official website
   - Editable at runtime; actively managed to maintain quality
   - Can be extended with funds from `excluded_hedge_funds.csv`
 

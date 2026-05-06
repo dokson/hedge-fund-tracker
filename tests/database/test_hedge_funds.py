@@ -81,6 +81,16 @@ class TestHedgeFunds(unittest.TestCase):
                     )
 
 
+    def test_hedge_funds_has_url_column(self):
+        """
+        Verifies that hedge_funds.csv exposes a URL field for every fund (may be empty).
+        """
+        hedge_funds = load_hedge_funds()
+        self.assertGreater(len(hedge_funds), 0)
+        for fund in hedge_funds:
+            self.assertIn('URL', fund, f"Fund '{fund.get('Fund')}' missing URL field")
+
+
     def test_no_duplicate_funds_in_excluded(self):
         """
         Verifies that no fund (by CIK) is present in both hedge_funds.csv and excluded_hedge_funds.csv.

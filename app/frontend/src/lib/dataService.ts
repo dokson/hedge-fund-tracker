@@ -12,6 +12,7 @@ export interface RawHedgeFund {
   Manager: string;
   Denomination: string;
   CIKs: string;
+  URL: string;
 }
 
 export interface RawStock {
@@ -70,6 +71,7 @@ export interface HedgeFund {
   manager: string;
   denomination: string;
   ciks: string;
+  url: string;
 }
 
 export interface Stock {
@@ -230,64 +232,56 @@ export function formatPct(n: number, showSign = false): string {
 
 // ---------- Public API: basic data ----------
 
+function rawToFund(r: RawHedgeFund): HedgeFund {
+  return {
+    cik: r.CIK,
+    fund: r.Fund,
+    manager: r.Manager,
+    denomination: r.Denomination,
+    ciks: r.CIKs,
+    url: r.URL || "",
+  };
+}
+
 export async function getHedgeFunds(): Promise<HedgeFund[]> {
   return cachedFetch("hedge_funds", async () => {
     const raw = await fetchCSV<RawHedgeFund>("/database/hedge_funds.csv");
-    return raw.map((r) => ({
-      cik: r.CIK,
-      fund: r.Fund,
-      manager: r.Manager,
-      denomination: r.Denomination,
-      ciks: r.CIKs,
-    }));
+    return raw.map(rawToFund);
   });
 }
 
-export interface ExcludedHedgeFund {
-  cik: string;
-  fund: string;
-  manager: string;
-  denomination: string;
-  ciks: string;
-  url: string;
-}
+export type ExcludedHedgeFund = HedgeFund;
 
 export async function getExcludedHedgeFunds(): Promise<ExcludedHedgeFund[]> {
   return cachedFetch("excluded_hedge_funds", async () => {
-    const raw = await fetchCSV<RawHedgeFund & { URL: string }>("/database/excluded_hedge_funds.csv");
-    return raw.map((r) => ({
-      cik: r.CIK,
-      fund: r.Fund,
-      manager: r.Manager,
-      denomination: r.Denomination,
-      ciks: r.CIKs,
-      url: r.URL || "",
-    }));
+    const raw = await fetchCSV<RawHedgeFund>("/database/excluded_hedge_funds.csv");
+    return raw.map(rawToFund);
   });
+}
+
+const FUNDS_CSV_HEADER = '"CIK","Fund","Manager","Denomination","CIKs","URL"';
+
+function fundsToCSV(funds: HedgeFund[]): string {
+  return (
+    FUNDS_CSV_HEADER + "\n" +
+    funds
+      .map((f) => `"${f.cik}","${f.fund}","${f.manager}","${f.denomination}","${f.ciks}","${f.url}"`)
+      .join("\n") + "\n"
+  );
 }
 
 /**
  * Generates a hedge_funds CSV string from an array of funds.
  */
 export function generateHedgeFundsCSV(allFunds: HedgeFund[]): string {
-  return (
-    '"CIK","Fund","Manager","Denomination","CIKs"\n' +
-    allFunds
-      .map((f) => `"${f.cik}","${f.fund}","${f.manager}","${f.denomination}","${f.ciks}"`)
-      .join("\n") + "\n"
-  );
+  return fundsToCSV(allFunds);
 }
 
 /**
  * Generates an excluded_hedge_funds CSV string from an array of excluded funds.
  */
 export function generateExcludedFundsCSV(allExcluded: ExcludedHedgeFund[]): string {
-  return (
-    '"CIK","Fund","Manager","Denomination","CIKs","URL"\n' +
-    allExcluded
-      .map((f) => `"${f.cik}","${f.fund}","${f.manager}","${f.denomination}","${f.ciks}","${f.url}"`)
-      .join("\n") + "\n"
-  );
+  return fundsToCSV(allExcluded);
 }
 
 /**
@@ -297,87 +291,39 @@ export function generateAddFundCSV(
   allFunds: HedgeFund[],
   newFund: HedgeFund
 ): string {
-  return generateHedgeFundsCSV([...allFunds, newFund]);
+  return fundsToCSV([...allFunds, newFund]);
 }
 
 /**
- * Generates updated CSV contents after deleting a fund from hedge_funds
- * and adding it to excluded_hedge_funds. Returns downloadable blobs.
+ * Generates updated CSVs after moving a fund from hedge_funds to excluded.
  */
 export function generateDeleteFundCSVs(
   allFunds: HedgeFund[],
   excludedFunds: ExcludedHedgeFund[],
-  fundToDelete: HedgeFund,
-  websiteUrl: string
+  fundToDelete: HedgeFund
 ): { hedgeFundsCSV: string; excludedCSV: string } {
-  // Remove from hedge_funds
   const remaining = allFunds.filter((f) => f.cik !== fundToDelete.cik);
-  const hedgeFundsCSV =
-    '"CIK","Fund","Manager","Denomination","CIKs"\n' +
-    remaining
-      .map(
-        (f) =>
-          `"${f.cik}","${f.fund}","${f.manager}","${f.denomination}","${f.ciks}"`
-      )
-      .join("\n") + "\n";
-
-  // Add to excluded
-  const newExcluded: ExcludedHedgeFund = {
-    ...fundToDelete,
-    url: websiteUrl,
+  const allExcluded = [...excludedFunds, fundToDelete];
+  return {
+    hedgeFundsCSV: fundsToCSV(remaining),
+    excludedCSV: fundsToCSV(allExcluded),
   };
-  const allExcluded = [...excludedFunds, newExcluded];
-  const excludedCSV =
-    '"CIK","Fund","Manager","Denomination","CIKs","URL"\n' +
-    allExcluded
-      .map(
-        (f) =>
-          `"${f.cik}","${f.fund}","${f.manager}","${f.denomination}","${f.ciks}","${f.url}"`
-      )
-      .join("\n") + "\n";
-
-  return { hedgeFundsCSV, excludedCSV };
 }
 
 /**
- * Generates updated CSV contents after restoring an excluded fund back to hedge_funds.
- * Removes URL field and moves the fund from excluded to active.
+ * Generates updated CSVs after restoring an excluded fund back to hedge_funds.
  */
 export function generateRestoreFundCSVs(
   allFunds: HedgeFund[],
   excludedFunds: ExcludedHedgeFund[],
   fundToRestore: ExcludedHedgeFund
 ): { hedgeFundsCSV: string; excludedCSV: string } {
-  // Add to hedge_funds (without URL)
-  const restored: HedgeFund = {
-    cik: fundToRestore.cik,
-    fund: fundToRestore.fund,
-    manager: fundToRestore.manager,
-    denomination: fundToRestore.denomination,
-    ciks: fundToRestore.ciks,
-  };
-  const updatedFunds = [...allFunds, restored];
-  const hedgeFundsCSV =
-    '"CIK","Fund","Manager","Denomination","CIKs"\n' +
-    updatedFunds
-      .map(
-        (f) =>
-          `"${f.cik}","${f.fund}","${f.manager}","${f.denomination}","${f.ciks}"`
-      )
-      .join("\n") + "\n";
-
-  // Remove from excluded
+  const updatedFunds = [...allFunds, fundToRestore];
   const remaining = excludedFunds.filter((f) => f.cik !== fundToRestore.cik);
-  const excludedCSV =
-    '"CIK","Fund","Manager","Denomination","CIKs","URL"\n' +
-    remaining
-      .map(
-        (f) =>
-          `"${f.cik}","${f.fund}","${f.manager}","${f.denomination}","${f.ciks}","${f.url}"`
-      )
-      .join("\n") + "\n";
-
-  return { hedgeFundsCSV, excludedCSV };
+  return {
+    hedgeFundsCSV: fundsToCSV(updatedFunds),
+    excludedCSV: fundsToCSV(remaining),
+  };
 }
 
 export const MODEL_PROVIDERS = ["GitHub", "Groq", "Google", "HuggingFace", "OpenRouter"] as const;

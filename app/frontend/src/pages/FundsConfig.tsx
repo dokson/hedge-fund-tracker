@@ -53,7 +53,6 @@ export default function FundsConfig() {
   const [excludedSearch, setExcludedSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fundToDelete, setFundToDelete] = useState<HedgeFund | null>(null);
-  const [websiteUrl, setWebsiteUrl] = useState("");
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [fundToRestore, setFundToRestore] = useState<ExcludedHedgeFund | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -62,6 +61,7 @@ export default function FundsConfig() {
   const [newManager, setNewManager] = useState("");
   const [newDenomination, setNewDenomination] = useState("");
   const [newCiks, setNewCiks] = useState("");
+  const [newUrl, setNewUrl] = useState("");
 
   const [editingCik, setEditingCik] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<Record<string, string>>({});
@@ -77,7 +77,7 @@ export default function FundsConfig() {
   const filteredFunds = useMemo(() => {
     if (!fundSearch) return funds;
     const q = fundSearch.toLowerCase();
-    return funds.filter((f) => f.fund.toLowerCase().includes(q) || f.manager.toLowerCase().includes(q) || f.denomination.toLowerCase().includes(q) || f.cik.includes(q));
+    return funds.filter((f) => f.fund.toLowerCase().includes(q) || f.manager.toLowerCase().includes(q) || f.denomination.toLowerCase().includes(q) || f.cik.includes(q) || f.url.toLowerCase().includes(q));
   }, [funds, fundSearch]);
 
   const filteredExcluded = useMemo(() => {
@@ -98,16 +98,20 @@ export default function FundsConfig() {
   // ── Active fund inline edit ──
   const startEdit = (f: HedgeFund) => {
     setEditingCik(f.cik);
-    setEditDraft({ fund: f.fund, manager: f.manager, denomination: f.denomination, cik: f.cik, ciks: f.ciks });
+    setEditDraft({ fund: f.fund, manager: f.manager, denomination: f.denomination, cik: f.cik, ciks: f.ciks, url: f.url });
   };
   const cancelEdit = () => { setEditingCik(null); setEditDraft({}); };
   const isEditDraftValid = () =>
     !!(editDraft.fund?.trim() && editDraft.manager?.trim() && editDraft.denomination?.trim() && editDraft.cik?.trim());
   const saveEdit = async () => {
     if (!editingCik || !isEditDraftValid()) return;
+    if (editDraft.url && !isValidUrl(editDraft.url)) {
+      toast.error("Website URL must start with https://");
+      return;
+    }
     const updated = funds.map((f) =>
       f.cik === editingCik
-        ? { ...f, fund: editDraft.fund, manager: editDraft.manager, denomination: editDraft.denomination, cik: editDraft.cik, ciks: editDraft.ciks }
+        ? { ...f, fund: editDraft.fund, manager: editDraft.manager, denomination: editDraft.denomination, cik: editDraft.cik, ciks: editDraft.ciks, url: editDraft.url || "" }
         : f
     );
     const csv = generateHedgeFundsCSV(updated);
@@ -154,8 +158,8 @@ export default function FundsConfig() {
   };
 
   const handleConfirmDelete = async () => {
-    if (!fundToDelete || !isValidUrl(websiteUrl)) return;
-    const { hedgeFundsCSV, excludedCSV } = generateDeleteFundCSVs(funds, excludedFunds, fundToDelete, websiteUrl.trim());
+    if (!fundToDelete) return;
+    const { hedgeFundsCSV, excludedCSV } = generateDeleteFundCSVs(funds, excludedFunds, fundToDelete);
     try {
       await saveFileToDisk(hedgeFundsCSV, "hedge_funds.csv");
       await saveFileToDisk(excludedCSV, "excluded_hedge_funds.csv");
@@ -184,17 +188,22 @@ export default function FundsConfig() {
   };
 
   const resetAddForm = () => {
-    setNewCik(""); setNewFundName(""); setNewManager(""); setNewDenomination(""); setNewCiks("");
+    setNewCik(""); setNewFundName(""); setNewManager(""); setNewDenomination(""); setNewCiks(""); setNewUrl("");
   };
 
   const handleAddFund = async () => {
     if (!newCik.trim() || !newFundName.trim() || !newManager.trim()) return;
+    if (newUrl.trim() && !isValidUrl(newUrl)) {
+      toast.error("Website URL must start with https://");
+      return;
+    }
     const newFund: HedgeFund = {
       cik: newCik.trim(),
       fund: newFundName.trim(),
       manager: newManager.trim(),
       denomination: newDenomination.trim(),
       ciks: newCiks.trim() || newCik.trim(),
+      url: newUrl.trim(),
     };
     const csv = generateAddFundCSV(funds, newFund);
     try {
@@ -303,6 +312,7 @@ export default function FundsConfig() {
                       <ColumnHeader label="Denomination" tooltip="Full legal name as it appears in SEC filings. Used to identify positions in non-quarterly filings that may contain multiple institutional entities." />
                       <ColumnHeader label="CIK" tooltip="Central Index Key — unique SEC identifier for filing entities." />
                       <ColumnHeader label="CIKs" tooltip="Comma-separated list of additional CIKs associated with this fund (e.g. for related filing entities)." />
+                      <ColumnHeader label="Website" tooltip="Official fund website. Optional, must start with https://." />
                       {!IS_GH_PAGES_MODE && <th className="text-right p-3 font-medium w-24"></th>}
                     </tr>
                   </thead>
@@ -319,6 +329,7 @@ export default function FundsConfig() {
                                 <td className="p-2"><InlineInput value={f.denomination} field="denomination" draft={editDraft} setDraft={setEditDraft} /></td>
                                 <td className="p-2"><InlineInput value={f.cik} field="cik" draft={editDraft} setDraft={setEditDraft} className="font-mono" /></td>
                                 <td className="p-2"><InlineInput value={f.ciks} field="ciks" draft={editDraft} setDraft={setEditDraft} className="font-mono" /></td>
+                                <td className="p-2"><InlineInput value={f.url} field="url" draft={editDraft} setDraft={setEditDraft} /></td>
                                 <td className="p-2 text-right whitespace-nowrap">
                                   <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-500/10" onClick={saveEdit} title="Save" disabled={!isEditDraftValid()}>
                                     <Check className="h-3.5 w-3.5" />
@@ -335,12 +346,19 @@ export default function FundsConfig() {
                                 <td className="p-3 text-muted-foreground text-xs max-w-[250px] truncate fund-link cursor-pointer" onClick={() => navigate(`/funds/${encodeURIComponent(f.fund)}`)}>{f.denomination}</td>
                                 <td className="p-3"><CikLink cik={f.cik} /></td>
                                 <td className="p-3 font-mono text-xs text-muted-foreground max-w-[150px] truncate">{f.ciks || "—"}</td>
+                                <td className="p-3">
+                                  {f.url ? (
+                                    <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1 max-w-[180px] truncate">
+                                      {f.url.replace(/^https?:\/\/(www\.)?/, "")} <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                                    </a>
+                                  ) : <span className="text-xs text-muted-foreground">—</span>}
+                                </td>
                                 {!IS_GH_PAGES_MODE && (
                                   <td className="p-3 text-right whitespace-nowrap">
                                     <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground" onClick={() => startEdit(f)} title="Edit fund">
                                       <Pencil className="h-3.5 w-3.5" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { setFundToDelete(f); setWebsiteUrl(""); setDeleteDialogOpen(true); }} title="Delete fund">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { setFundToDelete(f); setDeleteDialogOpen(true); }} title="Delete fund">
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   </td>
@@ -465,16 +483,12 @@ export default function FundsConfig() {
               <div><span className="text-muted-foreground">Fund:</span> {fundToDelete?.fund}</div>
               <div><span className="text-muted-foreground">Manager:</span> {fundToDelete?.manager}</div>
               <div><span className="text-muted-foreground">CIK:</span> <span className="font-mono text-xs">{fundToDelete?.cik}</span></div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="website-url">Website URL</Label>
-              <Input id="website-url" placeholder="https://www.example.com" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} className="bg-card border-border" />
-              <p className="text-xs text-muted-foreground">Must start with <code>https://</code>.</p>
+              {fundToDelete?.url && <div><span className="text-muted-foreground">Website:</span> <span className="text-xs">{fundToDelete.url}</span></div>}
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" disabled={!isValidUrl(websiteUrl)} onClick={handleConfirmDelete}>Confirm Delete</Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>Confirm Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -491,7 +505,7 @@ export default function FundsConfig() {
               <div><span className="text-muted-foreground">Fund:</span> {fundToRestore?.fund}</div>
               <div><span className="text-muted-foreground">Manager:</span> {fundToRestore?.manager}</div>
               <div><span className="text-muted-foreground">CIK:</span> <span className="font-mono text-xs">{fundToRestore?.cik}</span></div>
-              {fundToRestore?.url && <div><span className="text-muted-foreground">Website (will be removed):</span> <span className="text-xs line-through">{fundToRestore.url}</span></div>}
+              {fundToRestore?.url && <div><span className="text-muted-foreground">Website:</span> <span className="text-xs">{fundToRestore.url}</span></div>}
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -533,6 +547,11 @@ export default function FundsConfig() {
               <Label htmlFor="new-ciks">CIKs (optional)</Label>
               <Input id="new-ciks" placeholder="Defaults to CIK if empty" value={newCiks} onChange={(e) => setNewCiks(e.target.value.replace(/[^0-9,]/g, ""))} className="bg-card border-border font-mono text-sm" />
               <p className="text-xs text-muted-foreground">Comma-separated list of related CIKs, if different from primary.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-url">Website (optional)</Label>
+              <Input id="new-url" placeholder="https://www.example.com" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} className="bg-card border-border" />
+              <p className="text-xs text-muted-foreground">Official fund website. Must start with <code>https://</code> if provided.</p>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
