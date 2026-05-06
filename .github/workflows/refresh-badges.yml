@@ -1,0 +1,46 @@
+name: Refresh README Badges
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */2 * * *" # Every 2 hours
+
+jobs:
+  refresh-badges:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Detect broken badges and purge Camo cache
+        env:
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          html=$(curl -sSf \
+            -H "Accept: application/vnd.github.html" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO/readme")
+
+          urls=$(echo "$html" | grep -oE 'https://camo\.githubusercontent\.com/[a-f0-9]+/[a-f0-9]+' | sort -u)
+
+          if [ -z "$urls" ]; then
+            echo "No Camo URLs found in README."
+            exit 0
+          fi
+
+          purged=0
+          checked=0
+          while IFS= read -r url; do
+            checked=$((checked + 1))
+            svg=$(curl -sSL --max-time 15 "$url" || true)
+            if echo "$svg" | grep -qiE '>(invalid|inaccessible|not found|no response|domain is blocked)</text>'; then
+              echo "BROKEN: $url"
+              code=$(curl -X PURGE -s -o /dev/null -w "%{http_code}" --max-time 15 "$url")
+              echo "  PURGE -> HTTP $code"
+              purged=$((purged + 1))
+            fi
+          done <<< "$urls"
+
+          echo "Checked $checked badges, purged $purged."
