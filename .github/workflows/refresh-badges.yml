@@ -30,17 +30,52 @@ jobs:
             exit 0
           fi
 
+          is_broken() {
+            echo "$1" | grep -qiE '>(invalid|inaccessible|not found|no response|domain is blocked)</text>'
+          }
+
           purged=0
           checked=0
+          skipped=0
           while IFS= read -r url; do
             checked=$((checked + 1))
             svg=$(curl -sSL --max-time 15 "$url" || true)
-            if echo "$svg" | grep -qiE '>(invalid|inaccessible|not found|no response|domain is blocked)</text>'; then
-              echo "BROKEN: $url"
-              code=$(curl -X PURGE -s -o /dev/null -w "%{http_code}" --max-time 15 "$url")
-              echo "  PURGE -> HTTP $code"
-              purged=$((purged + 1))
+            if ! is_broken "$svg"; then
+              continue
             fi
+            echo "BROKEN: $url"
+
+            # Decode the upstream shields URL embedded in the Camo path (hex).
+            hex=$(echo "$url" | sed 's|.*/||')
+            shields_url=$(printf '%s' "$hex" | xxd -r -p 2>/dev/null || true)
+            if [ -z "$shields_url" ]; then
+              echo "  could not decode upstream URL, skipping"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            # Warm shields.io CDN: retry until we get a non-broken SVG, so the
+            # subsequent Camo refetch lands on a good cached response.
+            warmed=0
+            for attempt in 1 2 3 4 5 6 7 8; do
+              warm_svg=$(curl -sSL --max-time 15 "$shields_url" || true)
+              if ! is_broken "$warm_svg"; then
+                warmed=1
+                echo "  shields.io warmed on attempt $attempt"
+                break
+              fi
+              sleep 3
+            done
+
+            if [ "$warmed" -ne 1 ]; then
+              echo "  shields.io still broken after retries, skipping PURGE"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            code=$(curl -X PURGE -s -o /dev/null -w "%{http_code}" --max-time 15 "$url")
+            echo "  PURGE -> HTTP $code"
+            purged=$((purged + 1))
           done <<< "$urls"
 
-          echo "Checked $checked badges, purged $purged."
+          echo "Checked $checked badges, purged $purged, skipped $skipped."
