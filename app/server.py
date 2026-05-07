@@ -215,6 +215,29 @@ async def quarter_analysis_endpoint(quarter: str) -> list[dict[str, object]]:
     return _df_to_json_safe_records(df)
 
 
+# ── Stock price history ────────────────────────────────────────────────────────
+
+@app.get("/api/stocks/{ticker}/history")
+async def stock_price_history(ticker: str, range: str = "5y") -> dict:
+    """
+    Return monthly close prices for the given ticker over the requested range.
+
+    `range` accepts yfinance period strings (e.g. "1y", "3y", "5y", "10y", "max").
+    Output: {"ticker": "...", "range": "...", "points": [{"date": "YYYY-MM-DD", "close": float}, ...]}
+    """
+    sanitized = ticker.strip().upper()
+    if not sanitized or len(sanitized) > 16 or not all(c.isalnum() or c in ".-" for c in sanitized):
+        raise HTTPException(status_code=400, detail="Invalid ticker")
+
+    allowed_ranges = {"ytd", "1y", "2y", "3y", "5y", "10y", "max"}
+    if range not in allowed_ranges:
+        raise HTTPException(status_code=400, detail=f"Invalid range; allowed: {sorted(allowed_ranges)}")
+
+    from app.stocks.price_fetcher import PriceFetcher
+    points = PriceFetcher.get_history(sanitized, range)
+    return {"ticker": sanitized, "range": range, "points": points}
+
+
 # ── .env read/write ────────────────────────────────────────────────────────────
 
 @app.get("/api/settings/env")

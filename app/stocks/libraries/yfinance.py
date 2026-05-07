@@ -247,6 +247,59 @@ class YFinance(FinanceLibrary):
             raise e
 
 
+    PERIOD_TO_INTERVAL = {
+        "ytd": "1d",
+        "1y": "1d",
+        "2y": "1d",
+        "3y": "1wk",
+        "5y": "1wk",
+        "10y": "1mo",
+        "max": "1mo",
+    }
+
+    @staticmethod
+    def get_history(ticker: str, period: str = "5y") -> list[dict] | None:
+        """
+        Gets OHLC price history for a ticker over the requested period.
+
+        The bar interval scales with the period to keep ~150–260 points:
+        daily for short ranges (<= 2y), weekly for mid (3–5y), monthly for long (10y/max).
+
+        Args:
+            ticker (str): The stock ticker.
+            period (str): yfinance period string ("1y", "3y", "5y", "10y", "max", ...).
+
+        Returns:
+            list[dict] | None: List of {"date", "open", "high", "low", "close"}, or None on failure.
+        """
+        interval = YFinance.PERIOD_TO_INTERVAL.get(period, "1mo")
+        try:
+            search_ticker = YFinance._sanitize_ticker(ticker)
+            with silence_output():
+                history = yf.Ticker(search_ticker).history(period=period, interval=interval, auto_adjust=False)
+
+            required = {"Open", "High", "Low", "Close"}
+            if history is None or history.empty or not required.issubset(history.columns):
+                return None
+
+            points = []
+            for idx, row in history.iterrows():
+                o, h, l, c = row.get("Open"), row.get("High"), row.get("Low"), row.get("Close")
+                if any(v is None or v != v for v in (o, h, l, c)):
+                    continue
+                points.append({
+                    "date": idx.strftime("%Y-%m-%d"),
+                    "open": round(float(o), 4),
+                    "high": round(float(h), 4),
+                    "low": round(float(l), 4),
+                    "close": round(float(c), 4),
+                })
+            return points or None
+        except Exception as e:
+            print(f"❌ ERROR: Failed to get history for Ticker {ticker} using YFinance: {e}")
+            return None
+
+
     @staticmethod
     @retry(
         stop=stop_after_attempt(3),

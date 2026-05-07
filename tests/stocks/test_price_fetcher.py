@@ -173,5 +173,49 @@ class TestPriceFetcher(unittest.TestCase):
         mock_tv.assert_not_called()
 
 
+    # --- get_history ---
+
+    @patch('app.stocks.price_fetcher.TradingView.get_history')
+    @patch('app.stocks.price_fetcher.YFinance.get_history')
+    def test_get_history_returns_points_from_first_library(self, mock_yf, mock_tv):
+        """
+        Returns history from YFinance without calling TradingView when YFinance returns data.
+        """
+        points = [{"date": "2024-01-01", "close": 100.0}, {"date": "2024-02-01", "close": 110.0}]
+        mock_yf.return_value = points
+
+        result = PriceFetcher.get_history('AAPL', '5y')
+
+        self.assertEqual(result, points)
+        mock_tv.assert_not_called()
+
+    @patch('app.stocks.price_fetcher.TradingView.get_history')
+    @patch('app.stocks.price_fetcher.YFinance.get_history')
+    def test_get_history_falls_back_when_first_returns_empty(self, mock_yf, mock_tv):
+        """
+        Falls back to TradingView when YFinance returns None or empty.
+        """
+        tv_points = [{"date": "2024-01-01", "close": 99.0}]
+        mock_yf.return_value = None
+        mock_tv.return_value = tv_points
+
+        result = PriceFetcher.get_history('AAPL', '5y')
+
+        self.assertEqual(result, tv_points)
+
+    @patch('app.stocks.price_fetcher.TradingView.get_history')
+    @patch('app.stocks.price_fetcher.YFinance.get_history')
+    def test_get_history_returns_empty_list_when_all_libraries_fail(self, mock_yf, mock_tv):
+        """
+        Returns an empty list (not None) when every source fails.
+        """
+        mock_yf.return_value = None
+        mock_tv.return_value = None
+
+        result = PriceFetcher.get_history('UNKNOWN', '5y')
+
+        self.assertEqual(result, [])
+
+
 if __name__ == '__main__':
     unittest.main()

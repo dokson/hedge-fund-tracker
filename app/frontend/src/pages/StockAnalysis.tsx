@@ -13,9 +13,11 @@ import type { Quarter } from "@/lib/quarters";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { FundLink } from "@/components/EntityLinks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { MeasuredChart } from "@/components/MeasuredChart";
 import { Button } from "@/components/ui/button";
 import { Brain, Loader2, CandlestickChart, Filter } from "lucide-react";
+import { StockPriceChart } from "@/components/StockPriceChart";
 import { useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 
@@ -231,36 +233,41 @@ export default function StockAnalysis() {
             </div>
           </div>
 
+          {/* Price history chart */}
+          <StockPriceChart ticker={ticker} />
+
           {/* Charts row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Sentiment Chart */}
             <div className="rounded-lg border border-border bg-card p-5">
               <h3 className="section-title mb-4 text-sm">Buyers vs Sellers</h3>
               <div className="h-[80px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sentimentData} layout="vertical">
-                    <XAxis type="number" hide />
-                    <YAxis type="category" dataKey="label" width={60} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        const row = payload[0]?.payload;
-                        const isBuyers = row.label === "Buyers";
-                        return (
-                          <div style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12, color: "hsl(var(--foreground))", padding: "6px 10px", lineHeight: 1.6 }}>
-                            <div><span style={{ fontWeight: 700 }}>{isBuyers ? "Increase" : "Decrease"}</span> : {isBuyers ? row.buyers : row.sellers}</div>
-                            <div><span style={{ fontWeight: 700 }}>{isBuyers ? "New" : "Close"}</span> : {isBuyers ? row.new : row.closed}</div>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Bar dataKey="buyers" name="Buyers" stackId="a" barSize={24} fill="hsl(142, 55%, 35%)" radius={0} />
-                    <Bar dataKey="new" name="New" stackId="a" fill="hsl(142, 40%, 24%)" radius={[0, 6, 6, 0]} />
-                    <Bar dataKey="sellers" name="Sellers" stackId="a" fill="hsl(0, 65%, 45%)" radius={0} />
-                    <Bar dataKey="closed" name="Closed" stackId="a" fill="hsl(0, 45%, 28%)" radius={[0, 6, 6, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <MeasuredChart>
+                  {({ width, height }) => (
+                    <BarChart width={width} height={height} data={sentimentData} layout="vertical">
+                      <XAxis type="number" hide />
+                      <YAxis type="category" dataKey="label" width={60} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const row = payload[0]?.payload;
+                          const isBuyers = row.label === "Buyers";
+                          return (
+                            <div style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12, color: "hsl(var(--foreground))", padding: "6px 10px", lineHeight: 1.6 }}>
+                              <div><span style={{ fontWeight: 700 }}>{isBuyers ? "Increase" : "Decrease"}</span> : {isBuyers ? row.buyers : row.sellers}</div>
+                              <div><span style={{ fontWeight: 700 }}>{isBuyers ? "New" : "Close"}</span> : {isBuyers ? row.new : row.closed}</div>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Bar dataKey="buyers" name="Buyers" stackId="a" barSize={24} fill="hsl(142, 55%, 35%)" radius={0} />
+                      <Bar dataKey="new" name="New" stackId="a" fill="hsl(142, 40%, 24%)" radius={[0, 6, 6, 0]} />
+                      <Bar dataKey="sellers" name="Sellers" stackId="a" fill="hsl(0, 65%, 45%)" radius={0} />
+                      <Bar dataKey="closed" name="Closed" stackId="a" fill="hsl(0, 45%, 28%)" radius={[0, 6, 6, 0]} />
+                    </BarChart>
+                  )}
+                </MeasuredChart>
               </div>
             </div>
 
@@ -268,25 +275,27 @@ export default function StockAnalysis() {
             <div className="rounded-lg border border-border bg-card p-5">
               <h3 className="section-title mb-4 text-sm">Value Bought vs Value Sold</h3>
               <div className="h-[80px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={valueFlowData} layout="vertical">
-                    <XAxis type="number" hide />
-                    <YAxis type="category" dataKey="label" width={90} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12, color: "hsl(var(--foreground))" }}
-                      labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
-                      itemStyle={{ color: "hsl(var(--foreground))" }}
-                      formatter={(val: number) => [formatValue(val), null]}
-                      separator=" : "
-                    />
-                    <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24}>
-                      {valueFlowData.map((entry, i) => (
-                        <Cell key={i} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <MeasuredChart>
+                  {({ width, height }) => (
+                    <BarChart width={width} height={height} data={valueFlowData} layout="vertical">
+                      <XAxis type="number" hide />
+                      <YAxis type="category" dataKey="label" width={90} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12, color: "hsl(var(--foreground))" }}
+                        labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                        itemStyle={{ color: "hsl(var(--foreground))" }}
+                        formatter={(val: number) => [formatValue(val), null]}
+                        separator=" : "
+                      />
+                      <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24}>
+                        {valueFlowData.map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  )}
+                </MeasuredChart>
               </div>
             </div>
           </div>
