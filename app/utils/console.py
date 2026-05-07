@@ -1,4 +1,4 @@
-from app.utils.database import get_all_quarters, get_quarters_for_fund, load_hedge_funds, load_models
+from app.utils.database import get_all_quarters, get_quarters_for_fund, load_excluded_hedge_funds, load_hedge_funds, load_models
 from app.utils.strings import get_previous_quarter
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from tabulate import tabulate
@@ -187,6 +187,23 @@ def select_fund(text="Select the hedge fund:"):
     """
     return prompt_for_selection(
         load_hedge_funds(),
+        text,
+        print_func=print_fund,
+        num_columns=-1
+    )
+
+
+def select_excluded_fund(text="Select the excluded hedge fund:"):
+    """
+    Prompts the user to select an excluded hedge fund, displaying them in columns.
+    Returns selected fund info, or None if no excluded funds exist.
+    """
+    excluded = load_excluded_hedge_funds()
+    if not excluded:
+        print("No excluded hedge funds found.")
+        return None
+    return prompt_for_selection(
+        excluded,
         text,
         print_func=print_fund,
         num_columns=-1

@@ -14,6 +14,26 @@ export default defineConfig(({ mode }) => ({
   },
   publicDir: "public",
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("recharts") || id.includes("d3-")) return "charts";
+          if (id.includes("@tanstack")) return "query";
+          if (
+            id.includes("react-router") ||
+            id.includes("/react-dom/") ||
+            id.includes("/react/")
+          ) {
+            return "react-vendor";
+          }
+          if (id.includes("@radix-ui")) return "radix";
+          return "vendor";
+        },
+      },
+    },
+  },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },

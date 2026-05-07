@@ -262,9 +262,12 @@ export async function getExcludedHedgeFunds(): Promise<ExcludedHedgeFund[]> {
 const FUNDS_CSV_HEADER = '"CIK","Fund","Manager","Denomination","CIKs","URL"';
 
 function fundsToCSV(funds: HedgeFund[]): string {
+  const sorted = [...funds].sort((a, b) =>
+    a.fund.localeCompare(b.fund, undefined, { sensitivity: "base" })
+  );
   return (
     FUNDS_CSV_HEADER + "\n" +
-    funds
+    sorted
       .map((f) => `"${f.cik}","${f.fund}","${f.manager}","${f.denomination}","${f.ciks}","${f.url}"`)
       .join("\n") + "\n"
   );

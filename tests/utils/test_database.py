@@ -2,7 +2,8 @@ from app.utils.database import (
     HEDGE_FUNDS_FILE, MODELS_FILE, STOCKS_FILE, LATEST_SCHEDULE_FILINGS_FILE, GICS_HIERARCHY_FILE,
     count_funds_in_quarter, get_all_quarters, get_last_quarter, get_last_quarter_for_fund, get_quarters_for_fund,
     load_stocks, load_fund_holdings, load_hedge_funds, load_models, load_non_quarterly_data, load_gics_hierarchy,
-    save_stock, sort_stocks, find_cusips_for_ticker, update_ticker, delete_fund_from_database, get_most_recent_quarter
+    save_stock, sort_stocks, find_cusips_for_ticker, update_ticker, delete_fund_from_database,
+    restore_fund_to_database, load_excluded_hedge_funds, get_most_recent_quarter
 )
 import pandas as pd
 import io
@@ -352,6 +353,52 @@ class TestDatabase(unittest.TestCase):
         df_ex = pd.read_csv(excluded_path)
         self.assertIn('Fund B', df_ex['Fund'].values)
         self.assertIn('https://fund-b.example.com/', df_ex['URL'].values)
+
+
+    def test_restore_fund_to_database(self):
+        """
+        Moves a fund record from excluded_hedge_funds.csv back to hedge_funds.csv,
+        producing a result sorted alphabetically by Fund (case-insensitive).
+        """
+        with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), 'w', newline='') as f:
+            f.write('CIK,Fund,Manager,Denomination,CIKs,URL\n')
+            f.write('"010","Charlie","Manager C","Denom C","",""\n')
+            f.write('"011","apple","Manager A","Denom A","",""\n')
+            f.write('"012","delta","Manager D","Denom D","",""\n')
+
+        excluded_path = os.path.join(self.test_db_folder, 'excluded_hedge_funds.csv')
+        with open(excluded_path, 'w', newline='') as f:
+            f.write('CIK,Fund,Manager,Denomination,CIKs,URL\n')
+            f.write('"099","Bravo","Manager B","Denom B","","https://bravo.example.com/"\n')
+            f.write('"100","Other","Manager O","Denom O","",""\n')
+
+        restore_fund_to_database({'Fund': 'Bravo', 'CIK': '099'})
+
+        # Removed from excluded
+        df_ex = pd.read_csv(excluded_path, dtype=str)
+        self.assertNotIn('Bravo', df_ex['Fund'].values)
+        self.assertIn('Other', df_ex['Fund'].values)
+
+        df_hf = pd.read_csv(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), dtype=str)
+        self.assertEqual(list(df_hf['Fund']), ['apple', 'Bravo', 'Charlie', 'delta'])
+        self.assertEqual(
+            df_hf.loc[df_hf['Fund'] == 'Bravo', 'URL'].iloc[0],
+            'https://bravo.example.com/'
+        )
+
+
+    def test_load_excluded_hedge_funds(self):
+        """
+        Loads excluded hedge funds from CSV as a list of dicts.
+        """
+        excluded_path = os.path.join(self.test_db_folder, 'excluded_hedge_funds.csv')
+        with open(excluded_path, 'w', newline='') as f:
+            f.write('CIK,Fund,Manager,Denomination,CIKs,URL\n')
+            f.write('"099","Fund X","Manager X","Denom X","","https://fund-x.example.com/"\n')
+
+        excluded = load_excluded_hedge_funds()
+        self.assertEqual(len(excluded), 1)
+        self.assertEqual(excluded[0]['Fund'], 'Fund X')
 
 
     def tearDown(self):

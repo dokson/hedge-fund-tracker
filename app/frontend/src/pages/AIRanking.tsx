@@ -8,7 +8,8 @@ import { TickerLink } from "@/components/EntityLinks";
 
 import { Button } from "@/components/ui/button";
 import ModelSelector from "@/components/ModelSelector";
-import { Brain, ChevronDown, ChevronUp, Settings, Search } from "lucide-react";
+import { Brain, ChevronDown, ChevronUp, Settings, Search, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -23,11 +24,44 @@ interface RankedStock {
   momentumScore: number;
   lowVolatilityScore: number;
   riskScore: number;
+  growthScore: number;
   totalValue: number;
   holderCount: number;
   netBuyers: number;
   highConvictionCount: number;
   reasoning?: string;
+}
+
+type Align = "left" | "center" | "right";
+
+function ColumnHeader({
+  label,
+  tooltip,
+  align = "left",
+  className = "",
+}: {
+  label: string;
+  tooltip: string;
+  align?: Align;
+  className?: string;
+}) {
+  const alignClass = align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
+  const wrapperJustify = align === "center" ? "justify-center" : align === "right" ? "justify-end" : "justify-start";
+  return (
+    <th className={`${alignClass} p-3 font-medium ${className}`}>
+      <span className={`inline-flex items-center gap-1 ${wrapperJustify}`}>
+        {label}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[300px] text-xs font-normal normal-case tracking-normal">
+            <p>{tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+      </span>
+    </th>
+  );
 }
 
 function ScoreBadge({ score }: { score: number }) {
@@ -92,6 +126,7 @@ export default function AIRanking() {
         momentumScore: Math.round(s.Momentum_Score ?? s.momentumScore ?? 50),
         lowVolatilityScore: Math.round(s.Low_Volatility_Score ?? s.lowVolatilityScore ?? 50),
         riskScore: Math.round(s.Risk_Score ?? s.riskScore ?? 50),
+        growthScore: Math.round(s.Growth_Score ?? s.growthScore ?? 0),
         totalValue: s.Total_Value ?? s.totalValue ?? 0,
         holderCount: s.Holder_Count ?? s.holderCount ?? 0,
         netBuyers: s.Net_Buyers ?? s.netBuyers ?? 0,
@@ -120,6 +155,7 @@ export default function AIRanking() {
         momentumScore: Math.round(s.Momentum_Score ?? 50),
         lowVolatilityScore: Math.round(s.Low_Volatility_Score ?? 50),
         riskScore: Math.round(s.Risk_Score ?? 50),
+        growthScore: Math.round(s.Growth_Score ?? 0),
         totalValue: s.Total_Value ?? 0,
         holderCount: s.Holder_Count ?? 0,
         netBuyers: s.Net_Buyers ?? 0,
@@ -209,13 +245,46 @@ export default function AIRanking() {
                 <th className="text-left p-3 font-medium w-12">#</th>
                 <th className="text-left p-3 font-medium">Ticker</th>
                 <th className="text-left p-3 font-medium">Company</th>
-                <th className="text-center p-3 font-medium">Promise</th>
-                <th className="text-center p-3 font-medium">Momentum</th>
-                <th className="text-center p-3 font-medium">Low Vol</th>
-                <th className="text-center p-3 font-medium">Risk</th>
-                <th className="text-right p-3 font-medium">Holders</th>
-                <th className="text-right p-3 font-medium">Net Buyers</th>
-                <th className="text-right p-3 font-medium">Value</th>
+                <ColumnHeader
+                  label="Promise"
+                  align="center"
+                  tooltip="Aggregate AI score (1–100) combining institutional metrics (holders, net buyers, conviction, flows) using AI-selected weights for the current market regime. Higher = stronger institutional thesis."
+                />
+                <ColumnHeader
+                  label="Growth"
+                  align="center"
+                  tooltip="Contrarian upside potential (1–100), derived from price change since the filing date. HIGHER = price has dropped (more upside potential left). 100 = price down ≥40%; 55–65 = roughly flat; ≤10 = stock has run up ≥40% (less upside left)."
+                />
+                <ColumnHeader
+                  label="Momentum"
+                  align="center"
+                  tooltip="Strength of the stock's recent price trend and market enthusiasm (1–100). 90+ = explosive uptrend; 50–69 = moderate; <30 = strong downtrend or selling pressure."
+                />
+                <ColumnHeader
+                  label="Low Vol"
+                  align="center"
+                  tooltip="Price stability score (1–100). Higher = more stable price action and lower historical volatility. 90+ = very low beta, minimal drawdowns; <30 = high-beta, speculative price action."
+                />
+                <ColumnHeader
+                  label="Risk"
+                  align="center"
+                  tooltip="Potential for permanent capital loss or extreme downside (1–100). Higher = more risk. 90+ = speculative/distressed; <30 = blue-chip, predictable cash flows."
+                />
+                <ColumnHeader
+                  label="Holders"
+                  align="right"
+                  tooltip="Number of tracked institutions currently holding this stock. Measures consensus and breadth of institutional ownership."
+                />
+                <ColumnHeader
+                  label="Net Buyers"
+                  align="right"
+                  tooltip="Buyer_Count minus Seller_Count among tracked institutions this quarter. Positive = net institutional accumulation; negative = net distribution."
+                />
+                <ColumnHeader
+                  label="Value"
+                  align="right"
+                  tooltip="Aggregate dollar value of this stock held across all tracked institutions at quarter-end."
+                />
                 <th className="p-3 w-10"></th>
               </tr>
             </thead>
@@ -238,6 +307,9 @@ export default function AIRanking() {
                     </td>
                     <td className="p-3 text-center">
                       <ScoreBadge score={s.promiseScore} />
+                    </td>
+                    <td className="p-3 text-center">
+                      <ScoreBadge score={s.growthScore} />
                     </td>
                     <td className="p-3 text-center">
                       <ScoreBadge score={s.momentumScore} />
@@ -269,7 +341,7 @@ export default function AIRanking() {
                   {expandedRow === s.ticker && (
                     <tr key={`${s.ticker}-detail`}>
                       <td
-                        colSpan={11}
+                        colSpan={12}
                         className="px-6 py-4 bg-muted/30 text-sm text-muted-foreground border-b border-border"
                       >
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

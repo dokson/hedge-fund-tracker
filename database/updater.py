@@ -2,8 +2,8 @@ from app.analysis.non_quarterly import get_non_quarterly_filings_dataframe
 from app.analysis.quarterly_report import generate_comparison
 from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_non_quarterly_after_date, get_latest_13f_filing_date
 from app.scraper.xml_processor import xml_to_dataframe_13f
-from app.utils.console import horizontal_rule, print_centered, print_centered_table, select_fund, select_period
-from app.utils.database import clean_stocks, find_cusips_for_ticker, get_funds_missing_quarters, delete_fund_from_database, load_hedge_funds, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
+from app.utils.console import horizontal_rule, print_centered, print_centered_table, select_excluded_fund, select_fund, select_period
+from app.utils.database import clean_stocks, find_cusips_for_ticker, get_funds_missing_quarters, delete_fund_from_database, load_hedge_funds, restore_fund_to_database, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
 from app.utils.readme import update_readme
 from app.utils.strings import get_previous_quarter_end_date
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
@@ -394,9 +394,27 @@ def run_delete_fund():
         print("❌ Name mismatch. Deletion aborted.")
 
 
+def run_restore_fund():
+    """
+    9. Restores a hedge fund from the excluded list back to the active database.
+    """
+    selected_fund = select_excluded_fund("Select the excluded hedge fund to RESTORE:")
+    if not selected_fund:
+        return
+
+    fund_name = selected_fund['Fund']
+    print(f"Restoring '{fund_name}' will move it back to the active hedge funds list.")
+    confirm = input("Proceed? (y/N): ").strip().lower()
+
+    if confirm == 'y':
+        restore_fund_to_database(selected_fund)
+    else:
+        print("❌ Restoration aborted.")
+
+
 def print_missing_quarters_report():
     """
-    9. Shows funds with missing quarters.
+    10. Shows funds with missing quarters.
     """
     horizontal_rule()
     print_centered("MISSING QUARTERS REPORT")
@@ -425,7 +443,8 @@ if __name__ == "__main__":
         '6': run_cusip_ticker_update,
         '7': run_auto_ticker_update,
         '8': run_delete_fund,
-        '9': print_missing_quarters_report
+        '9': run_restore_fund,
+        '10': print_missing_quarters_report
     }
 
     while True:
@@ -442,10 +461,11 @@ if __name__ == "__main__":
             print("6. Update a stock ticker for a single CUSIP")
             print("7. Auto-detect and apply ticker changes (NASDAQ)")
             print("8. Delete a hedge fund from the database")
-            print("9. Show funds with missing quarters")
+            print("9. Restore an excluded hedge fund to the database")
+            print("10. Show funds with missing quarters")
             horizontal_rule()
 
-            choice = input("Choose an option (0-9): ")
+            choice = input("Choose an option (0-10): ")
             action = actions.get(choice)
             if action:
                 if action() is False:

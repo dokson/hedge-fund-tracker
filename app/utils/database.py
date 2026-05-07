@@ -874,6 +874,69 @@ def delete_fund_from_database(fund_info: dict) -> None:
     print(f"✅ Deletion of '{fund_name}' completed.")
 
 
+def load_excluded_hedge_funds() -> list:
+    """
+    Loads excluded hedge funds from excluded_hedge_funds.csv as a list of dicts.
+    """
+    filepath = Path(DB_FOLDER) / EXCLUDED_HEDGE_FUNDS_FILE
+    if not filepath.exists():
+        return []
+    try:
+        df = pd.read_csv(filepath, dtype={'CIK': str, 'CIKs': str}, keep_default_na=False)
+        return df.to_dict('records')
+    except Exception as e:
+        print(f"❌ Error while reading '{filepath}': {e}")
+        return []
+
+
+def restore_fund_to_database(fund_info: dict) -> None:
+    """
+    Restores a hedge fund: moves its record from excluded_hedge_funds.csv back to hedge_funds.csv.
+    """
+    fund_name = fund_info.get('Fund')
+    if not fund_name:
+        print("❌ Error: Fund name is missing.")
+        return
+
+    print(f"Restoring '{fund_name}' to active hedge funds...")
+
+    hedge_funds_path = Path(DB_FOLDER) / HEDGE_FUNDS_FILE
+    excluded_path = Path(DB_FOLDER) / EXCLUDED_HEDGE_FUNDS_FILE
+
+    if not excluded_path.exists():
+        print(f"❌ '{EXCLUDED_HEDGE_FUNDS_FILE}' not found.")
+        return
+
+    try:
+        df_excluded = pd.read_csv(excluded_path, dtype=str, keep_default_na=False)
+        record_to_move = df_excluded[df_excluded['Fund'] == fund_name]
+
+        if record_to_move.empty:
+            print(f"❌ Fund '{fund_name}' not found in {EXCLUDED_HEDGE_FUNDS_FILE}")
+            return
+
+        if hedge_funds_path.exists():
+            df_hedge_funds = pd.read_csv(hedge_funds_path, dtype=str, keep_default_na=False)
+            df_hedge_funds = pd.concat([df_hedge_funds, record_to_move], ignore_index=True)
+        else:
+            df_hedge_funds = record_to_move
+        df_hedge_funds = df_hedge_funds.sort_values(
+            by='Fund', key=lambda s: s.str.casefold(), kind='stable'
+        ).reset_index(drop=True)
+        df_hedge_funds.to_csv(hedge_funds_path, index=False, quoting=csv.QUOTE_ALL)
+        print(f"  - Added '{fund_name}' to {HEDGE_FUNDS_FILE} (alphabetical order)")
+
+        df_excluded = df_excluded[df_excluded['Fund'] != fund_name]
+        df_excluded.to_csv(excluded_path, index=False, quoting=csv.QUOTE_ALL)
+        print(f"  - Removed '{fund_name}' from {EXCLUDED_HEDGE_FUNDS_FILE}")
+
+    except Exception as e:
+        print(f"❌ Error updating CSV files: {e}")
+        return
+
+    print(f"✅ Restoration of '{fund_name}' completed.")
+
+
 def get_funds_missing_quarters() -> dict[str, list[str]]:
     """
     Identifies funds that are missing data for one or more available quarters.

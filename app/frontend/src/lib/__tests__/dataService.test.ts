@@ -1,5 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { parseValueString, formatValue, formatPct } from "../dataService";
+import {
+  parseValueString,
+  formatValue,
+  formatPct,
+  generateAddFundCSV,
+  generateRestoreFundCSVs,
+  type HedgeFund,
+  type ExcludedHedgeFund,
+} from "../dataService";
+
+const mkFund = (cik: string, fund: string): HedgeFund => ({
+  cik, fund, manager: "M", denomination: "D", ciks: "", url: "",
+});
 
 describe("parseValueString", () => {
   it("should return 0 for empty string", () => {
@@ -104,5 +116,28 @@ describe("formatPct", () => {
 
   it("should not add sign when showSign is false", () => {
     expect(formatPct(12.5, false)).toBe("12.5%");
+  });
+});
+
+describe("hedge_funds CSV alphabetical ordering", () => {
+  const existing: HedgeFund[] = [
+    mkFund("001", "Charlie"),
+    mkFund("002", "apple"),
+    mkFund("003", "delta"),
+  ];
+
+  it("generateAddFundCSV inserts the new fund at correct alphabetical position (case-insensitive)", () => {
+    const csv = generateAddFundCSV(existing, mkFund("099", "Bravo"));
+    const fundColumn = csv.trim().split("\n").slice(1).map((line) => line.split(",")[1].replace(/"/g, ""));
+    expect(fundColumn).toEqual(["apple", "Bravo", "Charlie", "delta"]);
+  });
+
+  it("generateRestoreFundCSVs places the restored fund alphabetically in hedge_funds.csv", () => {
+    const excluded: ExcludedHedgeFund[] = [mkFund("099", "Bravo"), mkFund("100", "Other")];
+    const { hedgeFundsCSV, excludedCSV } = generateRestoreFundCSVs(existing, excluded, excluded[0]);
+    const hedgeFunds = hedgeFundsCSV.trim().split("\n").slice(1).map((l) => l.split(",")[1].replace(/"/g, ""));
+    expect(hedgeFunds).toEqual(["apple", "Bravo", "Charlie", "delta"]);
+    const remainingExcluded = excludedCSV.trim().split("\n").slice(1).map((l) => l.split(",")[1].replace(/"/g, ""));
+    expect(remainingExcluded).toEqual(["Other"]);
   });
 });

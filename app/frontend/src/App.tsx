@@ -1,25 +1,33 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import Dashboard from "@/pages/Dashboard";
 import { IS_GH_PAGES_MODE, BASE_PATH } from "@/lib/config";
 
-import QuarterlyTrends from "@/pages/QuarterlyTrends";
-import FundPortfolio from "@/pages/FundPortfolio";
-import StockAnalysis from "@/pages/StockAnalysis";
-import StockBrowser from "@/pages/StockBrowser";
-import AIRanking from "@/pages/AIRanking";
-import AIDueDiligence from "@/pages/AIDueDiligence";
-import AISettings from "@/pages/AISettings";
-import FundsConfig from "@/pages/FundsConfig";
-import DatabasePage from "@/pages/DatabasePage";
-import NotFound from "@/pages/NotFound";
-import FeatureNotAvailable from "@/components/FeatureNotAvailable";
+// Route-level code splitting: each page ships as its own chunk and loads on navigation.
+const QuarterlyTrends = lazy(() => import("@/pages/QuarterlyTrends"));
+const FundPortfolio = lazy(() => import("@/pages/FundPortfolio"));
+const StockAnalysis = lazy(() => import("@/pages/StockAnalysis"));
+const StockBrowser = lazy(() => import("@/pages/StockBrowser"));
+const AIRanking = lazy(() => import("@/pages/AIRanking"));
+const AIDueDiligence = lazy(() => import("@/pages/AIDueDiligence"));
+const AISettings = lazy(() => import("@/pages/AISettings"));
+const FundsConfig = lazy(() => import("@/pages/FundsConfig"));
+const DatabasePage = lazy(() => import("@/pages/DatabasePage"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
+
+const RouteFallback = () => (
+  <div className="flex items-center justify-center py-16 text-muted-foreground">
+    <Loader2 className="h-5 w-5 animate-spin" />
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -28,6 +36,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter basename={BASE_PATH || "/"}>
         <DashboardLayout>
+          <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Core analysis routes — always available */}
             <Route path="/" element={<Dashboard />} />
@@ -55,6 +64,7 @@ const App = () => (
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </DashboardLayout>
       </BrowserRouter>
     </TooltipProvider>
