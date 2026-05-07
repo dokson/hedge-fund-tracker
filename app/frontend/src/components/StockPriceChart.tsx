@@ -156,7 +156,17 @@ export function StockPriceChart({ ticker }: { ticker: string }) {
     return { first, last, change, pct, min, max };
   }, [series]);
 
-  if (!API_BASE) return null;
+  if (!API_BASE) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-5">
+        <h3 className="section-title text-sm">Price History</h3>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Live price history requires the local Python backend (yfinance). It is not available on the
+          static GitHub Pages build — clone the repo and run the app locally to view this chart.
+        </p>
+      </div>
+    );
+  }
 
   const positive = stats ? stats.change >= 0 : true;
   const lineColor = positive ? UP_COLOR : DOWN_COLOR;

@@ -24,6 +24,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import sampleDueDiligence from "@/data/sampleDueDiligence.json";
+import { StockPriceChart } from "@/components/StockPriceChart";
 
 interface DueDiligenceReport {
   ticker: string;
@@ -246,6 +247,8 @@ export default function AIDueDiligence() {
               </div>
             </div>
           </div>
+
+          <StockPriceChart ticker={displayReport.ticker} />
 
           <Accordion
             type="multiple"
