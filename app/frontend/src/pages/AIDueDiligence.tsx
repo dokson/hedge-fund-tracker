@@ -128,7 +128,7 @@ export default function AIDueDiligence() {
     }
   };
 
-  const sample = sampleDueDiligence as DueDiligenceReport & { quarter?: string; generated_by?: string };
+  const sample = sampleDueDiligence as DueDiligenceReport & { quarter?: string; generated_by?: string; generated_at?: string };
   const displayReport: DueDiligenceReport | null = report ?? (isReadOnly ? sample : null);
   const isSample = isReadOnly && !report;
 
@@ -172,7 +172,13 @@ export default function AIDueDiligence() {
           <p className="text-xs text-blue-600/80 dark:text-blue-400/80 leading-relaxed mt-1">
             Stock Due Diligence requires a local Python backend to analyze data via LLMs. This live demo shows the interface only. To use this feature, run the app locally with your own API keys.
             {isSample && (
-              <> Below is a sample output for <span className="font-mono font-semibold">{sample.ticker}</span>.</>
+              <>
+                {" "}Below is a sample output for <span className="font-mono font-semibold">{sample.ticker}</span>
+                {sample.generated_at && (
+                  <> generated on <span className="font-mono">{sample.generated_at}</span></>
+                )}
+                .
+              </>
             )}
           </p>
         </div>
