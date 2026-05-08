@@ -198,7 +198,7 @@ export default function AIRanking() {
             AI-powered discovery requires a local Python backend and API keys. This live demo shows the interface only. To use this feature, run the app locally with your own API keys.
             {isSample && (
               <>
-                {" "}Below is a sample ranking for <span className="font-mono">{sampleRanking.quarter}</span>
+                <br />Below is a sample ranking for <span className="font-mono">{sampleRanking.quarter}</span>
                 {(sampleRanking as { generated_at?: string }).generated_at && (
                   <> generated on <span className="font-mono">{(sampleRanking as { generated_at?: string }).generated_at}</span></>
                 )}

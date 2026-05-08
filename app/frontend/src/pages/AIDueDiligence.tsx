@@ -174,7 +174,7 @@ export default function AIDueDiligence() {
             Stock Due Diligence requires a local Python backend to analyze data via LLMs. This live demo shows the interface only. To use this feature, run the app locally with your own API keys.
             {isSample && (
               <>
-                {" "}Below is a sample output for <span className="font-mono font-semibold">{sample.ticker}</span>
+                <br />Below is a sample output for <span className="font-mono font-semibold">{sample.ticker}</span>
                 {sample.generated_at && (
                   <> generated on <span className="font-mono">{sample.generated_at}</span></>
                 )}
@@ -248,7 +248,10 @@ export default function AIDueDiligence() {
             </div>
           </div>
 
-          <StockPriceChart ticker={displayReport.ticker} />
+          <StockPriceChart
+            ticker={displayReport.ticker}
+            staticData={isSample ? sample.price_history : undefined}
+          />
 
           <Accordion
             type="multiple"

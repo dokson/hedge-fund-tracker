@@ -91,7 +91,7 @@ function Candlestick({ x = 0, y = 0, width = 0, height = 0, payload }: CandleSha
 
 type Selection = { start: Candle; end: Candle };
 
-export function StockPriceChart({ ticker }: { ticker: string }) {
+export function StockPriceChart({ ticker, staticData }: { ticker: string; staticData?: Candle[] }) {
   const [range, setRange] = useState<RangeKey>("5Y");
   const [mode, setMode] = useState<ChartMode>("area");
   const period = RANGES.find((r) => r.key === range)!.period;
@@ -132,13 +132,30 @@ export function StockPriceChart({ ticker }: { ticker: string }) {
     return () => window.removeEventListener("mouseup", onUp);
   }, [isDragging]);
 
-  const { data: series = [], isLoading, isError } = useQuery({
+  const filteredStatic = useMemo<Candle[] | null>(() => {
+    if (!staticData || staticData.length === 0) return null;
+    if (range === "MAX") return staticData;
+    const last = new Date(staticData[staticData.length - 1].date);
+    let cutoff: Date;
+    if (range === "YTD") {
+      cutoff = new Date(last.getFullYear(), 0, 1);
+    } else {
+      const years = range === "1Y" ? 1 : range === "3Y" ? 3 : 5;
+      cutoff = new Date(last);
+      cutoff.setFullYear(cutoff.getFullYear() - years);
+    }
+    return staticData.filter((p) => new Date(p.date) >= cutoff);
+  }, [staticData, range]);
+
+  const { data: fetched = [], isLoading, isError } = useQuery({
     queryKey: ["stockPriceHistory", ticker, period],
     queryFn: () => fetchPriceHistory(ticker, period),
     staleTime: 60 * 60 * 1000,
     retry: 1,
-    enabled: !!API_BASE,
+    enabled: !!API_BASE && !filteredStatic,
   });
+
+  const series: Candle[] = filteredStatic ?? fetched;
 
   const candleSeries = useMemo<CandleWithRange[]>(
     () => series.map((p) => ({ ...p, range: [p.low, p.high] })),
@@ -156,7 +173,7 @@ export function StockPriceChart({ ticker }: { ticker: string }) {
     return { first, last, change, pct, min, max };
   }, [series]);
 
-  if (!API_BASE) {
+  if (!API_BASE && !staticData) {
     return (
       <div className="rounded-lg border border-border bg-card p-5">
         <h3 className="section-title text-sm">Price History</h3>
