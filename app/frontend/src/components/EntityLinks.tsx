@@ -25,20 +25,34 @@ export function TickerLink({ ticker, className = "" }: { ticker: string; classNa
   return (
     <span
       className={`ticker-link ${className}`}
-      onClick={(e) => { e.stopPropagation(); navigate(`/stock/${ticker}`); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        navigate(`/stock/${ticker}`);
+      }}
     >
       {ticker}
     </span>
   );
 }
 
-export function FundLink({ fundName, displayName, className = "" }: { fundName: string; displayName?: string; className?: string }) {
+export function FundLink({
+  fundName,
+  displayName,
+  className = "",
+}: {
+  fundName: string;
+  displayName?: string;
+  className?: string;
+}) {
   const navigate = useNavigate();
   const denomination = useFundDenomination(fundName);
   return (
     <span
       className={`fund-link ${className}`}
-      onClick={(e) => { e.stopPropagation(); navigate(`/funds/${encodeURIComponent(fundName)}`); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        navigate(`/funds/${encodeURIComponent(fundName)}`);
+      }}
     >
       {displayName || denomination}
     </span>

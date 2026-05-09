@@ -45,8 +45,10 @@ function ColumnHeader({
   align?: Align;
   className?: string;
 }) {
-  const alignClass = align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
-  const wrapperJustify = align === "center" ? "justify-center" : align === "right" ? "justify-end" : "justify-start";
+  const alignClass =
+    align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
+  const wrapperJustify =
+    align === "center" ? "justify-center" : align === "right" ? "justify-end" : "justify-start";
   return (
     <th className={`${alignClass} p-3 font-medium ${className}`}>
       <span className={`inline-flex items-center gap-1 ${wrapperJustify}`}>
@@ -55,7 +57,10 @@ function ColumnHeader({
           <TooltipTrigger asChild>
             <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
           </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-[300px] text-xs font-normal normal-case tracking-normal">
+          <TooltipContent
+            side="top"
+            className="max-w-[300px] text-xs font-normal normal-case tracking-normal"
+          >
             <p>{tooltip}</p>
           </TooltipContent>
         </Tooltip>
@@ -69,10 +74,12 @@ function ScoreBadge({ score }: { score: number }) {
     score >= 80
       ? "bg-positive/15 text-positive"
       : score >= 60
-      ? "bg-warning/15 text-warning"
-      : "bg-negative/15 text-negative";
+        ? "bg-warning/15 text-warning"
+        : "bg-negative/15 text-negative";
   return (
-    <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-bold font-mono ${bg}`}>
+    <span
+      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-bold font-mono ${bg}`}
+    >
       {score}
     </span>
   );
@@ -111,7 +118,10 @@ export default function AIRanking() {
       setProgressPct(15);
 
       const data = await runPromiseScoreStream(
-        quarter, topN, selectedModel || undefined, selectedProviderId || undefined,
+        quarter,
+        topN,
+        selectedModel || undefined,
+        selectedProviderId || undefined,
         (line) => setTerminalLines((prev) => [...prev, line]),
       );
 
@@ -146,32 +156,34 @@ export default function AIRanking() {
   };
 
   const isReadOnly = IS_GH_PAGES_MODE;
-  const sampleResults: RankedStock[] = isReadOnly && results.length === 0
-    ? sampleRanking.stocks.map((s: any, i: number) => ({
-        rank: i + 1,
-        ticker: s.Ticker,
-        company: s.Company,
-        promiseScore: Math.round(s.Promise_Score ?? 0),
-        momentumScore: Math.round(s.Momentum_Score ?? 50),
-        lowVolatilityScore: Math.round(s.Low_Volatility_Score ?? 50),
-        riskScore: Math.round(s.Risk_Score ?? 50),
-        growthScore: Math.round(s.Growth_Score ?? 0),
-        totalValue: s.Total_Value ?? 0,
-        holderCount: s.Holder_Count ?? 0,
-        netBuyers: s.Net_Buyers ?? 0,
-        highConvictionCount: s.High_Conviction_Count ?? 0,
-      }))
-    : [];
+  const sampleResults: RankedStock[] =
+    isReadOnly && results.length === 0
+      ? sampleRanking.stocks.map((s: any, i: number) => ({
+          rank: i + 1,
+          ticker: s.Ticker,
+          company: s.Company,
+          promiseScore: Math.round(s.Promise_Score ?? 0),
+          momentumScore: Math.round(s.Momentum_Score ?? 50),
+          lowVolatilityScore: Math.round(s.Low_Volatility_Score ?? 50),
+          riskScore: Math.round(s.Risk_Score ?? 50),
+          growthScore: Math.round(s.Growth_Score ?? 0),
+          totalValue: s.Total_Value ?? 0,
+          holderCount: s.Holder_Count ?? 0,
+          netBuyers: s.Net_Buyers ?? 0,
+          highConvictionCount: s.High_Conviction_Count ?? 0,
+        }))
+      : [];
   const displayResults = results.length > 0 ? results : sampleResults;
   const hasResults = displayResults.length > 0;
   const isSample = isReadOnly && results.length === 0;
 
   return (
     <div className="space-y-5 max-w-7xl">
-
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Search className="h-6 w-6" /> Most Promising Stocks</h1>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Search className="h-6 w-6" /> Most Promising Stocks
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             AI-powered discovery of the most promising stocks based on latest institutional data
           </p>
@@ -181,8 +193,16 @@ export default function AIRanking() {
       {/* Controls */}
       <div className="flex gap-3 items-end flex-wrap">
         <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Model</label>
-          <ModelSelector value={selectedModel} onChange={setSelectedModel} onProviderChange={setSelectedProviderId} className="w-56" disabled={isReadOnly} />
+          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+            Model
+          </label>
+          <ModelSelector
+            value={selectedModel}
+            onChange={setSelectedModel}
+            onProviderChange={setSelectedProviderId}
+            className="w-56"
+            disabled={isReadOnly}
+          />
         </div>
         <Button onClick={runAnalysis} disabled={loading || isReadOnly}>
           <Brain className="h-4 w-4 mr-1" /> {hasResults ? "Re-run" : "Run"}
@@ -195,12 +215,21 @@ export default function AIRanking() {
             <Brain className="h-4 w-4" /> Local-Only Feature
           </p>
           <p className="text-xs text-blue-600/80 dark:text-blue-400/80 leading-relaxed mt-1">
-            AI-powered discovery requires a local Python backend and API keys. This live demo shows the interface only. To use this feature, run the app locally with your own API keys.
+            AI-powered discovery requires a local Python backend and API keys. This live demo shows
+            the interface only. To use this feature, run the app locally with your own API keys.
             {isSample && (
               <>
-                <br />Below is a sample ranking for <span className="font-mono">{sampleRanking.quarter}</span>
+                <br />
+                Below is a sample ranking for{" "}
+                <span className="font-mono">{sampleRanking.quarter}</span>
                 {(sampleRanking as { generated_at?: string }).generated_at && (
-                  <> generated on <span className="font-mono">{(sampleRanking as { generated_at?: string }).generated_at}</span></>
+                  <>
+                    {" "}
+                    generated on{" "}
+                    <span className="font-mono">
+                      {(sampleRanking as { generated_at?: string }).generated_at}
+                    </span>
+                  </>
                 )}
                 .
               </>
@@ -300,15 +329,16 @@ export default function AIRanking() {
                   <tr
                     key={s.ticker}
                     className="data-table-row cursor-pointer"
-                    onClick={() =>
-                      setExpandedRow(expandedRow === s.ticker ? null : s.ticker)
-                    }
+                    onClick={() => setExpandedRow(expandedRow === s.ticker ? null : s.ticker)}
                   >
                     <td className="p-3 font-mono text-muted-foreground">{s.rank}</td>
                     <td className="p-3">
                       <TickerLink ticker={s.ticker} />
                     </td>
-                    <td className="p-3 text-muted-foreground truncate max-w-[200px] cursor-pointer hover:text-foreground transition-colors" onClick={() => navigate(`/stock/${s.ticker}`)}>
+                    <td
+                      className="p-3 text-muted-foreground truncate max-w-[200px] cursor-pointer hover:text-foreground transition-colors"
+                      onClick={() => navigate(`/stock/${s.ticker}`)}
+                    >
                       {s.company}
                     </td>
                     <td className="p-3 text-center">
@@ -365,8 +395,11 @@ export default function AIRanking() {
                           </div>
                           <div>
                             <p className="text-xs uppercase tracking-wider mb-1">Net Buyers</p>
-                            <p className={`font-mono font-bold ${s.netBuyers >= 0 ? "delta-positive" : "delta-negative"}`}>
-                              {s.netBuyers >= 0 ? "+" : ""}{s.netBuyers}
+                            <p
+                              className={`font-mono font-bold ${s.netBuyers >= 0 ? "delta-positive" : "delta-negative"}`}
+                            >
+                              {s.netBuyers >= 0 ? "+" : ""}
+                              {s.netBuyers}
                             </p>
                           </div>
                         </div>
@@ -374,14 +407,20 @@ export default function AIRanking() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={(e) => { e.stopPropagation(); navigate(`/stock/${s.ticker}`); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/stock/${s.ticker}`);
+                            }}
                           >
                             View Stock Analysis
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={(e) => { e.stopPropagation(); navigate(`/ai-diligence?ticker=${s.ticker}`); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/ai-diligence?ticker=${s.ticker}`);
+                            }}
                           >
                             <Brain className="h-3 w-3 mr-1" /> AI Due Diligence
                           </Button>

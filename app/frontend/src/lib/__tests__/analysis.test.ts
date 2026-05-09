@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  generateHedgeFundsCSV,
-  generateExcludedFundsCSV,
-  generateModelsCSV,
-} from "../dataService";
+import { generateHedgeFundsCSV, generateExcludedFundsCSV, generateModelsCSV } from "../dataService";
 import type { HedgeFund, ExcludedHedgeFund, AIModel } from "../dataService";
 
 describe("generateHedgeFundsCSV", () => {
@@ -23,7 +19,7 @@ describe("generateHedgeFundsCSV", () => {
 
     expect(csv).toBe(
       '"CIK","Fund","Manager","Denomination","CIKs","URL"\n' +
-      '"0001234567","Test Fund","John Doe","Test Fund LP","","https://test-fund.example.com/"\n'
+        '"0001234567","Test Fund","John Doe","Test Fund LP","","https://test-fund.example.com/"\n',
     );
   });
 

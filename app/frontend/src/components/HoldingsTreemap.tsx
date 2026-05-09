@@ -43,7 +43,7 @@ function getDeltaColor(deltaPct: number, delta: string): string {
 function squarify(
   items: TreemapItem[],
   width: number,
-  height: number
+  height: number,
 ): { item: TreemapItem; x: number; y: number; w: number; h: number }[] {
   const total = items.reduce((s, d) => s + d.value, 0);
   if (total === 0 || items.length === 0) return [];
@@ -57,7 +57,7 @@ function squarify(
     y: number,
     w: number,
     h: number,
-    isVertical: boolean
+    isVertical: boolean,
   ) {
     let offset = 0;
     for (const item of row) {
@@ -80,7 +80,7 @@ function squarify(
     x: number,
     y: number,
     w: number,
-    h: number
+    h: number,
   ) {
     if (remaining.length === 0) return;
     if (remaining.length === 1) {
@@ -125,24 +125,10 @@ function squarify(
 
     if (isVertical) {
       layoutRow(row, rowTotal, x, y, stripSize, h, true);
-      recurse(
-        remaining.slice(row.length),
-        remTotal - rowTotal,
-        x + stripSize,
-        y,
-        w - stripSize,
-        h
-      );
+      recurse(remaining.slice(row.length), remTotal - rowTotal, x + stripSize, y, w - stripSize, h);
     } else {
       layoutRow(row, rowTotal, x, y, w, stripSize, false);
-      recurse(
-        remaining.slice(row.length),
-        remTotal - rowTotal,
-        x,
-        y + stripSize,
-        w,
-        h - stripSize
-      );
+      recurse(remaining.slice(row.length), remTotal - rowTotal, x, y + stripSize, w, h - stripSize);
     }
   }
 
@@ -150,22 +136,21 @@ function squarify(
   return rects;
 }
 
-export function HoldingsTreemap({ data, onClickTicker, height: propHeight, displayMode = "value" }: Props) {
+export function HoldingsTreemap({
+  data,
+  onClickTicker,
+  height: propHeight,
+  displayMode = "value",
+}: Props) {
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null);
 
   const containerWidth = 100; // percentage-based
   const containerHeight = propHeight ?? 500; // px
 
-  const rects = useMemo(
-    () => squarify(data, containerWidth, containerHeight),
-    [data]
-  );
+  const rects = useMemo(() => squarify(data, containerWidth, containerHeight), [data]);
 
   return (
-    <div
-      className="relative w-full rounded overflow-hidden"
-      style={{ height: containerHeight }}
-    >
+    <div className="relative w-full rounded overflow-hidden" style={{ height: containerHeight }}>
       {rects.map(({ item, x, y, w, h }) => {
         const isHovered = hoveredTicker === item.name;
         const bgColor = getDeltaColor(item.deltaPct, item.delta);
@@ -198,7 +183,9 @@ export function HoldingsTreemap({ data, onClickTicker, height: propHeight, displ
             </span>
             {!isSmall && h > 36 && (
               <span className="text-white/70 text-[9px] leading-tight mt-0.5">
-                {displayMode === "pct" ? formatTreemapPct(item.value) : formatTreemapValue(item.value)}
+                {displayMode === "pct"
+                  ? formatTreemapPct(item.value)
+                  : formatTreemapValue(item.value)}
               </span>
             )}
           </div>

@@ -10,7 +10,11 @@ export default function DatabasePage() {
           <Database className="h-6 w-6" /> Update Operations
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Invoke local Python commands from <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">database/updater.py</code>.
+          Invoke local Python commands from{" "}
+          <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">
+            database/updater.py
+          </code>
+          .
         </p>
       </div>
 
@@ -20,7 +24,8 @@ export default function DatabasePage() {
           <div className="text-sm text-warning-foreground">
             <p className="font-semibold text-warning">Backend Restricted</p>
             <p className="text-muted-foreground mt-0.5">
-              Database operations require direct access to the local filesystem and Python environment. These operations are disabled in this static web version.
+              Database operations require direct access to the local filesystem and Python
+              environment. These operations are disabled in this static web version.
             </p>
           </div>
         </div>

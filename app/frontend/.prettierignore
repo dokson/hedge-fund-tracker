@@ -1,0 +1,7 @@
+dist
+build
+node_modules
+coverage
+src/components/ui
+*.min.js
+*.min.css

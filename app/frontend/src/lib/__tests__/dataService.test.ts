@@ -10,7 +10,12 @@ import {
 } from "../dataService";
 
 const mkFund = (cik: string, fund: string): HedgeFund => ({
-  cik, fund, manager: "M", denomination: "D", ciks: "", url: "",
+  cik,
+  fund,
+  manager: "M",
+  denomination: "D",
+  ciks: "",
+  url: "",
 });
 
 describe("parseValueString", () => {
@@ -128,16 +133,28 @@ describe("hedge_funds CSV alphabetical ordering", () => {
 
   it("generateAddFundCSV inserts the new fund at correct alphabetical position (case-insensitive)", () => {
     const csv = generateAddFundCSV(existing, mkFund("099", "Bravo"));
-    const fundColumn = csv.trim().split("\n").slice(1).map((line) => line.split(",")[1].replace(/"/g, ""));
+    const fundColumn = csv
+      .trim()
+      .split("\n")
+      .slice(1)
+      .map((line) => line.split(",")[1].replace(/"/g, ""));
     expect(fundColumn).toEqual(["apple", "Bravo", "Charlie", "delta"]);
   });
 
   it("generateRestoreFundCSVs places the restored fund alphabetically in hedge_funds.csv", () => {
     const excluded: ExcludedHedgeFund[] = [mkFund("099", "Bravo"), mkFund("100", "Other")];
     const { hedgeFundsCSV, excludedCSV } = generateRestoreFundCSVs(existing, excluded, excluded[0]);
-    const hedgeFunds = hedgeFundsCSV.trim().split("\n").slice(1).map((l) => l.split(",")[1].replace(/"/g, ""));
+    const hedgeFunds = hedgeFundsCSV
+      .trim()
+      .split("\n")
+      .slice(1)
+      .map((l) => l.split(",")[1].replace(/"/g, ""));
     expect(hedgeFunds).toEqual(["apple", "Bravo", "Charlie", "delta"]);
-    const remainingExcluded = excludedCSV.trim().split("\n").slice(1).map((l) => l.split(",")[1].replace(/"/g, ""));
+    const remainingExcluded = excludedCSV
+      .trim()
+      .split("\n")
+      .slice(1)
+      .map((l) => l.split(",")[1].replace(/"/g, ""));
     expect(remainingExcluded).toEqual(["Other"]);
   });
 });

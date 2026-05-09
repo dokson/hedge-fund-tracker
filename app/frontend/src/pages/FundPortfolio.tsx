@@ -14,15 +14,29 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TickerLink, formatFundName } from "@/components/EntityLinks";
 import { toInitCap } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 
-import { Search, ArrowLeft, Loader2, Wallet, Filter, SortAsc, DollarSign, Star } from "lucide-react";
+import {
+  Search,
+  ArrowLeft,
+  Loader2,
+  Wallet,
+  Filter,
+  SortAsc,
+  DollarSign,
+  Star,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStarred } from "@/hooks/useStarred";
 import { StarButton } from "@/components/StarButton";
-
 
 // ────────────────────────── Fund Grid ──────────────────────────
 
@@ -30,7 +44,9 @@ function FundGrid() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const { starred, toggle: toggleStar, isStarred } = useStarred("fund");
-  const [tab, setTab] = useState<"starred" | "alphabetical" | "byvalue">(() => starred.size > 0 ? "starred" : "alphabetical");
+  const [tab, setTab] = useState<"starred" | "alphabetical" | "byvalue">(() =>
+    starred.size > 0 ? "starred" : "alphabetical",
+  );
 
   const { data: funds = [], isLoading } = useQuery({
     queryKey: ["hedgeFunds"],
@@ -53,8 +69,10 @@ function FundGrid() {
               .filter((h) => h.cusip !== "Total")
               .reduce((sum, h) => sum + parseValue(h.value), 0);
             aumMap.set(fund.fund, total);
-          } catch { /* skip */ }
-        })
+          } catch {
+            /* skip */
+          }
+        }),
       );
       return aumMap;
     },
@@ -62,7 +80,9 @@ function FundGrid() {
   });
 
   const starredFunds = useMemo(() => {
-    return funds.filter((f) => starred.has(f.fund)).sort((a, b) => a.denomination.localeCompare(b.denomination));
+    return funds
+      .filter((f) => starred.has(f.fund))
+      .sort((a, b) => a.denomination.localeCompare(b.denomination));
   }, [funds, starred]);
 
   const filtered = useMemo(() => {
@@ -73,11 +93,13 @@ function FundGrid() {
         (f) =>
           f.fund.toLowerCase().includes(q) ||
           f.manager.toLowerCase().includes(q) ||
-          f.denomination.toLowerCase().includes(q)
+          f.denomination.toLowerCase().includes(q),
       );
     }
     if (tab === "byvalue") {
-      list = [...list].sort((a, b) => (fundAumMap.get(b.fund) || 0) - (fundAumMap.get(a.fund) || 0));
+      list = [...list].sort(
+        (a, b) => (fundAumMap.get(b.fund) || 0) - (fundAumMap.get(a.fund) || 0),
+      );
     } else {
       list = [...list].sort((a, b) => a.denomination.localeCompare(b.denomination));
     }
@@ -87,7 +109,9 @@ function FundGrid() {
   return (
     <div className="space-y-5 max-w-7xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Wallet className="h-6 w-6" /> Hedge Fund Portfolios</h1>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <Wallet className="h-6 w-6" /> Hedge Fund Portfolios
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Browse {funds.length} tracked institutional investors
         </p>
@@ -99,7 +123,9 @@ function FundGrid() {
             {starred.size > 0 && (
               <TabsTrigger value="starred" className="gap-1.5 group">
                 <Star className="h-3.5 w-3.5" fill="currentColor" /> Starred
-                <span className="ml-1 text-[10px] font-mono bg-primary/20 text-primary group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground px-1.5 py-0.5 rounded-full leading-none">{starred.size}</span>
+                <span className="ml-1 text-[10px] font-mono bg-primary/20 text-primary group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground px-1.5 py-0.5 rounded-full leading-none">
+                  {starred.size}
+                </span>
               </TabsTrigger>
             )}
             <TabsTrigger value="alphabetical" className="gap-1.5">
@@ -126,7 +152,9 @@ function FundGrid() {
             <div className="rounded-lg border border-border bg-card p-12 text-center mt-4">
               <Star className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
               <p className="text-muted-foreground">No starred funds yet.</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Click the ★ icon on any fund to add it here.</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                Click the ★ icon on any fund to add it here.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
@@ -143,7 +171,12 @@ function FundGrid() {
                         <p className="text-sm font-semibold truncate">{fund.denomination}</p>
                         <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
                       </div>
-                      <StarButton active={true} onClick={() => toggleStar(fund.fund)} size={14} className="mt-0.5 shrink-0" />
+                      <StarButton
+                        active={true}
+                        onClick={() => toggleStar(fund.fund)}
+                        size={14}
+                        className="mt-0.5 shrink-0"
+                      />
                     </div>
                     {aum !== undefined && (
                       <p className="text-xs font-mono text-muted-foreground mt-1.5">
@@ -178,7 +211,12 @@ function FundGrid() {
                           <p className="text-sm font-semibold truncate">{fund.denomination}</p>
                           <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
                         </div>
-                        <StarButton active={isStarred(fund.fund)} onClick={() => toggleStar(fund.fund)} size={14} className="mt-0.5 shrink-0" />
+                        <StarButton
+                          active={isStarred(fund.fund)}
+                          onClick={() => toggleStar(fund.fund)}
+                          size={14}
+                          className="mt-0.5 shrink-0"
+                        />
                       </div>
                       {aum !== undefined && (
                         <p className="text-xs font-mono text-muted-foreground mt-1.5">
@@ -211,7 +249,12 @@ function FundGrid() {
                           <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <StarButton active={isStarred(fund.fund)} onClick={() => toggleStar(fund.fund)} size={14} className="mt-0.5" />
+                          <StarButton
+                            active={isStarred(fund.fund)}
+                            onClick={() => toggleStar(fund.fund)}
+                            size={14}
+                            className="mt-0.5"
+                          />
                           <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
                             #{i + 1}
                           </span>
@@ -284,9 +327,10 @@ function FundDetail({ fundName }: { fundName: string }) {
   });
 
   // Auto-select latest available quarter
-  const selectedQuarter = quarter && isQuarter(quarter) && availableQuarters.includes(quarter)
-    ? quarter
-    : availableQuarters[availableQuarters.length - 1] ?? null;
+  const selectedQuarter =
+    quarter && isQuarter(quarter) && availableQuarters.includes(quarter)
+      ? quarter
+      : (availableQuarters[availableQuarters.length - 1] ?? null);
 
   const { data: fund } = useQuery({
     queryKey: ["hedgeFunds"],
@@ -298,15 +342,25 @@ function FundDetail({ fundName }: { fundName: string }) {
     queryKey: ["stocks"],
     queryFn: getStocks,
   });
-  const tickerNameMap = useMemo(() => new Map(stocksMaster.map((s) => [s.ticker, s.company])), [stocksMaster]);
+  const tickerNameMap = useMemo(
+    () => new Map(stocksMaster.map((s) => [s.ticker, s.company])),
+    [stocksMaster],
+  );
 
-  const { data: holdings = [], isLoading, isError } = useQuery({
+  const {
+    data: holdings = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["fundHoldings", selectedQuarter, fundName],
     queryFn: () => getFundQuarterlyHoldings(selectedQuarter!, fundName),
-    select: (data) => data.filter((h) => h.cusip !== "Total").map((h) => ({
-      ...h,
-      company: tickerNameMap.get(h.ticker) || h.company,
-    })),
+    select: (data) =>
+      data
+        .filter((h) => h.cusip !== "Total")
+        .map((h) => ({
+          ...h,
+          company: tickerNameMap.get(h.ticker) || h.company,
+        })),
     enabled: !!selectedQuarter,
   });
 
@@ -317,15 +371,29 @@ function FundDetail({ fundName }: { fundName: string }) {
     arr.sort((a, b) => {
       let va: number, vb: number;
       switch (sortKey) {
-        case "portfolioPct": va = a.portfolioPct; vb = b.portfolioPct; break;
-        case "value": va = parseValue(a.value); vb = parseValue(b.value); break;
-        case "shares": va = a.shares; vb = b.shares; break;
-        case "deltaShares": va = a.deltaShares; vb = b.deltaShares; break;
+        case "portfolioPct":
+          va = a.portfolioPct;
+          vb = b.portfolioPct;
+          break;
+        case "value":
+          va = parseValue(a.value);
+          vb = parseValue(b.value);
+          break;
+        case "shares":
+          va = a.shares;
+          vb = b.shares;
+          break;
+        case "deltaShares":
+          va = a.deltaShares;
+          vb = b.deltaShares;
+          break;
         case "delta":
           va = a.delta === "NEW" ? 9999 : parseFloat(a.delta) || 0;
           vb = b.delta === "NEW" ? 9999 : parseFloat(b.delta) || 0;
           break;
-        default: va = 0; vb = 0;
+        default:
+          va = 0;
+          vb = 0;
       }
       return sortDir === "desc" ? vb - va : va - vb;
     });
@@ -334,21 +402,20 @@ function FundDetail({ fundName }: { fundName: string }) {
 
   const totalValue = useMemo(
     () => holdings.reduce((s, h) => s + parseValue(h.value), 0),
-    [holdings]
+    [holdings],
   );
 
-  const newPositions = useMemo(
-    () => holdings.filter((h) => h.delta === "NEW").length,
-    [holdings]
-  );
+  const newPositions = useMemo(() => holdings.filter((h) => h.delta === "NEW").length, [holdings]);
 
   const closedPositions = useMemo(
     () => holdings.filter((h) => h.delta === "CLOSE").length,
-    [holdings]
+    [holdings],
   );
 
   const treemapData = useMemo(() => {
-    const byPct = [...holdings].filter((h) => h.delta !== "CLOSE").sort((a, b) => b.portfolioPct - a.portfolioPct);
+    const byPct = [...holdings]
+      .filter((h) => h.delta !== "CLOSE")
+      .sort((a, b) => b.portfolioPct - a.portfolioPct);
     return byPct.slice(0, 20).map((h) => {
       const prevShares = h.shares - h.deltaShares;
       const deltaPct = prevShares > 0 && h.shares > 0 ? (h.deltaShares / prevShares) * 100 : 0;
@@ -362,10 +429,12 @@ function FundDetail({ fundName }: { fundName: string }) {
     });
   }, [holdings]);
 
-
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
-    else { setSortKey(key); setSortDir("desc"); }
+    else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
   }
 
   function sortIndicator(key: SortKey) {
@@ -392,7 +461,11 @@ function FundDetail({ fundName }: { fundName: string }) {
           </Button>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Wallet className="h-6 w-6" /> {fund?.denomination || formatFundName(fundName)}
-            <StarButton active={isStarred(fundName)} onClick={() => toggleStar(fundName)} size={20} />
+            <StarButton
+              active={isStarred(fundName)}
+              onClick={() => toggleStar(fundName)}
+              size={20}
+            />
           </h1>
         </div>
         <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">
@@ -412,12 +485,14 @@ function FundDetail({ fundName }: { fundName: string }) {
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               <Wallet className="h-6 w-6" /> {fund?.denomination || formatFundName(fundName)}
-              <StarButton active={isStarred(fundName)} onClick={() => toggleStar(fundName)} size={20} />
+              <StarButton
+                active={isStarred(fundName)}
+                onClick={() => toggleStar(fundName)}
+                size={20}
+              />
             </h1>
             {fund && (
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Managed by {fund.manager}
-              </p>
+              <p className="text-sm text-muted-foreground mt-0.5">Managed by {fund.manager}</p>
             )}
           </div>
         </div>
@@ -448,20 +523,26 @@ function FundDetail({ fundName }: { fundName: string }) {
             </div>
             <div className="kpi-card">
               <p className="text-xs text-muted-foreground">Positions</p>
-              <p className="text-xl font-bold font-mono mt-1">{holdings.filter((h) => parseValue(h.value) > 0).length}</p>
+              <p className="text-xl font-bold font-mono mt-1">
+                {holdings.filter((h) => parseValue(h.value) > 0).length}
+              </p>
             </div>
             <div
               className={`kpi-card cursor-pointer transition-colors ${positionFilter === "new" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setPositionFilter((f) => f === "new" ? "all" : "new")}
+              onClick={() => setPositionFilter((f) => (f === "new" ? "all" : "new"))}
             >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">New Positions <Filter className="h-3 w-3" /></p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                New Positions <Filter className="h-3 w-3" />
+              </p>
               <p className="text-xl font-bold font-mono mt-1 delta-positive">{newPositions}</p>
             </div>
             <div
               className={`kpi-card cursor-pointer transition-colors ${positionFilter === "closed" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setPositionFilter((f) => f === "closed" ? "all" : "closed")}
+              onClick={() => setPositionFilter((f) => (f === "closed" ? "all" : "closed"))}
             >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">Closed Positions <Filter className="h-3 w-3" /></p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                Closed Positions <Filter className="h-3 w-3" />
+              </p>
               <p className="text-xl font-bold font-mono mt-1 delta-negative">{closedPositions}</p>
             </div>
           </div>
@@ -509,7 +590,10 @@ function FundDetail({ fundName }: { fundName: string }) {
                           <td className="p-3">
                             <TickerLink ticker={h.ticker} />
                           </td>
-                          <td className="p-3 text-muted-foreground max-w-[200px] truncate cursor-pointer hover:text-foreground transition-colors" onClick={() => navigate(`/stock/${h.ticker}`)}>
+                          <td
+                            className="p-3 text-muted-foreground max-w-[200px] truncate cursor-pointer hover:text-foreground transition-colors"
+                            onClick={() => navigate(`/stock/${h.ticker}`)}
+                          >
                             {toInitCap(h.company)}
                           </td>
                           <td className="p-3 text-right font-mono">{h.value}</td>
@@ -521,14 +605,14 @@ function FundDetail({ fundName }: { fundName: string }) {
                             ) : deltaParsed === 0 ? (
                               <span className="badge-nochange">NO CHANGE</span>
                             ) : (
-                              <span className={deltaParsed > 0 ? "delta-positive" : "delta-negative"}>
+                              <span
+                                className={deltaParsed > 0 ? "delta-positive" : "delta-negative"}
+                              >
                                 {`${deltaParsed > 0 ? "+" : ""}${deltaParsed.toFixed(2)}%`}
                               </span>
                             )}
                           </td>
-                          <td className="p-3 text-right font-mono">
-                            {h.portfolioPct.toFixed(1)}%
-                          </td>
+                          <td className="p-3 text-right font-mono">{h.portfolioPct.toFixed(1)}%</td>
                         </tr>
                       );
                     })}
@@ -558,7 +642,11 @@ function FundDetail({ fundName }: { fundName: string }) {
         {/* Right: Holdings Map - full height */}
         <div className="lg:sticky lg:top-4 lg:self-start rounded-lg border border-border bg-card p-5">
           <h3 className="section-title mb-3 text-sm">Holdings Map</h3>
-          <HoldingsTreemap data={treemapData} onClickTicker={(t) => navigate(`/stock/${t}`)} displayMode="pct" />
+          <HoldingsTreemap
+            data={treemapData}
+            onClickTicker={(t) => navigate(`/stock/${t}`)}
+            displayMode="pct"
+          />
         </div>
       </div>
     </div>

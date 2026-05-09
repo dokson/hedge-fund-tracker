@@ -12,7 +12,13 @@ import {
 import type { Quarter } from "@/lib/quarters";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { FundLink } from "@/components/EntityLinks";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { MeasuredChart } from "@/components/MeasuredChart";
 import { Button } from "@/components/ui/button";
@@ -41,7 +47,8 @@ export default function StockAnalysis() {
   const company = holdings[0]?.company || ticker;
   const totalValue = holdings.reduce((s, h) => s + h.value, 0);
   const totalDeltaValue = holdings.reduce((s, h) => s + h.deltaValue, 0);
-  const avgPtfPct = holdings.length > 0 ? holdings.reduce((s, h) => s + h.portfolioPct, 0) / holdings.length : 0;
+  const avgPtfPct =
+    holdings.length > 0 ? holdings.reduce((s, h) => s + h.portfolioPct, 0) / holdings.length : 0;
   const maxPtfPct = holdings.length > 0 ? Math.max(...holdings.map((h) => h.portfolioPct)) : 0;
   const buyerCount = holdings.filter((h) => h.isBuyer).length;
   const sellerCount = holdings.filter((h) => h.isSeller).length;
@@ -56,8 +63,8 @@ export default function StockAnalysis() {
     holderCount === newHolderCount && closeCount === 0
       ? Infinity
       : previousTotal !== 0
-      ? (totalDeltaValue / previousTotal) * 100
-      : 0;
+        ? (totalDeltaValue / previousTotal) * 100
+        : 0;
 
   const existingBuyers = buyerCount - newHolderCount;
   const existingSellers = sellerCount - closeCount;
@@ -80,8 +87,12 @@ export default function StockAnalysis() {
   ];
 
   // Value bought vs sold
-  const totalValueBought = holdings.filter((h) => h.deltaValue > 0).reduce((s, h) => s + h.deltaValue, 0);
-  const totalValueSold = Math.abs(holdings.filter((h) => h.deltaValue < 0).reduce((s, h) => s + h.deltaValue, 0));
+  const totalValueBought = holdings
+    .filter((h) => h.deltaValue > 0)
+    .reduce((s, h) => s + h.deltaValue, 0);
+  const totalValueSold = Math.abs(
+    holdings.filter((h) => h.deltaValue < 0).reduce((s, h) => s + h.deltaValue, 0),
+  );
 
   const valueFlowData = [
     { label: "Value Bought", value: totalValueBought, fill: "hsl(142, 55%, 35%)" },
@@ -89,13 +100,20 @@ export default function StockAnalysis() {
   ];
 
   // Sort columns
-  const [sortKey, setSortKey] = useState<"shares" | "value" | "deltaValue" | "portfolioPct">("portfolioPct");
+  const [sortKey, setSortKey] = useState<"shares" | "value" | "deltaValue" | "portfolioPct">(
+    "portfolioPct",
+  );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [holdingFilter, setHoldingFilter] = useState<"all" | "buyers" | "sellers" | "new" | "closed">("all");
+  const [holdingFilter, setHoldingFilter] = useState<
+    "all" | "buyers" | "sellers" | "new" | "closed"
+  >("all");
 
   function toggleSort(key: typeof sortKey) {
     if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
-    else { setSortKey(key); setSortDir("desc"); }
+    else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
   }
 
   function sortIndicator(key: typeof sortKey) {
@@ -105,10 +123,18 @@ export default function StockAnalysis() {
   const sortedHoldings = (() => {
     let list = [...holdings];
     switch (holdingFilter) {
-      case "buyers": list = list.filter((h) => h.isBuyer); break;
-      case "sellers": list = list.filter((h) => h.isSeller); break;
-      case "new": list = list.filter((h) => h.isNew); break;
-      case "closed": list = list.filter((h) => h.isClosed); break;
+      case "buyers":
+        list = list.filter((h) => h.isBuyer);
+        break;
+      case "sellers":
+        list = list.filter((h) => h.isSeller);
+        break;
+      case "new":
+        list = list.filter((h) => h.isNew);
+        break;
+      case "closed":
+        list = list.filter((h) => h.isClosed);
+        break;
     }
     list.sort((a, b) => {
       const va = a[sortKey] as number;
@@ -136,11 +162,17 @@ export default function StockAnalysis() {
             </SelectTrigger>
             <SelectContent>
               {[...quarters].reverse().map((q) => (
-                <SelectItem key={q} value={q}>{q.replace("Q", " Q")}</SelectItem>
+                <SelectItem key={q} value={q}>
+                  {q.replace("Q", " Q")}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={() => navigate(`/ai-diligence?ticker=${ticker}`)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/ai-diligence?ticker=${ticker}`)}
+          >
             <Brain className="h-4 w-4 mr-1" /> AI Due Diligence
           </Button>
         </div>
@@ -156,7 +188,8 @@ export default function StockAnalysis() {
         </div>
       ) : holdings.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">
-          No fund holds {ticker} in {quarter?.replace("Q", " Q") ?? "this quarter"}. Try a different quarter.
+          No fund holds {ticker} in {quarter?.replace("Q", " Q") ?? "this quarter"}. Try a different
+          quarter.
         </div>
       ) : (
         <>
@@ -168,13 +201,17 @@ export default function StockAnalysis() {
             </div>
             <div className="kpi-card">
               <p className="text-xs text-muted-foreground">Δ Value</p>
-              <p className={`text-xl font-bold font-mono mt-1 ${totalDeltaValue > 0 ? "delta-positive" : totalDeltaValue < 0 ? "delta-negative" : ""}`}>
+              <p
+                className={`text-xl font-bold font-mono mt-1 ${totalDeltaValue > 0 ? "delta-positive" : totalDeltaValue < 0 ? "delta-negative" : ""}`}
+              >
                 {formatValue(totalDeltaValue)}
               </p>
             </div>
             <div className="kpi-card">
               <p className="text-xs text-muted-foreground">Δ %</p>
-              <p className={`text-xl font-bold font-mono mt-1 ${deltaPct > 0 ? "delta-positive" : deltaPct < 0 ? "delta-negative" : ""}`}>
+              <p
+                className={`text-xl font-bold font-mono mt-1 ${deltaPct > 0 ? "delta-positive" : deltaPct < 0 ? "delta-negative" : ""}`}
+              >
                 {formatPct(deltaPct, true)}
               </p>
             </div>
@@ -193,36 +230,47 @@ export default function StockAnalysis() {
             </div>
             <div
               className={`kpi-card cursor-pointer transition-colors ${holdingFilter === "buyers" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setHoldingFilter((f) => f === "buyers" ? "all" : "buyers")}
+              onClick={() => setHoldingFilter((f) => (f === "buyers" ? "all" : "buyers"))}
             >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">Buyers <Filter className="h-3 w-3" /></p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                Buyers <Filter className="h-3 w-3" />
+              </p>
               <p className="text-xl font-bold font-mono mt-1 delta-positive">{buyerCount}</p>
             </div>
             <div
               className={`kpi-card cursor-pointer transition-colors ${holdingFilter === "new" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setHoldingFilter((f) => f === "new" ? "all" : "new")}
+              onClick={() => setHoldingFilter((f) => (f === "new" ? "all" : "new"))}
             >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">New <Filter className="h-3 w-3" /></p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                New <Filter className="h-3 w-3" />
+              </p>
               <p className="text-xl font-bold font-mono mt-1 delta-positive">{newHolderCount}</p>
             </div>
             <div
               className={`kpi-card cursor-pointer transition-colors ${holdingFilter === "sellers" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setHoldingFilter((f) => f === "sellers" ? "all" : "sellers")}
+              onClick={() => setHoldingFilter((f) => (f === "sellers" ? "all" : "sellers"))}
             >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">Sellers <Filter className="h-3 w-3" /></p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                Sellers <Filter className="h-3 w-3" />
+              </p>
               <p className="text-xl font-bold font-mono mt-1 delta-negative">{sellerCount}</p>
             </div>
             <div
               className={`kpi-card cursor-pointer transition-colors ${holdingFilter === "closed" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setHoldingFilter((f) => f === "closed" ? "all" : "closed")}
+              onClick={() => setHoldingFilter((f) => (f === "closed" ? "all" : "closed"))}
             >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">Sold Out <Filter className="h-3 w-3" /></p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                Sold Out <Filter className="h-3 w-3" />
+              </p>
               <p className="text-xl font-bold font-mono mt-1 delta-negative">{closeCount}</p>
             </div>
             <div className="kpi-card">
               <p className="text-xs text-muted-foreground">Net Buyers</p>
-              <p className={`text-xl font-bold font-mono mt-1 ${netBuyers > 0 ? "delta-positive" : netBuyers < 0 ? "delta-negative" : ""}`}>
-                {netBuyers >= 0 ? "+" : ""}{netBuyers}
+              <p
+                className={`text-xl font-bold font-mono mt-1 ${netBuyers > 0 ? "delta-positive" : netBuyers < 0 ? "delta-negative" : ""}`}
+              >
+                {netBuyers >= 0 ? "+" : ""}
+                {netBuyers}
               </p>
             </div>
             <div className="kpi-card">
@@ -246,7 +294,14 @@ export default function StockAnalysis() {
                   {({ width, height }) => (
                     <BarChart width={width} height={height} data={sentimentData} layout="vertical">
                       <XAxis type="number" hide />
-                      <YAxis type="category" dataKey="label" width={60} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="label"
+                        width={60}
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <Tooltip
                         cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
                         content={({ active, payload }) => {
@@ -254,17 +309,62 @@ export default function StockAnalysis() {
                           const row = payload[0]?.payload;
                           const isBuyers = row.label === "Buyers";
                           return (
-                            <div style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12, color: "hsl(var(--foreground))", padding: "6px 10px", lineHeight: 1.6 }}>
-                              <div><span style={{ fontWeight: 700 }}>{isBuyers ? "Increase" : "Decrease"}</span> : {isBuyers ? row.buyers : row.sellers}</div>
-                              <div><span style={{ fontWeight: 700 }}>{isBuyers ? "New" : "Close"}</span> : {isBuyers ? row.new : row.closed}</div>
+                            <div
+                              style={{
+                                background: "hsl(var(--card))",
+                                border: "1px solid hsl(var(--border))",
+                                borderRadius: 6,
+                                fontSize: 12,
+                                color: "hsl(var(--foreground))",
+                                padding: "6px 10px",
+                                lineHeight: 1.6,
+                              }}
+                            >
+                              <div>
+                                <span style={{ fontWeight: 700 }}>
+                                  {isBuyers ? "Increase" : "Decrease"}
+                                </span>{" "}
+                                : {isBuyers ? row.buyers : row.sellers}
+                              </div>
+                              <div>
+                                <span style={{ fontWeight: 700 }}>
+                                  {isBuyers ? "New" : "Close"}
+                                </span>{" "}
+                                : {isBuyers ? row.new : row.closed}
+                              </div>
                             </div>
                           );
                         }}
                       />
-                      <Bar dataKey="buyers" name="Buyers" stackId="a" barSize={24} fill="hsl(142, 55%, 35%)" radius={0} />
-                      <Bar dataKey="new" name="New" stackId="a" fill="hsl(142, 40%, 24%)" radius={[0, 6, 6, 0]} />
-                      <Bar dataKey="sellers" name="Sellers" stackId="a" fill="hsl(0, 65%, 45%)" radius={0} />
-                      <Bar dataKey="closed" name="Closed" stackId="a" fill="hsl(0, 45%, 28%)" radius={[0, 6, 6, 0]} />
+                      <Bar
+                        dataKey="buyers"
+                        name="Buyers"
+                        stackId="a"
+                        barSize={24}
+                        fill="hsl(142, 55%, 35%)"
+                        radius={0}
+                      />
+                      <Bar
+                        dataKey="new"
+                        name="New"
+                        stackId="a"
+                        fill="hsl(142, 40%, 24%)"
+                        radius={[0, 6, 6, 0]}
+                      />
+                      <Bar
+                        dataKey="sellers"
+                        name="Sellers"
+                        stackId="a"
+                        fill="hsl(0, 65%, 45%)"
+                        radius={0}
+                      />
+                      <Bar
+                        dataKey="closed"
+                        name="Closed"
+                        stackId="a"
+                        fill="hsl(0, 45%, 28%)"
+                        radius={[0, 6, 6, 0]}
+                      />
                     </BarChart>
                   )}
                 </MeasuredChart>
@@ -279,10 +379,23 @@ export default function StockAnalysis() {
                   {({ width, height }) => (
                     <BarChart width={width} height={height} data={valueFlowData} layout="vertical">
                       <XAxis type="number" hide />
-                      <YAxis type="category" dataKey="label" width={90} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="label"
+                        width={90}
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <Tooltip
                         cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12, color: "hsl(var(--foreground))" }}
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          color: "hsl(var(--foreground))",
+                        }}
                         labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
                         itemStyle={{ color: "hsl(var(--foreground))" }}
                         formatter={(val: number) => [formatValue(val), null]}
@@ -311,24 +424,40 @@ export default function StockAnalysis() {
                   <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
                     <th className="text-right p-3 font-medium w-12">#</th>
                     <th className="text-left p-3 font-medium">Fund</th>
-                    <th className="text-right p-3 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleSort("portfolioPct")}>
+                    <th
+                      className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
+                      onClick={() => toggleSort("portfolioPct")}
+                    >
                       Ptf %{sortIndicator("portfolioPct")}
                     </th>
-                    <th className="text-right p-3 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleSort("value")}>
+                    <th
+                      className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
+                      onClick={() => toggleSort("value")}
+                    >
                       Value{sortIndicator("value")}
                     </th>
                     <th className="text-right p-3 font-medium">Δ%</th>
-                    <th className="text-right p-3 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleSort("deltaValue")}>
+                    <th
+                      className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
+                      onClick={() => toggleSort("deltaValue")}
+                    >
                       Δ Value{sortIndicator("deltaValue")}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedHoldings.map((h, i) => {
-                    const deltaNum = h.delta === "NEW" ? Infinity : h.delta === "CLOSE" ? -100 : parseFloat(h.delta) || 0;
+                    const deltaNum =
+                      h.delta === "NEW"
+                        ? Infinity
+                        : h.delta === "CLOSE"
+                          ? -100
+                          : parseFloat(h.delta) || 0;
                     return (
-                        <tr key={`${h.fund}-${i}`} className="data-table-row">
-                        <td className="p-3 text-right text-muted-foreground font-mono text-xs">{i + 1}</td>
+                      <tr key={`${h.fund}-${i}`} className="data-table-row">
+                        <td className="p-3 text-right text-muted-foreground font-mono text-xs">
+                          {i + 1}
+                        </td>
                         <td className="p-3">
                           <FundLink fundName={h.fund} />
                         </td>
@@ -347,7 +476,9 @@ export default function StockAnalysis() {
                             </span>
                           )}
                         </td>
-                        <td className={`p-3 text-right font-mono ${h.deltaValue > 0 ? "delta-positive" : h.deltaValue < 0 ? "delta-negative" : ""}`}>
+                        <td
+                          className={`p-3 text-right font-mono ${h.deltaValue > 0 ? "delta-positive" : h.deltaValue < 0 ? "delta-negative" : ""}`}
+                        >
                           {formatValue(h.deltaValue)}
                         </td>
                       </tr>

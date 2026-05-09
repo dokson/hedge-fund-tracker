@@ -7,9 +7,11 @@ interface TerminalOutputProps {
 
 function colorize(line: string): string {
   if (line.includes("✅") || line.includes("✓")) return "text-green-400";
-  if (line.includes("❌") || line.includes("Error") || line.includes("error")) return "text-red-400";
+  if (line.includes("❌") || line.includes("Error") || line.includes("error"))
+    return "text-red-400";
   if (line.includes("⚠️") || line.includes("Warning")) return "text-yellow-400";
-  if (line.startsWith("🔍") || line.startsWith("🚀") || line.startsWith("📊")) return "text-blue-400";
+  if (line.startsWith("🔍") || line.startsWith("🚀") || line.startsWith("📊"))
+    return "text-blue-400";
   if (line.includes("Sending request") || line.includes("AI Agent")) return "text-purple-300";
   return "text-gray-300";
 }

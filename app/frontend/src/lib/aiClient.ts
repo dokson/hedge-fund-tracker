@@ -16,11 +16,41 @@ export interface AIProvider {
 }
 
 export const AI_PROVIDERS: AIProvider[] = [
-  { id: "github",      name: "GitHub Models",    envKey: "GITHUB_TOKEN",       link: "https://github.com/settings/tokens",      hint: "ghp_…" },
-  { id: "google",      name: "Google AI Studio", envKey: "GOOGLE_API_KEY",     link: "https://aistudio.google.com/app/apikey",  hint: "AIza…" },
-  { id: "groq",        name: "Groq",             envKey: "GROQ_API_KEY",       link: "https://console.groq.com/keys",           hint: "gsk_…" },
-  { id: "huggingface", name: "HuggingFace",      envKey: "HF_TOKEN",           link: "https://huggingface.co/settings/tokens",  hint: "hf_…" },
-  { id: "openrouter",  name: "OpenRouter",       envKey: "OPENROUTER_API_KEY", link: "https://openrouter.ai/settings/keys",     hint: "sk-or-…" },
+  {
+    id: "github",
+    name: "GitHub Models",
+    envKey: "GITHUB_TOKEN",
+    link: "https://github.com/settings/tokens",
+    hint: "ghp_…",
+  },
+  {
+    id: "google",
+    name: "Google AI Studio",
+    envKey: "GOOGLE_API_KEY",
+    link: "https://aistudio.google.com/app/apikey",
+    hint: "AIza…",
+  },
+  {
+    id: "groq",
+    name: "Groq",
+    envKey: "GROQ_API_KEY",
+    link: "https://console.groq.com/keys",
+    hint: "gsk_…",
+  },
+  {
+    id: "huggingface",
+    name: "HuggingFace",
+    envKey: "HF_TOKEN",
+    link: "https://huggingface.co/settings/tokens",
+    hint: "hf_…",
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    envKey: "OPENROUTER_API_KEY",
+    link: "https://openrouter.ai/settings/keys",
+    hint: "sk-or-…",
+  },
 ];
 
 // ─── Python backend AI calls ───────────────────────────────────────────────────
@@ -29,11 +59,20 @@ function _providerIdForModel(_modelId: string | undefined): null {
   return null; // provider is now resolved via ModelSelector → onProviderChange
 }
 
-export async function runPromiseScore(quarter: string, topN: number, modelId?: string): Promise<any[]> {
+export async function runPromiseScore(
+  quarter: string,
+  topN: number,
+  modelId?: string,
+): Promise<any[]> {
   const res = await fetch(`${API_BASE}/api/ai/promise-score`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ quarter, top_n: topN, model_id: modelId || null, provider_id: _providerIdForModel(modelId) }),
+    body: JSON.stringify({
+      quarter,
+      top_n: topN,
+      model_id: modelId || null,
+      provider_id: _providerIdForModel(modelId),
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -42,11 +81,20 @@ export async function runPromiseScore(quarter: string, topN: number, modelId?: s
   return res.json();
 }
 
-export async function runDueDiligence(ticker: string, quarter: string, modelId?: string): Promise<any> {
+export async function runDueDiligence(
+  ticker: string,
+  quarter: string,
+  modelId?: string,
+): Promise<any> {
   const res = await fetch(`${API_BASE}/api/ai/due-diligence`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ticker, quarter, model_id: modelId || null, provider_id: _providerIdForModel(modelId) }),
+    body: JSON.stringify({
+      ticker,
+      quarter,
+      model_id: modelId || null,
+      provider_id: _providerIdForModel(modelId),
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -57,10 +105,7 @@ export async function runDueDiligence(ticker: string, quarter: string, modelId?:
 
 // ─── Streaming AI calls ────────────────────────────────────────────────────────
 
-async function _readSSEStream(
-  res: Response,
-  onLog: (line: string) => void,
-): Promise<any> {
+async function _readSSEStream(res: Response, onLog: (line: string) => void): Promise<any> {
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -92,7 +137,12 @@ export async function runPromiseScoreStream(
   const res = await fetch(`${API_BASE}/api/ai/promise-score/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ quarter, top_n: topN, model_id: modelId || null, provider_id: providerId || _providerIdForModel(modelId) }),
+    body: JSON.stringify({
+      quarter,
+      top_n: topN,
+      model_id: modelId || null,
+      provider_id: providerId || _providerIdForModel(modelId),
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -111,7 +161,12 @@ export async function runDueDiligenceStream(
   const res = await fetch(`${API_BASE}/api/ai/due-diligence/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ticker, quarter, model_id: modelId || null, provider_id: providerId || _providerIdForModel(modelId) }),
+    body: JSON.stringify({
+      ticker,
+      quarter,
+      model_id: modelId || null,
+      provider_id: providerId || _providerIdForModel(modelId),
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -122,7 +177,9 @@ export async function runDueDiligenceStream(
 
 // ─── Env-based provider status ─────────────────────────────────────────────────
 
-export async function getConfiguredProviders(): Promise<{ provider: AIProvider; hasKey: boolean }[]> {
+export async function getConfiguredProviders(): Promise<
+  { provider: AIProvider; hasKey: boolean }[]
+> {
   if (IS_GH_PAGES_MODE) {
     return AI_PROVIDERS.map((provider) => ({ provider, hasKey: false }));
   }
@@ -154,7 +211,9 @@ export function extractJSON<T = unknown>(response: string): T {
   if (jsonMatch) {
     try {
       return JSON.parse(jsonMatch[0]);
-    } catch { /* fall through */ }
+    } catch {
+      /* fall through */
+    }
   }
   throw new Error("Could not extract structured data from AI response");
 }

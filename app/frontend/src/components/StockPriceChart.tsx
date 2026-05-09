@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useElementSize } from "@/hooks/useElementSize";
 import {
-  AreaChart, Area, ComposedChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, ReferenceArea,
+  AreaChart,
+  Area,
+  ComposedChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ReferenceLine,
+  ReferenceArea,
 } from "recharts";
 import { Loader2, TrendingUp, TrendingDown, Activity, BarChart3 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
@@ -25,7 +33,9 @@ const DOWN_COLOR = "hsl(0, 65%, 55%)";
 
 async function fetchPriceHistory(ticker: string, period: string): Promise<Candle[]> {
   if (!API_BASE) throw new Error("offline");
-  const res = await fetch(`${API_BASE}/api/stocks/${encodeURIComponent(ticker)}/history?range=${period}`);
+  const res = await fetch(
+    `${API_BASE}/api/stocks/${encodeURIComponent(ticker)}/history?range=${period}`,
+  );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = (await res.json()) as { points?: Candle[] };
   return data.points ?? [];
@@ -84,7 +94,14 @@ function Candlestick({ x = 0, y = 0, width = 0, height = 0, payload }: CandleSha
   return (
     <g pointerEvents="none">
       <line x1={cx} x2={cx} y1={yHigh} y2={yLow} stroke={color} strokeWidth={1} />
-      <rect x={cx - candleW / 2} y={bodyTop} width={candleW} height={bodyHeight} fill={color} stroke={color} />
+      <rect
+        x={cx - candleW / 2}
+        y={bodyTop}
+        width={candleW}
+        height={bodyHeight}
+        fill={color}
+        stroke={color}
+      />
     </g>
   );
 }
@@ -106,7 +123,7 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
   }, [ticker, period]);
 
   const lookupCandle = (label: string | undefined) =>
-    label ? series.find((s) => s.date === label) ?? null : null;
+    label ? (series.find((s) => s.date === label) ?? null) : null;
 
   const handleMouseDown = (e: { activeLabel?: string } | null) => {
     const p = lookupCandle(e?.activeLabel);
@@ -147,7 +164,11 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
     return staticData.filter((p) => new Date(p.date) >= cutoff);
   }, [staticData, range]);
 
-  const { data: fetched = [], isLoading, isError } = useQuery({
+  const {
+    data: fetched = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["stockPriceHistory", ticker, period],
     queryFn: () => fetchPriceHistory(ticker, period),
     staleTime: 60 * 60 * 1000,
@@ -159,7 +180,7 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
 
   const candleSeries = useMemo<CandleWithRange[]>(
     () => series.map((p) => ({ ...p, range: [p.low, p.high] })),
-    [series]
+    [series],
   );
 
   const stats = useMemo(() => {
@@ -178,8 +199,8 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
       <div className="rounded-lg border border-border bg-card p-5">
         <h3 className="section-title text-sm">Price History</h3>
         <p className="mt-2 text-xs text-muted-foreground">
-          Live price history requires the local Python backend (yfinance). It is not available on the
-          static GitHub Pages build — clone the repo and run the app locally to view this chart.
+          Live price history requires the local Python backend (yfinance). It is not available on
+          the static GitHub Pages build — clone the repo and run the app locally to view this chart.
         </p>
       </div>
     );
@@ -206,7 +227,13 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
     ? [stats.min - (stats.max - stats.min) * 0.05, stats.max + (stats.max - stats.min) * 0.05]
     : undefined;
 
-  const renderTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Partial<Candle> }> }) => {
+  const renderTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: Array<{ payload?: Partial<Candle> }>;
+  }) => {
     if (!active || !payload?.length) return null;
     const p = payload[0]?.payload;
     if (!p || p.close == null || p.open == null || p.high == null || p.low == null) return null;
@@ -234,7 +261,8 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
             {fmtDateFull(sel.start.date)} → {fmtDateFull(sel.end.date)}
           </div>
           <div>
-            ${sel.start.close.toFixed(2)} → <span style={{ fontWeight: 700 }}>${sel.end.close.toFixed(2)}</span>
+            ${sel.start.close.toFixed(2)} →{" "}
+            <span style={{ fontWeight: 700 }}>${sel.end.close.toFixed(2)}</span>
           </div>
           <div style={{ color: sel.positive ? UP_COLOR : DOWN_COLOR, fontWeight: 700 }}>
             {sel.positive ? "+" : ""}
@@ -252,12 +280,19 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
       <div style={tooltipBox}>
         <div style={{ color: "hsl(var(--muted-foreground))" }}>{fmtDateFull(p.date)}</div>
         {mode === "candles" ? (
-          <div style={{ display: "grid", gridTemplateColumns: "auto auto", columnGap: 12, rowGap: 2 }}>
-            <span style={{ color: "hsl(var(--muted-foreground))" }}>O</span><span>${p.open!.toFixed(2)}</span>
-            <span style={{ color: "hsl(var(--muted-foreground))" }}>H</span><span>${p.high!.toFixed(2)}</span>
-            <span style={{ color: "hsl(var(--muted-foreground))" }}>L</span><span>${p.low!.toFixed(2)}</span>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "auto auto", columnGap: 12, rowGap: 2 }}
+          >
+            <span style={{ color: "hsl(var(--muted-foreground))" }}>O</span>
+            <span>${p.open!.toFixed(2)}</span>
+            <span style={{ color: "hsl(var(--muted-foreground))" }}>H</span>
+            <span>${p.high!.toFixed(2)}</span>
+            <span style={{ color: "hsl(var(--muted-foreground))" }}>L</span>
+            <span>${p.low!.toFixed(2)}</span>
             <span style={{ color: "hsl(var(--muted-foreground))" }}>C</span>
-            <span style={{ color: isUp ? UP_COLOR : DOWN_COLOR, fontWeight: 700 }}>${p.close!.toFixed(2)}</span>
+            <span style={{ color: isUp ? UP_COLOR : DOWN_COLOR, fontWeight: 700 }}>
+              ${p.close!.toFixed(2)}
+            </span>
           </div>
         ) : (
           <div style={{ fontWeight: 700 }}>${p.close!.toFixed(2)}</div>
@@ -283,7 +318,11 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
                   headerPositive ? "delta-positive" : "delta-negative"
                 }`}
               >
-                {headerPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                {headerPositive ? (
+                  <TrendingUp className="h-3.5 w-3.5" />
+                ) : (
+                  <TrendingDown className="h-3.5 w-3.5" />
+                )}
                 {headerPositive ? "+" : ""}
                 {stats.change.toFixed(2)} ({headerPositive ? "+" : ""}
                 {stats.pct.toFixed(2)}%)
@@ -293,13 +332,19 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
           )}
         </div>
         <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-md border border-border overflow-hidden text-xs" role="tablist" aria-label="Chart type">
+          <div
+            className="inline-flex rounded-md border border-border overflow-hidden text-xs"
+            role="tablist"
+            aria-label="Chart type"
+          >
             <button
               onClick={() => setMode("area")}
               title="Area chart"
               aria-pressed={mode === "area"}
               className={`px-2.5 py-1.5 inline-flex items-center gap-1 transition-colors ${
-                mode === "area" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                mode === "area"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               }`}
             >
               <Activity className="h-3.5 w-3.5" />
@@ -309,7 +354,9 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
               title="Candlestick chart"
               aria-pressed={mode === "candles"}
               className={`px-2.5 py-1.5 inline-flex items-center gap-1 transition-colors ${
-                mode === "candles" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                mode === "candles"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               }`}
             >
               <BarChart3 className="h-3.5 w-3.5" />
@@ -357,17 +404,60 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
           >
-            <XAxis dataKey="date" tickFormatter={fmtDateShort} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={48} />
-            <YAxis tickFormatter={fmtCurrency} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} width={56} domain={yDomain ?? ["auto", "auto"]} />
-            {stats && !selectionStats && <ReferenceLine y={stats.first} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeOpacity={0.4} />}
+            <XAxis
+              dataKey="date"
+              tickFormatter={fmtDateShort}
+              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              minTickGap={48}
+            />
+            <YAxis
+              tickFormatter={fmtCurrency}
+              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              width={56}
+              domain={yDomain ?? ["auto", "auto"]}
+            />
+            {stats && !selectionStats && (
+              <ReferenceLine
+                y={stats.first}
+                stroke="hsl(var(--muted-foreground))"
+                strokeDasharray="3 3"
+                strokeOpacity={0.4}
+              />
+            )}
             {selectionStats && (
               <>
-                <ReferenceArea x1={selectionStats.start.date} x2={selectionStats.end.date} fill={selectionStats.positive ? UP_COLOR : DOWN_COLOR} fillOpacity={0.08} />
-                <ReferenceLine x={selectionStats.start.date} stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR} strokeDasharray="3 3" strokeOpacity={0.6} />
-                <ReferenceLine x={selectionStats.end.date} stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR} strokeDasharray="3 3" strokeOpacity={0.6} />
+                <ReferenceArea
+                  x1={selectionStats.start.date}
+                  x2={selectionStats.end.date}
+                  fill={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                  fillOpacity={0.08}
+                />
+                <ReferenceLine
+                  x={selectionStats.start.date}
+                  stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.6}
+                />
+                <ReferenceLine
+                  x={selectionStats.end.date}
+                  stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.6}
+                />
               </>
             )}
-            <Tooltip cursor={{ stroke: "hsl(var(--muted-foreground))", strokeOpacity: 0.4, strokeDasharray: "3 3" }} content={renderTooltip} />
+            <Tooltip
+              cursor={{
+                stroke: "hsl(var(--muted-foreground))",
+                strokeOpacity: 0.4,
+                strokeDasharray: "3 3",
+              }}
+              content={renderTooltip}
+            />
             <Bar
               dataKey="range"
               shape={(props: CandleShapeProps) => <Candlestick {...props} />}
@@ -390,18 +480,68 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
                 <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <XAxis dataKey="date" tickFormatter={fmtDateShort} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={48} />
-            <YAxis tickFormatter={fmtCurrency} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} width={56} domain={["auto", "auto"]} />
-            {stats && !selectionStats && <ReferenceLine y={stats.first} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeOpacity={0.4} />}
+            <XAxis
+              dataKey="date"
+              tickFormatter={fmtDateShort}
+              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              minTickGap={48}
+            />
+            <YAxis
+              tickFormatter={fmtCurrency}
+              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              width={56}
+              domain={["auto", "auto"]}
+            />
+            {stats && !selectionStats && (
+              <ReferenceLine
+                y={stats.first}
+                stroke="hsl(var(--muted-foreground))"
+                strokeDasharray="3 3"
+                strokeOpacity={0.4}
+              />
+            )}
             {selectionStats && (
               <>
-                <ReferenceArea x1={selectionStats.start.date} x2={selectionStats.end.date} fill={selectionStats.positive ? UP_COLOR : DOWN_COLOR} fillOpacity={0.12} />
-                <ReferenceLine x={selectionStats.start.date} stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR} strokeDasharray="3 3" strokeOpacity={0.6} />
-                <ReferenceLine x={selectionStats.end.date} stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR} strokeDasharray="3 3" strokeOpacity={0.6} />
+                <ReferenceArea
+                  x1={selectionStats.start.date}
+                  x2={selectionStats.end.date}
+                  fill={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                  fillOpacity={0.12}
+                />
+                <ReferenceLine
+                  x={selectionStats.start.date}
+                  stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.6}
+                />
+                <ReferenceLine
+                  x={selectionStats.end.date}
+                  stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.6}
+                />
               </>
             )}
-            <Tooltip cursor={{ stroke: "hsl(var(--muted-foreground))", strokeOpacity: 0.4, strokeDasharray: "3 3" }} content={renderTooltip} />
-            <Area type="monotone" dataKey="close" stroke={lineColor} strokeWidth={2} fill={`url(#${gradientId})`} animationDuration={400} />
+            <Tooltip
+              cursor={{
+                stroke: "hsl(var(--muted-foreground))",
+                strokeOpacity: 0.4,
+                strokeDasharray: "3 3",
+              }}
+              content={renderTooltip}
+            />
+            <Area
+              type="monotone"
+              dataKey="close"
+              stroke={lineColor}
+              strokeWidth={2}
+              fill={`url(#${gradientId})`}
+              animationDuration={400}
+            />
           </AreaChart>
         )}
       </div>

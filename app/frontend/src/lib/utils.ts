@@ -6,7 +6,5 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function toInitCap(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/(?:^|\s|[-/])\S/g, (c) => c.toUpperCase());
+  return s.toLowerCase().replace(/(?:^|\s|[-/])\S/g, (c) => c.toUpperCase());
 }

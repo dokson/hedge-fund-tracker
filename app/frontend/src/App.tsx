@@ -37,33 +37,33 @@ const App = () => (
       <BrowserRouter basename={BASE_PATH || "/"}>
         <DashboardLayout>
           <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            {/* Core analysis routes — always available */}
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/quarterly" element={<QuarterlyTrends />} />
-            <Route path="/funds" element={<FundPortfolio />} />
-            <Route path="/funds/:fundId" element={<FundPortfolio />} />
-            <Route path="/stocks" element={<StockBrowser />} />
-            <Route path="/stock/:ticker" element={<StockAnalysis />} />
+            <Routes>
+              {/* Core analysis routes — always available */}
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/quarterly" element={<QuarterlyTrends />} />
+              <Route path="/funds" element={<FundPortfolio />} />
+              <Route path="/funds/:fundId" element={<FundPortfolio />} />
+              <Route path="/stocks" element={<StockBrowser />} />
+              <Route path="/stock/:ticker" element={<StockAnalysis />} />
 
-            {/* Funds Config — read-only in GH Pages mode */}
-            <Route path="/funds-config" element={<FundsConfig />} />
+              {/* Funds Config — read-only in GH Pages mode */}
+              <Route path="/funds-config" element={<FundsConfig />} />
 
-            {/* AI & Database routes — available but disabled in GH Pages mode */}
-            <Route path="/ai-ranking" element={<AIRanking />} />
-            <Route path="/ai-diligence" element={<AIDueDiligence />} />
+              {/* AI & Database routes — available but disabled in GH Pages mode */}
+              <Route path="/ai-ranking" element={<AIRanking />} />
+              <Route path="/ai-diligence" element={<AIDueDiligence />} />
 
-            {/* Restricted routes — completely unreachable in GH Pages mode for security */}
-            {!IS_GH_PAGES_MODE && (
-              <>
-                <Route path="/ai-settings" element={<AISettings />} />
-                <Route path="/database" element={<DatabasePage />} />
-              </>
-            )}
+              {/* Restricted routes — completely unreachable in GH Pages mode for security */}
+              {!IS_GH_PAGES_MODE && (
+                <>
+                  <Route path="/ai-settings" element={<AISettings />} />
+                  <Route path="/database" element={<DatabasePage />} />
+                </>
+              )}
 
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </Suspense>
         </DashboardLayout>
       </BrowserRouter>

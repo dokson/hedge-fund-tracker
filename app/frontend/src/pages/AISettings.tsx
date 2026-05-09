@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  AI_PROVIDERS,
-} from "@/lib/aiClient";
+import { AI_PROVIDERS } from "@/lib/aiClient";
 import {
   getModels,
   generateModelsCSV,
@@ -14,8 +12,19 @@ import {
   type ModelProvider,
 } from "@/lib/dataService";
 import {
-  Cpu, CheckCircle2, XCircle, Eye, EyeOff,
-  Trash2, ExternalLink, Shield, Save, Search, Plus, KeyRound, Brain,
+  Cpu,
+  CheckCircle2,
+  XCircle,
+  Eye,
+  EyeOff,
+  Trash2,
+  ExternalLink,
+  Shield,
+  Save,
+  Search,
+  Plus,
+  KeyRound,
+  Brain,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,10 +32,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
@@ -80,8 +98,11 @@ export default function AISettingsPage() {
 const API_BASE = window.location.origin;
 
 const CLIENT_TO_PROVIDER_ID: Record<string, string> = {
-  "GitHub": "github", "Google": "google", "Groq": "groq",
-  "HuggingFace": "huggingface", "OpenRouter": "openrouter",
+  GitHub: "github",
+  Google: "google",
+  Groq: "groq",
+  HuggingFace: "huggingface",
+  OpenRouter: "openrouter",
 };
 
 function APIKeysTab() {
@@ -89,7 +110,9 @@ function APIKeysTab() {
   const [visible, setVisible] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [providerToDelete, setProviderToDelete] = useState<typeof AI_PROVIDERS[number] | null>(null);
+  const [providerToDelete, setProviderToDelete] = useState<(typeof AI_PROVIDERS)[number] | null>(
+    null,
+  );
   const { data: allModels = [] } = useQuery({ queryKey: ["models"], queryFn: getModels });
 
   useEffect(() => {
@@ -109,8 +132,7 @@ function APIKeysTab() {
     hasKey: Boolean(envKeys[provider.envKey]),
   }));
 
-  const toggleVisibility = (id: string) =>
-    setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleVisibility = (id: string) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const saveToEnv = async (updates: Record<string, string>) => {
     const newEnv = { ...envKeys, ...updates };
@@ -162,14 +184,17 @@ function APIKeysTab() {
     <div className="space-y-5">
       {/* Source info */}
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-        📄 Source: <code className="font-mono bg-muted px-1 py-0.5 rounded">.env</code> — API keys are read from and written directly to the configuration file on disk.{" "}
+        📄 Source: <code className="font-mono bg-muted px-1 py-0.5 rounded">.env</code> — API keys
+        are read from and written directly to the configuration file on disk.{" "}
         <span className="font-semibold text-foreground">This file is not tracked by Git.</span>
       </div>
 
       {/* Security notice */}
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
         <Shield className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-        <span>API keys are stored locally and never sent to any server except the AI provider's API.</span>
+        <span>
+          API keys are stored locally and never sent to any server except the AI provider's API.
+        </span>
       </div>
 
       {IS_GH_PAGES_MODE && (
@@ -178,7 +203,8 @@ function APIKeysTab() {
           <div className="text-sm">
             <p className="font-semibold text-primary">Read-Only Mode</p>
             <p className="text-muted-foreground mt-0.5">
-              Configuration is disabled in this web demo. To manage API keys and models, please run the application in your local environment.
+              Configuration is disabled in this web demo. To manage API keys and models, please run
+              the application in your local environment.
             </p>
           </div>
         </div>
@@ -188,7 +214,12 @@ function APIKeysTab() {
       <div className="rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Configured Providers</h2>
-          <Badge variant="outline" className={configuredCount > 0 ? "text-green-600 border-green-600/30" : "text-muted-foreground"}>
+          <Badge
+            variant="outline"
+            className={
+              configuredCount > 0 ? "text-green-600 border-green-600/30" : "text-muted-foreground"
+            }
+          >
             {configuredCount} / {AI_PROVIDERS.length} available
           </Badge>
         </div>
@@ -203,9 +234,13 @@ function APIKeysTab() {
                 ) : (
                   <XCircle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
                 )}
-                <span className={hasKey ? "text-foreground" : "text-muted-foreground"}>{provider.name}</span>
+                <span className={hasKey ? "text-foreground" : "text-muted-foreground"}>
+                  {provider.name}
+                </span>
                 {hasKey && models.length > 0 && (
-                  <span className="text-[10px] text-muted-foreground ml-auto">{models.length} model{models.length > 1 ? "s" : ""}</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    {models.length} model{models.length > 1 ? "s" : ""}
+                  </span>
                 )}
               </div>
             );
@@ -213,10 +248,14 @@ function APIKeysTab() {
         </div>
 
         {configuredCount === 0 && (
-          <p className="text-xs text-destructive">No API key configured. Add at least one key below to enable AI features.</p>
+          <p className="text-xs text-destructive">
+            No API key configured. Add at least one key below to enable AI features.
+          </p>
         )}
 
-        <p className="text-xs text-muted-foreground">Each AI page lets you select which model to use from the available providers.</p>
+        <p className="text-xs text-muted-foreground">
+          Each AI page lets you select which model to use from the available providers.
+        </p>
       </div>
 
       {/* Delete API Key Confirmation Dialog */}
@@ -232,15 +271,23 @@ function APIKeysTab() {
           </DialogHeader>
           <div className="py-2 text-sm text-muted-foreground space-y-2">
             <p>
-              This will permanently delete the key from the <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">.env</code> file on disk.
-              Since <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">.env</code> is not tracked by Git,{" "}
-              <strong className="text-foreground">this operation cannot be undone</strong> — the key cannot be recovered from version history.
+              This will permanently delete the key from the{" "}
+              <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">.env</code> file on
+              disk. Since{" "}
+              <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">.env</code> is not
+              tracked by Git,{" "}
+              <strong className="text-foreground">this operation cannot be undone</strong> — the key
+              cannot be recovered from version history.
             </p>
             <p>Make sure you have a copy of the key before proceeding.</p>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleConfirmDelete}>Remove Key</Button>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Remove Key
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -255,14 +302,28 @@ function APIKeysTab() {
           const draft = drafts[provider.id] || "";
 
           return (
-            <div key={provider.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <div
+              key={provider.id}
+              className="rounded-lg border border-border bg-card p-4 space-y-3"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {hasKey ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-muted-foreground" />}
+                  {hasKey ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-muted-foreground" />
+                  )}
                   <span className="text-sm font-medium">{provider.name}</span>
-                  <code className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{provider.envKey}</code>
+                  <code className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                    {provider.envKey}
+                  </code>
                 </div>
-                <a href={provider.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                <a
+                  href={provider.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
                   Get key <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
@@ -271,8 +332,14 @@ function APIKeysTab() {
                 <div className="relative flex-1">
                   <Input
                     type={isVisible ? "text" : "password"}
-                    value={hasKey ? (isVisible ? (envKeys[provider.envKey] || "") : "••••••••••••") : draft}
-                    onChange={hasKey ? undefined : (e) => setDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))}
+                    value={
+                      hasKey ? (isVisible ? envKeys[provider.envKey] || "" : "••••••••••••") : draft
+                    }
+                    onChange={
+                      hasKey
+                        ? undefined
+                        : (e) => setDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))
+                    }
                     placeholder={hasKey ? "" : provider.hint}
                     className="pr-10 bg-background border-border font-mono text-xs"
                     autoComplete="off"
@@ -287,17 +354,23 @@ function APIKeysTab() {
                     {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                
+
                 {hasKey ? (
-                  <Button variant="outline" size="icon" onClick={() => handleDeleteRequest(provider.id)} title="Remove key" className="shrink-0 text-destructive hover:text-destructive">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleDeleteRequest(provider.id)}
+                    title="Remove key"
+                    className="shrink-0 text-destructive hover:text-destructive"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button 
+                  <Button
                     variant={draft.trim() ? "default" : "outline"}
-                    size="icon" 
-                    onClick={() => handleSave(provider.id)} 
-                    title="Save key" 
+                    size="icon"
+                    onClick={() => handleSave(provider.id)}
+                    title="Save key"
                     className="shrink-0"
                     disabled={!draft.trim()}
                   >
@@ -309,9 +382,13 @@ function APIKeysTab() {
               {hasKey && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   <span className="text-[10px] text-muted-foreground mr-1">Models:</span>
-                  {allModels.filter((m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id).map((m) => (
-                    <Badge key={m.id} variant="secondary" className="text-[10px] font-mono">{m.description}</Badge>
-                  ))}
+                  {allModels
+                    .filter((m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id)
+                    .map((m) => (
+                      <Badge key={m.id} variant="secondary" className="text-[10px] font-mono">
+                        {m.description}
+                      </Badge>
+                    ))}
                 </div>
               )}
             </div>
@@ -346,7 +423,10 @@ function ModelsTab() {
     if (!modelSearch) return models;
     const q = modelSearch.toLowerCase();
     return models.filter(
-      (m) => m.id.toLowerCase().includes(q) || m.description.toLowerCase().includes(q) || m.client.toLowerCase().includes(q)
+      (m) =>
+        m.id.toLowerCase().includes(q) ||
+        m.description.toLowerCase().includes(q) ||
+        m.client.toLowerCase().includes(q),
     );
   }, [models, modelSearch]);
 
@@ -367,7 +447,10 @@ function ModelsTab() {
 
   const handleAddModel = async () => {
     if (!newModelId.trim() || !newModelDesc.trim()) return;
-    const updatedModels: AIModel[] = [...models, { id: newModelId.trim(), description: newModelDesc.trim(), client: newModelProvider }];
+    const updatedModels: AIModel[] = [
+      ...models,
+      { id: newModelId.trim(), description: newModelDesc.trim(), client: newModelProvider },
+    ];
     const csv = generateModelsCSV(updatedModels);
     try {
       await saveFileToDisk(csv, "models.csv");
@@ -416,16 +499,32 @@ function ModelsTab() {
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input placeholder="Search model, provider…" value={modelSearch} onChange={(e) => setModelSearch(e.target.value)} className="pl-8 bg-card border-border" />
+          <Input
+            placeholder="Search model, provider…"
+            value={modelSearch}
+            onChange={(e) => setModelSearch(e.target.value)}
+            className="pl-8 bg-card border-border"
+          />
         </div>
-        <span className="text-xs text-muted-foreground">{filteredModels.length} / {models.length} models</span>
-        <Button size="sm" className="gap-1.5 ml-auto" onClick={() => { resetAddForm(); setAddDialogOpen(true); }}>
+        <span className="text-xs text-muted-foreground">
+          {filteredModels.length} / {models.length} models
+        </span>
+        <Button
+          size="sm"
+          className="gap-1.5 ml-auto"
+          onClick={() => {
+            resetAddForm();
+            setAddDialogOpen(true);
+          }}
+        >
           <Plus className="h-3.5 w-3.5" /> Add Model
         </Button>
       </div>
 
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-        📄 Source: <code className="font-mono bg-muted px-1 py-0.5 rounded">database/models.csv</code> — Providers: {MODEL_PROVIDERS.map(p => PROVIDER_DISPLAY_NAMES[p] || p).join(", ")}
+        📄 Source:{" "}
+        <code className="font-mono bg-muted px-1 py-0.5 rounded">database/models.csv</code> —
+        Providers: {MODEL_PROVIDERS.map((p) => PROVIDER_DISPLAY_NAMES[p] || p).join(", ")}
       </div>
 
       {modelsLoading ? (
@@ -433,14 +532,18 @@ function ModelsTab() {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading models…
         </div>
       ) : models.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground text-sm">No models configured. Add one to get started.</div>
+        <div className="text-center py-8 text-muted-foreground text-sm">
+          No models configured. Add one to get started.
+        </div>
       ) : (
         <div className="space-y-4">
           {[...modelsByClient.entries()].map(([client, clientModels]) => (
             <div key={client} className="rounded-lg border border-border bg-card overflow-hidden">
               <div className="px-4 py-2.5 border-b border-border bg-muted/30 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">{displayName(client)}</h3>
-                <Badge className={`text-[10px] border-0 ${providerColor[client] || ""}`}>{clientModels.length} model{clientModels.length !== 1 ? "s" : ""}</Badge>
+                <Badge className={`text-[10px] border-0 ${providerColor[client] || ""}`}>
+                  {clientModels.length} model{clientModels.length !== 1 ? "s" : ""}
+                </Badge>
               </div>
               <div className="divide-y divide-border">
                 {clientModels.map((m) => (
@@ -449,8 +552,16 @@ function ModelsTab() {
                       <span className="text-sm font-medium">{m.description}</span>
                       <span className="text-xs text-muted-foreground font-mono ml-2">{m.id}</span>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
-                      onClick={() => { setModelToDelete(m); setDeleteDialogOpen(true); }} title="Remove model">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                      onClick={() => {
+                        setModelToDelete(m);
+                        setDeleteDialogOpen(true);
+                      }}
+                      title="Remove model"
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -465,31 +576,58 @@ function ModelsTab() {
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5" /> Add AI Model</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" /> Add AI Model
+            </DialogTitle>
             <DialogDescription>Add a new model to the configuration.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="model-provider">Provider</Label>
-              <Select value={newModelProvider} onValueChange={(v) => setNewModelProvider(v as ModelProvider)}>
-                <SelectTrigger className="bg-card border-border"><SelectValue /></SelectTrigger>
+              <Select
+                value={newModelProvider}
+                onValueChange={(v) => setNewModelProvider(v as ModelProvider)}
+              >
+                <SelectTrigger className="bg-card border-border">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {MODEL_PROVIDERS.map((p) => (<SelectItem key={p} value={p}>{PROVIDER_DISPLAY_NAMES[p] || p}</SelectItem>))}
+                  {MODEL_PROVIDERS.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {PROVIDER_DISPLAY_NAMES[p] || p}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="model-id">Model ID</Label>
-              <Input id="model-id" placeholder="e.g. xai/grok-3-mini" value={newModelId} onChange={(e) => setNewModelId(e.target.value)} className="bg-card border-border font-mono text-sm" />
+              <Input
+                id="model-id"
+                placeholder="e.g. xai/grok-3-mini"
+                value={newModelId}
+                onChange={(e) => setNewModelId(e.target.value)}
+                className="bg-card border-border font-mono text-sm"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="model-desc">Description</Label>
-              <Input id="model-desc" placeholder="e.g. Grok-3 Mini (best)" value={newModelDesc} onChange={(e) => setNewModelDesc(e.target.value)} className="bg-card border-border" />
+              <Input
+                id="model-desc"
+                placeholder="e.g. Grok-3 Mini (best)"
+                value={newModelDesc}
+                onChange={(e) => setNewModelDesc(e.target.value)}
+                className="bg-card border-border"
+              />
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-            <Button disabled={!newModelId.trim() || !newModelDesc.trim()} onClick={handleAddModel}>Add Model</Button>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={!newModelId.trim() || !newModelDesc.trim()} onClick={handleAddModel}>
+              Add Model
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -498,19 +636,36 @@ function ModelsTab() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" /> Remove AI Model</DialogTitle>
-            <DialogDescription>Remove <strong>{modelToDelete?.description}</strong> ({modelToDelete ? displayName(modelToDelete.client) : ""}) from the configuration.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" /> Remove AI Model
+            </DialogTitle>
+            <DialogDescription>
+              Remove <strong>{modelToDelete?.description}</strong> (
+              {modelToDelete ? displayName(modelToDelete.client) : ""}) from the configuration.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-2">
             <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1 text-sm">
-              <div><span className="text-muted-foreground">Model:</span> {modelToDelete?.description}</div>
-              <div><span className="text-muted-foreground">ID:</span> <span className="font-mono text-xs">{modelToDelete?.id}</span></div>
-              <div><span className="text-muted-foreground">Provider:</span> {modelToDelete ? displayName(modelToDelete.client) : ""}</div>
+              <div>
+                <span className="text-muted-foreground">Model:</span> {modelToDelete?.description}
+              </div>
+              <div>
+                <span className="text-muted-foreground">ID:</span>{" "}
+                <span className="font-mono text-xs">{modelToDelete?.id}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Provider:</span>{" "}
+                {modelToDelete ? displayName(modelToDelete.client) : ""}
+              </div>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleConfirmDelete}>Confirm Remove</Button>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Confirm Remove
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

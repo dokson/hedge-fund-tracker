@@ -28,15 +28,18 @@ export function useStarred(type: "stock" | "fund") {
     return () => window.removeEventListener("storage", handler);
   }, [type]);
 
-  const toggle = useCallback((id: string) => {
-    setStarred((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      writeStarred(type, next);
-      return next;
-    });
-  }, [type]);
+  const toggle = useCallback(
+    (id: string) => {
+      setStarred((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        writeStarred(type, next);
+        return next;
+      });
+    },
+    [type],
+  );
 
   const isStarred = useCallback((id: string) => starred.has(id), [starred]);
 

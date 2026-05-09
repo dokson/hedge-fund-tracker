@@ -22,7 +22,7 @@ export function useElementSize<T extends HTMLElement = HTMLDivElement>() {
         setSize((prev) =>
           prev && prev.width === cr.width && prev.height === cr.height
             ? prev
-            : { width: cr.width, height: cr.height }
+            : { width: cr.width, height: cr.height },
         );
       }
     });

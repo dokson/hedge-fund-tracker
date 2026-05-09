@@ -88,10 +88,7 @@ for (const quarter of quarters) {
 
   // Generate manifest: list of fund names (without .csv extension)
   const fundNames = csvFiles.map((f) => f.replace(".csv", ""));
-  writeFileSync(
-    resolve(qDest, "manifest.json"),
-    JSON.stringify(fundNames, null, 2)
-  );
+  writeFileSync(resolve(qDest, "manifest.json"), JSON.stringify(fundNames, null, 2));
 
   quarterManifests[quarter] = fundNames.length;
   console.log(`  ${quarter}/ (${fundNames.length} funds)`);
@@ -115,10 +112,7 @@ const metadata = {
   quarters: quarters,
 };
 
-writeFileSync(
-  resolve(targetDir, "metadata.json"),
-  JSON.stringify(metadata, null, 2)
-);
+writeFileSync(resolve(targetDir, "metadata.json"), JSON.stringify(metadata, null, 2));
 console.log(`  metadata.json (${latestQuarter}, ${fundCount} funds)`);
 
 console.log("\nDatabase files copied to dist/database/");

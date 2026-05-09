@@ -8,16 +8,16 @@ import { useNavigate } from "react-router-dom";
 
 /** GICS sector colors – one per sector */
 const SECTOR_COLORS: Record<string, string> = {
-  "Energy": "hsl(25, 70%, 40%)",
-  "Materials": "hsl(35, 60%, 38%)",
-  "Industrials": "hsl(210, 50%, 42%)",
+  Energy: "hsl(25, 70%, 40%)",
+  Materials: "hsl(35, 60%, 38%)",
+  Industrials: "hsl(210, 50%, 42%)",
   "Consumer Discretionary": "hsl(280, 45%, 42%)",
   "Consumer Staples": "hsl(140, 50%, 35%)",
   "Health Care": "hsl(0, 55%, 42%)",
-  "Financials": "hsl(220, 55%, 40%)",
+  Financials: "hsl(220, 55%, 40%)",
   "Information Technology": "hsl(200, 65%, 42%)",
   "Communication Services": "hsl(45, 60%, 40%)",
-  "Utilities": "hsl(170, 45%, 38%)",
+  Utilities: "hsl(170, 45%, 38%)",
   "Real Estate": "hsl(310, 40%, 40%)",
 };
 
@@ -47,7 +47,7 @@ export default function GICSSectorHeatmap() {
   // Check if any stock has a sector assigned
   const hasSectorData = useMemo(
     () => stocks.some((s) => s.sector && s.sector.trim() !== ""),
-    [stocks]
+    [stocks],
   );
 
   // Build sector → aggregated data
@@ -86,7 +86,7 @@ export default function GICSSectorHeatmap() {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
-      <Loader2 className="h-5 w-5 animate-spin" /> Loading data…
+        <Loader2 className="h-5 w-5 animate-spin" /> Loading data…
       </div>
     );
   }
@@ -96,8 +96,9 @@ export default function GICSSectorHeatmap() {
       <div className="flex items-start gap-2.5 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
         <Info className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
         <div>
-          <strong className="text-foreground">GICS® sector heatmap is not yet active.</strong>{" "}
-          It will become available once the <code className="text-xs bg-muted px-1 py-0.5 rounded">Sector</code> column is added to{" "}
+          <strong className="text-foreground">GICS® sector heatmap is not yet active.</strong> It
+          will become available once the{" "}
+          <code className="text-xs bg-muted px-1 py-0.5 rounded">Sector</code> column is added to{" "}
           <code className="text-xs bg-muted px-1 py-0.5 rounded">stocks.csv</code>.
         </div>
       </div>
@@ -107,11 +108,7 @@ export default function GICSSectorHeatmap() {
   return (
     <div className="rounded-lg border border-border bg-card p-5 space-y-3">
       <h3 className="section-title text-sm">Institutional Value by GICS® Sector</h3>
-      <HoldingsTreemap
-        data={sectorHeatmapData}
-        onClickTicker={() => {}}
-        height={350}
-      />
+      <HoldingsTreemap data={sectorHeatmapData} onClickTicker={() => {}} height={350} />
     </div>
   );
 }

@@ -30,13 +30,10 @@ export default function CusipAutocomplete({
 
   const allCusips = useMemo(
     () => stocks.map((s) => ({ cusip: s.cusip, ticker: s.ticker, company: s.company })),
-    [stocks]
+    [stocks],
   );
 
-  const isValid = useMemo(
-    () => allCusips.some((c) => c.cusip === value),
-    [allCusips, value]
-  );
+  const isValid = useMemo(() => allCusips.some((c) => c.cusip === value), [allCusips, value]);
 
   useEffect(() => {
     onValidChange?.(isValid);
@@ -46,7 +43,12 @@ export default function CusipAutocomplete({
     if (!value || value.length < 2) return [];
     const q = value.toUpperCase();
     return allCusips
-      .filter((c) => c.cusip.includes(q) || c.ticker.toUpperCase().includes(q) || c.company.toUpperCase().includes(q))
+      .filter(
+        (c) =>
+          c.cusip.includes(q) ||
+          c.ticker.toUpperCase().includes(q) ||
+          c.company.toUpperCase().includes(q),
+      )
       .sort((a, b) => {
         const aStarts = a.cusip.startsWith(q) ? 0 : 1;
         const bStarts = b.cusip.startsWith(q) ? 0 : 1;
@@ -56,7 +58,9 @@ export default function CusipAutocomplete({
       .slice(0, 8);
   }, [value, allCusips]);
 
-  useEffect(() => { setHighlightIdx(-1); }, [suggestions]);
+  useEffect(() => {
+    setHighlightIdx(-1);
+  }, [suggestions]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -66,13 +70,23 @@ export default function CusipAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selectCusip = (cusip: string) => { onChange(cusip); setOpen(false); };
+  const selectCusip = (cusip: string) => {
+    onChange(cusip);
+    setOpen(false);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") { e.preventDefault(); setHighlightIdx((i) => Math.min(i + 1, suggestions.length - 1)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setHighlightIdx((i) => Math.max(i - 1, 0)); }
-    else if (e.key === "Enter" && highlightIdx >= 0 && suggestions[highlightIdx]) { selectCusip(suggestions[highlightIdx].cusip); }
-    else if (e.key === "Escape") { setOpen(false); }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightIdx((i) => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIdx((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && highlightIdx >= 0 && suggestions[highlightIdx]) {
+      selectCusip(suggestions[highlightIdx].cusip);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
   };
 
   const showError = value.length >= 3 && !isValid && !open;
@@ -81,7 +95,10 @@ export default function CusipAutocomplete({
     <div ref={wrapperRef} className="relative">
       <Input
         value={value}
-        onChange={(e) => { onChange(e.target.value.toUpperCase()); setOpen(true); }}
+        onChange={(e) => {
+          onChange(e.target.value.toUpperCase());
+          setOpen(true);
+        }}
         onFocus={() => value.length >= 2 && setOpen(true)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
@@ -104,7 +121,11 @@ export default function CusipAutocomplete({
               >
                 <span className="font-mono font-medium w-24 shrink-0 text-xs">{item.cusip}</span>
                 <span className="font-mono w-12 shrink-0 text-xs">{item.ticker}</span>
-                <span className={`truncate text-xs ${isHighlighted ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{item.company}</span>
+                <span
+                  className={`truncate text-xs ${isHighlighted ? "text-primary-foreground/70" : "text-muted-foreground"}`}
+                >
+                  {item.company}
+                </span>
               </div>
             );
           })}

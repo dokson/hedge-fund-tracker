@@ -11,7 +11,17 @@ import {
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Search, Loader2, TreePine, SortAsc, TrendingDown, TrendingUp, DollarSign, CandlestickChart, Star } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  TreePine,
+  SortAsc,
+  TrendingDown,
+  TrendingUp,
+  DollarSign,
+  CandlestickChart,
+  Star,
+} from "lucide-react";
 import GICSTreeVisual from "@/components/GICSTreeVisual";
 import GICSSectorHeatmap from "@/components/GICSSectorHeatmap";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
@@ -28,14 +38,19 @@ export default function StockBrowser() {
   const ALPHA_TOP_N = 1000;
   const [valueSearch, setValueSearch] = useState("");
   const [showAllValue, setShowAllValue] = useState(false);
-  const [valueSortKey, setValueSortKey] = useState<"totalValue" | "totalDeltaValue" | "holderCount">("totalValue");
+  const [valueSortKey, setValueSortKey] = useState<
+    "totalValue" | "totalDeltaValue" | "holderCount"
+  >("totalValue");
   const [valueSortDir, setValueSortDir] = useState<"asc" | "desc">("desc");
   const VALUE_TOP_N = 50;
   const { starred, toggle: toggleStar, isStarred } = useStarred("stock");
 
   function toggleValueSort(key: typeof valueSortKey) {
     if (valueSortKey === key) setValueSortDir((d) => (d === "desc" ? "asc" : "desc"));
-    else { setValueSortKey(key); setValueSortDir("desc"); }
+    else {
+      setValueSortKey(key);
+      setValueSortDir("desc");
+    }
   }
   function valueSortIndicator(key: typeof valueSortKey) {
     if (valueSortKey !== key) return null;
@@ -75,7 +90,9 @@ export default function StockBrowser() {
 
   // Starred stocks
   const starredStocks = useMemo(() => {
-    return uniqueStocks.filter((s) => starred.has(s.ticker)).sort((a, b) => a.ticker.localeCompare(b.ticker));
+    return uniqueStocks
+      .filter((s) => starred.has(s.ticker))
+      .sort((a, b) => a.ticker.localeCompare(b.ticker));
   }, [uniqueStocks, starred]);
 
   // Alphabetical filtering
@@ -94,7 +111,7 @@ export default function StockBrowser() {
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
-        (s) => s.ticker.toLowerCase().includes(q) || s.company.toLowerCase().includes(q)
+        (s) => s.ticker.toLowerCase().includes(q) || s.company.toLowerCase().includes(q),
       );
     }
     return list.sort((a, b) => a.ticker.localeCompare(b.ticker));
@@ -121,7 +138,7 @@ export default function StockBrowser() {
     if (valueSearch) {
       const q = valueSearch.toLowerCase();
       list = list.filter(
-        (s) => s.ticker.toLowerCase().includes(q) || s.company.toLowerCase().includes(q)
+        (s) => s.ticker.toLowerCase().includes(q) || s.company.toLowerCase().includes(q),
       );
     }
     return list;
@@ -135,7 +152,14 @@ export default function StockBrowser() {
       company: s.company,
       value: s.totalValue,
       deltaPct: s.delta === Infinity ? 100 : s.delta,
-      delta: s.delta === Infinity ? "NEW" : s.delta > 0 ? "INCREASE" : s.delta < 0 ? "DECREASE" : "NO CHANGE",
+      delta:
+        s.delta === Infinity
+          ? "NEW"
+          : s.delta > 0
+            ? "INCREASE"
+            : s.delta < 0
+              ? "DECREASE"
+              : "NO CHANGE",
     }));
   }, [quarterData]);
 
@@ -147,7 +171,9 @@ export default function StockBrowser() {
   return (
     <div className="space-y-5 max-w-7xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><CandlestickChart className="h-6 w-6" /> Stocks</h1>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <CandlestickChart className="h-6 w-6" /> Stocks
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Browse {uniqueStocks.length.toLocaleString()} tracked securities
         </p>
@@ -158,7 +184,9 @@ export default function StockBrowser() {
           {starred.size > 0 && (
             <TabsTrigger value="starred" className="gap-1.5 group">
               <Star className="h-3.5 w-3.5" fill="currentColor" /> Starred
-              <span className="ml-1 text-[10px] font-mono bg-primary/20 text-primary group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground px-1.5 py-0.5 rounded-full leading-none">{starred.size}</span>
+              <span className="ml-1 text-[10px] font-mono bg-primary/20 text-primary group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground px-1.5 py-0.5 rounded-full leading-none">
+                {starred.size}
+              </span>
             </TabsTrigger>
           )}
           <TabsTrigger value="alphabetical" className="gap-1.5">
@@ -167,9 +195,14 @@ export default function StockBrowser() {
           <TabsTrigger value="byvalue" className="gap-1.5">
             <DollarSign className="h-3.5 w-3.5" /> By Value
           </TabsTrigger>
-          <TabsTrigger value="gics" className="gap-1.5 text-muted-foreground data-[state=active]:text-foreground">
+          <TabsTrigger
+            value="gics"
+            className="gap-1.5 text-muted-foreground data-[state=active]:text-foreground"
+          >
             <TreePine className="h-3.5 w-3.5" /> GICS® Sectors
-            <span className="ml-1 text-[9px] font-normal bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full leading-none">Preview</span>
+            <span className="ml-1 text-[9px] font-normal bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full leading-none">
+              Preview
+            </span>
           </TabsTrigger>
         </TabsList>
 
@@ -179,7 +212,9 @@ export default function StockBrowser() {
             <div className="rounded-lg border border-border bg-card p-12 text-center">
               <Star className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
               <p className="text-muted-foreground">No starred stocks yet.</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Click the ★ icon on any stock to add it here.</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                Click the ★ icon on any stock to add it here.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
@@ -191,8 +226,12 @@ export default function StockBrowser() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-mono font-semibold text-sm text-primary">{stock.ticker}</span>
-                      <span className="text-xs text-muted-foreground truncate">{stock.company}</span>
+                      <span className="font-mono font-semibold text-sm text-primary">
+                        {stock.ticker}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {stock.company}
+                      </span>
                     </div>
                     <StarButton active={true} onClick={() => toggleStar(stock.ticker)} size={14} />
                   </div>
@@ -219,7 +258,8 @@ export default function StockBrowser() {
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setShowAllAlpha(true)}
               >
-                Showing top {ALPHA_TOP_N.toLocaleString()} by value · <span className="underline">Show all {uniqueStocks.length.toLocaleString()}</span>
+                Showing top {ALPHA_TOP_N.toLocaleString()} by value ·{" "}
+                <span className="underline">Show all {uniqueStocks.length.toLocaleString()}</span>
               </button>
             )}
           </div>
@@ -273,10 +313,18 @@ export default function StockBrowser() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-mono font-semibold text-sm text-primary">{stock.ticker}</span>
-                            <span className="text-xs text-muted-foreground truncate">{stock.company}</span>
+                            <span className="font-mono font-semibold text-sm text-primary">
+                              {stock.ticker}
+                            </span>
+                            <span className="text-xs text-muted-foreground truncate">
+                              {stock.company}
+                            </span>
                           </div>
-                          <StarButton active={isStarred(stock.ticker)} onClick={() => toggleStar(stock.ticker)} size={14} />
+                          <StarButton
+                            active={isStarred(stock.ticker)}
+                            onClick={() => toggleStar(stock.ticker)}
+                            size={14}
+                          />
                         </div>
                       </div>
                     ))}
@@ -314,7 +362,8 @@ export default function StockBrowser() {
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setShowAllValue(true)}
               >
-                Showing top {VALUE_TOP_N} by value · <span className="underline">Show all {quarterData.length.toLocaleString()}</span>
+                Showing top {VALUE_TOP_N} by value ·{" "}
+                <span className="underline">Show all {quarterData.length.toLocaleString()}</span>
               </button>
             ) : (
               <p className="text-xs text-muted-foreground">
@@ -361,40 +410,60 @@ export default function StockBrowser() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(showAllValue ? valueRanked : valueRanked.slice(0, VALUE_TOP_N)).map((stock, i) => {
-                      const barPct = (stock.totalValue / maxValue) * 100;
-                      const isPositiveDelta = stock.totalDeltaValue >= 0;
-                      return (
-                        <tr
-                          key={stock.ticker}
-                          className="data-table-row cursor-pointer"
-                          onClick={() => navigate(`/stock/${stock.ticker}`)}
-                        >
-                          <td className="p-3 font-mono text-xs text-muted-foreground">{i + 1}</td>
-                          <td className="p-3 font-mono font-semibold text-sm text-primary">{stock.ticker}</td>
-                          <td className="p-3 text-muted-foreground truncate max-w-[200px] cursor-pointer hover:text-foreground transition-colors">{stock.company}</td>
-                          <td className="p-3">
-                            <StarButton active={isStarred(stock.ticker)} onClick={() => toggleStar(stock.ticker)} size={14} />
-                          </td>
-                          <td className="p-3 text-right font-mono font-medium">{formatValue(stock.totalValue)}</td>
-                          <td className={`p-3 text-right font-mono text-xs ${isPositiveDelta ? "delta-positive" : "delta-negative"}`}>
-                            <span className="inline-flex items-center gap-1 justify-end">
-                              {isPositiveDelta ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                              {formatValue(Math.abs(stock.totalDeltaValue))}
-                            </span>
-                          </td>
-                          <td className="p-3 text-right font-mono text-xs text-muted-foreground">{stock.holderCount}</td>
-                          <td className="p-3">
-                            <div className="h-2 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className="h-full rounded-full bg-primary/60 transition-all"
-                                style={{ width: `${barPct}%` }}
+                    {(showAllValue ? valueRanked : valueRanked.slice(0, VALUE_TOP_N)).map(
+                      (stock, i) => {
+                        const barPct = (stock.totalValue / maxValue) * 100;
+                        const isPositiveDelta = stock.totalDeltaValue >= 0;
+                        return (
+                          <tr
+                            key={stock.ticker}
+                            className="data-table-row cursor-pointer"
+                            onClick={() => navigate(`/stock/${stock.ticker}`)}
+                          >
+                            <td className="p-3 font-mono text-xs text-muted-foreground">{i + 1}</td>
+                            <td className="p-3 font-mono font-semibold text-sm text-primary">
+                              {stock.ticker}
+                            </td>
+                            <td className="p-3 text-muted-foreground truncate max-w-[200px] cursor-pointer hover:text-foreground transition-colors">
+                              {stock.company}
+                            </td>
+                            <td className="p-3">
+                              <StarButton
+                                active={isStarred(stock.ticker)}
+                                onClick={() => toggleStar(stock.ticker)}
+                                size={14}
                               />
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            </td>
+                            <td className="p-3 text-right font-mono font-medium">
+                              {formatValue(stock.totalValue)}
+                            </td>
+                            <td
+                              className={`p-3 text-right font-mono text-xs ${isPositiveDelta ? "delta-positive" : "delta-negative"}`}
+                            >
+                              <span className="inline-flex items-center gap-1 justify-end">
+                                {isPositiveDelta ? (
+                                  <TrendingUp className="h-3 w-3" />
+                                ) : (
+                                  <TrendingDown className="h-3 w-3" />
+                                )}
+                                {formatValue(Math.abs(stock.totalDeltaValue))}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right font-mono text-xs text-muted-foreground">
+                              {stock.holderCount}
+                            </td>
+                            <td className="p-3">
+                              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-primary/60 transition-all"
+                                  style={{ width: `${barPct}%` }}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      },
+                    )}
                   </tbody>
                 </table>
               </div>

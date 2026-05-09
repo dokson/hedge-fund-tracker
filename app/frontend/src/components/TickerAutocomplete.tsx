@@ -32,13 +32,10 @@ export default function TickerAutocomplete({
 
   const allTickers = useMemo(
     () => [...new Map(stocks.map((s) => [s.ticker, s.company])).entries()],
-    [stocks]
+    [stocks],
   );
 
-  const isValid = useMemo(
-    () => allTickers.some(([t]) => t === value),
-    [allTickers, value]
-  );
+  const isValid = useMemo(() => allTickers.some(([t]) => t === value), [allTickers, value]);
 
   const onValidChangeRef = useRef(onValidChange);
   onValidChangeRef.current = onValidChange;
@@ -133,7 +130,11 @@ export default function TickerAutocomplete({
                 onMouseEnter={() => setHighlightIdx(idx)}
               >
                 <span className="font-mono font-medium w-14 shrink-0">{ticker}</span>
-                <span className={`truncate text-xs ${isHighlighted ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{company}</span>
+                <span
+                  className={`truncate text-xs ${isHighlighted ? "text-primary-foreground/70" : "text-muted-foreground"}`}
+                >
+                  {company}
+                </span>
               </div>
             );
           })}

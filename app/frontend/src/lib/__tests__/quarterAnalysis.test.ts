@@ -21,18 +21,26 @@ function mockFetch(url: string, init?: RequestInit): Promise<Response> {
   const urlStr = typeof url === "string" ? url : "";
 
   if (urlStr.includes("stocks.csv")) {
-    return Promise.resolve(new Response(MOCK_STOCKS_CSV, { headers: { "Content-Type": "text/csv" } }));
+    return Promise.resolve(
+      new Response(MOCK_STOCKS_CSV, { headers: { "Content-Type": "text/csv" } }),
+    );
   }
   if (urlStr.includes("/api/database/quarters/")) {
-    return Promise.resolve(new Response(JSON.stringify(["fund_A.csv", "fund_B.csv"]), {
-      headers: { "Content-Type": "application/json" },
-    }));
+    return Promise.resolve(
+      new Response(JSON.stringify(["fund_A.csv", "fund_B.csv"]), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
   }
   if (urlStr.includes("fund_A.csv") || urlStr.includes("Fund%20A.csv")) {
-    return Promise.resolve(new Response(MOCK_FUND_A_CSV, { headers: { "Content-Type": "text/csv" } }));
+    return Promise.resolve(
+      new Response(MOCK_FUND_A_CSV, { headers: { "Content-Type": "text/csv" } }),
+    );
   }
   if (urlStr.includes("fund_B.csv") || urlStr.includes("Fund%20B.csv")) {
-    return Promise.resolve(new Response(MOCK_FUND_B_CSV, { headers: { "Content-Type": "text/csv" } }));
+    return Promise.resolve(
+      new Response(MOCK_FUND_B_CSV, { headers: { "Content-Type": "text/csv" } }),
+    );
   }
 
   return Promise.reject(new Error(`Unmocked URL: ${urlStr}`));

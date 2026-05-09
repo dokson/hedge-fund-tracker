@@ -8,15 +8,31 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Play, Loader2, CheckCircle2, XCircle, RefreshCw,
-  ArrowRightLeft, Terminal
+  Play,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
+  ArrowRightLeft,
+  Terminal,
 } from "lucide-react";
 import TickerAutocomplete from "@/components/TickerAutocomplete";
 import CusipAutocomplete from "@/components/CusipAutocomplete";
@@ -46,7 +62,8 @@ const operations: Operation[] = [
   {
     id: "update-all",
     title: "Generate All 13F Reports",
-    description: "Fetches and generates the latest quarterly 13F comparison reports for all monitored hedge funds.",
+    description:
+      "Fetches and generates the latest quarterly 13F comparison reports for all monitored hedge funds.",
     icon: <RefreshCw className="h-5 w-5" />,
     endpoint: "/update-all",
     streamable: true,
@@ -78,11 +95,23 @@ const operations: Operation[] = [
 function StatusBadge({ status }: { status: JobStatus }) {
   switch (status) {
     case "running":
-      return <Badge variant="secondary" className="gap-1 text-xs"><Loader2 className="h-3 w-3 animate-spin" /> Running</Badge>;
+      return (
+        <Badge variant="secondary" className="gap-1 text-xs">
+          <Loader2 className="h-3 w-3 animate-spin" /> Running
+        </Badge>
+      );
     case "success":
-      return <Badge className="gap-1 text-xs bg-[hsl(var(--positive))] text-[hsl(var(--positive-foreground))]"><CheckCircle2 className="h-3 w-3" /> Done</Badge>;
+      return (
+        <Badge className="gap-1 text-xs bg-[hsl(var(--positive))] text-[hsl(var(--positive-foreground))]">
+          <CheckCircle2 className="h-3 w-3" /> Done
+        </Badge>
+      );
     case "error":
-      return <Badge variant="destructive" className="gap-1 text-xs"><XCircle className="h-3 w-3" /> Error</Badge>;
+      return (
+        <Badge variant="destructive" className="gap-1 text-xs">
+          <XCircle className="h-3 w-3" /> Error
+        </Badge>
+      );
     default:
       return null;
   }
@@ -158,8 +187,10 @@ export default function DatabaseOperations() {
             if (!line.startsWith("data: ")) continue;
             const event = JSON.parse(line.slice(6));
             if (event.type === "log") addLog(event.text);
-            else if (event.type === "result") { finalMessage = event.data ?? finalMessage; break; }
-            else if (event.type === "error") throw new Error(event.message);
+            else if (event.type === "result") {
+              finalMessage = event.data ?? finalMessage;
+              break;
+            } else if (event.type === "error") throw new Error(event.message);
           }
         }
 
@@ -191,12 +222,24 @@ export default function DatabaseOperations() {
     const params = fieldValues[op.id] || {};
 
     if (op.id === "update-ticker") {
-      if (!params.old_ticker?.trim()) { toast.error('"Old Ticker" is required'); return; }
-      if (!params.new_ticker?.trim()) { toast.error('"New Ticker" is required'); return; }
+      if (!params.old_ticker?.trim()) {
+        toast.error('"Old Ticker" is required');
+        return;
+      }
+      if (!params.new_ticker?.trim()) {
+        toast.error('"New Ticker" is required');
+        return;
+      }
     }
     if (op.id === "update-cusip-ticker") {
-      if (!params.cusip?.trim()) { toast.error('"CUSIP" is required'); return; }
-      if (!params.new_ticker?.trim()) { toast.error('"New Ticker" is required'); return; }
+      if (!params.cusip?.trim()) {
+        toast.error('"CUSIP" is required');
+        return;
+      }
+      if (!params.new_ticker?.trim()) {
+        toast.error('"New Ticker" is required');
+        return;
+      }
     }
 
     setConfirmOp(op);
@@ -209,9 +252,9 @@ export default function DatabaseOperations() {
     setConfirmOp(null);
   };
 
-  const activeState = activeOp ? (states[activeOp.id] || { status: "idle" }) : null;
+  const activeState = activeOp ? states[activeOp.id] || { status: "idle" } : null;
   const activeIsRunning = activeState?.status === "running";
-  const activeLogs = activeOp ? (logs[activeOp.id] || []) : [];
+  const activeLogs = activeOp ? logs[activeOp.id] || [] : [];
 
   const isRunDisabled = (op: Operation, isRunning: boolean) => {
     if (isRunning) return true;
@@ -278,7 +321,8 @@ export default function DatabaseOperations() {
               </div>
               {cusipInfo && fieldValid["cusip"] && (
                 <span className="text-xs text-muted-foreground truncate">
-                  <span className="font-mono font-medium text-foreground">{cusipInfo.ticker}</span> · {cusipInfo.company}
+                  <span className="font-mono font-medium text-foreground">{cusipInfo.ticker}</span>{" "}
+                  · {cusipInfo.company}
                 </span>
               )}
             </div>
@@ -305,8 +349,13 @@ export default function DatabaseOperations() {
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
         <Terminal className="h-4 w-4 shrink-0 mt-0.5" />
         <div>
-          <p>These operations invoke local Python commands from <code className="font-mono bg-muted px-1 py-0.5 rounded">database/updater.py</code>.</p>
-          <p className="mt-1">Each button triggers the corresponding updater function via a local bridge.</p>
+          <p>
+            These operations invoke local Python commands from{" "}
+            <code className="font-mono bg-muted px-1 py-0.5 rounded">database/updater.py</code>.
+          </p>
+          <p className="mt-1">
+            Each button triggers the corresponding updater function via a local bridge.
+          </p>
         </div>
       </div>
 
@@ -320,12 +369,12 @@ export default function DatabaseOperations() {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-md bg-primary/10 text-primary">
-                      {op.icon}
-                    </div>
+                    <div className="p-2 rounded-md bg-primary/10 text-primary">{op.icon}</div>
                     <div>
                       <CardTitle className="text-sm font-semibold">{op.title}</CardTitle>
-                      <CardDescription className="text-xs mt-0.5 min-h-[2.5rem]">{op.description}</CardDescription>
+                      <CardDescription className="text-xs mt-0.5 min-h-[2.5rem]">
+                        {op.description}
+                      </CardDescription>
                     </div>
                   </div>
                   <StatusBadge status={state.status} />
@@ -340,7 +389,11 @@ export default function DatabaseOperations() {
                   disabled={isRunDisabled(op, isRunning) || IS_GH_PAGES_MODE}
                   onClick={() => handleRun(op)}
                 >
-                  {isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                  {isRunning ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Play className="h-3.5 w-3.5" />
+                  )}
                   {IS_GH_PAGES_MODE ? "Disabled in Demo" : isRunning ? "Running…" : "Run"}
                 </Button>
               </CardContent>
@@ -355,7 +408,9 @@ export default function DatabaseOperations() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm: {confirmOp?.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              ⚠️ This will start a process that modifies actual data on disk. Once started, the operation window cannot be closed until it completes. Are you sure you want to proceed?
+              ⚠️ This will start a process that modifies actual data on disk. Once started, the
+              operation window cannot be closed until it completes. Are you sure you want to
+              proceed?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -366,16 +421,27 @@ export default function DatabaseOperations() {
       </AlertDialog>
 
       {/* Execution Log Dialog (blocking while running) */}
-      <Dialog open={!!activeOp} onOpenChange={(open) => { if (!open && !activeIsRunning) setActiveOp(null); }}>
+      <Dialog
+        open={!!activeOp}
+        onOpenChange={(open) => {
+          if (!open && !activeIsRunning) setActiveOp(null);
+        }}
+      >
         <DialogContent
           className={`sm:max-w-3xl ${activeIsRunning ? "[&>button]:hidden" : ""}`}
-          onPointerDownOutside={(e) => { if (activeIsRunning) e.preventDefault(); }}
-          onEscapeKeyDown={(e) => { if (activeIsRunning) e.preventDefault(); }}
+          onPointerDownOutside={(e) => {
+            if (activeIsRunning) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (activeIsRunning) e.preventDefault();
+          }}
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm">
               {activeIsRunning && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-              {activeState?.status === "success" && <CheckCircle2 className="h-4 w-4 text-[hsl(var(--positive))]" />}
+              {activeState?.status === "success" && (
+                <CheckCircle2 className="h-4 w-4 text-[hsl(var(--positive))]" />
+              )}
               {activeState?.status === "error" && <XCircle className="h-4 w-4 text-destructive" />}
               {activeOp?.title}
             </DialogTitle>
@@ -391,7 +457,9 @@ export default function DatabaseOperations() {
           ) : (
             <div className="rounded-md bg-background border border-border p-3 max-h-64 overflow-y-auto font-mono text-xs">
               {activeLogs.map((log, i) => (
-                <p key={i} className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{log}</p>
+                <p key={i} className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                  {log}
+                </p>
               ))}
               <div ref={logEndRef} />
             </div>

@@ -3,11 +3,7 @@ import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { useQuery } from "@tanstack/react-query";
-import {
-  runStockAnalysis,
-  getStocks,
-  formatValue,
-} from "@/lib/dataService";
+import { runStockAnalysis, getStocks, formatValue } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { runDueDiligenceStream } from "@/lib/aiClient";
 import { getModels } from "@/lib/dataService";
@@ -50,15 +46,14 @@ interface DueDiligenceReport {
   };
 }
 
-
 function SentimentBadge({ sentiment }: { sentiment: string }) {
   if (!sentiment) return null;
   const cls =
     sentiment === "Bullish"
       ? "badge-bullish"
       : sentiment === "Bearish"
-      ? "badge-bearish"
-      : "badge-neutral";
+        ? "badge-bearish"
+        : "badge-neutral";
   return <span className={cls}>{sentiment}</span>;
 }
 
@@ -114,7 +109,10 @@ export default function AIDueDiligence() {
     try {
       setStatusMsg(`Running AI due diligence on ${t} via Python backend…`);
       const result = await runDueDiligenceStream(
-        t, quarter, selectedModel || undefined, selectedProviderId || undefined,
+        t,
+        quarter,
+        selectedModel || undefined,
+        selectedProviderId || undefined,
         (line) => setTerminalLines((prev) => [...prev, line]),
       );
       setProgressPct(100);
@@ -129,7 +127,11 @@ export default function AIDueDiligence() {
     }
   };
 
-  const sample = sampleDueDiligence as DueDiligenceReport & { quarter?: string; generated_by?: string; generated_at?: string };
+  const sample = sampleDueDiligence as DueDiligenceReport & {
+    quarter?: string;
+    generated_by?: string;
+    generated_at?: string;
+  };
   const displayReport: DueDiligenceReport | null = report ?? (isReadOnly ? sample : null);
   const isSample = isReadOnly && !report;
 
@@ -137,17 +139,19 @@ export default function AIDueDiligence() {
     <div className="space-y-5 max-w-7xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><ClipboardCheck className="h-6 w-6" /> Stock Due Diligence</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Comprehensive AI-generated analysis
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <ClipboardCheck className="h-6 w-6" /> Stock Due Diligence
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">Comprehensive AI-generated analysis</p>
         </div>
       </div>
 
       {/* Controls */}
       <div className="flex gap-3 items-end flex-wrap">
         <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Ticker</label>
+          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+            Ticker
+          </label>
           <TickerAutocomplete
             value={inputTicker}
             onChange={setInputTicker}
@@ -157,10 +161,21 @@ export default function AIDueDiligence() {
           />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Model</label>
-          <ModelSelector value={selectedModel} onChange={setSelectedModel} onProviderChange={setSelectedProviderId} className="w-56" disabled={isReadOnly} />
+          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+            Model
+          </label>
+          <ModelSelector
+            value={selectedModel}
+            onChange={setSelectedModel}
+            onProviderChange={setSelectedProviderId}
+            className="w-56"
+            disabled={isReadOnly}
+          />
         </div>
-        <Button onClick={runDiligence} disabled={loading || !inputTicker || !isValidTicker || isReadOnly}>
+        <Button
+          onClick={runDiligence}
+          disabled={loading || !inputTicker || !isValidTicker || isReadOnly}
+        >
           <Brain className="h-4 w-4 mr-1" /> {report ? "Re-run" : "Run"}
         </Button>
       </div>
@@ -171,12 +186,19 @@ export default function AIDueDiligence() {
             <Brain className="h-4 w-4" /> Local-Only Feature
           </p>
           <p className="text-xs text-blue-600/80 dark:text-blue-400/80 leading-relaxed mt-1">
-            Stock Due Diligence requires a local Python backend to analyze data via LLMs. This live demo shows the interface only. To use this feature, run the app locally with your own API keys.
+            Stock Due Diligence requires a local Python backend to analyze data via LLMs. This live
+            demo shows the interface only. To use this feature, run the app locally with your own
+            API keys.
             {isSample && (
               <>
-                <br />Below is a sample output for <span className="font-mono font-semibold">{sample.ticker}</span>
+                <br />
+                Below is a sample output for{" "}
+                <span className="font-mono font-semibold">{sample.ticker}</span>
                 {sample.generated_at && (
-                  <> generated on <span className="font-mono">{sample.generated_at}</span></>
+                  <>
+                    {" "}
+                    generated on <span className="font-mono">{sample.generated_at}</span>
+                  </>
                 )}
                 .
               </>
@@ -229,18 +251,28 @@ export default function AIDueDiligence() {
             </div>
             <div className="flex gap-6 pt-1 border-t border-border">
               <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Current Price</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Current Price
+                </p>
                 <p className="font-mono font-bold">{displayReport.current_price || "N/A"}</p>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Price on Filing Date</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Price on Filing Date
+                </p>
                 <p className="font-mono font-bold">{displayReport.filing_date_price || "N/A"}</p>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Change Since Filing</p>
-                <p className={`font-mono font-bold flex items-center gap-1 ${
-                  displayReport.price_delta_percentage?.startsWith("+") ? "text-green-500" : "text-red-500"
-                }`}>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Change Since Filing
+                </p>
+                <p
+                  className={`font-mono font-bold flex items-center gap-1 ${
+                    displayReport.price_delta_percentage?.startsWith("+")
+                      ? "text-green-500"
+                      : "text-red-500"
+                  }`}
+                >
                   {displayReport.price_delta_percentage?.startsWith("+") ? "📈" : "📉"}
                   {displayReport.price_delta_percentage || "N/A"}
                 </p>
@@ -255,17 +287,32 @@ export default function AIDueDiligence() {
 
           <Accordion
             type="multiple"
-            defaultValue={["business", "financial", "valuation", "growth-risk", "institutional", "thesis"]}
+            defaultValue={[
+              "business",
+              "financial",
+              "valuation",
+              "growth-risk",
+              "institutional",
+              "thesis",
+            ]}
             className="space-y-3"
           >
-            <AccordionItem value="business" className="rounded-lg border border-border bg-card px-5">
-              <AccordionTrigger className="text-sm font-semibold">Business Summary</AccordionTrigger>
+            <AccordionItem
+              value="business"
+              className="rounded-lg border border-border bg-card px-5"
+            >
+              <AccordionTrigger className="text-sm font-semibold">
+                Business Summary
+              </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
                 {displayReport.analysis.business_summary}
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="financial" className="rounded-lg border border-border bg-card px-5">
+            <AccordionItem
+              value="financial"
+              className="rounded-lg border border-border bg-card px-5"
+            >
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Financial Health
@@ -277,7 +324,10 @@ export default function AIDueDiligence() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="valuation" className="rounded-lg border border-border bg-card px-5">
+            <AccordionItem
+              value="valuation"
+              className="rounded-lg border border-border bg-card px-5"
+            >
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Valuation
@@ -289,7 +339,10 @@ export default function AIDueDiligence() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="growth-risk" className="rounded-lg border border-border bg-card px-5">
+            <AccordionItem
+              value="growth-risk"
+              className="rounded-lg border border-border bg-card px-5"
+            >
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Growth vs. Risks
@@ -301,11 +354,16 @@ export default function AIDueDiligence() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="institutional" className="rounded-lg border border-border bg-card px-5">
+            <AccordionItem
+              value="institutional"
+              className="rounded-lg border border-border bg-card px-5"
+            >
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Institutional Sentiment
-                  <SentimentBadge sentiment={displayReport.analysis.institutional_sentiment_sentiment} />
+                  <SentimentBadge
+                    sentiment={displayReport.analysis.institutional_sentiment_sentiment}
+                  />
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">

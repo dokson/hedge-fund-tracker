@@ -4,27 +4,113 @@ import { getGICSHierarchy, type GICSEntry } from "@/lib/dataService";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, ChevronRight, ChevronDown } from "lucide-react";
 import {
-  Zap, Mountain, Factory, ShoppingCart, Apple, Heart,
-  BarChart3, Cpu, Radio, Plug, Building2,
+  Zap,
+  Mountain,
+  Factory,
+  ShoppingCart,
+  Apple,
+  Heart,
+  BarChart3,
+  Cpu,
+  Radio,
+  Plug,
+  Building2,
 } from "lucide-react";
 
 // ── Sector config ──
-const SECTOR_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string; border: string; accent: string }> = {
-  "10": { icon: Zap,          color: "text-gray-400",    bg: "bg-gray-900",    border: "border-gray-500",    accent: "#9ca3af" },
-  "15": { icon: Mountain,     color: "text-slate-400",   bg: "bg-slate-800",   border: "border-slate-500",   accent: "#94a3b8" },
-  "20": { icon: Factory,      color: "text-blue-500",    bg: "bg-blue-950",    border: "border-blue-600",    accent: "#3b82f6" },
-  "25": { icon: ShoppingCart,  color: "text-yellow-500",  bg: "bg-yellow-950",  border: "border-yellow-500",  accent: "#eab308" },
-  "30": { icon: Apple,         color: "text-orange-500",  bg: "bg-orange-950",  border: "border-orange-500",  accent: "#f97316" },
-  "35": { icon: Heart,         color: "text-red-400",     bg: "bg-red-950",     border: "border-red-400",     accent: "#f87171" },
-  "40": { icon: BarChart3,     color: "text-gray-300",    bg: "bg-gray-800",    border: "border-gray-400",    accent: "#d1d5db" },
-  "45": { icon: Cpu,           color: "text-emerald-400", bg: "bg-emerald-950", border: "border-emerald-500", accent: "#34d399" },
-  "50": { icon: Radio,         color: "text-blue-400",    bg: "bg-blue-950",    border: "border-blue-400",    accent: "#60a5fa" },
-  "55": { icon: Plug,          color: "text-teal-400",    bg: "bg-teal-950",    border: "border-teal-400",    accent: "#2dd4bf" },
-  "60": { icon: Building2,     color: "text-indigo-300",  bg: "bg-indigo-950",  border: "border-indigo-400",  accent: "#a5b4fc" },
+const SECTOR_CONFIG: Record<
+  string,
+  { icon: React.ElementType; color: string; bg: string; border: string; accent: string }
+> = {
+  "10": {
+    icon: Zap,
+    color: "text-gray-400",
+    bg: "bg-gray-900",
+    border: "border-gray-500",
+    accent: "#9ca3af",
+  },
+  "15": {
+    icon: Mountain,
+    color: "text-slate-400",
+    bg: "bg-slate-800",
+    border: "border-slate-500",
+    accent: "#94a3b8",
+  },
+  "20": {
+    icon: Factory,
+    color: "text-blue-500",
+    bg: "bg-blue-950",
+    border: "border-blue-600",
+    accent: "#3b82f6",
+  },
+  "25": {
+    icon: ShoppingCart,
+    color: "text-yellow-500",
+    bg: "bg-yellow-950",
+    border: "border-yellow-500",
+    accent: "#eab308",
+  },
+  "30": {
+    icon: Apple,
+    color: "text-orange-500",
+    bg: "bg-orange-950",
+    border: "border-orange-500",
+    accent: "#f97316",
+  },
+  "35": {
+    icon: Heart,
+    color: "text-red-400",
+    bg: "bg-red-950",
+    border: "border-red-400",
+    accent: "#f87171",
+  },
+  "40": {
+    icon: BarChart3,
+    color: "text-gray-300",
+    bg: "bg-gray-800",
+    border: "border-gray-400",
+    accent: "#d1d5db",
+  },
+  "45": {
+    icon: Cpu,
+    color: "text-emerald-400",
+    bg: "bg-emerald-950",
+    border: "border-emerald-500",
+    accent: "#34d399",
+  },
+  "50": {
+    icon: Radio,
+    color: "text-blue-400",
+    bg: "bg-blue-950",
+    border: "border-blue-400",
+    accent: "#60a5fa",
+  },
+  "55": {
+    icon: Plug,
+    color: "text-teal-400",
+    bg: "bg-teal-950",
+    border: "border-teal-400",
+    accent: "#2dd4bf",
+  },
+  "60": {
+    icon: Building2,
+    color: "text-indigo-300",
+    bg: "bg-indigo-950",
+    border: "border-indigo-400",
+    accent: "#a5b4fc",
+  },
 };
 
 function getSectorConfig(code: string) {
-  return SECTOR_CONFIG[code] || { icon: BarChart3, color: "text-muted-foreground", bg: "bg-muted", border: "border-border", accent: "#888" };
+  return (
+    SECTOR_CONFIG[code] || {
+      icon: BarChart3,
+      color: "text-muted-foreground",
+      bg: "bg-muted",
+      border: "border-border",
+      accent: "#888",
+    }
+  );
 }
 
 // ── Types ──
@@ -35,16 +121,32 @@ interface GICSNode {
 }
 
 function buildGICSTree(entries: GICSEntry[]): GICSNode[] {
-  const sectorMap = new Map<string, { label: string; groups: Map<string, { label: string; industries: Map<string, { label: string; subs: { code: string; label: string }[] }> }> }>();
+  const sectorMap = new Map<
+    string,
+    {
+      label: string;
+      groups: Map<
+        string,
+        {
+          label: string;
+          industries: Map<string, { label: string; subs: { code: string; label: string }[] }>;
+        }
+      >;
+    }
+  >();
 
   for (const e of entries) {
-    if (!sectorMap.has(e.sectorCode)) sectorMap.set(e.sectorCode, { label: e.sector, groups: new Map() });
+    if (!sectorMap.has(e.sectorCode))
+      sectorMap.set(e.sectorCode, { label: e.sector, groups: new Map() });
     const sector = sectorMap.get(e.sectorCode)!;
-    if (!sector.groups.has(e.industryGroupCode)) sector.groups.set(e.industryGroupCode, { label: e.industryGroup, industries: new Map() });
+    if (!sector.groups.has(e.industryGroupCode))
+      sector.groups.set(e.industryGroupCode, { label: e.industryGroup, industries: new Map() });
     const group = sector.groups.get(e.industryGroupCode)!;
-    if (!group.industries.has(e.industryCode)) group.industries.set(e.industryCode, { label: e.industry, subs: [] });
+    if (!group.industries.has(e.industryCode))
+      group.industries.set(e.industryCode, { label: e.industry, subs: [] });
     const industry = group.industries.get(e.industryCode)!;
-    if (!industry.subs.find((s) => s.code === e.subIndustryCode)) industry.subs.push({ code: e.subIndustryCode, label: e.subIndustry });
+    if (!industry.subs.find((s) => s.code === e.subIndustryCode))
+      industry.subs.push({ code: e.subIndustryCode, label: e.subIndustry });
   }
 
   const tree: GICSNode[] = [];
@@ -53,7 +155,11 @@ function buildGICSTree(entries: GICSEntry[]): GICSNode[] {
     for (const [gCode, g] of s.groups) {
       const indNodes: GICSNode[] = [];
       for (const [iCode, ind] of g.industries) {
-        indNodes.push({ code: iCode, label: ind.label, children: ind.subs.map((sub) => ({ code: sub.code, label: sub.label, children: [] })) });
+        indNodes.push({
+          code: iCode,
+          label: ind.label,
+          children: ind.subs.map((sub) => ({ code: sub.code, label: sub.label, children: [] })),
+        });
       }
       groupNodes.push({ code: gCode, label: g.label, children: indNodes });
     }
@@ -192,7 +298,9 @@ export default function GICSTreeVisual() {
   };
 
   const totals = useMemo(() => {
-    let groups = 0, industries = 0, subs = 0;
+    let groups = 0,
+      industries = 0,
+      subs = 0;
     for (const s of gicsTree) {
       groups += s.children.length;
       for (const g of s.children) {
@@ -224,10 +332,18 @@ export default function GICSTreeVisual() {
           />
         </div>
         <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-          <span><strong className="text-foreground">{totals.sectors}</strong> Sectors</span>
-          <span><strong className="text-foreground">{totals.groups}</strong> Industry Groups</span>
-          <span><strong className="text-foreground">{totals.industries}</strong> Industries</span>
-          <span><strong className="text-foreground">{totals.subs}</strong> Sub-Industries</span>
+          <span>
+            <strong className="text-foreground">{totals.sectors}</strong> Sectors
+          </span>
+          <span>
+            <strong className="text-foreground">{totals.groups}</strong> Industry Groups
+          </span>
+          <span>
+            <strong className="text-foreground">{totals.industries}</strong> Industries
+          </span>
+          <span>
+            <strong className="text-foreground">{totals.subs}</strong> Sub-Industries
+          </span>
         </div>
       </div>
 
@@ -238,11 +354,15 @@ export default function GICSTreeVisual() {
           const Icon = config.icon;
           const isExpanded = effectiveExpanded.has(sector.code);
           const subCount = sector.children.reduce(
-            (a, g) => a + g.children.reduce((b, i) => b + i.children.length, 0), 0
+            (a, g) => a + g.children.reduce((b, i) => b + i.children.length, 0),
+            0,
           );
 
           return (
-            <div key={sector.code} className="rounded-lg border border-border bg-card overflow-hidden">
+            <div
+              key={sector.code}
+              className="rounded-lg border border-border bg-card overflow-hidden"
+            >
               {/* Sector row — clickable */}
               <button
                 onClick={() => toggleSector(sector.code)}
@@ -264,7 +384,9 @@ export default function GICSTreeVisual() {
                 )}
 
                 {/* Label */}
-                <span className="font-mono text-xs text-muted-foreground w-6 shrink-0">{sector.code}</span>
+                <span className="font-mono text-xs text-muted-foreground w-6 shrink-0">
+                  {sector.code}
+                </span>
                 <span className="font-bold text-sm flex-1">{sector.label}</span>
 
                 {/* Counts */}

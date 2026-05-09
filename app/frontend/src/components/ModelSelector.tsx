@@ -2,15 +2,21 @@ import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getModels } from "@/lib/dataService";
 import { AI_PROVIDERS, getConfiguredProviders } from "@/lib/aiClient";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Maps models.csv "Client" column to provider IDs used in aiClient.ts
 const CLIENT_TO_PROVIDER_ID: Record<string, string> = {
-  "GitHub":      "github",
-  "Google":      "google",
-  "Groq":        "groq",
-  "HuggingFace": "huggingface",
-  "OpenRouter":  "openrouter",
+  GitHub: "github",
+  Google: "google",
+  Groq: "groq",
+  HuggingFace: "huggingface",
+  OpenRouter: "openrouter",
 };
 
 interface ModelSelectorProps {
@@ -21,14 +27,20 @@ interface ModelSelectorProps {
   disabled?: boolean;
 }
 
-export default function ModelSelector({ value, onChange, onProviderChange, className, disabled }: ModelSelectorProps) {
+export default function ModelSelector({
+  value,
+  onChange,
+  onProviderChange,
+  className,
+  disabled,
+}: ModelSelectorProps) {
   const { data: allModels = [] } = useQuery({ queryKey: ["models"], queryFn: getModels });
   const [configuredProviderIds, setConfiguredProviderIds] = useState<string[] | null>(null);
 
   useEffect(() => {
     getConfiguredProviders().then((providers) => {
       setConfiguredProviderIds(
-        providers.filter(({ hasKey }) => hasKey).map(({ provider }) => provider.id)
+        providers.filter(({ hasKey }) => hasKey).map(({ provider }) => provider.id),
       );
     });
   }, []);
@@ -45,9 +57,7 @@ export default function ModelSelector({ value, onChange, onProviderChange, class
   const groupedModels = useMemo(() => {
     const groups: { providerName: string; models: typeof availableModels }[] = [];
     for (const provider of AI_PROVIDERS) {
-      const models = availableModels.filter(
-        (m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id
-      );
+      const models = availableModels.filter((m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id);
       if (models.length > 0) groups.push({ providerName: provider.name, models });
     }
     return groups;

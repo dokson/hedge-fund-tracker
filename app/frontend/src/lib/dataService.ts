@@ -170,8 +170,8 @@ export interface StockQuarterAnalysis {
 // ---------- CSV fetch + parse helper ----------
 
 async function fetchCSV<T>(url: string): Promise<T[]> {
-  const fullUrl = IS_GH_PAGES_MODE 
-    ? `${BASE_PATH}${url}` 
+  const fullUrl = IS_GH_PAGES_MODE
+    ? `${BASE_PATH}${url}`
     : `${DATABASE_URL}${url.replace(/^\/database/, "")}`;
   const response = await fetch(fullUrl);
   if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
@@ -263,13 +263,17 @@ const FUNDS_CSV_HEADER = '"CIK","Fund","Manager","Denomination","CIKs","URL"';
 
 function fundsToCSV(funds: HedgeFund[]): string {
   const sorted = [...funds].sort((a, b) =>
-    a.fund.localeCompare(b.fund, undefined, { sensitivity: "base" })
+    a.fund.localeCompare(b.fund, undefined, { sensitivity: "base" }),
   );
   return (
-    FUNDS_CSV_HEADER + "\n" +
+    FUNDS_CSV_HEADER +
+    "\n" +
     sorted
-      .map((f) => `"${f.cik}","${f.fund}","${f.manager}","${f.denomination}","${f.ciks}","${f.url}"`)
-      .join("\n") + "\n"
+      .map(
+        (f) => `"${f.cik}","${f.fund}","${f.manager}","${f.denomination}","${f.ciks}","${f.url}"`,
+      )
+      .join("\n") +
+    "\n"
   );
 }
 
@@ -290,10 +294,7 @@ export function generateExcludedFundsCSV(allExcluded: ExcludedHedgeFund[]): stri
 /**
  * Generates updated hedge_funds CSV after adding a new fund.
  */
-export function generateAddFundCSV(
-  allFunds: HedgeFund[],
-  newFund: HedgeFund
-): string {
+export function generateAddFundCSV(allFunds: HedgeFund[], newFund: HedgeFund): string {
   return fundsToCSV([...allFunds, newFund]);
 }
 
@@ -303,7 +304,7 @@ export function generateAddFundCSV(
 export function generateDeleteFundCSVs(
   allFunds: HedgeFund[],
   excludedFunds: ExcludedHedgeFund[],
-  fundToDelete: HedgeFund
+  fundToDelete: HedgeFund,
 ): { hedgeFundsCSV: string; excludedCSV: string } {
   const remaining = allFunds.filter((f) => f.cik !== fundToDelete.cik);
   const allExcluded = [...excludedFunds, fundToDelete];
@@ -319,7 +320,7 @@ export function generateDeleteFundCSVs(
 export function generateRestoreFundCSVs(
   allFunds: HedgeFund[],
   excludedFunds: ExcludedHedgeFund[],
-  fundToRestore: ExcludedHedgeFund
+  fundToRestore: ExcludedHedgeFund,
 ): { hedgeFundsCSV: string; excludedCSV: string } {
   const updatedFunds = [...allFunds, fundToRestore];
   const remaining = excludedFunds.filter((f) => f.cik !== fundToRestore.cik);
@@ -339,12 +340,13 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   HuggingFace: "HuggingFace",
   OpenRouter: "OpenRouter",
 };
-export type ModelProvider = typeof MODEL_PROVIDERS[number];
+export type ModelProvider = (typeof MODEL_PROVIDERS)[number];
 
 export function generateModelsCSV(models: AIModel[]): string {
   return (
     '"ID","Description","Client"\n' +
-    models.map((m) => `"${m.id}","${m.description}","${m.client}"`).join("\n") + "\n"
+    models.map((m) => `"${m.id}","${m.description}","${m.client}"`).join("\n") +
+    "\n"
   );
 }
 
@@ -532,7 +534,7 @@ export async function getFundAvailableQuarters(fundName: string): Promise<Quarte
         } catch {
           return null;
         }
-      })
+      }),
     );
     return results.filter((q): q is Quarter => q !== null);
   });
@@ -546,9 +548,7 @@ export async function getQuarterFundList(quarter: string): Promise<string[]> {
       if (!response.ok) throw new Error(`No data available for ${quarter}`);
       return response.json();
     }
-    const response = await fetch(
-      `${window.location.origin}/api/database/quarters/${quarter}`
-    );
+    const response = await fetch(`${window.location.origin}/api/database/quarters/${quarter}`);
     if (!response.ok) throw new Error(`Failed to list funds for ${quarter}`);
     const files: string[] = await response.json();
     return files;
@@ -557,12 +557,12 @@ export async function getQuarterFundList(quarter: string): Promise<string[]> {
 
 export async function getFundQuarterlyHoldings(
   quarter: string,
-  fundName: string
+  fundName: string,
 ): Promise<QuarterlyHolding[]> {
   const key = `holdings_${quarter}_${fundName}`;
   return cachedFetch(key, async () => {
     const raw = await fetchCSV<RawQuarterlyHolding>(
-      `/database/${quarter}/${encodeURIComponent(fundNameToFileName(fundName))}.csv`
+      `/database/${quarter}/${encodeURIComponent(fundNameToFileName(fundName))}.csv`,
     );
     return raw.map((r) => ({
       cusip: r.CUSIP,
@@ -588,17 +588,19 @@ export async function getFundQuarterlyHoldings(
 export async function runQuarterAnalysis(
   quarter: string,
   onProgress?: (msg: string, pct: number) => void,
-  fundFilter?: Set<string>
+  fundFilter?: Set<string>,
 ): Promise<StockQuarterAnalysis[]> {
-  const cacheKey = fundFilter && fundFilter.size > 0
-    ? `quarter_analysis_${quarter}_funds_${[...fundFilter].sort().join(",")}`
-    : `quarter_analysis_${quarter}`;
+  const cacheKey =
+    fundFilter && fundFilter.size > 0
+      ? `quarter_analysis_${quarter}_funds_${[...fundFilter].sort().join(",")}`
+      : `quarter_analysis_${quarter}`;
   return cachedFetch(cacheKey, async () => {
     onProgress?.("Fetching fund list…", 5);
     const [allFundNames, stocks] = await Promise.all([getQuarterFundList(quarter), getStocks()]);
-    const fundNames = fundFilter && fundFilter.size > 0
-      ? allFundNames.filter((fn) => fundFilter.has(fileNameToFundName(fn)))
-      : allFundNames;
+    const fundNames =
+      fundFilter && fundFilter.size > 0
+        ? allFundNames.filter((fn) => fundFilter.has(fileNameToFundName(fn)))
+        : allFundNames;
     const tickerNameMap = new Map(stocks.map((s) => [s.ticker, s.company]));
     onProgress?.(`Loading ${fundNames.length} funds…`, 10);
 
@@ -618,11 +620,14 @@ export async function runQuarterAnalysis(
           } catch {
             return [];
           }
-        })
+        }),
       );
       results.forEach((r) => allHoldings.push(...r));
       const pct = Math.round(10 + (i / fundNames.length) * 70);
-      onProgress?.(`Loaded ${Math.min(i + batchSize, fundNames.length)}/${fundNames.length} funds`, pct);
+      onProgress?.(
+        `Loaded ${Math.min(i + batchSize, fundNames.length)}/${fundNames.length} funds`,
+        pct,
+      );
     }
 
     onProgress?.("Aggregating data…", 85);
@@ -694,9 +699,8 @@ export async function runQuarterAnalysis(
 
         // Shares delta pct (velocity of accumulation, only for existing positions)
         const prevShares = fth.shares - fth.deltaShares;
-        fth.sharesDeltaPct = (prevShares > 0 && fth.shares > 0)
-          ? (fth.deltaShares / prevShares) * 100
-          : 0;
+        fth.sharesDeltaPct =
+          prevShares > 0 && fth.shares > 0 ? (fth.deltaShares / prevShares) * 100 : 0;
       });
     }
 
@@ -792,7 +796,7 @@ export async function runQuarterAnalysis(
 export async function runStockAnalysis(
   ticker: string,
   quarter: string,
-  onProgress?: (msg: string, pct: number) => void
+  onProgress?: (msg: string, pct: number) => void,
 ): Promise<FundTickerHolding[]> {
   const key = `stock_analysis_${quarter}_${ticker}`;
   return cachedFetch(key, async () => {
@@ -813,12 +817,16 @@ export async function runStockAnalysis(
             const holdings = await getFundQuarterlyHoldings(quarter, fundName);
             // Filter for this ticker, aggregate across CUSIPs
             const tickerHoldings = holdings.filter(
-              (h) => h.ticker === ticker && h.cusip !== "Total"
+              (h) => h.ticker === ticker && h.cusip !== "Total",
             );
             if (tickerHoldings.length === 0) return null;
 
-            let shares = 0, deltaShares = 0, value = 0, deltaValue = 0, portfolioPct = 0;
-            let company = tickerNameMap.get(ticker) || tickerHoldings[0].company;
+            let shares = 0,
+              deltaShares = 0,
+              value = 0,
+              deltaValue = 0,
+              portfolioPct = 0;
+            const company = tickerNameMap.get(ticker) || tickerHoldings[0].company;
 
             for (const h of tickerHoldings) {
               shares += h.shares;
@@ -842,9 +850,8 @@ export async function runStockAnalysis(
             }
 
             const prevShares = shares - deltaShares;
-            const sharesDeltaPctVal = (prevShares > 0 && shares > 0)
-              ? (deltaShares / prevShares) * 100
-              : 0;
+            const sharesDeltaPctVal =
+              prevShares > 0 && shares > 0 ? (deltaShares / prevShares) * 100 : 0;
 
             return {
               fund: fundName,
@@ -869,11 +876,16 @@ export async function runStockAnalysis(
           } catch {
             return null;
           }
-        })
+        }),
       );
-      batchResults.forEach((r) => { if (r) results.push(r); });
+      batchResults.forEach((r) => {
+        if (r) results.push(r);
+      });
       const pct = Math.round(10 + (i / fundNames.length) * 85);
-      onProgress?.(`Scanned ${Math.min(i + batchSize, fundNames.length)}/${fundNames.length} funds`, pct);
+      onProgress?.(
+        `Scanned ${Math.min(i + batchSize, fundNames.length)}/${fundNames.length} funds`,
+        pct,
+      );
     }
 
     onProgress?.("Done", 100);
@@ -889,7 +901,7 @@ export async function runStockAnalysis(
 export async function runFundAnalysis(
   fundName: string,
   quarter: string,
-  onProgress?: (msg: string, pct: number) => void
+  onProgress?: (msg: string, pct: number) => void,
 ): Promise<FundTickerHolding[]> {
   const key = `fund_analysis_${quarter}_${fundName}`;
   return cachedFetch(key, async () => {
@@ -956,7 +968,8 @@ export async function runFundAnalysis(
       fth.isClosed = fth.shares === 0;
       fth.isHighConviction = fth.isNew && (rank <= 10 || fth.portfolioPct > 3.0);
       const prevShares = fth.shares - fth.deltaShares;
-      fth.sharesDeltaPct = (prevShares > 0 && fth.shares > 0) ? (fth.deltaShares / prevShares) * 100 : 0;
+      fth.sharesDeltaPct =
+        prevShares > 0 && fth.shares > 0 ? (fth.deltaShares / prevShares) * 100 : 0;
 
       // Recalculate delta string from aggregated values
       if (fth.shares === 0) fth.delta = "CLOSE";
@@ -973,10 +986,10 @@ export async function runFundAnalysis(
 // ---------- Enriched Non-Quarterly Filings (join with latest quarter) ----------
 
 export interface EnrichedNQFiling extends NonQuarterlyFiling {
-  quarterShares: number | null;   // shares in latest 13F (null = fund not found)
-  deltaShares: number | null;     // nq shares - quarter shares
+  quarterShares: number | null; // shares in latest 13F (null = fund not found)
+  deltaShares: number | null; // nq shares - quarter shares
   deltaType: "NEW" | "INCREASE" | "DECREASE" | "CLOSED" | "NO CHANGE" | "UNKNOWN";
-  deltaPct: number | null;        // percentage change vs quarter
+  deltaPct: number | null; // percentage change vs quarter
   quarterPortfolioPct: number | null;
 }
 
@@ -986,7 +999,7 @@ export interface EnrichedNQFiling extends NonQuarterlyFiling {
  * and computes the delta (new position vs quarterly position).
  */
 export async function getEnrichedNQFilings(
-  onProgress?: (msg: string, pct: number) => void
+  onProgress?: (msg: string, pct: number) => void,
 ): Promise<EnrichedNQFiling[]> {
   return cachedFetch("enriched_nq", async () => {
     onProgress?.("Loading filings…", 5);
@@ -997,7 +1010,11 @@ export async function getEnrichedNQFilings(
     for (const f of allFilings) {
       const key = `${f.fund}||${f.ticker}`;
       const existing = latestMap.get(key);
-      if (!existing || f.date > existing.date || (f.date === existing.date && f.filingDate > existing.filingDate)) {
+      if (
+        !existing ||
+        f.date > existing.date ||
+        (f.date === existing.date && f.filingDate > existing.filingDate)
+      ) {
         latestMap.set(key, f);
       }
     }
@@ -1011,7 +1028,10 @@ export async function getEnrichedNQFilings(
     // Load quarterly holdings for each fund using its OWN latest quarter (which may be
     // older than the overall latest quarter, e.g. early in a Q1 13F filing window).
     // Map: fund → ticker → { shares, portfolioPct } (aggregated across CUSIPs)
-    const fundQuarterlyMap = new Map<string, Map<string, { shares: number; portfolioPct: number }>>();
+    const fundQuarterlyMap = new Map<
+      string,
+      Map<string, { shares: number; portfolioPct: number }>
+    >();
     const batchSize = 10;
 
     for (let i = 0; i < uniqueFunds.length; i += batchSize) {
@@ -1047,13 +1067,16 @@ export async function getEnrichedNQFilings(
               tickerMap: new Map<string, { shares: number; portfolioPct: number }>(),
             };
           }
-        })
+        }),
       );
       for (const { fundName, tickerMap } of results) {
         fundQuarterlyMap.set(fundName, tickerMap);
       }
       const pct = Math.round(15 + (i / uniqueFunds.length) * 80);
-      onProgress?.(`Loaded ${Math.min(i + batchSize, uniqueFunds.length)}/${uniqueFunds.length} funds`, pct);
+      onProgress?.(
+        `Loaded ${Math.min(i + batchSize, uniqueFunds.length)}/${uniqueFunds.length} funds`,
+        pct,
+      );
     }
 
     onProgress?.("Computing deltas…", 95);
@@ -1069,7 +1092,7 @@ export async function getEnrichedNQFilings(
           ...f,
           quarterShares: 0,
           deltaShares: f.shares,
-          deltaType: f.shares === 0 ? "CLOSED" as const : "NEW" as const,
+          deltaType: f.shares === 0 ? ("CLOSED" as const) : ("NEW" as const),
           deltaPct: null,
           quarterPortfolioPct: null,
         };

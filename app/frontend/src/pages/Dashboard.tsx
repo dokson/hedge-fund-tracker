@@ -1,19 +1,48 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getEnrichedNQFilings, parseValueString, clearCache, type EnrichedNQFiling } from "@/lib/dataService";
+import {
+  getEnrichedNQFilings,
+  parseValueString,
+  clearCache,
+  type EnrichedNQFiling,
+} from "@/lib/dataService";
 import { TickerLink, FundLink } from "@/components/EntityLinks";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowUpRight, ArrowDownRight, Plus, X, Minus, ArrowUpDown, ArrowUp, ArrowDown, FileText, Check, Star, Users, Building2 } from "lucide-react";
+import {
+  Loader2,
+  ArrowUpRight,
+  ArrowDownRight,
+  Plus,
+  X,
+  Minus,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  FileText,
+  Check,
+  Star,
+  Users,
+  Building2,
+} from "lucide-react";
 import { toInitCap } from "@/lib/utils";
 import { useStarred } from "@/hooks/useStarred";
 
 function formatDelta(f: EnrichedNQFiling): { text: string; className: string; sortValue: number } {
-  if (f.deltaType === "CLOSED") return { text: "CLOSE", className: "text-rose-700 dark:text-rose-400", sortValue: -Infinity };
-  if (f.deltaType === "NEW") return { text: "NEW", className: "text-teal-700 dark:text-teal-400", sortValue: Infinity };
-  if (f.deltaType === "NO CHANGE") return { text: "+0%", className: "text-muted-foreground", sortValue: 0 };
+  if (f.deltaType === "CLOSED")
+    return { text: "CLOSE", className: "text-rose-700 dark:text-rose-400", sortValue: -Infinity };
+  if (f.deltaType === "NEW")
+    return { text: "NEW", className: "text-teal-700 dark:text-teal-400", sortValue: Infinity };
+  if (f.deltaType === "NO CHANGE")
+    return { text: "+0%", className: "text-muted-foreground", sortValue: 0 };
   if (f.deltaPct !== null) {
     const sign = f.deltaPct > 0 ? "+" : "";
     const cls = f.deltaPct > 0 ? "text-positive" : "text-negative";
@@ -61,14 +90,17 @@ export default function Dashboard() {
     return names.sort();
   }, [filings]);
 
-  const toggleSort = useCallback((field: SortField) => {
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(field);
-      setSortDir("desc");
-    }
-  }, [sortField]);
+  const toggleSort = useCallback(
+    (field: SortField) => {
+      if (sortField === field) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      } else {
+        setSortField(field);
+        setSortDir("desc");
+      }
+    },
+    [sortField],
+  );
 
   const filtered = useMemo(() => {
     const cutoff = new Date();
@@ -80,7 +112,8 @@ export default function Dashboard() {
       if (fundFilter !== "all" && f.fund !== fundFilter) return false;
       if (typeFilters.size > 0 && !typeFilters.has(f.deltaType)) return false;
       if (filterStarredFunds && starredFunds.size > 0 && !starredFunds.has(f.fund)) return false;
-      if (filterStarredStocks && starredStocks.size > 0 && !starredStocks.has(f.ticker)) return false;
+      if (filterStarredStocks && starredStocks.size > 0 && !starredStocks.has(f.ticker))
+        return false;
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -108,7 +141,19 @@ export default function Dashboard() {
     }
 
     return rows;
-  }, [filings, fundFilter, typeFilters, search, sortField, sortDir, daysBack, filterStarredFunds, filterStarredStocks, starredFunds, starredStocks]);
+  }, [
+    filings,
+    fundFilter,
+    typeFilters,
+    search,
+    sortField,
+    sortDir,
+    daysBack,
+    filterStarredFunds,
+    filterStarredStocks,
+    starredFunds,
+    starredStocks,
+  ]);
 
   const counts = useMemo(() => {
     const c = { NEW: 0, INCREASE: 0, DECREASE: 0, CLOSED: 0 };
@@ -120,15 +165,19 @@ export default function Dashboard() {
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
-    return sortDir === "asc"
-      ? <ArrowUp className="h-3 w-3 ml-1 text-primary" />
-      : <ArrowDown className="h-3 w-3 ml-1 text-primary" />;
+    return sortDir === "asc" ? (
+      <ArrowUp className="h-3 w-3 ml-1 text-primary" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1 text-primary" />
+    );
   };
 
   return (
     <div className="space-y-5 max-w-7xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><FileText className="h-6 w-6" /> Latest Filings</h1>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <FileText className="h-6 w-6" /> Latest Filings
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Last 30 days 13D/G and Form 4 — latest filing per position, delta vs last 13F quarter
         </p>
@@ -139,19 +188,48 @@ export default function Dashboard() {
           {(["NEW", "INCREASE", "DECREASE", "CLOSED"] as const).map((type) => {
             const isActive = typeFilters.has(type);
             const colorClasses = {
-              NEW: { active: "bg-[hsl(217,91%,60%)]/15 text-[hsl(217,91%,60%)] border-[hsl(217,91%,60%)] ring-2 ring-[hsl(217,91%,60%)]/30 ring-offset-1 ring-offset-background", inactive: "bg-transparent text-muted-foreground border-border hover:border-[hsl(217,91%,60%)]/40 hover:text-[hsl(217,91%,60%)]" },
-              INCREASE: { active: "bg-positive/15 text-positive border-positive ring-2 ring-positive/30 ring-offset-1 ring-offset-background", inactive: "bg-transparent text-muted-foreground border-border hover:border-positive/40 hover:text-positive" },
-              DECREASE: { active: "bg-negative/15 text-negative border-negative ring-2 ring-negative/30 ring-offset-1 ring-offset-background", inactive: "bg-transparent text-muted-foreground border-border hover:border-negative/40 hover:text-negative" },
-              CLOSED: { active: "bg-[hsl(0,62%,45%)]/15 text-[hsl(0,62%,45%)] border-[hsl(0,62%,45%)] ring-2 ring-[hsl(0,62%,45%)]/30 ring-offset-1 ring-offset-background", inactive: "bg-transparent text-muted-foreground border-border hover:border-[hsl(0,62%,45%)]/40 hover:text-[hsl(0,62%,45%)]" },
+              NEW: {
+                active:
+                  "bg-[hsl(217,91%,60%)]/15 text-[hsl(217,91%,60%)] border-[hsl(217,91%,60%)] ring-2 ring-[hsl(217,91%,60%)]/30 ring-offset-1 ring-offset-background",
+                inactive:
+                  "bg-transparent text-muted-foreground border-border hover:border-[hsl(217,91%,60%)]/40 hover:text-[hsl(217,91%,60%)]",
+              },
+              INCREASE: {
+                active:
+                  "bg-positive/15 text-positive border-positive ring-2 ring-positive/30 ring-offset-1 ring-offset-background",
+                inactive:
+                  "bg-transparent text-muted-foreground border-border hover:border-positive/40 hover:text-positive",
+              },
+              DECREASE: {
+                active:
+                  "bg-negative/15 text-negative border-negative ring-2 ring-negative/30 ring-offset-1 ring-offset-background",
+                inactive:
+                  "bg-transparent text-muted-foreground border-border hover:border-negative/40 hover:text-negative",
+              },
+              CLOSED: {
+                active:
+                  "bg-[hsl(0,62%,45%)]/15 text-[hsl(0,62%,45%)] border-[hsl(0,62%,45%)] ring-2 ring-[hsl(0,62%,45%)]/30 ring-offset-1 ring-offset-background",
+                inactive:
+                  "bg-transparent text-muted-foreground border-border hover:border-[hsl(0,62%,45%)]/40 hover:text-[hsl(0,62%,45%)]",
+              },
             }[type];
-            const icon = { NEW: Plus, INCREASE: ArrowUpRight, DECREASE: ArrowDownRight, CLOSED: X }[type];
+            const icon = { NEW: Plus, INCREASE: ArrowUpRight, DECREASE: ArrowDownRight, CLOSED: X }[
+              type
+            ];
             const Icon = icon;
-            const label = { NEW: "New", INCREASE: "Increased", DECREASE: "Decreased", CLOSED: "Closed" }[type];
-            const toggle = () => setTypeFilters((prev) => {
-              const next = new Set(prev);
-              if (next.has(type)) next.delete(type); else next.add(type);
-              return next;
-            });
+            const label = {
+              NEW: "New",
+              INCREASE: "Increased",
+              DECREASE: "Decreased",
+              CLOSED: "Closed",
+            }[type];
+            const toggle = () =>
+              setTypeFilters((prev) => {
+                const next = new Set(prev);
+                if (next.has(type)) next.delete(type);
+                else next.add(type);
+                return next;
+              });
             return (
               <button
                 key={type}
@@ -171,7 +249,9 @@ export default function Dashboard() {
 
       {hasAnyStarred && (
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs text-muted-foreground flex items-center gap-1"><Star className="h-3 w-3" fill="currentColor" /> Consider Starred only:</span>
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Star className="h-3 w-3" fill="currentColor" /> Consider Starred only:
+          </span>
           <button
             onClick={() => starredFunds.size > 0 && setFilterStarredFunds((v) => !v)}
             disabled={starredFunds.size === 0}
@@ -182,7 +262,9 @@ export default function Dashboard() {
             } disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             <Users className="h-3 w-3" /> Funds
-            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 leading-none">{starredFunds.size}</Badge>
+            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 leading-none">
+              {starredFunds.size}
+            </Badge>
           </button>
           <button
             onClick={() => starredStocks.size > 0 && setFilterStarredStocks((v) => !v)}
@@ -194,7 +276,9 @@ export default function Dashboard() {
             } disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             <Building2 className="h-3 w-3" /> Stocks
-            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 leading-none">{starredStocks.size}</Badge>
+            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 leading-none">
+              {starredStocks.size}
+            </Badge>
           </button>
         </div>
       )}
@@ -213,7 +297,9 @@ export default function Dashboard() {
           <SelectContent>
             <SelectItem value="all">All Funds</SelectItem>
             {fundNames.map((name) => (
-              <SelectItem key={name} value={name}>{name.replace(/_/g, " ")}</SelectItem>
+              <SelectItem key={name} value={name}>
+                {name.replace(/_/g, " ")}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -242,7 +328,9 @@ export default function Dashboard() {
                     className="text-left p-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
                     onClick={() => toggleSort("date")}
                   >
-                    <span className="inline-flex items-center">Date <SortIcon field="date" /></span>
+                    <span className="inline-flex items-center">
+                      Date <SortIcon field="date" />
+                    </span>
                   </th>
                   <th className="text-left p-3 font-medium">Fund</th>
                   <th className="text-left p-3 font-medium">Ticker</th>
@@ -251,16 +339,23 @@ export default function Dashboard() {
                     className="text-right p-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
                     onClick={() => toggleSort("delta")}
                   >
-                    <span className="inline-flex items-center justify-end">Delta <SortIcon field="delta" /></span>
+                    <span className="inline-flex items-center justify-end">
+                      Delta <SortIcon field="delta" />
+                    </span>
                   </th>
                   <th className="text-right p-3 font-medium">Avg Price</th>
                   <th
                     className="text-right p-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
                     onClick={() => toggleSort("value")}
                   >
-                    <span className="inline-flex items-center justify-end">Value <SortIcon field="value" /></span>
+                    <span className="inline-flex items-center justify-end">
+                      Value <SortIcon field="value" />
+                    </span>
                   </th>
-                  <th className="text-right p-3 font-medium" title="Position weight in the fund's last 13F portfolio">
+                  <th
+                    className="text-right p-3 font-medium"
+                    title="Position weight in the fund's last 13F portfolio"
+                  >
                     Portfolio %
                   </th>
                 </tr>
@@ -280,8 +375,8 @@ export default function Dashboard() {
                       f.deltaType === "CLOSED" || f.deltaType === "DECREASE"
                         ? "border-l-2 border-l-negative"
                         : f.deltaType === "NEW" || f.deltaType === "INCREASE"
-                        ? "border-l-2 border-l-positive"
-                        : "border-l-2 border-l-muted";
+                          ? "border-l-2 border-l-positive"
+                          : "border-l-2 border-l-muted";
 
                     return (
                       <tr
@@ -298,7 +393,10 @@ export default function Dashboard() {
                         <td className="p-3 max-w-[200px] truncate">
                           <span
                             className="ticker-link text-muted-foreground"
-                            onClick={(e) => { e.stopPropagation(); navigate(`/stock/${f.ticker}`); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/stock/${f.ticker}`);
+                            }}
                           >
                             {toInitCap(f.company)}
                           </span>
@@ -320,7 +418,9 @@ export default function Dashboard() {
                         </td>
                         <td className="p-3 text-right font-mono">{f.value}</td>
                         <td className="p-3 text-right font-mono text-muted-foreground">
-                          {f.quarterPortfolioPct !== null ? `${f.quarterPortfolioPct.toFixed(2)}%` : "—"}
+                          {f.quarterPortfolioPct !== null
+                            ? `${f.quarterPortfolioPct.toFixed(2)}%`
+                            : "—"}
                         </td>
                       </tr>
                     );
