@@ -53,7 +53,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: app/frontend/package-lock.json
 
@@ -61,7 +61,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: ESLint
-        run: npx eslint . --max-warnings=0 --format=compact
+        run: npx eslint . --max-warnings=0
 
       - name: Prettier check
         run: npx prettier --check .
