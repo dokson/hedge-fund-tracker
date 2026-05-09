@@ -43,12 +43,8 @@ class ResponseParser:
             # Allow for potential whitespace/newline before 'toon' (e.g. ```\n toon)
             markdown_blocks = re.findall(r"```(?:\s*toon)?\s*(.*?)```", text, re.DOTALL)
 
-            if markdown_blocks:
-                # Use the last block content
-                toon_content = markdown_blocks[-1].strip()
-            else:
-                # Fallback: Use the whole text if no blocks found
-                toon_content = text
+            # Use the last block content, or the whole text as fallback
+            toon_content = markdown_blocks[-1].strip() if markdown_blocks else text
 
             if toon_content:
                 # Sanitize the content to help toon library (strip comments, collapse lists)

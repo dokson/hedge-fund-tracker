@@ -1,4 +1,4 @@
-import { Database, Terminal, AlertTriangle } from "lucide-react";
+import { Database, AlertTriangle } from "lucide-react";
 import DatabaseOperations from "@/components/DatabaseOperations";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 

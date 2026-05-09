@@ -33,7 +33,11 @@ export default function TerminalOutput({ lines, running }: TerminalOutputProps) 
       </div>
       <div className="p-4 max-h-[50vh] overflow-y-auto space-y-0.5">
         {lines.map((line, i) => (
-          <div key={i} className={`leading-5 whitespace-pre ${colorize(line)}`}>
+          <div
+            // eslint-disable-next-line @eslint-react/no-array-index-key -- append-only log buffer; index is a stable identity
+            key={i}
+            className={`leading-5 whitespace-pre ${colorize(line)}`}
+          >
             {line}
           </div>
         ))}

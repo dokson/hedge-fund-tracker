@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
+from tenacity import RetryError
 
 from app.ai.agent import AnalystAgent
 
@@ -227,7 +228,7 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         mock_parse.return_value = {"Metric1": 0.9}
         mock_val_weights.return_value = False
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(RetryError):
             self.agent._get_promise_score_weights()
 
     @patch("app.ai.agent.PromiseScoreValidator.validate_metrics")
@@ -245,7 +246,7 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         mock_val_weights.return_value = True
         mock_val_metrics.return_value = ["UnknownMetric"]
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(RetryError):
             self.agent._get_promise_score_weights()
 
     @patch("app.ai.agent.PromiseScoreValidator.validate_metrics")
@@ -284,7 +285,7 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         self.agent.ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = {"Metric1": "0.30Max_Portfolio_Pct"}
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(RetryError):
             self.agent._get_promise_score_weights()
         # validate_weights must NOT be called: rejection happens at coercion.
         mock_val_weights.assert_not_called()
@@ -343,7 +344,7 @@ class TestGetAIScores(unittest.TestCase):
         self.agent.ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = {}
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(RetryError):
             self.agent._get_ai_scores([{"ticker": "AAPL", "company": "Apple"}])
 
     @patch("app.ai.agent.encode")
@@ -361,7 +362,7 @@ class TestGetAIScores(unittest.TestCase):
         self.agent.ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = incomplete_scores
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(RetryError):
             self.agent._get_ai_scores([{"ticker": "AAPL", "company": "Apple"}])
 
 
@@ -484,7 +485,7 @@ class TestRunStockDueDiligence(unittest.TestCase):
         self.agent.ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = {}
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(RetryError):
             self.agent.run_stock_due_diligence("AAPL")
 
 

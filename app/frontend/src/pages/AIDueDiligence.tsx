@@ -1,18 +1,16 @@
 import { useState, useMemo } from "react";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { useQuery } from "@tanstack/react-query";
-import { runStockAnalysis, getStocks, formatValue } from "@/lib/dataService";
+import { runStockAnalysis, getStocks } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { runDueDiligenceStream } from "@/lib/aiClient";
-import { getModels } from "@/lib/dataService";
 import TerminalOutput from "@/components/TerminalOutput";
 import { Button } from "@/components/ui/button";
 import TickerAutocomplete from "@/components/TickerAutocomplete";
 import ModelSelector from "@/components/ModelSelector";
-import { Brain, Settings, Loader2, ClipboardCheck } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { Brain, ClipboardCheck } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -57,9 +55,35 @@ function SentimentBadge({ sentiment }: { sentiment: string }) {
   return <span className={cls}>{sentiment}</span>;
 }
 
+function PriceTargetDelta({
+  priceTarget,
+  currentPrice,
+}: {
+  priceTarget: string | undefined;
+  currentPrice: string | undefined;
+}) {
+  const parseUsd = (v: string | undefined) => {
+    if (!v) return NaN;
+    const m = v.replace(/[,$\s]/g, "").match(/-?\d+(?:\.\d+)?/);
+    return m ? parseFloat(m[0]) : NaN;
+  };
+  const target = parseUsd(priceTarget);
+  const current = parseUsd(currentPrice);
+  if (!isFinite(target) || !isFinite(current) || current === 0) return null;
+  const pct = ((target - current) / current) * 100;
+  const cls = pct >= 0 ? "text-green-500" : "text-red-500";
+  return (
+    <span
+      className={`text-sm font-semibold tabular-nums ${cls}`}
+      title={`${pct >= 0 ? "Upside" : "Downside"} vs current price`}
+    >
+      {pct >= 0 ? "↗" : "↘"} {Math.abs(pct).toFixed(1)}%
+    </span>
+  );
+}
+
 export default function AIDueDiligence() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const initialTicker = searchParams.get("ticker") || "";
   const [ticker, setTicker] = useState(initialTicker);
   const [inputTicker, setInputTicker] = useState(initialTicker);
@@ -67,9 +91,12 @@ export default function AIDueDiligence() {
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [report, setReport] = useState<DueDiligenceReport | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [progressPct, setProgressPct] = useState(0);
-  const [statusMsg, setStatusMsg] = useState("");
+  const [_progressPct, setProgressPct] = useState(0);
+  const [_statusMsg, setStatusMsg] = useState("");
+  void _progressPct;
+  void _statusMsg;
   const [modelUsed, setModelUsed] = useState("");
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
   const isReadOnly = IS_GH_PAGES_MODE;
@@ -83,7 +110,9 @@ export default function AIDueDiligence() {
   const validTickers = useMemo(() => new Set(stocks.map((s) => s.ticker)), [stocks]);
   const isValidTicker = validTickers.has(inputTicker);
 
-  const { data: holdings = [] } = useQuery({
+  // Prefetch the per-stock holdings data into the query cache; the value is
+  // consumed elsewhere via useQuery with the same key.
+  useQuery({
     queryKey: ["stockAnalysis", ticker, quarter],
     queryFn: () => runStockAnalysis(ticker, quarter!),
     staleTime: 10 * 60 * 1000,
@@ -118,9 +147,11 @@ export default function AIDueDiligence() {
       setProgressPct(100);
       setStatusMsg("Complete");
       setReport(result as DueDiligenceReport);
+      setGeneratedAt(new Date().toISOString().split("T")[0]);
       toast.success(`Due diligence report generated for ${t}`);
-    } catch (err: any) {
-      toast.error(`AI Error: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`AI Error: ${msg}`);
       console.error(err);
     } finally {
       setLoading(false);
@@ -149,9 +180,9 @@ export default function AIDueDiligence() {
       {/* Controls */}
       <div className="flex gap-3 items-end flex-wrap">
         <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+          <span className="block text-[10px] text-muted-foreground uppercase tracking-wider">
             Ticker
-          </label>
+          </span>
           <TickerAutocomplete
             value={inputTicker}
             onChange={setInputTicker}
@@ -161,9 +192,9 @@ export default function AIDueDiligence() {
           />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+          <span className="block text-[10px] text-muted-foreground uppercase tracking-wider">
             Model
-          </label>
+          </span>
           <ModelSelector
             value={selectedModel}
             onChange={setSelectedModel}
@@ -221,26 +252,10 @@ export default function AIDueDiligence() {
                   <p className="text-sm text-muted-foreground">3-Month Price Target</p>
                   <p className="text-xl font-bold font-mono flex items-baseline gap-2">
                     <span>{displayReport.investment_thesis.price_target || "N/A"}</span>
-                    {(() => {
-                      const parseUsd = (v: string | undefined) => {
-                        if (!v) return NaN;
-                        const m = v.replace(/[,$\s]/g, "").match(/-?\d+(?:\.\d+)?/);
-                        return m ? parseFloat(m[0]) : NaN;
-                      };
-                      const target = parseUsd(displayReport.investment_thesis.price_target);
-                      const current = parseUsd(displayReport.current_price);
-                      if (!isFinite(target) || !isFinite(current) || current === 0) return null;
-                      const pct = ((target - current) / current) * 100;
-                      const cls = pct >= 0 ? "text-green-500" : "text-red-500";
-                      return (
-                        <span
-                          className={`text-sm font-semibold tabular-nums ${cls}`}
-                          title={`${pct >= 0 ? "Upside" : "Downside"} vs current price`}
-                        >
-                          {pct >= 0 ? "↗" : "↘"} {Math.abs(pct).toFixed(1)}%
-                        </span>
-                      );
-                    })()}
+                    <PriceTargetDelta
+                      priceTarget={displayReport.investment_thesis.price_target}
+                      currentPrice={displayReport.current_price}
+                    />
                   </p>
                 </div>
               </div>
@@ -386,7 +401,7 @@ export default function AIDueDiligence() {
 
           {!isSample && (
             <p className="text-xs text-muted-foreground text-center">
-              Generated by {modelUsed} on {new Date().toISOString().split("T")[0]}
+              Generated by {modelUsed} on {generatedAt}
             </p>
           )}
         </div>

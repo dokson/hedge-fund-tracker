@@ -221,8 +221,16 @@ export default function StockBrowser() {
               {starredStocks.map((stock) => (
                 <div
                   key={stock.ticker}
+                  role="button"
+                  tabIndex={0}
                   className="kpi-card cursor-pointer py-2.5 px-3"
                   onClick={() => navigate(`/stock/${stock.ticker}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate(`/stock/${stock.ticker}`);
+                    }
+                  }}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
@@ -308,8 +316,16 @@ export default function StockBrowser() {
                     {items.map((stock) => (
                       <div
                         key={`${stock.cusip}-${stock.ticker}`}
+                        role="button"
+                        tabIndex={0}
                         className="kpi-card cursor-pointer py-2.5 px-3"
                         onClick={() => navigate(`/stock/${stock.ticker}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            navigate(`/stock/${stock.ticker}`);
+                          }
+                        }}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">

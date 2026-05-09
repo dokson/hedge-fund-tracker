@@ -1,3 +1,4 @@
+import contextlib
 from abc import ABC, abstractmethod
 
 
@@ -32,20 +33,19 @@ class AIClient(ABC):
         Logs the prompt and response to a local cache file for analysis.
         Maintains a rolling window of the last LOG_RETENTION_LIMIT logs.
         """
-        import glob
-        import os
         import time
         import uuid
+        from pathlib import Path
 
-        os.makedirs(self.CACHE_DIR, exist_ok=True)
+        cache_dir = Path(self.CACHE_DIR)
+        cache_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         unique_id = str(uuid.uuid4())[:8]
-        filename = f"response_{timestamp}_{unique_id}.log"
-        filepath = os.path.join(self.CACHE_DIR, filename)
+        filepath = cache_dir / f"response_{timestamp}_{unique_id}.log"
 
         try:
-            with open(filepath, "w", encoding="utf-8") as f:
+            with filepath.open("w", encoding="utf-8") as f:
                 f.write(f"Model: {self.get_model_name()}\n")
                 f.write(f"Timestamp: {timestamp}\n")
                 f.write("-" * 80 + "\n")
@@ -55,13 +55,11 @@ class AIClient(ABC):
                 f.write("-" * 80 + "\n")
 
             # Cleanup old logs, keep last LOG_RETENTION_LIMIT
-            files = sorted(glob.glob(os.path.join(self.CACHE_DIR, "response_*.log")))
+            files = sorted(cache_dir.glob("response_*.log"))
             if len(files) > self.LOG_RETENTION_LIMIT:
-                for f in files[: -self.LOG_RETENTION_LIMIT]:
-                    try:
-                        os.remove(f)
-                    except OSError:
-                        pass
+                for old_file in files[: -self.LOG_RETENTION_LIMIT]:
+                    with contextlib.suppress(OSError):
+                        old_file.unlink()
         except Exception as e:
             print(f"⚠️ Warning: Failed to log AI response: {e}")
 

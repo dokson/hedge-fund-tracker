@@ -58,9 +58,18 @@ export default function CusipAutocomplete({
       .slice(0, 8);
   }, [value, allCusips]);
 
-  useEffect(() => {
+  // Reset highlight whenever the suggestion list changes.
+  // React-idiomatic "adjusting state on prop change" pattern; safe to call setState
+  // during render — React re-runs immediately without painting.
+  // See https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const suggestionsKey = suggestions.map((s) => s.cusip).join("|");
+  const [lastSuggestionsKey, setLastSuggestionsKey] = useState(suggestionsKey);
+  if (lastSuggestionsKey !== suggestionsKey) {
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- render-time state adjustment, not in an effect
+    setLastSuggestionsKey(suggestionsKey);
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- render-time state adjustment, not in an effect
     setHighlightIdx(-1);
-  }, [suggestions]);
+  }
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -113,11 +122,20 @@ export default function CusipAutocomplete({
             return (
               <div
                 key={item.cusip}
+                role="option"
+                aria-selected={isHighlighted}
+                tabIndex={-1}
                 className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer transition-colors ${
                   isHighlighted ? "bg-primary text-primary-foreground" : "hover:bg-accent/50"
                 }`}
                 onMouseDown={() => selectCusip(item.cusip)}
                 onMouseEnter={() => setHighlightIdx(idx)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    selectCusip(item.cusip);
+                  }
+                }}
               >
                 <span className="font-mono font-medium w-24 shrink-0 text-xs">{item.cusip}</span>
                 <span className="font-mono w-12 shrink-0 text-xs">{item.ticker}</span>

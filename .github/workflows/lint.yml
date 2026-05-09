@@ -1,0 +1,70 @@
+name: Lint
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# Cancel in-progress runs on the same branch when new commits land
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python · Ruff + mypy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pipenv
+          cache-dependency-path: Pipfile.lock
+
+      - name: Install pipenv
+        run: python -m pip install --upgrade pip pipenv
+
+      - name: Install dev dependencies
+        run: pipenv install --dev --deploy
+
+      - name: Ruff check
+        run: pipenv run ruff check . --output-format=github
+
+      - name: Ruff format check
+        run: pipenv run ruff format --check .
+
+      - name: mypy (informational)
+        run: pipenv run mypy app database scripts --no-error-summary
+        continue-on-error: true
+
+  frontend:
+    name: Frontend · ESLint + Prettier + tsc
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: app/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: ESLint
+        run: npx eslint . --max-warnings=0 --format=compact
+
+      - name: Prettier check
+        run: npx prettier --check .
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit

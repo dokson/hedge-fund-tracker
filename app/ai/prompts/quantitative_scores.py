@@ -19,8 +19,8 @@ STOCKS TO ANALYZE (TOON):
 SCORING CRITERIA:
 
 1. INDUSTRY:
-   - Verify the provided `industry`. 
-   - **IMPORTANT**: If the provided industry is `"N/A"`, you **MUST** research and provide the correct GICS Industry classification (e.g., "Software", "Biotechnology", "Oil, Gas & Consumable Fuels"). 
+   - Verify the provided `industry`.
+   - **IMPORTANT**: If the provided industry is `"N/A"`, you **MUST** research and provide the correct GICS Industry classification (e.g., "Software", "Biotechnology", "Oil, Gas & Consumable Fuels").
    - **ETF Rule**: If the ticker represents an Exchange Traded Fund (ETF), you **MUST** set the industry to `"Exchange Traded Funds"`.
    - If a valid industry value is already provided, keep it.
 
@@ -50,19 +50,19 @@ SCORING CRITERIA:
    - 1-29: Minimal risk; high quality "blue-chip", fortress balance sheet, very predictable cash flows.
 
 # VALIDATION EXAMPLES
-- **NVDA (NVIDIA Corp)**: 
+- **NVDA (NVIDIA Corp)**:
   *Profile*: High-growth semiconductor leader with massive momentum but high valuation risk.
   industry: "Semiconductors"
   momentum_score: 95
   low_volatility_score: 25
   risk_score: 65
-- **PG (Procter & Gamble)**: 
+- **PG (Procter & Gamble)**:
   *Profile*: Defensive consumer staple with very stable price action and low growth volatility.
   industry: "Household Products"
   momentum_score: 45
   low_volatility_score: 90
   risk_score: 20
-- **LLY (Eli Lilly)**: 
+- **LLY (Eli Lilly)**:
   *Profile*: Pharmaceutical giant with strong recent uptrend due to new drug success, moderate volatility.
   industry: "Pharmaceuticals"
   momentum_score: 92

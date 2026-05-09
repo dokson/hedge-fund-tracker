@@ -63,11 +63,28 @@ const DELTA_ICON: Record<string, typeof ArrowUpRight | null> = {
 type SortField = "date" | "delta" | "value" | null;
 type SortDir = "asc" | "desc";
 
+function SortIcon({
+  field,
+  currentField,
+  direction,
+}: {
+  field: SortField;
+  currentField: SortField;
+  direction: SortDir;
+}) {
+  if (currentField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+  return direction === "asc" ? (
+    <ArrowUp className="h-3 w-3 ml-1 text-primary" />
+  ) : (
+    <ArrowDown className="h-3 w-3 ml-1 text-primary" />
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [fundFilter, setFundFilter] = useState("all");
-  const [typeFilters, setTypeFilters] = useState<Set<string>>(new Set());
+  const [typeFilters, setTypeFilters] = useState<Set<string>>(() => new Set());
   const [daysBack, setDaysBack] = useState("30");
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -162,15 +179,6 @@ export default function Dashboard() {
     }
     return c;
   }, [filings]);
-
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
-    return sortDir === "asc" ? (
-      <ArrowUp className="h-3 w-3 ml-1 text-primary" />
-    ) : (
-      <ArrowDown className="h-3 w-3 ml-1 text-primary" />
-    );
-  };
 
   return (
     <div className="space-y-5 max-w-7xl">
@@ -329,7 +337,7 @@ export default function Dashboard() {
                     onClick={() => toggleSort("date")}
                   >
                     <span className="inline-flex items-center">
-                      Date <SortIcon field="date" />
+                      Date <SortIcon field="date" currentField={sortField} direction={sortDir} />
                     </span>
                   </th>
                   <th className="text-left p-3 font-medium">Fund</th>
@@ -340,7 +348,7 @@ export default function Dashboard() {
                     onClick={() => toggleSort("delta")}
                   >
                     <span className="inline-flex items-center justify-end">
-                      Delta <SortIcon field="delta" />
+                      Delta <SortIcon field="delta" currentField={sortField} direction={sortDir} />
                     </span>
                   </th>
                   <th className="text-right p-3 font-medium">Avg Price</th>
@@ -349,7 +357,7 @@ export default function Dashboard() {
                     onClick={() => toggleSort("value")}
                   >
                     <span className="inline-flex items-center justify-end">
-                      Value <SortIcon field="value" />
+                      Value <SortIcon field="value" currentField={sortField} direction={sortDir} />
                     </span>
                   </th>
                   <th
@@ -380,7 +388,7 @@ export default function Dashboard() {
 
                     return (
                       <tr
-                        key={`${f.cusip}-${f.fund}-${i}`}
+                        key={`${f.cusip}-${f.fund}-${f.date}-${f.deltaType}-${f.shares ?? i}`}
                         className={`data-table-row ${borderClass}`}
                       >
                         <td className="p-3 text-muted-foreground whitespace-nowrap">{f.date}</td>
@@ -392,10 +400,19 @@ export default function Dashboard() {
                         </td>
                         <td className="p-3 max-w-[200px] truncate">
                           <span
+                            role="link"
+                            tabIndex={0}
                             className="ticker-link text-muted-foreground"
                             onClick={(e) => {
                               e.stopPropagation();
                               navigate(`/stock/${f.ticker}`);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                navigate(`/stock/${f.ticker}`);
+                              }
                             }}
                           >
                             {toInitCap(f.company)}

@@ -1,0 +1,125 @@
+name: Feature request
+description: Suggest a new capability or improvement.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea!
+
+        **For open-ended discussion or "wouldn't it be cool if..." ideas, prefer a [Discussion](../../discussions).** Issues should be actionable proposals — something a contributor could pick up and start.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What pain or limitation does this address? Be specific. "It would be nice" isn't enough — describe the concrete scenario where you hit the wall.
+      placeholder: |
+        Today there's no way to see how a fund's holdings overlap with my personal portfolio.
+        I want to know if any tracked fund is buying or selling tickers I already own — currently I cross-reference manually in a spreadsheet.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should happen? Sketch the UX, API, or data flow. Bullet points are fine; full mockups even better.
+      placeholder: |
+        - New page `/portfolio` with CSV upload (broker export: Degiro/IBKR format)
+        - Cross-reference tickers with `database/{Q}/*.csv`
+        - Show overlap table: ticker | funds holding it | recent NEW/CLOSE | Promise Score
+        - "Shadow portfolio" feature: replicate top fund's allocation weighted to my net worth
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example usage
+      description: Concrete example of how this would be used — UI flow, code snippet, or sample input/output.
+      render: markdown
+      placeholder: |
+        ```
+        User uploads `degiro_export.csv`
+        UI shows: "AAPL is held by 12/35 tracked funds, 3 NEW positions in 2025Q1, Promise Score 78"
+        Click row → drill into per-fund deltas
+        ```
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you weigh? Why is the proposed one preferred?
+      placeholder: |
+        - Browser extension that scrapes broker pages — rejected, brittle
+        - Manual paste of ticker list — works but loses cost-basis context
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Estimated scope
+      description: Honest guess — helps prioritization.
+      options:
+        - Small (single file / config tweak / 1–2 hours)
+        - Medium (new component or module / half a day)
+        - Large (cross-cutting, may need design discussion first)
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Web UI
+        - Backend / API
+        - SSE streaming
+        - Scraper
+        - Analysis logic
+        - AI / Promise Score
+        - Database schema
+        - Docker / deploy
+        - GH Pages mode
+        - CI / tooling
+        - Docs
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How much does this matter to you?
+      description: Be honest — "blocking" is reserved for things you can't work around.
+      options:
+        - Blocking — I can't use the tool effectively without this
+        - High — I'd use this often, current workaround is annoying
+        - Medium — would be useful occasionally
+        - Low — nice-to-have, no rush
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: No pressure either way — but knowing helps the maintainer plan.
+      options:
+        - label: I'm willing to open a PR for this.
+        - label: I'd contribute if guided on where to start.
+        - label: I'd prefer someone else implement it.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I searched [issues](../../issues) and [discussions](../../discussions) for similar requests.
+          required: true
+        - label: This isn't a security report (those go via [private advisory](../../security/advisories/new)).
+          required: true
+        - label: I read [CONTRIBUTING.md](../../blob/master/CONTRIBUTING.md) if I'm planning to implement this.
+          required: true

@@ -63,7 +63,7 @@ export async function runPromiseScore(
   quarter: string,
   topN: number,
   modelId?: string,
-): Promise<any[]> {
+): Promise<unknown[]> {
   const res = await fetch(`${API_BASE}/api/ai/promise-score`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -85,7 +85,7 @@ export async function runDueDiligence(
   ticker: string,
   quarter: string,
   modelId?: string,
-): Promise<any> {
+): Promise<unknown> {
   const res = await fetch(`${API_BASE}/api/ai/due-diligence`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -105,7 +105,7 @@ export async function runDueDiligence(
 
 // ─── Streaming AI calls ────────────────────────────────────────────────────────
 
-async function _readSSEStream(res: Response, onLog: (line: string) => void): Promise<any> {
+async function _readSSEStream(res: Response, onLog: (line: string) => void): Promise<unknown> {
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -133,7 +133,7 @@ export async function runPromiseScoreStream(
   modelId: string | undefined,
   providerId: string | undefined,
   onLog: (line: string) => void,
-): Promise<any[]> {
+): Promise<unknown[]> {
   const res = await fetch(`${API_BASE}/api/ai/promise-score/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -148,7 +148,7 @@ export async function runPromiseScoreStream(
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || `Server error ${res.status}`);
   }
-  return _readSSEStream(res, onLog);
+  return (await _readSSEStream(res, onLog)) as unknown[];
 }
 
 export async function runDueDiligenceStream(
@@ -157,7 +157,7 @@ export async function runDueDiligenceStream(
   modelId: string | undefined,
   providerId: string | undefined,
   onLog: (line: string) => void,
-): Promise<any> {
+): Promise<unknown> {
   const res = await fetch(`${API_BASE}/api/ai/due-diligence/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -221,7 +221,6 @@ export function extractJSON<T = unknown>(response: string): T {
 function parseTOON(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   const lines = text.split("\n").filter((l) => l.trim());
-  let currentKey = "";
   let currentObj: Record<string, unknown> | null = null;
 
   for (const line of lines) {
@@ -233,7 +232,6 @@ function parseTOON(text: string): Record<string, unknown> {
     let value: string | number | null = trimmed.slice(colonIdx + 1).trim();
     if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
     if (!value || value === "") {
-      currentKey = key;
       currentObj = {};
       result[key] = currentObj;
       continue;

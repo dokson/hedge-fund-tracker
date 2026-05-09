@@ -49,6 +49,33 @@ import { toast } from "sonner";
 
 const SEC_CIK_URL = (cik: string) => `https://www.sec.gov/edgar/browse/?CIK=${cik}`;
 
+function InlineInput({
+  value,
+  field,
+  draft,
+  setDraft,
+  className = "",
+}: {
+  value: string;
+  field: string;
+  draft: Record<string, string>;
+  setDraft: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  className?: string;
+}) {
+  return (
+    <Input
+      value={draft[field] ?? value}
+      onChange={(e) => {
+        let val = e.target.value;
+        if (field === "cik") val = val.replace(/[^0-9]/g, "");
+        if (field === "ciks") val = val.replace(/[^0-9,]/g, "");
+        setDraft((prev) => ({ ...prev, [field]: val }));
+      }}
+      className={`h-7 text-xs bg-background border-border ${className}`}
+    />
+  );
+}
+
 const CikLink = ({ cik }: { cik: string }) => (
   <a
     href={SEC_CIK_URL(cik)}
@@ -193,8 +220,8 @@ export default function FundsConfig() {
       await saveFileToDisk(csv, "hedge_funds.csv");
       toast.success("Fund updated");
       invalidateAll();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
     setEditingCik(null);
     setEditDraft({});
@@ -247,8 +274,8 @@ export default function FundsConfig() {
       await saveFileToDisk(csv, "excluded_hedge_funds.csv");
       toast.success("Excluded fund updated");
       invalidateAll();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
     setEditingExcludedCik(null);
     setEditExcludedDraft({});
@@ -266,8 +293,8 @@ export default function FundsConfig() {
       await saveFileToDisk(excludedCSV, "excluded_hedge_funds.csv");
       toast.success(`"${fundToDelete.fund}" moved to excluded`);
       invalidateAll();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
     setDeleteDialogOpen(false);
     setFundToDelete(null);
@@ -285,8 +312,8 @@ export default function FundsConfig() {
       await saveFileToDisk(excludedCSV, "excluded_hedge_funds.csv");
       toast.success(`"${fundToRestore.fund}" restored to active`);
       invalidateAll();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
     setRestoreDialogOpen(false);
     setFundToRestore(null);
@@ -320,40 +347,12 @@ export default function FundsConfig() {
       await saveFileToDisk(csv, "hedge_funds.csv");
       toast.success(`"${newFundName.trim()}" added`);
       invalidateAll();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
     setAddDialogOpen(false);
     resetAddForm();
   };
-
-  const InlineInput = useMemo(() => {
-    const Comp = ({
-      value,
-      field,
-      draft,
-      setDraft,
-      className = "",
-    }: {
-      value: string;
-      field: string;
-      draft: Record<string, string>;
-      setDraft: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-      className?: string;
-    }) => (
-      <Input
-        value={draft[field] ?? value}
-        onChange={(e) => {
-          let val = e.target.value;
-          if (field === "cik") val = val.replace(/[^0-9]/g, "");
-          if (field === "ciks") val = val.replace(/[^0-9,]/g, "");
-          setDraft((prev) => ({ ...prev, [field]: val }));
-        }}
-        className={`h-7 text-xs bg-background border-border ${className}`}
-      />
-    );
-    return Comp;
-  }, []);
 
   return (
     <div className="space-y-5 max-w-5xl">

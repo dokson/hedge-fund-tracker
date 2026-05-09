@@ -6,7 +6,9 @@ function readStarred(type: "stock" | "fund"): Set<string> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PREFIX + type);
     if (raw) return new Set(JSON.parse(raw));
-  } catch {}
+  } catch {
+    // Ignore localStorage parse / access errors and fall back to an empty set.
+  }
   return new Set();
 }
 

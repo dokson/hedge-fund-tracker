@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 import pandas as pd
 
@@ -48,7 +49,7 @@ def update_readme() -> None:
     content = generate_excluded_funds_list()
     if content is not None:
         try:
-            with open(README_FILE, encoding="utf-8") as f:
+            with Path(README_FILE).open(encoding="utf-8") as f:
                 readme_text = f.read()
 
             new_readme_text = re.sub(
@@ -58,7 +59,7 @@ def update_readme() -> None:
                 flags=re.DOTALL,
             )
 
-            with open(README_FILE, "w", encoding="utf-8") as f:
+            with Path(README_FILE).open("w", encoding="utf-8") as f:
                 f.write(new_readme_text)
         except FileNotFoundError:
             print(f"❌ Error: {README_FILE} was not found.")

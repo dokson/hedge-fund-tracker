@@ -208,10 +208,11 @@ export default function DatabaseOperations() {
         addLog(`✅ ${data.message || "Completed successfully"}`);
         toast.success(`${op.title} completed`);
       }
-    } catch (err: any) {
-      const msg = err.message?.includes("Failed to fetch")
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const msg = errMsg.includes("Failed to fetch")
         ? "Cannot connect to server. Make sure it's running."
-        : err.message;
+        : errMsg;
       setStates((prev) => ({ ...prev, [op.id]: { status: "error", message: msg } }));
       addLog(`❌ ${msg}`);
       toast.error(`${op.title} failed`, { description: msg });
@@ -457,7 +458,11 @@ export default function DatabaseOperations() {
           ) : (
             <div className="rounded-md bg-background border border-border p-3 max-h-64 overflow-y-auto font-mono text-xs">
               {activeLogs.map((log, i) => (
-                <p key={i} className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                <p
+                  // eslint-disable-next-line @eslint-react/no-array-index-key -- append-only log buffer; index is a stable identity
+                  key={i}
+                  className="text-muted-foreground leading-relaxed whitespace-pre-wrap"
+                >
                   {log}
                 </p>
               ))}

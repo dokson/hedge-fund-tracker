@@ -91,17 +91,17 @@ class TestHedgeFunds(unittest.TestCase):
         hedge_funds = load_hedge_funds()
         excluded_path = os.path.join(DB_FOLDER, EXCLUDED_HEDGE_FUNDS_FILE)
         excluded_funds = load_hedge_funds(excluded_path)
-        
+
         hedge_fund_ciks = {fund['CIK'] for fund in hedge_funds if fund['CIK']}
         excluded_fund_ciks = {fund['CIK'] for fund in excluded_funds if fund['CIK']}
-        
+
         duplicate_ciks = hedge_fund_ciks.intersection(excluded_fund_ciks)
-        
+
         if duplicate_ciks:
             # Map CIKs back to Fund names for a better error message
             hedge_map = {fund['CIK']: fund['Fund'] for fund in hedge_funds}
             excluded_map = {fund['CIK']: fund['Fund'] for fund in excluded_funds}
-            
+
             error_details = [f"  - CIK {cik}: '{hedge_map[cik]}' (mismatch in excluded: '{excluded_map[cik]}')" for cik in sorted(duplicate_ciks)]
             error_message = f"Found {len(duplicate_ciks)} CIKs present in both hedge_funds.csv and excluded_hedge_funds.csv:\n\n" + "\n".join(error_details)
             self.fail(error_message)

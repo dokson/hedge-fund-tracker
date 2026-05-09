@@ -2,7 +2,8 @@ import math
 import os
 import shutil
 import sys
-from contextlib import contextmanager, redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout, suppress
+from pathlib import Path
 
 from tabulate import tabulate
 
@@ -17,15 +18,11 @@ from app.utils.strings import get_previous_quarter
 
 # Ensure UTF-8 encoding for stdout and stderr, especially on Windows
 if sys.stdout.encoding.lower() != "utf-8":
-    try:
+    with suppress(AttributeError, Exception):
         sys.stdout.reconfigure(encoding="utf-8")
-    except (AttributeError, Exception):
-        pass
 if sys.stderr.encoding.lower() != "utf-8":
-    try:
+    with suppress(AttributeError, Exception):
         sys.stderr.reconfigure(encoding="utf-8")
-    except (AttributeError, Exception):
-        pass
 
 
 @contextmanager
@@ -34,7 +31,7 @@ def silence_output():
     Context manager to silence stdout and stderr.
     Useful for suppressing verbose output from third-party libraries.
     """
-    with open(os.devnull, "w") as devnull, redirect_stderr(devnull), redirect_stdout(devnull):
+    with Path(os.devnull).open("w") as devnull, redirect_stderr(devnull), redirect_stdout(devnull):
         yield
 
 
@@ -264,10 +261,7 @@ def select_quarter(text="Select the quarter", fund_name=None, require_previous=F
     Returns:
         str: The selected quarter string (e.g., '2025Q1').
     """
-    if fund_name:
-        available_quarters = get_quarters_for_fund(fund_name)
-    else:
-        available_quarters = get_all_quarters()
+    available_quarters = get_quarters_for_fund(fund_name) if fund_name else get_all_quarters()
 
     if require_previous:
         # Filter to quarters Q where Q-1 also exists in available_quarters

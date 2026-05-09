@@ -472,7 +472,26 @@ export async function fetchQuarterAnalysis(
   const url = `${window.location.origin}/api/database/quarters/${encodeURIComponent(quarter)}/analysis`;
   const response = await fetch(url);
   if (!response.ok) throw new Error("Failed to fetch quarter analysis");
-  const raw: Record<string, any>[] = await response.json();
+  interface RawAnalysisRow {
+    Ticker?: string;
+    Company?: string;
+    Total_Value?: number;
+    Total_Delta_Value?: number;
+    Max_Portfolio_Pct?: number;
+    Avg_Portfolio_Pct?: number;
+    Buyer_Count?: number;
+    Seller_Count?: number;
+    Holder_Count?: number;
+    New_Holder_Count?: number;
+    Close_Count?: number;
+    High_Conviction_Count?: number;
+    Net_Buyers?: number;
+    Buyer_Seller_Ratio?: number;
+    Ownership_Delta_Avg?: number;
+    Avg_Fund_Concentration?: number;
+    Delta?: number;
+  }
+  const raw = (await response.json()) as RawAnalysisRow[];
   return raw.map((r) => ({
     ticker: r.Ticker ?? "",
     company: r.Company ?? "",
@@ -705,7 +724,14 @@ export async function runQuarterAnalysis(
     }
 
     // Step 3: Aggregate to stock level (replicates _aggregate_stock_data)
-    const stockMap = new Map<string, StockQuarterAnalysis>();
+    interface StockQuarterAccumulator extends StockQuarterAnalysis {
+      _sumPct?: number;
+      _countPct?: number;
+      _sumConcentration?: number;
+      _sumDeltaPct?: number;
+      _countDeltaPct?: number;
+    }
+    const stockMap = new Map<string, StockQuarterAccumulator>();
 
     for (const fth of fundTickerMap.values()) {
       const existing = stockMap.get(fth.ticker);
@@ -713,9 +739,9 @@ export async function runQuarterAnalysis(
         existing.totalValue += fth.value;
         existing.totalDeltaValue += fth.deltaValue;
         existing.maxPortfolioPct = Math.max(existing.maxPortfolioPct, fth.portfolioPct);
-        (existing as any)._sumPct += fth.portfolioPct;
-        (existing as any)._countPct += 1;
-        (existing as any)._sumConcentration += fth.fundConcentrationRatio;
+        existing._sumPct += fth.portfolioPct;
+        existing._countPct += 1;
+        existing._sumConcentration += fth.fundConcentrationRatio;
         existing.buyerCount += fth.isBuyer ? 1 : 0;
         existing.sellerCount += fth.isSeller ? 1 : 0;
         existing.holderCount += fth.isHolder ? 1 : 0;
@@ -724,8 +750,8 @@ export async function runQuarterAnalysis(
         existing.highConvictionCount += fth.isHighConviction ? 1 : 0;
         // Accumulation velocity: only buyers who aren't new
         if (fth.isBuyer && !fth.isNew && fth.sharesDeltaPct !== 0) {
-          (existing as any)._sumDeltaPct += fth.sharesDeltaPct;
-          (existing as any)._countDeltaPct += 1;
+          existing._sumDeltaPct += fth.sharesDeltaPct;
+          existing._countDeltaPct += 1;
         }
       } else {
         const isBuyerNotNew = fth.isBuyer && !fth.isNew && fth.sharesDeltaPct !== 0;
@@ -752,19 +778,18 @@ export async function runQuarterAnalysis(
           _sumConcentration: fth.fundConcentrationRatio,
           _sumDeltaPct: isBuyerNotNew ? fth.sharesDeltaPct : 0,
           _countDeltaPct: isBuyerNotNew ? 1 : 0,
-        } as any);
+        });
       }
     }
 
     // Step 4: Derived metrics (replicates _calculate_derived_metrics)
     const results: StockQuarterAnalysis[] = [];
     for (const s of stockMap.values()) {
-      const a = s as any;
-      s.avgPortfolioPct = a._countPct > 0 ? a._sumPct / a._countPct : 0;
+      s.avgPortfolioPct = s._countPct > 0 ? s._sumPct / s._countPct : 0;
       s.netBuyers = s.buyerCount - s.sellerCount;
       s.buyerSellerRatio = s.sellerCount > 0 ? s.buyerCount / s.sellerCount : Infinity;
-      s.ownershipDeltaAvg = a._countDeltaPct > 0 ? a._sumDeltaPct / a._countDeltaPct : 0;
-      s.fundConcentrationAvg = a._countPct > 0 ? a._sumConcentration / a._countPct : 0;
+      s.ownershipDeltaAvg = s._countDeltaPct > 0 ? s._sumDeltaPct / s._countDeltaPct : 0;
+      s.fundConcentrationAvg = s._countPct > 0 ? s._sumConcentration / s._countPct : 0;
 
       const previousTotal = s.totalValue - s.totalDeltaValue;
       if (s.newHolderCount === s.holderCount && s.closeCount === 0) {
@@ -775,11 +800,11 @@ export async function runQuarterAnalysis(
         s.delta = 0;
       }
 
-      delete a._sumPct;
-      delete a._countPct;
-      delete a._sumConcentration;
-      delete a._sumDeltaPct;
-      delete a._countDeltaPct;
+      delete s._sumPct;
+      delete s._countPct;
+      delete s._sumConcentration;
+      delete s._sumDeltaPct;
+      delete s._countDeltaPct;
       results.push(s);
     }
 

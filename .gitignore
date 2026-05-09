@@ -2,8 +2,14 @@ __llmcache__
 __pycache__
 __reports__
 .claude/
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 node_modules/
 app/frontend/dist/
 .env
-gh-md-toc
+
+# Lint / type-check caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/

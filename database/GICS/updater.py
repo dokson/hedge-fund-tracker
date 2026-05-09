@@ -13,11 +13,11 @@ def scrape_gics_from_wikipedia():
     Scrapes the Global Industry Classification Standard (GICS) hierarchy from Wikipedia.
     """
     print(f"🌐 Fetching GICS data from {GICS_WIKIPEDIA_URL}...")
-    
+
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
-    
+
     try:
         response = requests.get(GICS_WIKIPEDIA_URL, headers=headers)
         response.raise_for_status()
@@ -27,7 +27,7 @@ def scrape_gics_from_wikipedia():
 
     soup = BeautifulSoup(response.text, 'html.parser')
     table = soup.find('table', {'class': 'wikitable'})
-    
+
     if not table:
         print("❌ Could not find GICS table on Wikipedia page.")
         return None
@@ -35,7 +35,7 @@ def scrape_gics_from_wikipedia():
     data = []
     # Using a slightly different approach to handle rowspans correctly in Python
     rows = table.find_all('tr')[1:] # Skip header
-    
+
     # We need to keep track of active rowspans
     # Format: {column_index: [remaining_rows, value]}
     active_rowspans = {}
@@ -43,7 +43,7 @@ def scrape_gics_from_wikipedia():
     for row_idx, tr in enumerate(rows):
         tds = tr.find_all(['td', 'th'])
         row_data = [None] * 8 # 8 columns in the GICS table
-        
+
         td_idx = 0
         for col_idx in range(8):
             # Check if there's an active rowspan for this column
@@ -60,18 +60,18 @@ def scrape_gics_from_wikipedia():
                     text = re.sub(r'\s*,\s*', ', ', text)
                     # Fix multiple spaces
                     text = re.sub(r'\s+', ' ', text).strip()
-                    
+
                     row_data[col_idx] = text
-                    
+
                     rowspan = int(td.get('rowspan', 1))
                     if rowspan > 1:
                         active_rowspans[col_idx] = [rowspan - 1, text]
-                    
+
                     td_idx += 1
 
         # Only add if it's a sub-industry row (Sub-Industry Code is 8 digits)
-        # Column mapping: 
-        # 0: Sector Code, 1: Sector, 2: Group Code, 3: Group, 
+        # Column mapping:
+        # 0: Sector Code, 1: Sector, 2: Group Code, 3: Group,
         # 4: Industry Code, 5: Industry, 6: Sub-Industry Code, 7: Sub-Industry
         if row_data[6]:
             sub_industry_code = row_data[6].replace(" ", "")
@@ -92,12 +92,12 @@ def scrape_gics_from_wikipedia():
 
 def main():
     df = scrape_gics_from_wikipedia()
-    
+
     if df is not None and not df.empty:
         # Determine the base path (relative to this script's location)
         script_dir = os.path.dirname(os.path.abspath(__file__))
         output_path = os.path.join(script_dir, 'hierarchy.csv')
-        
+
         df.to_csv(output_path, index=False, quoting=csv.QUOTE_ALL)
         print(f"✅ GICS hierarchy saved to {output_path} ({len(df)} sub-industries)")
     else:

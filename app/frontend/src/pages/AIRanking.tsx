@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { formatValue } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { runPromiseScoreStream } from "@/lib/aiClient";
@@ -8,13 +8,38 @@ import { TickerLink } from "@/components/EntityLinks";
 
 import { Button } from "@/components/ui/button";
 import ModelSelector from "@/components/ModelSelector";
-import { Brain, ChevronDown, ChevronUp, Settings, Search, Info } from "lucide-react";
+import { Brain, ChevronDown, ChevronUp, Search, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import sampleRanking from "@/data/sampleRanking.json";
+
+interface RawRankedStock {
+  Ticker?: string;
+  ticker?: string;
+  Company?: string;
+  company?: string;
+  Promise_Score?: number;
+  promiseScore?: number;
+  Momentum_Score?: number;
+  momentumScore?: number;
+  Low_Volatility_Score?: number;
+  lowVolatilityScore?: number;
+  Risk_Score?: number;
+  riskScore?: number;
+  Growth_Score?: number;
+  growthScore?: number;
+  Total_Value?: number;
+  totalValue?: number;
+  Holder_Count?: number;
+  holderCount?: number;
+  Net_Buyers?: number;
+  netBuyers?: number;
+  High_Conviction_Count?: number;
+  highConvictionCount?: number;
+}
 
 interface RankedStock {
   rank: number;
@@ -88,13 +113,15 @@ function ScoreBadge({ score }: { score: number }) {
 export default function AIRanking() {
   const navigate = useNavigate();
   const { latestQuarter: quarter } = useAvailableQuarters();
-  const [topN, setTopN] = useState(20);
+  const [topN] = useState(20);
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedProviderId, setSelectedProviderId] = useState("");
   const [results, setResults] = useState<RankedStock[]>([]);
   const [loading, setLoading] = useState(false);
-  const [statusMsg, setStatusMsg] = useState("");
-  const [progressPct, setProgressPct] = useState(0);
+  const [_statusMsg, setStatusMsg] = useState("");
+  const [_progressPct, setProgressPct] = useState(0);
+  void _statusMsg;
+  void _progressPct;
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [weights, setWeights] = useState<Record<string, number> | null>(null);
   const [modelUsed, setModelUsed] = useState("");
@@ -128,7 +155,7 @@ export default function AIRanking() {
       setProgressPct(95);
       setStatusMsg("Combining results…");
 
-      const ranked: RankedStock[] = data.map((s: any, i: number) => ({
+      const ranked: RankedStock[] = (data as RawRankedStock[]).map((s, i) => ({
         rank: i + 1,
         ticker: s.Ticker ?? s.ticker ?? "",
         company: s.Company ?? s.company ?? "",
@@ -147,8 +174,9 @@ export default function AIRanking() {
       setProgressPct(100);
       setStatusMsg("Complete");
       toast.success(`AI ranking complete: ${ranked.length} stocks analyzed`);
-    } catch (err: any) {
-      toast.error(`AI Error: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`AI Error: ${msg}`);
       console.error(err);
     } finally {
       setLoading(false);
@@ -158,7 +186,7 @@ export default function AIRanking() {
   const isReadOnly = IS_GH_PAGES_MODE;
   const sampleResults: RankedStock[] =
     isReadOnly && results.length === 0
-      ? sampleRanking.stocks.map((s: any, i: number) => ({
+      ? (sampleRanking.stocks as RawRankedStock[]).map((s, i) => ({
           rank: i + 1,
           ticker: s.Ticker,
           company: s.Company,
@@ -193,9 +221,9 @@ export default function AIRanking() {
       {/* Controls */}
       <div className="flex gap-3 items-end flex-wrap">
         <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+          <span className="block text-[10px] text-muted-foreground uppercase tracking-wider">
             Model
-          </label>
+          </span>
           <ModelSelector
             value={selectedModel}
             onChange={setSelectedModel}
@@ -325,7 +353,7 @@ export default function AIRanking() {
             </thead>
             <tbody>
               {displayResults.map((s) => (
-                <>
+                <Fragment key={s.ticker}>
                   <tr
                     key={s.ticker}
                     className="data-table-row cursor-pointer"
@@ -428,7 +456,7 @@ export default function AIRanking() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / discussion
+    url: https://github.com/dokson/hedge-fund-tracker/discussions
+    about: Have a question, want to discuss design, or share an idea? Open a discussion instead.
+  - name: Security report
+    url: https://github.com/dokson/hedge-fund-tracker/security/advisories/new
+    about: Report a vulnerability privately (NOT a public issue).

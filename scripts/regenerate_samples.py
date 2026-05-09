@@ -25,9 +25,11 @@ sys.path.insert(0, str(ROOT))
 
 load_dotenv(ROOT / ".env")
 
-from app.ai.agent import AnalystAgent
-from app.ai.clients.groq_client import GroqClient
-from app.utils.database import get_last_quarter, get_most_recent_quarter
+import contextlib  # noqa: E402
+
+from app.ai.agent import AnalystAgent  # noqa: E402
+from app.ai.clients.groq_client import GroqClient  # noqa: E402
+from app.utils.database import get_last_quarter, get_most_recent_quarter  # noqa: E402
 
 DUE_DILIGENCE_TICKER = "NTR"
 RANKING_TOP_N = 10
@@ -44,10 +46,8 @@ def _coerce(value):
     if value is None:
         return None
     if hasattr(value, "item"):
-        try:
+        with contextlib.suppress(ValueError, AttributeError):
             value = value.item()
-        except (ValueError, AttributeError):
-            pass
     if isinstance(value, float) and math.isnan(value):
         return None
     return value

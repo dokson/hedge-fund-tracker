@@ -147,7 +147,10 @@ export function HoldingsTreemap({
   const containerWidth = 100; // percentage-based
   const containerHeight = propHeight ?? 500; // px
 
-  const rects = useMemo(() => squarify(data, containerWidth, containerHeight), [data]);
+  const rects = useMemo(
+    () => squarify(data, containerWidth, containerHeight),
+    [data, containerHeight],
+  );
 
   return (
     <div className="relative w-full rounded overflow-hidden" style={{ height: containerHeight }}>
@@ -155,10 +158,10 @@ export function HoldingsTreemap({
         const isHovered = hoveredTicker === item.name;
         const bgColor = getDeltaColor(item.deltaPct, item.delta);
         const isSmall = w < 12 || h < 28;
-        const isTiny = w < 8 || h < 20;
 
         return (
-          <div
+          <button
+            type="button"
             key={item.name}
             className="absolute cursor-pointer transition-opacity duration-150 flex flex-col items-center justify-center overflow-hidden"
             style={{
@@ -188,7 +191,7 @@ export function HoldingsTreemap({
                   : formatTreemapValue(item.value)}
               </span>
             )}
-          </div>
+          </button>
         );
       })}
     </div>

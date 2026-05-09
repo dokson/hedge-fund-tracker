@@ -3,12 +3,7 @@ import { useParams } from "react-router-dom";
 import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
 import { useQuery } from "@tanstack/react-query";
-import {
-  runStockAnalysis,
-  formatValue,
-  formatPct,
-  type FundTickerHolding,
-} from "@/lib/dataService";
+import { runStockAnalysis, formatValue, formatPct } from "@/lib/dataService";
 import type { Quarter } from "@/lib/quarters";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { FundLink } from "@/components/EntityLinks";
@@ -228,42 +223,46 @@ export default function StockAnalysis() {
               <p className="text-xs text-muted-foreground">Holders</p>
               <p className="text-xl font-bold font-mono mt-1">{holderCount}</p>
             </div>
-            <div
-              className={`kpi-card cursor-pointer transition-colors ${holdingFilter === "buyers" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
+            <button
+              type="button"
+              className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "buyers" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
               onClick={() => setHoldingFilter((f) => (f === "buyers" ? "all" : "buyers"))}
             >
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 Buyers <Filter className="h-3 w-3" />
               </p>
               <p className="text-xl font-bold font-mono mt-1 delta-positive">{buyerCount}</p>
-            </div>
-            <div
-              className={`kpi-card cursor-pointer transition-colors ${holdingFilter === "new" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
+            </button>
+            <button
+              type="button"
+              className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "new" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
               onClick={() => setHoldingFilter((f) => (f === "new" ? "all" : "new"))}
             >
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 New <Filter className="h-3 w-3" />
               </p>
               <p className="text-xl font-bold font-mono mt-1 delta-positive">{newHolderCount}</p>
-            </div>
-            <div
-              className={`kpi-card cursor-pointer transition-colors ${holdingFilter === "sellers" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
+            </button>
+            <button
+              type="button"
+              className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "sellers" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
               onClick={() => setHoldingFilter((f) => (f === "sellers" ? "all" : "sellers"))}
             >
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 Sellers <Filter className="h-3 w-3" />
               </p>
               <p className="text-xl font-bold font-mono mt-1 delta-negative">{sellerCount}</p>
-            </div>
-            <div
-              className={`kpi-card cursor-pointer transition-colors ${holdingFilter === "closed" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
+            </button>
+            <button
+              type="button"
+              className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "closed" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
               onClick={() => setHoldingFilter((f) => (f === "closed" ? "all" : "closed"))}
             >
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 Sold Out <Filter className="h-3 w-3" />
               </p>
               <p className="text-xl font-bold font-mono mt-1 delta-negative">{closeCount}</p>
-            </div>
+            </button>
             <div className="kpi-card">
               <p className="text-xs text-muted-foreground">Net Buyers</p>
               <p
@@ -402,8 +401,8 @@ export default function StockAnalysis() {
                         separator=" : "
                       />
                       <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24}>
-                        {valueFlowData.map((entry, i) => (
-                          <Cell key={i} fill={entry.fill} />
+                        {valueFlowData.map((entry) => (
+                          <Cell key={entry.fill + entry.value} fill={entry.fill} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -454,7 +453,7 @@ export default function StockAnalysis() {
                           ? -100
                           : parseFloat(h.delta) || 0;
                     return (
-                      <tr key={`${h.fund}-${i}`} className="data-table-row">
+                      <tr key={`${h.fund}-${h.delta}-${h.value}`} className="data-table-row">
                         <td className="p-3 text-right text-muted-foreground font-mono text-xs">
                           {i + 1}
                         </td>

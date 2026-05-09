@@ -682,11 +682,7 @@ def _frontend_sources_changed(frontend_dir: Path, dist_dir: Path) -> bool:
             if path.is_file() and path.stat().st_mtime > dist_mtime:
                 return True
 
-    for f in watched_files:
-        if f.exists() and f.stat().st_mtime > dist_mtime:
-            return True
-
-    return False
+    return any(f.exists() and f.stat().st_mtime > dist_mtime for f in watched_files)
 
 
 def run_server(host: str = None, port: int = None):

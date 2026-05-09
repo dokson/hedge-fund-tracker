@@ -4,22 +4,6 @@ import { getStocks, runQuarterAnalysis } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 import { Loader2, Info } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-
-/** GICS sector colors – one per sector */
-const SECTOR_COLORS: Record<string, string> = {
-  Energy: "hsl(25, 70%, 40%)",
-  Materials: "hsl(35, 60%, 38%)",
-  Industrials: "hsl(210, 50%, 42%)",
-  "Consumer Discretionary": "hsl(280, 45%, 42%)",
-  "Consumer Staples": "hsl(140, 50%, 35%)",
-  "Health Care": "hsl(0, 55%, 42%)",
-  Financials: "hsl(220, 55%, 40%)",
-  "Information Technology": "hsl(200, 65%, 42%)",
-  "Communication Services": "hsl(45, 60%, 40%)",
-  Utilities: "hsl(170, 45%, 38%)",
-  "Real Estate": "hsl(310, 40%, 40%)",
-};
 
 interface SectorGroup {
   name: string;
@@ -29,7 +13,6 @@ interface SectorGroup {
 }
 
 export default function GICSSectorHeatmap() {
-  const navigate = useNavigate();
   const { latestQuarter } = useAvailableQuarters();
 
   const { data: stocks = [], isLoading: stocksLoading } = useQuery({

@@ -15,9 +15,7 @@ const MOCK_FUND_B_CSV = `CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Va
 A123456,TSLA,Tesla Inc,500,200,"$1.25M","$500K",40.0,3.0
 B654321,AAPL,Apple Inc,3000,0,"$6M","$0",0.0,12.0`;
 
-function mockFetch(url: string, init?: RequestInit): Promise<Response> {
-  const headers = { ok: true, status: 200 } as Record<string, unknown>;
-
+function mockFetch(url: string, _init?: RequestInit): Promise<Response> {
   const urlStr = typeof url === "string" ? url : "";
 
   if (urlStr.includes("stocks.csv")) {

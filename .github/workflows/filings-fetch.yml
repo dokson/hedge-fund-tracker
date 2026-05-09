@@ -81,11 +81,11 @@ jobs:
           if git status --porcelain | grep .; then
             echo "no_changes=false" >> $GITHUB_OUTPUT
             echo "Changes detected, will commit to ${{ env.COMMIT_BRANCH }} branch"
-            
+
             files_changed=$(git status --porcelain | wc -l)
             echo "files_changed=$files_changed" >> $GITHUB_OUTPUT
             echo "📊 Files changed: $files_changed"
-            
+
             git status --porcelain
           else
             echo "no_changes=true" >> $GITHUB_OUTPUT

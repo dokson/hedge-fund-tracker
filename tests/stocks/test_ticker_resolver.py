@@ -304,8 +304,7 @@ class TestTickerResolverUpdateChangedTickers(unittest.TestCase):
         """
         if not entries:
             return _empty_stocks()
-        df = pd.DataFrame(entries, columns=["CUSIP", "Ticker", "Company"]).set_index("CUSIP")
-        return df
+        return pd.DataFrame(entries, columns=["CUSIP", "Ticker", "Company"]).set_index("CUSIP")
 
     @patch("app.stocks.ticker_resolver.Nasdaq.get_symbol_changes")
     @patch("app.stocks.ticker_resolver.load_stocks")
@@ -399,7 +398,7 @@ class TestTickerResolverUpdateChangedTickers(unittest.TestCase):
         ]
 
         with patch("app.stocks.ticker_resolver.save_stocks") as mock_save:
-            updates = TickerResolver.update_changed_tickers()
+            TickerResolver.update_changed_tickers()
 
         # Verify the DataFrame passed to save_stocks has the new ticker and company
         saved_df = mock_save.call_args[0][0]

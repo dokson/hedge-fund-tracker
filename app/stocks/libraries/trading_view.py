@@ -91,20 +91,20 @@ class TradingView(FinanceLibrary):
                             hist = hist[hist.index >= year_start]
                         points = []
                         for idx, row in hist.iterrows():
-                            o, h, l, c = (
+                            o, h, low, c = (
                                 row.get("open"),
                                 row.get("high"),
                                 row.get("low"),
                                 row.get("close"),
                             )
-                            if any(v is None or v != v for v in (o, h, l, c)):
+                            if any(v is None or v != v for v in (o, h, low, c)):
                                 continue
                             points.append(
                                 {
                                     "date": idx.strftime("%Y-%m-%d"),
                                     "open": round(float(o), 4),
                                     "high": round(float(h), 4),
-                                    "low": round(float(l), 4),
+                                    "low": round(float(low), 4),
                                     "close": round(float(c), 4),
                                 }
                             )

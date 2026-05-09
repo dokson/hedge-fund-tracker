@@ -310,8 +310,7 @@ def get_latest_13f_filing_date(cik: str) -> str:
             return None
 
         # The filing date is in the 4th <td> of the same <tr> as the button
-        filing_date = button.find_parent("tr").find_all("td")[3].text.strip()
-        return filing_date
+        return button.find_parent("tr").find_all("td")[3].text.strip()
     except (AttributeError, IndexError) as e:
         print(f"Error parsing filing date for CIK {cik}: {e}. Page structure may have changed.")
         return None

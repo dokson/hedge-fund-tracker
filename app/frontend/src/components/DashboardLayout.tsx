@@ -12,28 +12,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <SidebarProvider>
       <div className="h-screen flex flex-col w-full">
         <header className="h-14 flex items-center justify-between border-b border-border px-5 shrink-0 bg-background z-10">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-            <img
-              src={`${BASE_PATH}/logo.png`}
-              alt="Hedge Fund Tracker"
-              className="h-9 w-9 rounded-lg shrink-0"
-            />
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
-                Hedge Fund Tracker
-              </h1>
-              <p className="text-[9px] text-muted-foreground leading-tight">
-                by{" "}
-                <a
-                  href="https://github.com/dokson"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground transition-colors"
-                >
-                  Alessandro Colace
-                </a>
-              </p>
-            </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="flex items-center gap-3 cursor-pointer text-left"
+              onClick={() => navigate("/")}
+              aria-label="Go to home"
+            >
+              <img
+                src={`${BASE_PATH}/logo.png`}
+                alt="Hedge Fund Tracker"
+                className="h-9 w-9 rounded-lg shrink-0"
+              />
+              <div>
+                <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
+                  Hedge Fund Tracker
+                </h1>
+              </div>
+            </button>
+            <p className="text-[9px] text-muted-foreground leading-tight">
+              by{" "}
+              <a
+                href="https://github.com/dokson"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+              >
+                Alessandro Colace
+              </a>
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <button

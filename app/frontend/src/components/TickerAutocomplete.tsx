@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getStocks } from "@/lib/dataService";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,9 @@ export default function TickerAutocomplete({
   const isValid = useMemo(() => allTickers.some(([t]) => t === value), [allTickers, value]);
 
   const onValidChangeRef = useRef(onValidChange);
-  onValidChangeRef.current = onValidChange;
+  useEffect(() => {
+    onValidChangeRef.current = onValidChange;
+  });
 
   useEffect(() => {
     onValidChangeRef.current?.(isValid);
@@ -59,9 +61,13 @@ export default function TickerAutocomplete({
       .slice(0, 8);
   }, [value, allTickers]);
 
-  useEffect(() => {
+  // Reset highlight on suggestion change (render-time state adjustment pattern)
+  const suggestionsKey = suggestions.map((s) => s[0]).join("|");
+  const [lastSuggestionsKey, setLastSuggestionsKey] = useState(suggestionsKey);
+  if (lastSuggestionsKey !== suggestionsKey) {
+    setLastSuggestionsKey(suggestionsKey);
     setHighlightIdx(-1);
-  }, [suggestions]);
+  }
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -123,11 +129,20 @@ export default function TickerAutocomplete({
             return (
               <div
                 key={ticker}
+                role="option"
+                aria-selected={isHighlighted}
+                tabIndex={-1}
                 className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer transition-colors ${
                   isHighlighted ? "bg-primary text-primary-foreground" : "hover:bg-accent/50"
                 }`}
                 onMouseDown={() => selectTicker(ticker)}
                 onMouseEnter={() => setHighlightIdx(idx)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    selectTicker(ticker);
+                  }
+                }}
               >
                 <span className="font-mono font-medium w-14 shrink-0">{ticker}</span>
                 <span

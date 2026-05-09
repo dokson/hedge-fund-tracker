@@ -15,8 +15,9 @@ if TYPE_CHECKING:
 os.environ.setdefault("COLUMNS", "80")
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 DATABASE_DIR = Path(__file__).parent.parent / "database"
 FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
@@ -63,7 +64,7 @@ def _sanitize_path_parts(filepath: str) -> list[str]:
     parts = Path(filepath).parts
     safe: list[str] = []
     for part in parts:
-        clean = os.path.basename(part)
+        clean = Path(part).name
         # Reject if basename changed (contained separator) or is a traversal token
         if not clean or clean in (".", "..") or clean != part:
             raise ValueError(f"Unsafe path component: {part!r}")
@@ -84,8 +85,8 @@ def _safe_db_path(filepath: str) -> Path:
     """
     try:
         parts = _sanitize_path_parts(filepath)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid path characters")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid path characters") from exc
 
     # Reconstruct entirely from the safe root + validated parts (no raw user input)
     resolved = _DB_ROOT.joinpath(*parts).resolve()
@@ -105,8 +106,8 @@ def _safe_frontend_path(filepath: str) -> Path:
     """
     try:
         parts = _sanitize_path_parts(filepath)
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Forbidden")
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail="Forbidden") from exc
 
     resolved = _FRONTEND_ROOT.joinpath(*parts).resolve()
 
@@ -309,8 +310,7 @@ async def ai_due_diligence(request: Request):
     quarter = _require_quarter(body.get("quarter"))
     ai_client = _build_ai_client(body.get("model_id"), body.get("provider_id"))
     agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
-    result = agent.run_stock_due_diligence(ticker=ticker)
-    return result
+    return agent.run_stock_due_diligence(ticker=ticker)
 
 
 # ── Database operations ────────────────────────────────────────────────────────
@@ -525,9 +525,6 @@ async def ai_due_diligence_stream(request: Request):
 
 
 # ── Static frontend ────────────────────────────────────────────────────────────
-
-from fastapi.exceptions import HTTPException as StarletteHTTPException
-from fastapi.responses import JSONResponse
 
 
 @app.exception_handler(StarletteHTTPException)

@@ -116,11 +116,14 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
   const [selection, setSelection] = useState<Selection | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Reset selection when ticker or range changes
-  useEffect(() => {
+  // Reset selection when ticker or range changes (React-idiomatic state-on-change pattern)
+  const resetKey = `${ticker}|${period}`;
+  const [lastResetKey, setLastResetKey] = useState(resetKey);
+  if (lastResetKey !== resetKey) {
+    setLastResetKey(resetKey);
     setSelection(null);
     setIsDragging(false);
-  }, [ticker, period]);
+  }
 
   const lookupCandle = (label: string | undefined) =>
     label ? (series.find((s) => s.date === label) ?? null) : null;
@@ -194,6 +197,18 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
     return { first, last, change, pct, min, max };
   }, [series]);
 
+  // Sorted selection (start = earlier date, end = later date) and its delta.
+  const selectionStats = useMemo(() => {
+    if (!selection) return null;
+    const a = selection.start;
+    const b = selection.end;
+    if (a.date === b.date) return null;
+    const [s, e] = a.date < b.date ? [a, b] : [b, a];
+    const change = e.close - s.close;
+    const pct = (change / s.close) * 100;
+    return { start: s, end: e, change, pct, positive: change >= 0 };
+  }, [selection]);
+
   if (!API_BASE && !staticData) {
     return (
       <div className="rounded-lg border border-border bg-card p-5">
@@ -209,18 +224,6 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
   const positive = stats ? stats.change >= 0 : true;
   const lineColor = positive ? UP_COLOR : DOWN_COLOR;
   const gradientId = `priceGradient-${ticker}-${positive ? "up" : "down"}`;
-
-  // Sorted selection (start = earlier date, end = later date) and its delta.
-  const selectionStats = useMemo(() => {
-    if (!selection) return null;
-    const a = selection.start;
-    const b = selection.end;
-    if (a.date === b.date) return null;
-    const [s, e] = a.date < b.date ? [a, b] : [b, a];
-    const change = e.close - s.close;
-    const pct = (change / s.close) * 100;
-    return { start: s, end: e, change, pct, positive: change >= 0 };
-  }, [selection]);
 
   const headerPositive = positive;
   const yDomain: [number, number] | undefined = stats
@@ -261,8 +264,8 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
             {fmtDateFull(sel.start.date)} → {fmtDateFull(sel.end.date)}
           </div>
           <div>
-            ${sel.start.close.toFixed(2)} →{" "}
-            <span style={{ fontWeight: 700 }}>${sel.end.close.toFixed(2)}</span>
+            {`$${sel.start.close.toFixed(2)}`} →{" "}
+            <span style={{ fontWeight: 700 }}>{`$${sel.end.close.toFixed(2)}`}</span>
           </div>
           <div style={{ color: sel.positive ? UP_COLOR : DOWN_COLOR, fontWeight: 700 }}>
             {sel.positive ? "+" : ""}
@@ -284,18 +287,18 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
             style={{ display: "grid", gridTemplateColumns: "auto auto", columnGap: 12, rowGap: 2 }}
           >
             <span style={{ color: "hsl(var(--muted-foreground))" }}>O</span>
-            <span>${p.open!.toFixed(2)}</span>
+            <span>{`$${p.open!.toFixed(2)}`}</span>
             <span style={{ color: "hsl(var(--muted-foreground))" }}>H</span>
-            <span>${p.high!.toFixed(2)}</span>
+            <span>{`$${p.high!.toFixed(2)}`}</span>
             <span style={{ color: "hsl(var(--muted-foreground))" }}>L</span>
-            <span>${p.low!.toFixed(2)}</span>
+            <span>{`$${p.low!.toFixed(2)}`}</span>
             <span style={{ color: "hsl(var(--muted-foreground))" }}>C</span>
             <span style={{ color: isUp ? UP_COLOR : DOWN_COLOR, fontWeight: 700 }}>
-              ${p.close!.toFixed(2)}
+              {`$${p.close!.toFixed(2)}`}
             </span>
           </div>
         ) : (
-          <div style={{ fontWeight: 700 }}>${p.close!.toFixed(2)}</div>
+          <div style={{ fontWeight: 700 }}>{`$${p.close!.toFixed(2)}`}</div>
         )}
         <div style={{ fontSize: 11, color: delta >= 0 ? UP_COLOR : DOWN_COLOR, marginTop: 2 }}>
           {delta >= 0 ? "+" : ""}

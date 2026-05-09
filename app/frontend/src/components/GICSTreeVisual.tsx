@@ -168,9 +168,6 @@ function buildGICSTree(entries: GICSEntry[]): GICSNode[] {
   return tree.sort((a, b) => a.code.localeCompare(b.code));
 }
 
-// ── Depth labels ──
-const DEPTH_LABELS = ["Industry Group", "Industry", "Sub-Industry"];
-
 // ── Recursive horizontal tree branch ──
 function TreeBranch({
   node,
@@ -261,7 +258,7 @@ function TreeBranch({
 // ── Main component ──
 export default function GICSTreeVisual() {
   const [search, setSearch] = useState("");
-  const [expandedSectors, setExpandedSectors] = useState<Set<string>>(new Set());
+  const [expandedSectors, setExpandedSectors] = useState<Set<string>>(() => new Set());
 
   const { data: gicsEntries = [], isLoading } = useQuery({
     queryKey: ["gics-hierarchy"],

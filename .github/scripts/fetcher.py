@@ -1,7 +1,7 @@
-import os
 import sys
+from pathlib import Path
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 from app.utils.database import clean_stocks, sort_stocks
 from database.GICS.updater import main as update_gics_hierarchy

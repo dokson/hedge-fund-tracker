@@ -105,8 +105,8 @@ function AnalysisTable({
     key: SortKey;
     label: string;
     align?: "left" | "right";
-    format?: (v: any, row: StockQuarterAnalysis) => string;
-    colorFn?: (v: any) => string;
+    format?: (v: number, row: StockQuarterAnalysis) => string;
+    colorFn?: (v: number) => string;
     tooltip?: string;
   }[];
   defaultMinHolders?: number;
@@ -290,7 +290,6 @@ const deltaColor = (v: number) =>
 const netColor = (v: number) => (v > 0 ? "delta-positive" : v < 0 ? "delta-negative" : "");
 
 export default function QuarterlyTrends() {
-  const navigate = useNavigate();
   const { quarters, latestQuarter } = useAvailableQuarters();
   const [selectedQuarter, setSelectedQuarter] = useState<Quarter | undefined>();
   const quarter = selectedQuarter ?? latestQuarter;

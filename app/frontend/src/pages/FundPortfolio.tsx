@@ -7,9 +7,6 @@ import {
   getStocks,
   getFundQuarterlyHoldings,
   getFundAvailableQuarters,
-  parseValueString,
-  type HedgeFund,
-  type QuarterlyHolding,
 } from "@/lib/dataService";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TickerLink, formatFundName } from "@/components/EntityLinks";
@@ -163,8 +160,16 @@ function FundGrid() {
                 return (
                   <div
                     key={fund.cik}
+                    role="button"
+                    tabIndex={0}
                     className="kpi-card cursor-pointer"
                     onClick={() => navigate(`/funds/${encodeURIComponent(fund.fund)}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        navigate(`/funds/${encodeURIComponent(fund.fund)}`);
+                      }
+                    }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -203,8 +208,16 @@ function FundGrid() {
                   return (
                     <div
                       key={fund.cik}
+                      role="button"
+                      tabIndex={0}
                       className="kpi-card cursor-pointer"
                       onClick={() => navigate(`/funds/${encodeURIComponent(fund.fund)}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          navigate(`/funds/${encodeURIComponent(fund.fund)}`);
+                        }
+                      }}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -240,8 +253,16 @@ function FundGrid() {
                   return (
                     <div
                       key={fund.cik}
+                      role="button"
+                      tabIndex={0}
                       className="kpi-card cursor-pointer"
                       onClick={() => navigate(`/funds/${encodeURIComponent(fund.fund)}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          navigate(`/funds/${encodeURIComponent(fund.fund)}`);
+                        }
+                      }}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -527,24 +548,26 @@ function FundDetail({ fundName }: { fundName: string }) {
                 {holdings.filter((h) => parseValue(h.value) > 0).length}
               </p>
             </div>
-            <div
-              className={`kpi-card cursor-pointer transition-colors ${positionFilter === "new" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
+            <button
+              type="button"
+              className={`kpi-card cursor-pointer transition-colors text-left w-full ${positionFilter === "new" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
               onClick={() => setPositionFilter((f) => (f === "new" ? "all" : "new"))}
             >
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 New Positions <Filter className="h-3 w-3" />
               </p>
               <p className="text-xl font-bold font-mono mt-1 delta-positive">{newPositions}</p>
-            </div>
-            <div
-              className={`kpi-card cursor-pointer transition-colors ${positionFilter === "closed" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
+            </button>
+            <button
+              type="button"
+              className={`kpi-card cursor-pointer transition-colors text-left w-full ${positionFilter === "closed" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
               onClick={() => setPositionFilter((f) => (f === "closed" ? "all" : "closed"))}
             >
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 Closed Positions <Filter className="h-3 w-3" />
               </p>
               <p className="text-xl font-bold font-mono mt-1 delta-negative">{closedPositions}</p>
-            </div>
+            </button>
           </div>
 
           {isLoading ? (
@@ -585,7 +608,7 @@ function FundDetail({ fundName }: { fundName: string }) {
                       const isClosed = h.delta === "CLOSE";
                       const deltaParsed = isNew || isClosed ? 0 : parseFloat(h.delta) || 0;
                       return (
-                        <tr key={`${h.cusip}-${i}`} className="data-table-row">
+                        <tr key={`${h.cusip}-${h.ticker}-${h.delta}`} className="data-table-row">
                           <td className="p-3 text-muted-foreground font-mono">{i + 1}</td>
                           <td className="p-3">
                             <TickerLink ticker={h.ticker} />

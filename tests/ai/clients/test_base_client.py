@@ -1,7 +1,6 @@
-import glob
-import os
 import shutil
 import unittest
+from pathlib import Path
 
 from app.ai.clients.base_client import AIClient
 
@@ -23,12 +22,12 @@ class TestBaseClient(unittest.TestCase):
         self.cache_dir = AIClient.CACHE_DIR
         self.client = MockAIClient()
         # Clean cache before tests
-        if os.path.exists(self.cache_dir):
+        if Path(self.cache_dir).exists():
             shutil.rmtree(self.cache_dir)
 
     def tearDown(self):
         # Clean up after tests
-        if os.path.exists(self.cache_dir):
+        if Path(self.cache_dir).exists():
             shutil.rmtree(self.cache_dir)
 
     def test_log_response_creates_file(self):
@@ -37,10 +36,10 @@ class TestBaseClient(unittest.TestCase):
         """
         self.client.generate_content("Test Prompt")
 
-        files = glob.glob(os.path.join(self.cache_dir, "response_*.log"))
+        files = list(Path(self.cache_dir).glob("response_*.log"))
         self.assertEqual(len(files), 1)
 
-        with open(files[0], encoding="utf-8") as f:
+        with files[0].open(encoding="utf-8") as f:
             content = f.read()
             self.assertIn("Model: mock-model", content)
             self.assertIn("Prompt:\nTest Prompt", content)
@@ -55,7 +54,7 @@ class TestBaseClient(unittest.TestCase):
         for i in range(limit + 5):
             self.client.generate_content(f"Prompt {i}")
 
-        files = glob.glob(os.path.join(self.cache_dir, "response_*.log"))
+        files = list(Path(self.cache_dir).glob("response_*.log"))
         self.assertEqual(len(files), limit)
 
 

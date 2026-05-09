@@ -72,11 +72,9 @@ def xml_to_dataframe_13f(xml_content):
         pass
 
     # Dedup by CUSIP
-    df = df.groupby(["CUSIP"], as_index=False).agg(
+    return df.groupby(["CUSIP"], as_index=False).agg(
         {"Company": "max", "Value": "sum", "Shares": "sum"}
     )
-
-    return df
 
 
 def xml_to_dataframe_schedule(xml_content):

@@ -519,17 +519,19 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 ## 🤝🏼 Contributing & Support
 
+Read **[CONTRIBUTING.md](./CONTRIBUTING.md)** before opening a PR — it covers TDD discipline, lint policy, branch hygiene, and what makes a good PR. For deep architectural context (modules, footguns, data flow) see **[AGENTS.md](./AGENTS.md)**.
+
 ### 💬 Loved it? Help it grow
 
-- **🐛 [Bug Reports](https://github.com/dokson/hedge-fund-tracker/issues/new?template=bug_report.md)**
-- **🆕 [Feature Requests](https://github.com/dokson/hedge-fund-tracker/issues/new?template=feature_request.md)**
-- **🔀 [Fork & PR](https://github.com/dokson/hedge-fund-tracker/fork)**
+- **🐛 [Report a bug](https://github.com/dokson/hedge-fund-tracker/issues/new?template=bug_report.yml)** — guided form so reproduction info isn't missed
+- **🆕 [Request a feature](https://github.com/dokson/hedge-fund-tracker/issues/new?template=feature_request.yml)** — for open-ended ideas, prefer [Discussions](https://github.com/dokson/hedge-fund-tracker/discussions)
+- **🔒 [Report a vulnerability privately](https://github.com/dokson/hedge-fund-tracker/security/advisories/new)** — never open a public issue for security
+- **🔀 [Fork & open a PR](https://github.com/dokson/hedge-fund-tracker/fork)** — small, focused PRs land faster
 - **🔁 [Share on X](https://x.com/intent/post?text=Have%20a%20look%20at%20https%3A%2F%2Fgithub.com%2Fdokson%2Fhedge-fund-tracker%2F%20by%20%40alecolace) or [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https://github.com/dokson/hedge-fund-tracker/)**
 
 ### ✍🏻 Feedback
 
-This tool is in active development, and your input is valuable.
-If you have any suggestions or ideas for new features, please feel free to [get in touch](https://github.com/dokson).
+This tool is in active development, and your input is valuable. For questions or design discussion, open a [Discussion](https://github.com/dokson/hedge-fund-tracker/discussions) — keeping conversations public benefits future contributors.
 
 ## 📚 References
 

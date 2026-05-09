@@ -42,10 +42,7 @@ class YFinance(FinanceLibrary):
             str | None: The company name if found, otherwise None.
         """
         ticker = kwargs.get("ticker")
-        if not ticker:
-            ticker = YFinance.get_ticker(cusip)
-        else:
-            ticker = YFinance._sanitize_ticker(ticker)
+        ticker = YFinance.get_ticker(cusip) if not ticker else YFinance._sanitize_ticker(ticker)
 
         try:
             with silence_output():
@@ -238,10 +235,7 @@ class YFinance(FinanceLibrary):
 
             for sanitized, original in ticker_map.items():
                 try:
-                    if len(sanitized_tickers) == 1:
-                        ticker_data = data
-                    else:
-                        ticker_data = data[sanitized]
+                    ticker_data = data if len(sanitized_tickers) == 1 else data[sanitized]
 
                     if not ticker_data.empty:
                         price = ticker_data["Close"].dropna().iloc[-1].item()
@@ -311,15 +305,15 @@ class YFinance(FinanceLibrary):
 
             points = []
             for idx, row in history.iterrows():
-                o, h, l, c = row.get("Open"), row.get("High"), row.get("Low"), row.get("Close")
-                if any(v is None or v != v for v in (o, h, l, c)):
+                o, h, low, c = row.get("Open"), row.get("High"), row.get("Low"), row.get("Close")
+                if any(v is None or v != v for v in (o, h, low, c)):
                     continue
                 points.append(
                     {
                         "date": idx.strftime("%Y-%m-%d"),
                         "open": round(float(o), 4),
                         "high": round(float(h), 4),
-                        "low": round(float(l), 4),
+                        "low": round(float(low), 4),
                         "close": round(float(c), 4),
                     }
                 )

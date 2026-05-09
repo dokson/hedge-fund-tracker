@@ -1,0 +1,169 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting!
+
+        **Issues without reproduction steps will be closed.** Spend a minute on the form — it saves hours of back-and-forth.
+
+        For questions or design discussion, open a [Discussion](../../discussions) instead.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One sentence describing the bug.
+      placeholder: AI Ranking page shows "Failed to load models" instead of populating the dropdown.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps a fresh-clone user can follow to hit the bug.
+      placeholder: |
+        1. Clone the repo at master @ a1b2c3d
+        2. `pipenv install && pipenv run app`
+        3. Navigate to /ai-ranking
+        4. Observe the error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+      placeholder: The dropdown to populate from `database/models.csv` (it has 5 models configured).
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What did happen instead?
+      placeholder: |
+        Empty dropdown, browser console shows `TypeError: data.map is not a function`.
+        Network tab shows GET /api/models returning 500.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the codebase is affected?
+      options:
+        - Web UI (React/Vite frontend)
+        - Backend (FastAPI / app/server.py)
+        - SSE streaming (real-time AI/DB output)
+        - Scraper (SEC EDGAR)
+        - Analysis (quarterly_report, stocks, non_quarterly)
+        - AI clients / Promise Score
+        - Database / CSV handling
+        - Docker / deploy
+        - GH Pages mode
+        - GitHub Actions / CI
+        - Tests
+        - Other / unsure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: stages
+    attributes:
+      label: Stages affected
+      description: Where do you see the bug? (multi-select)
+      multiple: true
+      options:
+        - Local dev (`pipenv run app`)
+        - Local CLI (`pipenv run app-cli`)
+        - Docker (`docker compose up`)
+        - GitHub Pages (static demo)
+        - GitHub Actions (CI workflows)
+        - Tests
+    validations:
+      required: true
+
+  - type: input
+    id: filing-type
+    attributes:
+      label: Filing type involved (if data-related)
+      description: 13F-HR / 13D/G / Form 4 / N/A
+      placeholder: 13D/G
+
+  - type: input
+    id: fund-or-ticker
+    attributes:
+      label: Fund or ticker that triggers the bug (if applicable)
+      description: Helps reproduce data-dependent issues.
+      placeholder: "Fund: Pershing Square / Ticker: NTR / Quarter: 2025Q1"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / error output
+      description: Paste relevant terminal output, browser console, or stack traces. **Redact API keys and tokens.**
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: Commit / branch
+      description: Output of `git rev-parse --short HEAD` and your current branch name.
+      placeholder: "master @ a1b2c3d"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Docker (any host)
+        - GitHub Codespaces
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      description: Output of `python --version`. Project targets 3.13.
+      placeholder: "3.13.1"
+
+  - type: input
+    id: node
+    attributes:
+      label: Node version (if frontend bug)
+      description: Output of `node --version`. CI uses 20.
+      placeholder: "20.11.0"
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What I already tried
+      description: Workarounds attempted, related issues searched, hypotheses ruled out. Saves the maintainer from suggesting things you already did.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I searched [open](../../issues) and [closed](../../issues?q=is%3Aissue+is%3Aclosed) issues and didn't find a duplicate.
+          required: true
+        - label: I'm on the latest `master` (or stated otherwise above).
+          required: true
+        - label: I redacted any API keys, tokens, or PII from logs above.
+          required: true
+        - label: This isn't a security vulnerability (those go via [private advisory](../../security/advisories/new)).
+          required: true

@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from tenacity import RetryError
+
 from app.ai.clients.base_openai_client import OpenAIClient
 
 
@@ -38,7 +40,7 @@ class TestOpenAIClientInit(unittest.TestCase):
         Passes the env var API key and base URL to the OpenAI client on init.
         """
         with patch.dict("os.environ", {"TEST_API_KEY": "test-key-123"}):
-            client = ConcreteOpenAIClient()
+            ConcreteOpenAIClient()
 
         mock_openai.assert_called_once_with(
             base_url="https://api.test-provider.com/v1", api_key="test-key-123", default_headers={}
@@ -49,9 +51,8 @@ class TestOpenAIClientInit(unittest.TestCase):
         """
         Prints a warning when the required API key env var is not set.
         """
-        with patch.dict("os.environ", {}, clear=True):
-            with patch("builtins.print") as mock_print:
-                ConcreteOpenAIClient()
+        with patch.dict("os.environ", {}, clear=True), patch("builtins.print") as mock_print:
+            ConcreteOpenAIClient()
 
         printed_messages = " ".join(str(call) for call in mock_print.call_args_list)
         self.assertIn("TEST_API_KEY", printed_messages)
@@ -107,12 +108,12 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
         Propagates the exception after all tenacity retry attempts are exhausted.
         """
         mock_instance = mock_openai.return_value
-        mock_instance.chat.completions.create.side_effect = Exception("API unavailable")
+        mock_instance.chat.completions.create.side_effect = RuntimeError("API unavailable")
 
         with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
             client = ConcreteOpenAIClient()
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(RetryError):
             client.generate_content("Test prompt")
 
     @patch("app.ai.clients.base_openai_client.OpenAI")

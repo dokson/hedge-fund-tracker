@@ -63,7 +63,7 @@ def process_fund(fund_info, offset=0, skip_old=False):
         # Step 2: Find the filing for the immediately preceding quarter.
         # This loop skips amendments and ensures we are comparing against the correct previous period.
         previous_filing = filings[1] if len(filings) == 2 else None
-        
+
         target_date = get_previous_quarter_end_date(latest_date)
         target_date_prev = get_previous_quarter_end_date(target_date)
 
@@ -74,19 +74,19 @@ def process_fund(fund_info, offset=0, skip_old=False):
         while previous_filing:
             ref_date = previous_filing['reference_date']
             pub_date = previous_filing['date']
-            
+
             if ref_date == target_date:
                 found_previous = previous_filing
                 break
-            
+
             if ref_date == target_date_prev and not fallback_previous:
                 fallback_previous = previous_filing
-            
-            # Smart stop: if published date is already older than the fallback reporting date, 
+
+            # Smart stop: if published date is already older than the fallback reporting date,
             # we can't possibly find a newer reporting period further down the list.
             if pub_date < target_date_prev:
                 break
-            
+
             offset += 1
             filings = fetch_latest_two_13f_filings(cik, offset)
             previous_filing = filings[1] if len(filings) == 2 else None
@@ -104,7 +104,7 @@ def run_all_funds_report():
     """
     1. Generates and saves the latest 13F comparison reports for all known hedge funds.
 
-    This function iterates through all funds listed in the database, processing them in parallel using a thread pool to fetch filings 
+    This function iterates through all funds listed in the database, processing them in parallel using a thread pool to fetch filings
     and generate quarterly comparison reports.
     """
     hedge_funds = load_hedge_funds()
@@ -146,7 +146,7 @@ def process_fund_nq(fund):
     def _fetch_nq(cik_to_process, fund_name, fund_denomination, latest_date):
         if not cik_to_process or not cik_to_process.strip():
             return None
-        
+
         filings = fetch_non_quarterly_after_date(cik_to_process, latest_date)
         if filings:
             filings_df = get_non_quarterly_filings_dataframe(filings, fund_denomination, cik_to_process)
@@ -157,7 +157,7 @@ def process_fund_nq(fund):
         return None
 
     latest_13f_date = get_latest_13f_filing_date(fund['CIK'])
-    
+
     result_cik = _fetch_nq(fund['CIK'], fund['Fund'], fund['Denomination'], latest_13f_date)
     if result_cik is not None:
         fund_results.append(result_cik)
@@ -165,7 +165,7 @@ def process_fund_nq(fund):
     result_ciks = _fetch_nq(fund['CIKs'], fund['Fund'], fund['Denomination'], latest_13f_date)
     if result_ciks is not None:
         fund_results.append(result_ciks)
-    
+
     return (fund['Fund'], fund_results)
 
 
@@ -173,7 +173,7 @@ def run_fetch_nq_filings():
     """
     2. Fetches and saves the latest non-quarterly filings for all known hedge funds.
 
-    This function orchestrates the fetching of recent 13D/G and Form 4 filings for all funds in the database. 
+    This function orchestrates the fetching of recent 13D/G and Form 4 filings for all funds in the database.
     It uses a process pool for parallel execution and saves the consolidated results into a single database file.
     """
     hedge_funds = load_hedge_funds()
@@ -212,7 +212,7 @@ def run_fetch_nq_filings():
                     except Exception as retry_e:
                         print_centered(f"❌ Retry failed for {fund['Fund']}: {retry_e}", "-")
                         e = retry_e
-                
+
                 print_centered(f"❌ Unrecoverable error processing {fund['Fund']}: {e}", "-")
                 error_occurred = True
                 break  # Exit the loop on unrecoverable error
@@ -229,7 +229,7 @@ def run_fund_report():
     """
     3. Generates a 13F comparison report for a single, user-selected fund and period.
 
-    This function prompts the user to choose a hedge fund from the known list and select a historical period (offset). 
+    This function prompts the user to choose a hedge fund from the known list and select a historical period (offset).
     It then triggers the processing for that specific fund and period to generate and save a comparison report.
     """
     selected_fund = select_fund("Select the hedge fund for 13F report generation:")
@@ -261,7 +261,7 @@ def run_manual_cik_report():
 def run_ticker_update():
     """
     5. Updates a stock ticker across the entire database.
-    
+
     This function prompts the user to enter an old ticker and a new ticker,
     then updates all occurrences in stocks.csv, all quarterly filings, and non-quarterly filings.
     """
@@ -272,7 +272,7 @@ def run_ticker_update():
     print("  - stocks.csv (master data file)")
     print("  - All filings")
     horizontal_rule()
-    
+
     old_ticker = input("Enter the OLD ticker to replace: ").strip().upper()
     if not old_ticker:
         print("❌ Old ticker cannot be empty.")
@@ -291,7 +291,7 @@ def run_ticker_update():
 def run_cusip_ticker_update():
     """
     6. Updates a stock ticker for a single CUSIP across the entire database.
-    
+
     This function prompts the user to enter a CUSIP and a new ticker,
     then updates that specific CUSIP in stocks.csv, all quarterly filings, and non-quarterly filings.
     """
@@ -302,7 +302,7 @@ def run_cusip_ticker_update():
     print("  - stocks.csv (master data file)")
     print("  - All filings")
     horizontal_rule()
-    
+
     cusip = input("Enter the CUSIP: ").strip()
     if not cusip:
         print("❌ CUSIP cannot be empty.")
@@ -316,7 +316,7 @@ def run_cusip_ticker_update():
     new_company = input("Enter the NEW company name (leave empty to keep current): ").strip() or None
 
     update_ticker_for_cusip(cusip, new_ticker, new_company=new_company)
-    
+
 
 def run_auto_ticker_update():
     """
@@ -419,15 +419,15 @@ def print_missing_quarters_report():
     horizontal_rule()
     print_centered("MISSING QUARTERS REPORT")
     horizontal_rule()
-    
+
     missing_quarters = get_funds_missing_quarters()
-    
+
     if not missing_quarters:
         print("✅ No funds with missing quarters found.")
         return
 
     data = [[fund, ", ".join(quarters)] for fund, quarters in missing_quarters.items()]
-    
+
     print_centered_table(tabulate(data, headers=["Fund", "Missing Quarters"], tablefmt="psql", stralign="left"))
     horizontal_rule()
 

@@ -1,10 +1,11 @@
+import contextlib
 import io
-import os
 import shutil
 import threading
 import time
 import unittest
 import unittest.mock
+from pathlib import Path
 
 import pandas as pd
 
@@ -43,39 +44,39 @@ class TestDatabase(unittest.TestCase):
         This runs before each test.
         """
         self.test_db_folder = "test_db"
-        os.makedirs(self.test_db_folder, exist_ok=True)
+        test_db_path = Path(self.test_db_folder)
+        test_db_path.mkdir(parents=True, exist_ok=True)
 
         # Create dummy quarter directories and files
-        os.makedirs(os.path.join(self.test_db_folder, "2025Q1"), exist_ok=True)
-        os.makedirs(os.path.join(self.test_db_folder, "2024Q4"), exist_ok=True)
-        os.makedirs(os.path.join(self.test_db_folder, "not_a_quarter"), exist_ok=True)
+        (test_db_path / "2025Q1").mkdir(parents=True, exist_ok=True)
+        (test_db_path / "2024Q4").mkdir(parents=True, exist_ok=True)
+        (test_db_path / "not_a_quarter").mkdir(parents=True, exist_ok=True)
 
-        with open(os.path.join(self.test_db_folder, "2025Q1", "Fund_A.csv"), "w", newline="") as f:
+        with (test_db_path / "2025Q1" / "Fund_A.csv").open("w", newline="") as f:
             f.write("CUSIP,Ticker,Value,Shares\n123,TICKA,100,10\nTotal,Total,100,10\n")
-        with open(os.path.join(self.test_db_folder, "2025Q1", "Fund_B.csv"), "w", newline="") as f:
+        with (test_db_path / "2025Q1" / "Fund_B.csv").open("w", newline="") as f:
             f.write("CUSIP,Ticker,Value,Shares\n456,TICKB,200,20\n")
-        with open(os.path.join(self.test_db_folder, "2024Q4", "Fund_A.csv"), "w", newline="") as f:
+        with (test_db_path / "2024Q4" / "Fund_A.csv").open("w", newline="") as f:
             f.write("CUSIP,Ticker,Value,Shares\n123,TICKA,80,10\n")
 
         # Create dummy main db files
-        with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), "w", newline="") as f:
+        with (test_db_path / HEDGE_FUNDS_FILE).open("w", newline="") as f:
             f.write(
-                "CIK,Fund,Manager,Denomination,CIKs,URL\n001,Fund A,Manager A,Denom A,,https://fund-a.example.com/\n"
+                "CIK,Fund,Manager,Denomination,CIKs,URL\n"
+                "001,Fund A,Manager A,Denom A,,https://fund-a.example.com/\n"
             )
 
-        with open(os.path.join(self.test_db_folder, MODELS_FILE), "w", newline="") as f:
+        with (test_db_path / MODELS_FILE).open("w", newline="") as f:
             f.write("ID,Description,Client\nmodel-1,Google Model,Google\n")
 
-        with open(os.path.join(self.test_db_folder, STOCKS_FILE), "w", newline="") as f:
+        with (test_db_path / STOCKS_FILE).open("w", newline="") as f:
             f.write("CUSIP,Ticker,Company\n123,TICKA,Company A\n456,TICKB,Company B\n")
 
-        with open(
-            os.path.join(self.test_db_folder, LATEST_SCHEDULE_FILINGS_FILE), "w", newline=""
-        ) as f:
+        with (test_db_path / LATEST_SCHEDULE_FILINGS_FILE).open("w", newline="") as f:
             f.write("Fund,Ticker,CUSIP,Date,Filing_Date\nFund A,TICKA,123,2025-01-01,2025-01-01\n")
 
-        os.makedirs(os.path.join(self.test_db_folder, "GICS"), exist_ok=True)
-        with open(os.path.join(self.test_db_folder, GICS_HIERARCHY_FILE), "w", newline="") as f:
+        (test_db_path / "GICS").mkdir(parents=True, exist_ok=True)
+        with (test_db_path / GICS_HIERARCHY_FILE).open("w", newline="") as f:
             f.write("Sector,Industry\nTech,Software\n")
 
         # Patch the DB_FOLDER constant to use the test directory
@@ -242,7 +243,7 @@ class TestDatabase(unittest.TestCase):
         """
         num_threads = 5
         iterations = 10
-        stocks_path = os.path.join(self.test_db_folder, STOCKS_FILE)
+        stocks_path = str(Path(self.test_db_folder) / STOCKS_FILE)
 
         barrier = threading.Barrier(num_threads)
         errors = []
@@ -316,10 +317,8 @@ class TestDatabase(unittest.TestCase):
 
         def sorter():
             while not stop_event.is_set():
-                try:
+                with contextlib.suppress(Exception):
                     sort_stocks(stocks_path)
-                except Exception:
-                    pass
                 time.sleep(SORTER_INTERVAL_S)
 
         t1 = threading.Thread(target=saver)
@@ -341,21 +340,21 @@ class TestDatabase(unittest.TestCase):
         """
         fund_info = {"Fund": "Fund B", "CIK": "002", "URL": "https://fund-b.example.com/"}
         # Create Fund B in hedge_funds.csv first (with URL column)
-        with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), "a", newline="") as f:
+        with (Path(self.test_db_folder) / HEDGE_FUNDS_FILE).open("a", newline="") as f:
             f.write("002,Fund B,Manager B,Denom B,,https://fund-b.example.com/\n")
 
         delete_fund_from_database(fund_info)
 
         # Check file deleted
-        self.assertFalse(os.path.exists(os.path.join(self.test_db_folder, "2025Q1", "Fund_B.csv")))
+        self.assertFalse((Path(self.test_db_folder) / "2025Q1" / "Fund_B.csv").exists())
 
         # Check removed from hedge_funds.csv
         funds = load_hedge_funds()
         self.assertTrue(all(f["Fund"] != "Fund B" for f in funds))
 
         # Check added to excluded_hedge_funds.csv with URL preserved from hedge_funds.csv
-        excluded_path = os.path.join(self.test_db_folder, "excluded_hedge_funds.csv")
-        self.assertTrue(os.path.exists(excluded_path))
+        excluded_path = Path(self.test_db_folder) / "excluded_hedge_funds.csv"
+        self.assertTrue(excluded_path.exists())
         df_ex = pd.read_csv(excluded_path)
         self.assertIn("Fund B", df_ex["Fund"].values)
         self.assertIn("https://fund-b.example.com/", df_ex["URL"].values)
@@ -365,14 +364,14 @@ class TestDatabase(unittest.TestCase):
         Moves a fund record from excluded_hedge_funds.csv back to hedge_funds.csv,
         producing a result sorted alphabetically by Fund (case-insensitive).
         """
-        with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), "w", newline="") as f:
+        with (Path(self.test_db_folder) / HEDGE_FUNDS_FILE).open("w", newline="") as f:
             f.write("CIK,Fund,Manager,Denomination,CIKs,URL\n")
             f.write('"010","Charlie","Manager C","Denom C","",""\n')
             f.write('"011","apple","Manager A","Denom A","",""\n')
             f.write('"012","delta","Manager D","Denom D","",""\n')
 
-        excluded_path = os.path.join(self.test_db_folder, "excluded_hedge_funds.csv")
-        with open(excluded_path, "w", newline="") as f:
+        excluded_path = Path(self.test_db_folder) / "excluded_hedge_funds.csv"
+        with excluded_path.open("w", newline="") as f:
             f.write("CIK,Fund,Manager,Denomination,CIKs,URL\n")
             f.write('"099","Bravo","Manager B","Denom B","","https://bravo.example.com/"\n')
             f.write('"100","Other","Manager O","Denom O","",""\n')
@@ -384,7 +383,7 @@ class TestDatabase(unittest.TestCase):
         self.assertNotIn("Bravo", df_ex["Fund"].values)
         self.assertIn("Other", df_ex["Fund"].values)
 
-        df_hf = pd.read_csv(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), dtype=str)
+        df_hf = pd.read_csv(Path(self.test_db_folder) / HEDGE_FUNDS_FILE, dtype=str)
         self.assertEqual(list(df_hf["Fund"]), ["apple", "Bravo", "Charlie", "delta"])
         self.assertEqual(
             df_hf.loc[df_hf["Fund"] == "Bravo", "URL"].iloc[0], "https://bravo.example.com/"
@@ -394,8 +393,8 @@ class TestDatabase(unittest.TestCase):
         """
         Loads excluded hedge funds from CSV as a list of dicts.
         """
-        excluded_path = os.path.join(self.test_db_folder, "excluded_hedge_funds.csv")
-        with open(excluded_path, "w", newline="") as f:
+        excluded_path = Path(self.test_db_folder) / "excluded_hedge_funds.csv"
+        with excluded_path.open("w", newline="") as f:
             f.write("CIK,Fund,Manager,Denomination,CIKs,URL\n")
             f.write('"099","Fund X","Manager X","Denom X","","https://fund-x.example.com/"\n')
 

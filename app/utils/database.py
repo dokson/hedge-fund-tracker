@@ -3,7 +3,7 @@ import os
 import re
 import threading
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 import pandas as pd
@@ -50,7 +50,7 @@ def _safe_db_join(*segments: str) -> Path:
     root = _get_db_root()
     safe: list[str] = []
     for s in segments:
-        clean = os.path.basename(s)
+        clean = os.path.basename(s)  # noqa: PTH119 — CodeQL-recognised sanitizer for py/path-injection
         if not clean or clean in (".", "..") or clean != s:
             raise ValueError(f"Unsafe path segment: {s!r}")
         if ":" in clean or "\x00" in clean:
@@ -432,17 +432,17 @@ def stocks_lock(timeout=30):
                     os.close(fd)
                     acquired_file = True
                     break
-                except FileExistsError:
+                except FileExistsError as exc:
                     if time.time() - start_time > timeout:
                         raise TimeoutError(
                             f"Could not acquire lock for {STOCKS_FILE} within {timeout} seconds."
-                        )
+                        ) from exc
 
                     # Reclaim a stale lock that outlived its owner (>60s).
                     try:
-                        if time.time() - os.path.getmtime(lock_path) > 60:
+                        if time.time() - Path(lock_path).stat().st_mtime > 60:
                             try:
-                                os.remove(lock_path)
+                                Path(lock_path).unlink()
                                 continue
                             except OSError:
                                 pass
@@ -456,10 +456,8 @@ def stocks_lock(timeout=30):
             yield
         finally:
             if acquired_file:
-                try:
-                    os.remove(lock_path)
-                except OSError:
-                    pass
+                with suppress(OSError):
+                    Path(lock_path).unlink()
 
 
 def save_stock(cusip: str, ticker: str, company: str) -> None:
@@ -482,8 +480,8 @@ def save_stock(cusip: str, ticker: str, company: str) -> None:
                 # Already exists, skip appending
                 return
 
-            with open(
-                Path(DB_FOLDER) / STOCKS_FILE, "a", newline="", encoding="utf-8"
+            with (Path(DB_FOLDER) / STOCKS_FILE).open(
+                "a", newline="", encoding="utf-8"
             ) as stocks_file:
                 writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
                 writer.writerow([cusip.strip(), ticker.strip(), company.strip()])
@@ -607,7 +605,7 @@ def find_cusips_for_ticker(old_ticker: str) -> list[dict[str, str]]:
         print(f"❌ Error: {STOCKS_FILE} not found at {stocks_path}")
         return matching_stocks
 
-    with open(stocks_path, encoding="utf-8", newline="") as f:
+    with stocks_path.open(encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
             if row["Ticker"] == old_ticker:
@@ -640,7 +638,7 @@ def update_stocks_csv(old_ticker: str, new_ticker: str, new_company: str | None 
     rows = []
     updated_count = 0
 
-    with open(stocks_path, encoding="utf-8", newline="") as f:
+    with stocks_path.open(encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
         fieldnames = reader.fieldnames
 
@@ -653,7 +651,7 @@ def update_stocks_csv(old_ticker: str, new_ticker: str, new_company: str | None 
             rows.append(row)
 
     # Write back
-    with stocks_lock(), open(stocks_path, "w", encoding="utf-8", newline="") as f:
+    with stocks_lock(), stocks_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
         writer.writeheader()
         writer.writerows(rows)
@@ -684,7 +682,7 @@ def update_quarterly_filings(cusips: list[str], new_ticker: str) -> None:
                 rows = []
                 file_updated = False
 
-                with open(csv_file, encoding="utf-8", newline="") as f:
+                with Path(csv_file).open(encoding="utf-8", newline="") as f:
                     reader = csv.DictReader(f)
                     fieldnames = reader.fieldnames
 
@@ -698,7 +696,7 @@ def update_quarterly_filings(cusips: list[str], new_ticker: str) -> None:
                         rows.append(row)
 
                 if file_updated:
-                    with open(csv_file, "w", encoding="utf-8", newline="") as f:
+                    with Path(csv_file).open("w", encoding="utf-8", newline="") as f:
                         writer = csv.DictWriter(f, fieldnames=fieldnames)
                         writer.writeheader()
                         writer.writerows(rows)
@@ -726,7 +724,7 @@ def update_non_quarterly_filings(cusips: list[str], new_ticker: str) -> int:
     updated_count = 0
 
     try:
-        with open(nq_path, encoding="utf-8", newline="") as f:
+        with nq_path.open(encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f)
             fieldnames = reader.fieldnames
 
@@ -736,7 +734,7 @@ def update_non_quarterly_filings(cusips: list[str], new_ticker: str) -> int:
                     updated_count += 1
                 rows.append(row)
 
-        with open(nq_path, "w", encoding="utf-8", newline="") as f:
+        with nq_path.open("w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
             writer.writeheader()
             writer.writerows(rows)
@@ -777,7 +775,7 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str, new_company: str | None
     old_ticker = None
     company = None
 
-    with open(stocks_path, encoding="utf-8", newline="") as f:
+    with stocks_path.open(encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
         fieldnames = reader.fieldnames
 
@@ -800,7 +798,7 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str, new_company: str | None
     )
 
     # Write back stocks.csv
-    with stocks_lock(), open(stocks_path, "w", encoding="utf-8", newline="") as f:
+    with stocks_lock(), stocks_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
         writer.writeheader()
         writer.writerows(rows)
@@ -983,7 +981,7 @@ def get_funds_missing_quarters() -> dict[str, list[str]]:
         fund_quarters = set(get_quarters_for_fund(fund_name))
 
         if fund_quarters != all_quarters:
-            missing = sorted(list(all_quarters - fund_quarters))
+            missing = sorted(all_quarters - fund_quarters)
             missing_data_funds[fund_name] = missing
 
     return missing_data_funds

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AI_PROVIDERS } from "@/lib/aiClient";
 import {
@@ -116,7 +116,8 @@ function APIKeysTab() {
   const { data: allModels = [] } = useQuery({ queryKey: ["models"], queryFn: getModels });
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/settings/env`)
+    const controller = new AbortController();
+    fetch(`${API_BASE}/api/settings/env`, { signal: controller.signal })
       .then((r) => r.json())
       .then((data: Record<string, string>) => {
         setEnvKeys(data);
@@ -125,6 +126,7 @@ function APIKeysTab() {
         setDrafts(init);
       })
       .catch(() => {});
+    return () => controller.abort();
   }, []);
 
   const configuredProviders = AI_PROVIDERS.map((provider) => ({
@@ -456,8 +458,8 @@ function ModelsTab() {
       await saveFileToDisk(csv, "models.csv");
       toast.success(`Model "${newModelDesc.trim()}" added`);
       invalidateModels();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
     setAddDialogOpen(false);
     resetAddForm();
@@ -471,8 +473,8 @@ function ModelsTab() {
       await saveFileToDisk(csv, "models.csv");
       toast.success(`Model "${modelToDelete.description}" removed`);
       invalidateModels();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
     setDeleteDialogOpen(false);
     setModelToDelete(null);

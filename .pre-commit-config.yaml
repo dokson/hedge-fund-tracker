@@ -1,0 +1,90 @@
+# Run on commit: `pre-commit install` once, then it's automatic.
+# Run manually on all files: `pre-commit run --all-files`
+# Update hook versions: `pre-commit autoupdate`
+
+default_install_hook_types: [pre-commit, commit-msg]
+fail_fast: false
+
+repos:
+  # Python: lint + format with Ruff (single tool, super fast)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.1
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  # Python: type-check with mypy (informational — doesn't block)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        args: [--config-file=pyproject.toml]
+        additional_dependencies:
+          - pandas-stubs
+          - types-requests
+          - types-tabulate
+        files: ^(app|database|scripts)/.*\.py$
+        verbose: true # show output even when passing
+        # Don't block commits — mypy strict mode is incremental
+        stages: [manual]
+
+  # Frontend: format with Prettier
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        files: ^app/frontend/.*\.(ts|tsx|js|jsx|json|css|md)$
+        additional_dependencies:
+          - prettier@3.8.3
+
+  # NOTE: eslint + tsc are NOT in pre-commit by design.
+  # They require `cd app/frontend && npx ...`, which doesn't run cross-platform
+  # via pre-commit's hook system (bash unavailable on Windows native).
+  # CI (.github/workflows/lint.yml) runs them on every push/PR — that's the
+  # source of truth. Run them locally with: `cd app/frontend && npm run lint`.
+
+  # General hygiene.
+  # NOTE: database/ is excluded from line-ending / whitespace normalization —
+  # those CSVs are bot-managed (filings-fetch action) and reformatting them
+  # creates massive noise diffs unrelated to actual data changes.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(database/.*\.csv|.*\.md)$
+      - id: end-of-file-fixer
+        exclude: ^database/.*\.csv$
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: ^database/.*\.csv$
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+        # tsconfig*.json files are JSONC (allow comments) — check-json is strict JSON only
+        exclude: ^app/frontend/tsconfig.*\.json$
+      - id: check-added-large-files
+        args: [--maxkb=500]
+        exclude: ^(database/|app/frontend/package-lock\.json|Pipfile\.lock)
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+
+  # Conventional Commits enforcement on commit-msg
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.6.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - feat
+          - fix
+          - chore
+          - docs
+          - refactor
+          - test
+          - perf
+          - ci
+          - build
+          - style
+          - revert
