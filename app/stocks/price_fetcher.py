@@ -1,18 +1,19 @@
-from app.stocks.libraries import FinanceLibrary, YFinance, TradingView, Nasdaq
 from datetime import date
+
+from app.stocks.libraries import FinanceLibrary, Nasdaq, TradingView, YFinance
 
 
 class PriceFetcher:
     """
     Orchestrates the retrieval of stock prices using multiple libraries as fallbacks.
     """
+
     @staticmethod
     def get_libraries() -> list[FinanceLibrary]:
         """
         Returns an ordered list of FinanceLibrary instances for price fetching.
         """
         return [YFinance, TradingView, Nasdaq]
-
 
     @staticmethod
     def get_current_price(ticker: str) -> float | None:
@@ -27,10 +28,9 @@ class PriceFetcher:
             except Exception as e:
                 print(f"⚠️ {library.__name__} failed to get price for {ticker}: {e}")
                 continue
-        
+
         print(f"❌ PriceFetcher: Failed to get current price for {ticker} from all sources.")
         return None
-
 
     @staticmethod
     def get_history(ticker: str, period: str = "5y") -> list[dict]:
@@ -54,7 +54,6 @@ class PriceFetcher:
         print(f"❌ PriceFetcher: Failed to get history for {ticker} from all sources.")
         return []
 
-
     @staticmethod
     def get_avg_price(ticker: str, date_obj: date) -> float | None:
         """
@@ -68,6 +67,8 @@ class PriceFetcher:
             except Exception as e:
                 print(f"⚠️ {library.__name__} failed to get avg price for {ticker}: {e}")
                 continue
-        
-        print(f"❌ PriceFetcher: Failed to get avg price for {ticker} on {date_obj} from all sources.")
+
+        print(
+            f"❌ PriceFetcher: Failed to get avg price for {ticker} on {date_obj} from all sources."
+        )
         return None

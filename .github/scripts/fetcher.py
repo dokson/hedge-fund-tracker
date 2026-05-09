@@ -1,12 +1,11 @@
-import sys
 import os
+import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from app.utils.database import clean_stocks, sort_stocks
 from database.GICS.updater import main as update_gics_hierarchy
 from database.updater import run_all_funds_report, run_fetch_nq_filings
-
 
 if __name__ == "__main__":
     print("::group::🗃️ Updating GICS Hierarchy")

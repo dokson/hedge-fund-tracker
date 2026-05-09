@@ -1,5 +1,7 @@
 import unittest
+
 from app.ai.response_parser import ResponseParser
+
 
 class TestResponseParser(unittest.TestCase):
     def test_comment_with_quote(self):
@@ -12,10 +14,9 @@ ticker: "Q"
 sub_industry: "Semiconductors"  # Assumed based on "Qnity Electronics Inc" description
 ```
 """
-        expected = {'ticker': 'Q', 'sub_industry': 'Semiconductors'}
+        expected = {"ticker": "Q", "sub_industry": "Semiconductors"}
         result = ResponseParser.extract_and_decode_toon(response_text)
         self.assertEqual(result, expected)
-
 
     def test_hash_inside_string(self):
         """
@@ -27,28 +28,25 @@ ticker: "NVDA"
 description: "This is item # 1 in the list"
 ```
 """
-        expected = {'ticker': 'NVDA', 'description': 'This is item # 1 in the list'}
+        expected = {"ticker": "NVDA", "description": "This is item # 1 in the list"}
         result = ResponseParser.extract_and_decode_toon(response_text)
         self.assertEqual(result, expected)
-
 
     def test_extract_and_decode_simple_toon(self):
         """
         Tests parsing a simple, valid TOON string.
         """
         response_text = 'key1: "value1"\nkey2: 123\nbool_key: true'
-        expected = {'key1': 'value1', 'key2': 123, 'bool_key': True}
+        expected = {"key1": "value1", "key2": 123, "bool_key": True}
         self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
-
 
     def test_extract_and_decode_with_toon_markdown(self):
         """
         Tests parsing a TOON string enclosed in ```toon ... ``` markdown.
         """
         response_text = '```toon\nkey: "value"\n```'
-        expected = {'key': 'value'}
+        expected = {"key": "value"}
         self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
-
 
     def test_extract_and_decode_with_split_markdown_tag(self):
         """
@@ -56,36 +54,31 @@ description: "This is item # 1 in the list"
         E.g. ```\ntoon
         """
         response_text = '```\ntoon\nkey: "value"\n```'
-        expected = {'key': 'value'}
+        expected = {"key": "value"}
         self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
-
 
     def test_extract_and_decode_with_generic_markdown(self):
         """
         Tests parsing a TOON string enclosed in generic ``` ... ``` markdown.
         """
-        response_text = '```\nnested:\n  inner_key: 42\n```'
-        expected = {'nested': {'inner_key': 42}}
+        response_text = "```\nnested:\n  inner_key: 42\n```"
+        expected = {"nested": {"inner_key": 42}}
         self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
-
-
-
 
     def test_extract_and_decode_with_quoted_keys(self):
         """
         Tests parsing TOON where keys are quoted (required for special characters).
         """
         response_text = '"BRK-B": 500\n"BF.B": 200'
-        expected = {'BRK-B': 500, 'BF.B': 200}
+        expected = {"BRK-B": 500, "BF.B": 200}
         self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
 
     def test_extract_and_decode_empty_or_whitespace_string(self):
         """
         Tests that an empty string returns an empty dictionary.
         """
-        self.assertEqual(ResponseParser.extract_and_decode_toon(''), {})
-        self.assertEqual(ResponseParser.extract_and_decode_toon('   \n \t '), {})
-
+        self.assertEqual(ResponseParser.extract_and_decode_toon(""), {})
+        self.assertEqual(ResponseParser.extract_and_decode_toon("   \n \t "), {})
 
     def test_checklist_with_yaml_list(self):
         """
@@ -100,9 +93,8 @@ ticker: "NVDA"
 company: "NVIDIA"
 ```
 """
-        expected = {'checklist': {}, 'ticker': 'NVDA', 'company': 'NVIDIA'}
+        expected = {"checklist": {}, "ticker": "NVDA", "company": "NVIDIA"}
         self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
-
 
     def test_checklist_with_json_list(self):
         """
@@ -127,10 +119,9 @@ ticker: "NVDA"
         # If toon.decode handles "checklist: [" followed by "ticker: ...", we get {'checklist': '[', 'ticker': ...}
         # Let's see what happens.
         result = ResponseParser.extract_and_decode_toon(response_text)
-        self.assertEqual(result.get('ticker'), 'NVDA')
+        self.assertEqual(result.get("ticker"), "NVDA")
         # We don't strictly care about the checklist value, just that parsing succeeded.
-        self.assertIn('checklist', result)
-
+        self.assertIn("checklist", result)
 
     def test_extract_last_toon_block(self):
         """
@@ -151,10 +142,9 @@ status: "final"
 ```
 Final conclusion.
 """
-        expected = {'score': 0.85, 'status': 'final'}
+        expected = {"score": 0.85, "status": "final"}
         result = ResponseParser.extract_and_decode_toon(response_text)
         self.assertEqual(result, expected)
-
 
     def test_repairs_two_known_keys_glued_on_same_line(self):
         """
@@ -170,9 +160,15 @@ LIF:
         result = ResponseParser.extract_and_decode_toon(response_text)
         self.assertEqual(
             result,
-            {'LIF': {'industry': 'Software', 'momentum_score': 65, 'low_volatility_score': 70, 'risk_score': 60}},
+            {
+                "LIF": {
+                    "industry": "Software",
+                    "momentum_score": 65,
+                    "low_volatility_score": 70,
+                    "risk_score": 60,
+                }
+            },
         )
-
 
     def test_repairs_ticker_glued_to_previous_value(self):
         """
@@ -187,9 +183,8 @@ OKYO:
   risk_score: 95
 ```"""
         result = ResponseParser.extract_and_decode_toon(response_text)
-        self.assertEqual(result.get('OKYO', {}).get('risk_score'), 90)
-        self.assertEqual(result.get('KRRO', {}).get('risk_score'), 95)
-
+        self.assertEqual(result.get("OKYO", {}).get("risk_score"), 90)
+        self.assertEqual(result.get("KRRO", {}).get("risk_score"), 95)
 
     def test_repairs_are_idempotent_on_clean_input(self):
         """
@@ -203,5 +198,12 @@ AVGO:
   low_volatility_score: 40
   risk_score: 50
 ```"""
-        expected = {'AVGO': {'industry': 'Semiconductors', 'momentum_score': 92, 'low_volatility_score': 40, 'risk_score': 50}}
+        expected = {
+            "AVGO": {
+                "industry": "Semiconductors",
+                "momentum_score": 92,
+                "low_volatility_score": 40,
+                "risk_score": 50,
+            }
+        }
         self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)

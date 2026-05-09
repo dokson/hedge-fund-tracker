@@ -1,4 +1,5 @@
 import os
+
 import requests
 from dotenv import load_dotenv
 
@@ -14,6 +15,7 @@ def open_issue(subject, body):
         subject (str): The subject of the alert, which will become the Issue title.
         body (str): The body of the message/alert.
     """
+
     def print_error():
         """
         Prints the error to the console.
@@ -55,7 +57,7 @@ def open_issue(subject, body):
             return
 
         # If no existing issue is found, create a new one
-        repo_owner = repo.split('/')[0]
+        repo_owner = repo.split("/")[0]
         create_url = f"https://api.github.com/repos/{repo}/issues"
 
     except requests.exceptions.RequestException as e:
@@ -63,12 +65,7 @@ def open_issue(subject, body):
         print_error()
         return
 
-    data = {
-        "title": subject,
-        "body": body,
-        "labels": ["bug", "alert"],
-        "assignees": [repo_owner]
-    }
+    data = {"title": subject, "body": body, "labels": ["bug", "alert"], "assignees": [repo_owner]}
 
     try:
         response = requests.post(create_url, json=data, headers=headers)
@@ -78,7 +75,9 @@ def open_issue(subject, body):
             print(f"::notice::✅ Successfully created GitHub Issue: {response.json()['html_url']}")
         else:
             # This case is unlikely if raise_for_status() is used, but good for robustness.
-            print(f"::error::❌ Failed to create GitHub Issue with status code: {response.status_code}")
+            print(
+                f"::error::❌ Failed to create GitHub Issue with status code: {response.status_code}"
+            )
             print(f"Response: {response.text}")
             print_error()
 

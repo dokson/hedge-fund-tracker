@@ -1,6 +1,7 @@
 import unittest
-from unittest.mock import patch, MagicMock
 from datetime import date
+from unittest.mock import MagicMock, patch
+
 from app.stocks.libraries.nasdaq import Nasdaq
 
 
@@ -31,7 +32,6 @@ def _make_empty_response():
 
 
 class TestNasdaqParsePrice(unittest.TestCase):
-
     def test_parses_plain_number(self):
         """
         Parses a simple numeric string.
@@ -64,17 +64,18 @@ class TestNasdaqParsePrice(unittest.TestCase):
 
 
 class TestNasdaqFetchHistorical(unittest.TestCase):
-
     @patch("app.stocks.libraries.nasdaq.requests.get")
     def test_returns_matching_row_for_date(self, mock_get):
         """
         Returns the row matching the requested date.
         """
         mock_resp = MagicMock()
-        mock_resp.json.return_value = _make_api_response([
-            {"date": "03/28/2026", "close": "10.50", "high": "10.50", "low": "10.50"},
-            {"date": "03/27/2026", "close": "10.23", "high": "10.23", "low": "10.23"},
-        ])
+        mock_resp.json.return_value = _make_api_response(
+            [
+                {"date": "03/28/2026", "close": "10.50", "high": "10.50", "low": "10.50"},
+                {"date": "03/27/2026", "close": "10.23", "high": "10.23", "low": "10.23"},
+            ]
+        )
         mock_get.return_value = mock_resp
 
         row = Nasdaq._fetch_historical("FMSMX", date(2026, 3, 27))
@@ -87,9 +88,11 @@ class TestNasdaqFetchHistorical(unittest.TestCase):
         Returns None when the API returns data but not for the requested date.
         """
         mock_resp = MagicMock()
-        mock_resp.json.return_value = _make_api_response([
-            {"date": "03/28/2026", "close": "10.50", "high": "10.50", "low": "10.50"},
-        ])
+        mock_resp.json.return_value = _make_api_response(
+            [
+                {"date": "03/28/2026", "close": "10.50", "high": "10.50", "low": "10.50"},
+            ]
+        )
         mock_get.return_value = mock_resp
 
         row = Nasdaq._fetch_historical("FMSMX", date(2026, 3, 27))
@@ -122,15 +125,16 @@ class TestNasdaqFetchHistorical(unittest.TestCase):
 
 
 class TestNasdaqGetAvgPrice(unittest.TestCase):
-
     @patch("app.stocks.libraries.nasdaq.Nasdaq._fetch_historical")
     def test_returns_close_for_mutual_fund(self, mock_fetch):
         """
         Returns the close (NAV) price when high == low (typical for mutual funds).
         """
         mock_fetch.return_value = {
-            "date": "03/27/2026", "close": "10.23",
-            "high": "10.23", "low": "10.23",
+            "date": "03/27/2026",
+            "close": "10.23",
+            "high": "10.23",
+            "low": "10.23",
         }
 
         price = Nasdaq.get_avg_price("FMSMX", date(2026, 3, 27))
@@ -143,8 +147,10 @@ class TestNasdaqGetAvgPrice(unittest.TestCase):
         Returns (high + low) / 2 when high != low.
         """
         mock_fetch.return_value = {
-            "date": "03/27/2026", "close": "$248.80",
-            "high": "$255.49", "low": "$248.07",
+            "date": "03/27/2026",
+            "close": "$248.80",
+            "high": "$255.49",
+            "low": "$248.07",
         }
 
         price = Nasdaq.get_avg_price("AAPL", date(2026, 3, 27))
@@ -168,8 +174,10 @@ class TestNasdaqGetAvgPrice(unittest.TestCase):
         Returns None when all price fields are N/A.
         """
         mock_fetch.return_value = {
-            "date": "03/27/2026", "close": "N/A",
-            "high": "N/A", "low": "N/A",
+            "date": "03/27/2026",
+            "close": "N/A",
+            "high": "N/A",
+            "low": "N/A",
         }
 
         price = Nasdaq.get_avg_price("UNKNOWN", date(2026, 3, 27))
@@ -178,16 +186,17 @@ class TestNasdaqGetAvgPrice(unittest.TestCase):
 
 
 class TestNasdaqGetCurrentPrice(unittest.TestCase):
-
     @patch("app.stocks.libraries.nasdaq.requests.get")
     def test_returns_latest_close_price(self, mock_get):
         """
         Returns the close price from the most recent row.
         """
         mock_resp = MagicMock()
-        mock_resp.json.return_value = _make_api_response([
-            {"date": "03/31/2026", "close": "10.22"},
-        ])
+        mock_resp.json.return_value = _make_api_response(
+            [
+                {"date": "03/31/2026", "close": "10.22"},
+            ]
+        )
         mock_get.return_value = mock_resp
 
         price = Nasdaq.get_current_price("FMSMX")
@@ -224,9 +233,11 @@ class TestNasdaqGetCurrentPrice(unittest.TestCase):
         Correctly parses prices with $ prefix.
         """
         mock_resp = MagicMock()
-        mock_resp.json.return_value = _make_api_response([
-            {"date": "03/31/2026", "close": "$248.80"},
-        ])
+        mock_resp.json.return_value = _make_api_response(
+            [
+                {"date": "03/31/2026", "close": "$248.80"},
+            ]
+        )
         mock_get.return_value = mock_resp
 
         price = Nasdaq.get_current_price("AAPL")
@@ -235,7 +246,6 @@ class TestNasdaqGetCurrentPrice(unittest.TestCase):
 
 
 class TestNasdaqGetSymbolChanges(unittest.TestCase):
-
     @patch("app.stocks.libraries.nasdaq.requests.get")
     def test_returns_list_of_old_new_ticker_pairs(self, mock_get):
         """
@@ -246,8 +256,16 @@ class TestNasdaqGetSymbolChanges(unittest.TestCase):
             "data": {
                 "symbolChangeHistoryTable": {
                     "rows": [
-                        {"oldSymbol": "BITF", "newSymbol": "KEEL", "companyName": "Keel Infrastructure Corp."},
-                        {"oldSymbol": "NBY", "newSymbol": "SDEV", "companyName": "Stablecoin Development Corp."},
+                        {
+                            "oldSymbol": "BITF",
+                            "newSymbol": "KEEL",
+                            "companyName": "Keel Infrastructure Corp.",
+                        },
+                        {
+                            "oldSymbol": "NBY",
+                            "newSymbol": "SDEV",
+                            "companyName": "Stablecoin Development Corp.",
+                        },
                     ]
                 }
             }

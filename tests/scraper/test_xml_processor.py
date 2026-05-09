@@ -1,9 +1,11 @@
-from app.scraper.xml_processor import xml_to_dataframe_13f
-import pandas as pd
 import unittest
 
-class TestXmlProcessor(unittest.TestCase):
+import pandas as pd
 
+from app.scraper.xml_processor import xml_to_dataframe_13f
+
+
+class TestXmlProcessor(unittest.TestCase):
     def test_xml_to_dataframe_13f_full_dollars_no_scaling(self):
         """
         Tests that values are NOT scaled if the implied share price is realistic (Full Dollars).
@@ -20,15 +22,14 @@ class TestXmlProcessor(unittest.TestCase):
             </infotable>
         </informationtable>
         """
-        
+
         df = xml_to_dataframe_13f(xml_content)
-        
+
         self.assertIsInstance(df, pd.DataFrame)
         self.assertEqual(len(df), 1)
         # Value should remain exactly as reported
-        self.assertEqual(df['Value'][0], 10000000)
-        self.assertEqual(df['Shares'][0], 100000)
-
+        self.assertEqual(df["Value"][0], 10000000)
+        self.assertEqual(df["Shares"][0], 100000)
 
     def test_xml_to_dataframe_13f_thousands_with_scaling(self):
         """
@@ -47,15 +48,14 @@ class TestXmlProcessor(unittest.TestCase):
             </infotable>
         </informationtable>
         """
-        
+
         df = xml_to_dataframe_13f(xml_content)
-        
+
         self.assertIsInstance(df, pd.DataFrame)
         self.assertEqual(len(df), 1)
         # Value should be multiplied by 1000
-        self.assertEqual(df['Value'][0], 50000 * 1000)
-        self.assertEqual(df['Shares'][0], 500000)
-
+        self.assertEqual(df["Value"][0], 50000 * 1000)
+        self.assertEqual(df["Shares"][0], 500000)
 
     def test_xml_to_dataframe_13f_mixed_portfolio_median_logic(self):
         """
@@ -80,14 +80,14 @@ class TestXmlProcessor(unittest.TestCase):
             </infotable>
         </informationtable>
         """
-        # Prices: [0.1, 0.1, 500.0]. Median is 0.1. 
+        # Prices: [0.1, 0.1, 500.0]. Median is 0.1.
         # 0.1 < 0.5 threshold -> Should scale everything by 1000.
         df = xml_to_dataframe_13f(xml_content)
-        
+
         # 'Stock A' value should be 100 * 1000 = 100,000
-        val_a = df.loc[df['Company'] == 'Stock A', 'Value'].values[0]
+        val_a = df.loc[df["Company"] == "Stock A", "Value"].values[0]
         self.assertEqual(val_a, 100000)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -45,8 +45,8 @@ async def health_check():
 _DB_ROOT = DATABASE_DIR.resolve()
 _FRONTEND_ROOT = FRONTEND_DIST.resolve()
 _QUARTER_RE = re.compile(r"^\d{4}Q[1-4]$")
-_TICKER_RE  = re.compile(r"^[A-Z0-9.\-]{1,10}$")
-_CUSIP_RE   = re.compile(r"^[A-Z0-9]{9}$")
+_TICKER_RE = re.compile(r"^[A-Z0-9.\-]{1,10}$")
+_CUSIP_RE = re.compile(r"^[A-Z0-9]{9}$")
 
 
 def _sanitize_path_parts(filepath: str) -> list[str]:
@@ -136,6 +136,7 @@ def _require_cusip(cusip: str | None) -> str:
 
 # ── Database file serving ──────────────────────────────────────────────────────
 
+
 @app.get("/database/{filepath:path}")
 async def get_database_file(filepath: str):
     file_path = _safe_db_path(filepath)
@@ -157,6 +158,7 @@ async def put_database_file(filepath: str, request: Request):
 
 # ── Quarter fund listing ───────────────────────────────────────────────────────
 
+
 @app.get("/api/database/quarters")
 async def list_quarters() -> list[str]:
     """
@@ -165,8 +167,7 @@ async def list_quarters() -> list[str]:
     if not DATABASE_DIR.exists():
         return []
     return sorted(
-        d.name for d in DATABASE_DIR.iterdir()
-        if d.is_dir() and _QUARTER_RE.match(d.name)
+        d.name for d in DATABASE_DIR.iterdir() if d.is_dir() and _QUARTER_RE.match(d.name)
     )
 
 
@@ -181,8 +182,7 @@ async def latest_quarter() -> dict[str, str | None]:
     if not DATABASE_DIR.exists():
         return {"quarter": None}
     quarters = sorted(
-        d.name for d in DATABASE_DIR.iterdir()
-        if d.is_dir() and _QUARTER_RE.match(d.name)
+        d.name for d in DATABASE_DIR.iterdir() if d.is_dir() and _QUARTER_RE.match(d.name)
     )
     return {"quarter": quarters[-1] if quarters else None}
 
@@ -205,6 +205,7 @@ async def quarter_analysis_endpoint(quarter: str) -> list[dict[str, object]]:
     a pre-aggregated leaderboard in a single request instead of fetching every fund's CSV.
     """
     from app.analysis.stocks import quarter_analysis
+
     sanitized_quarter = _require_quarter(quarter)
     quarter_dir = _safe_db_path(sanitized_quarter)
     if not quarter_dir.exists() or not quarter_dir.is_dir():
@@ -216,6 +217,7 @@ async def quarter_analysis_endpoint(quarter: str) -> list[dict[str, object]]:
 
 
 # ── Stock price history ────────────────────────────────────────────────────────
+
 
 @app.get("/api/stocks/{ticker}/history")
 async def stock_price_history(ticker: str, range: str = "5y") -> dict:
@@ -231,14 +233,18 @@ async def stock_price_history(ticker: str, range: str = "5y") -> dict:
 
     allowed_ranges = {"ytd", "1y", "2y", "3y", "5y", "10y", "max"}
     if range not in allowed_ranges:
-        raise HTTPException(status_code=400, detail=f"Invalid range; allowed: {sorted(allowed_ranges)}")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid range; allowed: {sorted(allowed_ranges)}"
+        )
 
     from app.stocks.price_fetcher import PriceFetcher
+
     points = PriceFetcher.get_history(sanitized, range)
     return {"ticker": sanitized, "range": range, "points": points}
 
 
 # ── .env read/write ────────────────────────────────────────────────────────────
+
 
 @app.get("/api/settings/env")
 async def get_env():
@@ -263,6 +269,7 @@ async def put_env(request: Request):
 
 # ── AI endpoints ───────────────────────────────────────────────────────────────
 
+
 def _df_to_json_safe_records(df: "pd.DataFrame") -> list[dict[str, object]]:
     """
     Convert a pandas DataFrame to a list of records, replacing values that are not
@@ -283,6 +290,7 @@ def _df_to_json_safe_records(df: "pd.DataFrame") -> list[dict[str, object]]:
 @app.post("/api/ai/promise-score")
 async def ai_promise_score(request: Request):
     from app.ai.agent import AnalystAgent
+
     body = await request.json()
     quarter = _require_quarter(body.get("quarter"))
     top_n = body.get("top_n", 20)
@@ -295,6 +303,7 @@ async def ai_promise_score(request: Request):
 @app.post("/api/ai/due-diligence")
 async def ai_due_diligence(request: Request):
     from app.ai.agent import AnalystAgent
+
     body = await request.json()
     ticker = _require_ticker(body.get("ticker"))
     quarter = _require_quarter(body.get("quarter"))
@@ -306,9 +315,11 @@ async def ai_due_diligence(request: Request):
 
 # ── Database operations ────────────────────────────────────────────────────────
 
+
 @app.post("/api/database/fetch")
 async def database_fetch(request: Request):
     from database.updater import run_all_funds_report
+
     body = await request.json()
     fetch_type = body.get("type", "all")
     if fetch_type == "all":
@@ -321,6 +332,7 @@ async def database_fetch(request: Request):
 @app.post("/api/update-all")
 async def update_all():
     from database.updater import run_all_funds_report
+
     run_all_funds_report()
     return {"message": "All 13F reports generated successfully"}
 
@@ -328,12 +340,16 @@ async def update_all():
 @app.post("/api/update-all/stream")
 async def update_all_stream():
     from database.updater import run_all_funds_report
-    return _make_sse_stream(lambda: (run_all_funds_report(), "All 13F reports generated successfully")[1])
+
+    return _make_sse_stream(
+        lambda: (run_all_funds_report(), "All 13F reports generated successfully")[1]
+    )
 
 
 @app.post("/api/fetch-nq")
 async def fetch_nq():
     from database.updater import run_fetch_nq_filings
+
     run_fetch_nq_filings()
     return {"message": "Non-quarterly filings fetched successfully"}
 
@@ -341,12 +357,16 @@ async def fetch_nq():
 @app.post("/api/fetch-nq/stream")
 async def fetch_nq_stream():
     from database.updater import run_fetch_nq_filings
-    return _make_sse_stream(lambda: (run_fetch_nq_filings(), "Non-quarterly filings fetched successfully")[1])
+
+    return _make_sse_stream(
+        lambda: (run_fetch_nq_filings(), "Non-quarterly filings fetched successfully")[1]
+    )
 
 
 @app.post("/api/update-ticker")
 async def update_ticker_endpoint(request: Request):
     from app.utils.database import update_ticker
+
     body = await request.json()
     old_ticker = _require_ticker(body.get("old_ticker", "").strip())
     new_ticker = _require_ticker(body.get("new_ticker", "").strip())
@@ -358,6 +378,7 @@ async def update_ticker_endpoint(request: Request):
 @app.post("/api/update-cusip-ticker")
 async def update_cusip_ticker_endpoint(request: Request):
     from app.utils.database import update_ticker_for_cusip
+
     body = await request.json()
     cusip = _require_cusip(body.get("cusip", "").strip())
     new_ticker = _require_ticker(body.get("new_ticker", "").strip())
@@ -373,18 +394,21 @@ async def detect_ticker_changes_endpoint():
     """
     from app.stocks.libraries.nasdaq import Nasdaq
     from app.utils.database import find_cusips_for_ticker
+
     changes = Nasdaq.get_symbol_changes()
     applicable = []
     for change in changes:
         old_symbol = change.get("oldSymbol", "")
         matching = find_cusips_for_ticker(old_symbol)
         if matching:
-            applicable.append({
-                "oldSymbol": old_symbol,
-                "newSymbol": change.get("newSymbol", ""),
-                "companyName": change.get("companyName", ""),
-                "cusips": [s["CUSIP"] for s in matching],
-            })
+            applicable.append(
+                {
+                    "oldSymbol": old_symbol,
+                    "newSymbol": change.get("newSymbol", ""),
+                    "companyName": change.get("companyName", ""),
+                    "cusips": [s["CUSIP"] for s in matching],
+                }
+            )
     return {"total_changes": len(changes), "applicable": applicable}
 
 
@@ -396,6 +420,7 @@ async def apply_ticker_changes_endpoint():
     from app.stocks.libraries.nasdaq import Nasdaq
     from app.stocks.libraries.yfinance import YFinance
     from app.utils.database import find_cusips_for_ticker, update_ticker
+
     changes = Nasdaq.get_symbol_changes()
     applied = []
     for change in changes:
@@ -403,7 +428,7 @@ async def apply_ticker_changes_endpoint():
         new_symbol = change.get("newSymbol", "")
         matching = find_cusips_for_ticker(old_symbol)
         if matching:
-            company = YFinance.get_company('', ticker=new_symbol) or change.get("companyName", "")
+            company = YFinance.get_company("", ticker=new_symbol) or change.get("companyName", "")
             update_ticker(old_symbol, new_symbol, new_company=company)
             applied.append({"old": old_symbol, "new": new_symbol, "companyName": company})
     return {"applied": applied}
@@ -412,6 +437,7 @@ async def apply_ticker_changes_endpoint():
 # ── AI streaming endpoints ─────────────────────────────────────────────────
 
 _sse_lock = threading.Lock()
+
 
 def _make_sse_stream(target_fn):
     """Run target_fn in a thread, capture its stdout, and stream each line as SSE."""
@@ -422,7 +448,9 @@ def _make_sse_stream(target_fn):
             for line in text.splitlines():
                 if line.strip():
                     log_q.put(("log", line))
-        def flush(self): pass
+
+        def flush(self):
+            pass
 
     def run():
         """
@@ -466,6 +494,7 @@ def _make_sse_stream(target_fn):
 @app.post("/api/ai/promise-score/stream")
 async def ai_promise_score_stream(request: Request):
     from app.ai.agent import AnalystAgent
+
     body = await request.json()
     quarter = _require_quarter(body.get("quarter"))
     top_n = body.get("top_n", 20)
@@ -482,6 +511,7 @@ async def ai_promise_score_stream(request: Request):
 @app.post("/api/ai/due-diligence/stream")
 async def ai_due_diligence_stream(request: Request):
     from app.ai.agent import AnalystAgent
+
     body = await request.json()
     ticker = _require_ticker(body.get("ticker"))
     quarter = _require_quarter(body.get("quarter"))
@@ -496,8 +526,8 @@ async def ai_due_diligence_stream(request: Request):
 
 # ── Static frontend ────────────────────────────────────────────────────────────
 
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import JSONResponse
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -524,23 +554,30 @@ async def serve_spa(full_path: str):
     index = _FRONTEND_ROOT / "index.html"
     if index.exists():
         return FileResponse(str(index))
-    raise HTTPException(status_code=503, detail="Frontend not built. Run: cd app/frontend && npm run build")
+    raise HTTPException(
+        status_code=503, detail="Frontend not built. Run: cd app/frontend && npm run build"
+    )
 
 
 # ── AI client factory ──────────────────────────────────────────────────────────
 
+
 def _build_ai_client(model_id: str | None = None, provider_id: str | None = None):
     """Build the AI client for the requested provider, falling back to first available."""
     from app.ai.clients import (
-        GitHubClient, GoogleAIClient, GroqClient,
-        HuggingFaceClient, OpenRouterClient,
+        GitHubClient,
+        GoogleAIClient,
+        GroqClient,
+        HuggingFaceClient,
+        OpenRouterClient,
     )
+
     provider_map = {
-        "github":      ("GITHUB_TOKEN",       GitHubClient),
-        "google":      ("GOOGLE_API_KEY",     GoogleAIClient),
-        "groq":        ("GROQ_API_KEY",       GroqClient),
-        "huggingface": ("HF_TOKEN",           HuggingFaceClient),
-        "openrouter":  ("OPENROUTER_API_KEY", OpenRouterClient),
+        "github": ("GITHUB_TOKEN", GitHubClient),
+        "google": ("GOOGLE_API_KEY", GoogleAIClient),
+        "groq": ("GROQ_API_KEY", GroqClient),
+        "huggingface": ("HF_TOKEN", HuggingFaceClient),
+        "openrouter": ("OPENROUTER_API_KEY", OpenRouterClient),
     }
     # If provider is known, use it directly (if its key is present)
     if provider_id and provider_id in provider_map:
@@ -555,4 +592,6 @@ def _build_ai_client(model_id: str | None = None, provider_id: str | None = None
     for env_var, ClientClass in provider_map.values():
         if os.getenv(env_var):
             return ClientClass() if model_id is None else ClientClass(model=model_id)
-    raise HTTPException(status_code=500, detail="No AI provider configured. Set at least one API key in .env.")
+    raise HTTPException(
+        status_code=500, detail="No AI provider configured. Set at least one API key in .env."
+    )

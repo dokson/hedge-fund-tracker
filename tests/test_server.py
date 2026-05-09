@@ -16,6 +16,7 @@ class TestDfToJsonSafeRecords(unittest.TestCase):
         Positive and negative infinity values must be converted to None.
         """
         from app.server import _df_to_json_safe_records
+
         df = pd.DataFrame({"a": [1.0, np.inf, -np.inf]})
         records = _df_to_json_safe_records(df)
         self.assertEqual(records, [{"a": 1.0}, {"a": None}, {"a": None}])
@@ -26,6 +27,7 @@ class TestDfToJsonSafeRecords(unittest.TestCase):
         the dtype bug where .where(..., None) was silently a no-op on numeric dtypes).
         """
         from app.server import _df_to_json_safe_records
+
         df = pd.DataFrame({"a": [1.0, np.nan]})
         records = _df_to_json_safe_records(df)
         self.assertEqual(records, [{"a": 1.0}, {"a": None}])
@@ -35,6 +37,7 @@ class TestDfToJsonSafeRecords(unittest.TestCase):
         Non-numeric columns must pass through untouched.
         """
         from app.server import _df_to_json_safe_records
+
         df = pd.DataFrame({"a": [1.0, np.inf], "b": ["x", "y"]})
         records = _df_to_json_safe_records(df)
         self.assertEqual(records, [{"a": 1.0, "b": "x"}, {"a": None, "b": "y"}])
@@ -44,7 +47,9 @@ class TestDfToJsonSafeRecords(unittest.TestCase):
         The result must be JSON-encodable with allow_nan=False (i.e. browser-safe).
         """
         import json
+
         from app.server import _df_to_json_safe_records
+
         df = pd.DataFrame({"a": [np.inf, np.nan, 0.5]})
         records = _df_to_json_safe_records(df)
         json.dumps(records, allow_nan=False)
@@ -54,6 +59,7 @@ class TestDfToJsonSafeRecords(unittest.TestCase):
         An empty DataFrame must produce an empty record list, not raise.
         """
         from app.server import _df_to_json_safe_records
+
         records = _df_to_json_safe_records(pd.DataFrame())
         self.assertEqual(records, [])
 
@@ -68,6 +74,7 @@ class TestServer(unittest.TestCase):
         Verify that the server module can be imported without errors.
         """
         from app.server import app
+
         self.assertIsNotNone(app)
 
     def test_app_is_fastapi_instance(self):
@@ -75,7 +82,9 @@ class TestServer(unittest.TestCase):
         Verify that the exported app object is a FastAPI instance.
         """
         from fastapi import FastAPI
+
         from app.server import app
+
         self.assertIsInstance(app, FastAPI)
 
     def test_expected_routes_are_registered(self):
@@ -83,6 +92,7 @@ class TestServer(unittest.TestCase):
         Verify that all expected API and database routes are registered on the FastAPI app.
         """
         from app.server import app
+
         paths = [r.path for r in app.routes]
 
         expected_paths = [
@@ -104,6 +114,7 @@ class TestServer(unittest.TestCase):
         endpoint must precede "/{quarter}" to avoid being shadowed.
         """
         from app.server import app
+
         paths = [r.path for r in app.routes]
         latest_idx = paths.index("/api/database/quarters/latest")
         param_idx = paths.index("/api/database/quarters/{quarter}")

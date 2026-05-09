@@ -60,7 +60,9 @@ def main() -> int:
     port = find_available_port()
     env = os.environ.copy()
     env["HOST_PORT"] = str(port)
-    print(f"🚀 Starting docker compose with HOST_PORT={port} -> http://localhost:{port}", flush=True)
+    print(
+        f"🚀 Starting docker compose with HOST_PORT={port} -> http://localhost:{port}", flush=True
+    )
     cmd = ["docker", "compose", "up", *sys.argv[1:]]
     return subprocess.call(cmd, env=env, shell=(os.name == "nt"))
 

@@ -1,13 +1,13 @@
 from datetime import datetime, timedelta
-from typing import Union
+
 import numpy as np
 import pandas as pd
 
 VALUE_FORMAT_MAP = [
-    (1_000_000_000_000, 'T'),
-    (1_000_000_000, 'B'),
-    (1_000_000, 'M'),
-    (1_000, 'K'),
+    (1_000_000_000_000, "T"),
+    (1_000_000_000, "B"),
+    (1_000_000, "M"),
+    (1_000, "K"),
 ]
 
 
@@ -50,20 +50,19 @@ def format_percentage(value: float, show_sign: bool = False, decimal_places: int
         str: Formatted percentage string.
     """
     if pd.isnull(value):
-        return 'N/A'
-    elif isinstance(value, str):
+        return "N/A"
+    if isinstance(value, str):
         if not value.isnumeric():
             return value
 
-    sign = '+' if show_sign else ''
+    sign = "+" if show_sign else ""
 
-    if value == float('inf'):
+    if value == float("inf"):
         return f"{sign}∞"
-    elif 0 < value < 0.01 and not show_sign:
+    if 0 < value < 0.01 and not show_sign:
         return "<.01%"
-    else:
-        formatted = f'{value:{sign}.{decimal_places}f}'.rstrip('0').rstrip('.')
-        return f"{formatted}%"
+    formatted = f"{value:{sign}.{decimal_places}f}".rstrip("0").rstrip(".")
+    return f"{formatted}%"
 
 
 def format_string(string: str) -> str:
@@ -86,7 +85,7 @@ def format_string(string: str) -> str:
     return string
 
 
-def format_value(value: Union[int, float]) -> str:
+def format_value(value: int | float) -> str:
     """
     Formats a numeric value into a human-readable short scale string, up to 2 decimal places (e.g., 1.23B, 45.67M, 8.9K).
     Handles NA/NaN values by returning 'N/A'.
@@ -98,17 +97,17 @@ def format_value(value: Union[int, float]) -> str:
         str: Formatted string.
     """
     if pd.isnull(value):
-        return 'N/A'
+        return "N/A"
 
-    if value == float('inf'):
-        return '∞'
+    if value == float("inf"):
+        return "∞"
 
     for threshold, suffix in VALUE_FORMAT_MAP:
         if abs(value) >= threshold:
-            formatted = f'{value / threshold:.2f}'.rstrip('0').rstrip('.')
+            formatted = f"{value / threshold:.2f}".rstrip("0").rstrip(".")
             return f"{formatted}{suffix}"
 
-    return f'{value:.2f}'.rstrip('0').rstrip('.')
+    return f"{value:.2f}".rstrip("0").rstrip(".")
 
 
 def get_percentage_formatter():
@@ -166,12 +165,13 @@ def get_string_formatter(max_length: int = None):
     Returns:
         callable: A function that takes a string value and returns its formatted string representation.
     """
+
     def formatter(x):
         s = format_string(str(x))
         if max_length and len(s) > max_length:
-            return s[:max_length - 3] + "..."
+            return s[: max_length - 3] + "..."
         return s
-    
+
     return lambda x: formatter(x)
 
 
@@ -198,7 +198,7 @@ def get_numeric(formatted_value: str) -> int:
     Returns:
         int: The number represented by the formatted string.
     """
-    if formatted_value == 'N/A':
+    if formatted_value == "N/A":
         return np.nan
 
     # Create a dictionary from the rules for easy lookup
@@ -210,7 +210,7 @@ def get_numeric(formatted_value: str) -> int:
         number_part = formatted_value[:-1]
         multiplier = units[suffix]
         return int(float(number_part) * multiplier)
-    
+
     return int(float(formatted_value))
 
 
@@ -225,12 +225,11 @@ def get_percentage_number(formatted_percentage: str) -> float:
     Returns:
         float: The numeric value of the percentage. Returns np.nan for 'N/A', 0.0 for '<.01%'.
     """
-    if formatted_percentage == 'N/A':
+    if formatted_percentage == "N/A":
         return np.nan
-    elif formatted_percentage == '<.01%':
+    if formatted_percentage == "<.01%":
         return 0.0
-    else:
-        return float(formatted_percentage.replace('%', ''))
+    return float(formatted_percentage.replace("%", ""))
 
 
 def get_quarter(date_str):
@@ -249,7 +248,7 @@ def get_quarter(date_str):
     Returns:
         str: The formatted quarter string 'YYYYQQ'.
     """
-    year, month, _ = map(int, date_str.split('-'))
+    year, month, _ = map(int, date_str.split("-"))
     quarter = (month - 1) // 3 + 1
     return f"{year}Q{quarter}"
 
@@ -265,6 +264,7 @@ def parse_quarter(quarter_str: str) -> tuple[int, int]:
         tuple: (year, quarter) as integers.
     """
     import re
+
     match = re.match(r"(\d{4})Q([1-4])", quarter_str)
     if not match:
         raise ValueError(f"Invalid quarter format: {quarter_str}")
@@ -298,8 +298,8 @@ def get_previous_quarter(quarter_str: str) -> str:
     """
     year, q = parse_quarter(quarter_str)
     if q == 1:
-        return f"{year-1}Q4"
-    return f"{year}Q{q-1}"
+        return f"{year - 1}Q4"
+    return f"{year}Q{q - 1}"
 
 
 def get_previous_quarter_end_date(date: str) -> str:
@@ -321,7 +321,7 @@ def isin_to_cusip(isin: str) -> str | None:
     """
     Converts a 12-character ISIN to a 9-character CUSIP.
 
-    This function checks if the identifier is a 12-character string. 
+    This function checks if the identifier is a 12-character string.
     If so, it assumes it's an ISIN and extracts the central 9-character National Securities Identifying Number (NSIN), which corresponds to the CUSIP for US/Canadian securities or CINS for others.
     If the input is not a 12-character string, it returns None.
 

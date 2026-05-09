@@ -5,8 +5,8 @@ class GitHubClient(OpenAIClient):
     """
     GitHub Models client implementation using the Azure AI Inference API.
     """
-    DEFAULT_MODEL = "xai/grok-3-mini"
 
+    DEFAULT_MODEL = "xai/grok-3-mini"
 
     def __init__(self, model: str = DEFAULT_MODEL):
         """
@@ -15,13 +15,11 @@ class GitHubClient(OpenAIClient):
         """
         super().__init__(model)
 
-
     def get_base_url(self) -> str:
         """
         Returns the base URL for the GitHub Models API.
         """
         return "https://models.github.ai/inference"
-
 
     def get_api_key_env_var(self) -> str:
         """

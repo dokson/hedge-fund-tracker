@@ -29,6 +29,9 @@ watchfiles = "~=1.1"
 websockets = "~=16.0"
 
 [dev-packages]
+ruff = "~=0.15"
+mypy = "~=2.0"
+pre-commit = "~=4.6"
 
 [pipenv]
 allow_prereleases = false
@@ -42,3 +45,7 @@ docker-up = "python scripts/docker_up.py -d --build"
 test = "python -m unittest discover"
 test-frontend = "cd app/frontend && npm test"
 update = "python -m database.updater"
+lint = "ruff check ."
+lint-fix = "ruff check --fix ."
+format = "ruff format ."
+typecheck = "mypy app database scripts"

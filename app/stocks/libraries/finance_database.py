@@ -1,11 +1,12 @@
+import random
+import string
+
+import financedatabase as fd
+import pandas as pd
 
 from app.stocks.libraries.base_library import FinanceLibrary
 from app.utils.github import open_issue
 from app.utils.strings import format_string
-import financedatabase as fd
-import random
-import string
-import pandas as pd
 
 
 class FinanceDatabase(FinanceLibrary):
@@ -13,6 +14,7 @@ class FinanceDatabase(FinanceLibrary):
     Client for searching stock information using the financedatabase library.
     This class provides static methods to find tickers and company names based on CUSIPs, encapsulating the logic for handling search results.
     """
+
     @staticmethod
     def _search_and_sort(**kwargs) -> pd.DataFrame | None:
         """
@@ -26,13 +28,11 @@ class FinanceDatabase(FinanceLibrary):
         """
         result = fd.Equities().search(**kwargs).copy()
         if not result.empty:
-            if 'index' in kwargs:
-                return result[result.index == kwargs['index']]
-            else:
-                result['ticker_length'] = [len(idx) for idx in result.index]
-                return result.sort_values(by='ticker_length')
+            if "index" in kwargs:
+                return result[result.index == kwargs["index"]]
+            result["ticker_length"] = [len(idx) for idx in result.index]
+            return result.sort_values(by="ticker_length")
         return None
-
 
     @staticmethod
     def get_ticker(cusip: str, **kwargs) -> str | None:
@@ -55,7 +55,6 @@ class FinanceDatabase(FinanceLibrary):
         print(f"🚨 Finance Database: No ticker found for CUSIP {cusip}")
         return None
 
-
     @staticmethod
     def get_company(cusip: str, **kwargs) -> str | None:
         """
@@ -72,11 +71,10 @@ class FinanceDatabase(FinanceLibrary):
         result = FinanceDatabase._search_and_sort(cusip=cusip)
 
         if result is not None:
-            return format_string(result.iloc[0]['name'])
+            return format_string(result.iloc[0]["name"])
 
         print(f"🚨 Finance Database: No company found for CUSIP {cusip}")
         return None
-
 
     @staticmethod
     def get_cusip(ticker: str) -> str | None:
@@ -90,10 +88,10 @@ class FinanceDatabase(FinanceLibrary):
             str | None: The CUSIP if found, otherwise None.
         """
         result = FinanceDatabase._search_and_sort(index=ticker)
-        
+
         if result is not None:
-            return result.iloc[0]['cusip']
-    
+            return result.iloc[0]["cusip"]
+
         print(f"🚨 Finance Database: No CUSIP found for ticker {ticker}")
 
         subject = f"No CUSIP found for ticker '{ticker}'"

@@ -1,18 +1,39 @@
-from app.utils.database import (
-    HEDGE_FUNDS_FILE, MODELS_FILE, STOCKS_FILE, LATEST_SCHEDULE_FILINGS_FILE, GICS_HIERARCHY_FILE,
-    count_funds_in_quarter, get_all_quarters, get_last_quarter, get_last_quarter_for_fund, get_quarters_for_fund,
-    load_stocks, load_fund_holdings, load_hedge_funds, load_models, load_non_quarterly_data, load_gics_hierarchy,
-    save_stock, sort_stocks, find_cusips_for_ticker, update_ticker, delete_fund_from_database,
-    restore_fund_to_database, load_excluded_hedge_funds, get_most_recent_quarter
-)
-import pandas as pd
 import io
 import os
 import shutil
-import unittest
-import unittest.mock
 import threading
 import time
+import unittest
+import unittest.mock
+
+import pandas as pd
+
+from app.utils.database import (
+    GICS_HIERARCHY_FILE,
+    HEDGE_FUNDS_FILE,
+    LATEST_SCHEDULE_FILINGS_FILE,
+    MODELS_FILE,
+    STOCKS_FILE,
+    count_funds_in_quarter,
+    delete_fund_from_database,
+    find_cusips_for_ticker,
+    get_all_quarters,
+    get_last_quarter,
+    get_last_quarter_for_fund,
+    get_most_recent_quarter,
+    get_quarters_for_fund,
+    load_excluded_hedge_funds,
+    load_fund_holdings,
+    load_gics_hierarchy,
+    load_hedge_funds,
+    load_models,
+    load_non_quarterly_data,
+    load_stocks,
+    restore_fund_to_database,
+    save_stock,
+    sort_stocks,
+    update_ticker,
+)
 
 
 class TestDatabase(unittest.TestCase):
@@ -21,205 +42,193 @@ class TestDatabase(unittest.TestCase):
         Set up a temporary database directory and files for testing.
         This runs before each test.
         """
-        self.test_db_folder = 'test_db'
+        self.test_db_folder = "test_db"
         os.makedirs(self.test_db_folder, exist_ok=True)
 
         # Create dummy quarter directories and files
-        os.makedirs(os.path.join(self.test_db_folder, '2025Q1'), exist_ok=True)
-        os.makedirs(os.path.join(self.test_db_folder, '2024Q4'), exist_ok=True)
-        os.makedirs(os.path.join(self.test_db_folder, 'not_a_quarter'), exist_ok=True)
-        
-        with open(os.path.join(self.test_db_folder, '2025Q1', 'Fund_A.csv'), 'w', newline='') as f:
+        os.makedirs(os.path.join(self.test_db_folder, "2025Q1"), exist_ok=True)
+        os.makedirs(os.path.join(self.test_db_folder, "2024Q4"), exist_ok=True)
+        os.makedirs(os.path.join(self.test_db_folder, "not_a_quarter"), exist_ok=True)
+
+        with open(os.path.join(self.test_db_folder, "2025Q1", "Fund_A.csv"), "w", newline="") as f:
             f.write("CUSIP,Ticker,Value,Shares\n123,TICKA,100,10\nTotal,Total,100,10\n")
-        with open(os.path.join(self.test_db_folder, '2025Q1', 'Fund_B.csv'), 'w', newline='') as f:
+        with open(os.path.join(self.test_db_folder, "2025Q1", "Fund_B.csv"), "w", newline="") as f:
             f.write("CUSIP,Ticker,Value,Shares\n456,TICKB,200,20\n")
-        with open(os.path.join(self.test_db_folder, '2024Q4', 'Fund_A.csv'), 'w', newline='') as f:
+        with open(os.path.join(self.test_db_folder, "2024Q4", "Fund_A.csv"), "w", newline="") as f:
             f.write("CUSIP,Ticker,Value,Shares\n123,TICKA,80,10\n")
 
         # Create dummy main db files
-        with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), 'w', newline='') as f:
-            f.write("CIK,Fund,Manager,Denomination,CIKs,URL\n001,Fund A,Manager A,Denom A,,https://fund-a.example.com/\n")
-        
-        with open(os.path.join(self.test_db_folder, MODELS_FILE), 'w', newline='') as f:
+        with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), "w", newline="") as f:
+            f.write(
+                "CIK,Fund,Manager,Denomination,CIKs,URL\n001,Fund A,Manager A,Denom A,,https://fund-a.example.com/\n"
+            )
+
+        with open(os.path.join(self.test_db_folder, MODELS_FILE), "w", newline="") as f:
             f.write("ID,Description,Client\nmodel-1,Google Model,Google\n")
-        
-        with open(os.path.join(self.test_db_folder, STOCKS_FILE), 'w', newline='') as f:
+
+        with open(os.path.join(self.test_db_folder, STOCKS_FILE), "w", newline="") as f:
             f.write("CUSIP,Ticker,Company\n123,TICKA,Company A\n456,TICKB,Company B\n")
-        
-        with open(os.path.join(self.test_db_folder, LATEST_SCHEDULE_FILINGS_FILE), 'w', newline='') as f:
+
+        with open(
+            os.path.join(self.test_db_folder, LATEST_SCHEDULE_FILINGS_FILE), "w", newline=""
+        ) as f:
             f.write("Fund,Ticker,CUSIP,Date,Filing_Date\nFund A,TICKA,123,2025-01-01,2025-01-01\n")
 
-        os.makedirs(os.path.join(self.test_db_folder, 'GICS'), exist_ok=True)
-        with open(os.path.join(self.test_db_folder, GICS_HIERARCHY_FILE), 'w', newline='') as f:
+        os.makedirs(os.path.join(self.test_db_folder, "GICS"), exist_ok=True)
+        with open(os.path.join(self.test_db_folder, GICS_HIERARCHY_FILE), "w", newline="") as f:
             f.write("Sector,Industry\nTech,Software\n")
 
         # Patch the DB_FOLDER constant to use the test directory
-        self.patcher = unittest.mock.patch('app.utils.database.DB_FOLDER', self.test_db_folder)
+        self.patcher = unittest.mock.patch("app.utils.database.DB_FOLDER", self.test_db_folder)
         self.patcher.start()
-
 
     def test_get_all_quarters(self):
         """
         Returns only valid quarter directories, sorted in descending order, excluding non-quarter folders.
         """
-        self.assertEqual(get_all_quarters(), ['2025Q1', '2024Q4'])
-
+        self.assertEqual(get_all_quarters(), ["2025Q1", "2024Q4"])
 
     def test_get_last_quarter(self):
         """
         Returns the most recent quarter folder name.
         """
-        self.assertEqual(get_last_quarter(), '2025Q1')
-
+        self.assertEqual(get_last_quarter(), "2025Q1")
 
     def test_count_funds_in_quarter(self):
         """
         Returns the count of CSV files in a given quarter folder; 0 for non-existent quarters.
         """
-        self.assertEqual(count_funds_in_quarter('2025Q1'), 2)
-        self.assertEqual(count_funds_in_quarter('2023Q1'), 0)
-
+        self.assertEqual(count_funds_in_quarter("2025Q1"), 2)
+        self.assertEqual(count_funds_in_quarter("2023Q1"), 0)
 
     def test_get_last_quarter_for_fund(self):
         """
         Returns the most recent quarter with data for a fund; None if no data found.
         """
-        self.assertEqual(get_last_quarter_for_fund('Fund A'), '2025Q1')
-        self.assertIsNone(get_last_quarter_for_fund('Fund C'))
-
+        self.assertEqual(get_last_quarter_for_fund("Fund A"), "2025Q1")
+        self.assertIsNone(get_last_quarter_for_fund("Fund C"))
 
     def test_get_quarters_for_fund(self):
         """
         Returns all quarters where a fund has data, in descending order.
         """
-        self.assertEqual(get_quarters_for_fund('Fund A'), ['2025Q1', '2024Q4'])
-        self.assertEqual(get_quarters_for_fund('Fund B'), ['2025Q1'])
-        self.assertEqual(get_quarters_for_fund('Fund C'), [])
-
+        self.assertEqual(get_quarters_for_fund("Fund A"), ["2025Q1", "2024Q4"])
+        self.assertEqual(get_quarters_for_fund("Fund B"), ["2025Q1"])
+        self.assertEqual(get_quarters_for_fund("Fund C"), [])
 
     def test_get_most_recent_quarter(self):
         """
         Returns the most recent quarter containing a holding for the given ticker; None if unknown.
         """
-        self.assertEqual(get_most_recent_quarter('TICKA'), '2025Q1')
-        self.assertEqual(get_most_recent_quarter('TICKB'), '2025Q1')
-        self.assertIsNone(get_most_recent_quarter('UNKNOWN'))
-
+        self.assertEqual(get_most_recent_quarter("TICKA"), "2025Q1")
+        self.assertEqual(get_most_recent_quarter("TICKB"), "2025Q1")
+        self.assertIsNone(get_most_recent_quarter("UNKNOWN"))
 
     def test_load_fund_holdings(self):
         """
         Loads holdings excluding the 'Total' row and computes Reported_Price as Value/Shares.
         """
-        df = load_fund_holdings('Fund A', '2025Q1')
-        self.assertEqual(len(df), 1) # Total row excluded
-        self.assertIn('Reported_Price', df.columns)
-        self.assertEqual(df.iloc[0]['Reported_Price'], 10.0)
-
+        df = load_fund_holdings("Fund A", "2025Q1")
+        self.assertEqual(len(df), 1)  # Total row excluded
+        self.assertIn("Reported_Price", df.columns)
+        self.assertEqual(df.iloc[0]["Reported_Price"], 10.0)
 
     def test_load_hedge_funds(self):
         """
         Parses hedge_funds.csv into a list of fund dicts, including the URL column.
         """
-        funds = load_hedge_funds(f'./{self.test_db_folder}/{HEDGE_FUNDS_FILE}')
+        funds = load_hedge_funds(f"./{self.test_db_folder}/{HEDGE_FUNDS_FILE}")
         self.assertEqual(len(funds), 1)
-        self.assertEqual(funds[0]['Fund'], 'Fund A')
-        self.assertEqual(funds[0]['URL'], 'https://fund-a.example.com/')
-
+        self.assertEqual(funds[0]["Fund"], "Fund A")
+        self.assertEqual(funds[0]["URL"], "https://fund-a.example.com/")
 
     def test_load_models(self):
         """
         Parses models.csv into a list of model dicts.
         """
-        models = load_models(f'./{self.test_db_folder}/{MODELS_FILE}')
+        models = load_models(f"./{self.test_db_folder}/{MODELS_FILE}")
         self.assertEqual(len(models), 1)
-        self.assertEqual(models[0]['ID'], 'model-1')
-
+        self.assertEqual(models[0]["ID"], "model-1")
 
     def test_load_non_quarterly_data(self):
         """
         Loads non-quarterly filings (13D/G, Form 4) from the CSV file.
         """
-        df = load_non_quarterly_data(f'./{self.test_db_folder}/{LATEST_SCHEDULE_FILINGS_FILE}')
+        df = load_non_quarterly_data(f"./{self.test_db_folder}/{LATEST_SCHEDULE_FILINGS_FILE}")
         self.assertEqual(len(df), 1)
-        self.assertEqual(df.iloc[0]['Ticker'], 'TICKA')
-
+        self.assertEqual(df.iloc[0]["Ticker"], "TICKA")
 
     def test_load_gics_hierarchy(self):
         """
         Loads the GICS classification hierarchy from CSV.
         """
-        df = load_gics_hierarchy(f'./{self.test_db_folder}/{GICS_HIERARCHY_FILE}')
+        df = load_gics_hierarchy(f"./{self.test_db_folder}/{GICS_HIERARCHY_FILE}")
         self.assertEqual(len(df), 1)
-        self.assertEqual(df.iloc[0]['Sector'], 'Tech')
-
+        self.assertEqual(df.iloc[0]["Sector"], "Tech")
 
     def test_save_stock_and_sort(self):
         """
         Saves a new stock to the database and verifies it appears after sort.
         """
-        save_stock('789', 'TICKC', 'Company C')
-        sort_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
-        df = load_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
-        self.assertIn('789', df.index)
-        self.assertEqual(df.loc['789', 'Ticker'], 'TICKC')
-
+        save_stock("789", "TICKC", "Company C")
+        sort_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        df = load_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        self.assertIn("789", df.index)
+        self.assertEqual(df.loc["789", "Ticker"], "TICKC")
 
     def test_save_stock_strips_whitespace(self):
         """
         Strips leading/trailing whitespace from all fields when saving a stock.
         """
-        save_stock(' 999 ', ' TRIM ', ' Trimmed Company ')
-        sort_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
-        df = load_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
-        self.assertIn('999', df.index)
-        self.assertEqual(df.loc['999', 'Ticker'], 'TRIM')
-        self.assertEqual(df.loc['999', 'Company'], 'Trimmed Company')
-
+        save_stock(" 999 ", " TRIM ", " Trimmed Company ")
+        sort_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        df = load_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        self.assertIn("999", df.index)
+        self.assertEqual(df.loc["999", "Ticker"], "TRIM")
+        self.assertEqual(df.loc["999", "Company"], "Trimmed Company")
 
     def test_find_cusips_for_ticker(self):
         """
         Returns all CUSIP records matching a given ticker symbol.
         """
-        res = find_cusips_for_ticker('TICKA')
+        res = find_cusips_for_ticker("TICKA")
         self.assertEqual(len(res), 1)
-        self.assertEqual(res[0]['CUSIP'], '123')
-
+        self.assertEqual(res[0]["CUSIP"], "123")
 
     def test_update_ticker(self):
         """
         Propagates a ticker rename across stocks.csv, all quarterly CSVs, and non_quarterly.csv.
         """
-        update_ticker('TICKA', 'TICKNEW')
+        update_ticker("TICKA", "TICKNEW")
 
-        df_stocks = load_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
-        self.assertEqual(df_stocks.loc['123', 'Ticker'], 'TICKNEW')
+        df_stocks = load_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        self.assertEqual(df_stocks.loc["123", "Ticker"], "TICKNEW")
 
-        df_q = load_fund_holdings('Fund A', '2025Q1')
-        self.assertEqual(df_q.iloc[0]['Ticker'], 'TICKNEW')
+        df_q = load_fund_holdings("Fund A", "2025Q1")
+        self.assertEqual(df_q.iloc[0]["Ticker"], "TICKNEW")
 
-        df_nq = load_non_quarterly_data(f'./{self.test_db_folder}/{LATEST_SCHEDULE_FILINGS_FILE}')
-        self.assertEqual(df_nq.iloc[0]['Ticker'], 'TICKNEW')
+        df_nq = load_non_quarterly_data(f"./{self.test_db_folder}/{LATEST_SCHEDULE_FILINGS_FILE}")
+        self.assertEqual(df_nq.iloc[0]["Ticker"], "TICKNEW")
 
     def test_update_ticker_with_new_company_name(self):
         """
         Propagates a ticker rename with a new company name across stocks.csv.
         """
-        update_ticker('TICKA', 'TICKNEW', new_company='New Company Name')
+        update_ticker("TICKA", "TICKNEW", new_company="New Company Name")
 
-        df_stocks = load_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
-        self.assertEqual(df_stocks.loc['123', 'Ticker'], 'TICKNEW')
-        self.assertEqual(df_stocks.loc['123', 'Company'], 'New Company Name')
+        df_stocks = load_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        self.assertEqual(df_stocks.loc["123", "Ticker"], "TICKNEW")
+        self.assertEqual(df_stocks.loc["123", "Company"], "New Company Name")
 
     def test_update_ticker_without_company_preserves_existing(self):
         """
         When no new company name is given, the existing company name is preserved.
         """
-        update_ticker('TICKA', 'TICKNEW')
+        update_ticker("TICKA", "TICKNEW")
 
-        df_stocks = load_stocks(f'./{self.test_db_folder}/{STOCKS_FILE}')
-        self.assertEqual(df_stocks.loc['123', 'Ticker'], 'TICKNEW')
-        self.assertEqual(df_stocks.loc['123', 'Company'], 'Company A')
-
+        df_stocks = load_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        self.assertEqual(df_stocks.loc["123", "Ticker"], "TICKNEW")
+        self.assertEqual(df_stocks.loc["123", "Company"], "Company A")
 
     def test_concurrent_save_stocks(self):
         """
@@ -244,6 +253,7 @@ class TestDatabase(unittest.TestCase):
             def write(self, data):
                 with stdout_lock:
                     captured_stdout.write(data)
+
             def flush(self):
                 pass
 
@@ -252,14 +262,12 @@ class TestDatabase(unittest.TestCase):
                 barrier.wait()
                 for i in range(iterations):
                     save_stock(
-                        f"C_{thread_idx}_{i}",
-                        f"T_{thread_idx}_{i}",
-                        f"Company_{thread_idx}_{i}"
+                        f"C_{thread_idx}_{i}", f"T_{thread_idx}_{i}", f"Company_{thread_idx}_{i}"
                     )
             except Exception as e:
                 errors.append(f"Thread {thread_idx}: {str(e)}")
 
-        with unittest.mock.patch('sys.stdout', _ThreadSafeWriter()):
+        with unittest.mock.patch("sys.stdout", _ThreadSafeWriter()):
             threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
             for t in threads:
                 t.start()
@@ -283,8 +291,7 @@ class TestDatabase(unittest.TestCase):
                 cusip = f"C_{t_idx}_{i}"
                 ticker = f"T_{t_idx}_{i}"
                 self.assertIn(cusip, df.index, f"Missing CUSIP: {cusip}")
-                self.assertEqual(df.loc[cusip, 'Ticker'], ticker)
-
+                self.assertEqual(df.loc[cusip, "Ticker"], ticker)
 
     def test_concurrent_save_and_sort(self):
         """
@@ -297,7 +304,7 @@ class TestDatabase(unittest.TestCase):
         SORTER_INTERVAL_S = 0.02
         RUN_DURATION_S = 1
 
-        stocks_path = f'./{self.test_db_folder}/{STOCKS_FILE}'
+        stocks_path = f"./{self.test_db_folder}/{STOCKS_FILE}"
         stop_event = threading.Event()
 
         def saver():
@@ -328,78 +335,73 @@ class TestDatabase(unittest.TestCase):
         df = load_stocks(stocks_path)
         self.assertGreater(len(df), 0)
 
-
     def test_delete_fund_from_database(self):
         """
         Moves the fund to excluded_hedge_funds.csv carrying its URL from hedge_funds.csv.
         """
-        fund_info = {'Fund': 'Fund B', 'CIK': '002', 'URL': 'https://fund-b.example.com/'}
+        fund_info = {"Fund": "Fund B", "CIK": "002", "URL": "https://fund-b.example.com/"}
         # Create Fund B in hedge_funds.csv first (with URL column)
-        with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), 'a', newline='') as f:
+        with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), "a", newline="") as f:
             f.write("002,Fund B,Manager B,Denom B,,https://fund-b.example.com/\n")
 
         delete_fund_from_database(fund_info)
 
         # Check file deleted
-        self.assertFalse(os.path.exists(os.path.join(self.test_db_folder, '2025Q1', 'Fund_B.csv')))
+        self.assertFalse(os.path.exists(os.path.join(self.test_db_folder, "2025Q1", "Fund_B.csv")))
 
         # Check removed from hedge_funds.csv
         funds = load_hedge_funds()
-        self.assertTrue(all(f['Fund'] != 'Fund B' for f in funds))
+        self.assertTrue(all(f["Fund"] != "Fund B" for f in funds))
 
         # Check added to excluded_hedge_funds.csv with URL preserved from hedge_funds.csv
-        excluded_path = os.path.join(self.test_db_folder, 'excluded_hedge_funds.csv')
+        excluded_path = os.path.join(self.test_db_folder, "excluded_hedge_funds.csv")
         self.assertTrue(os.path.exists(excluded_path))
         df_ex = pd.read_csv(excluded_path)
-        self.assertIn('Fund B', df_ex['Fund'].values)
-        self.assertIn('https://fund-b.example.com/', df_ex['URL'].values)
-
+        self.assertIn("Fund B", df_ex["Fund"].values)
+        self.assertIn("https://fund-b.example.com/", df_ex["URL"].values)
 
     def test_restore_fund_to_database(self):
         """
         Moves a fund record from excluded_hedge_funds.csv back to hedge_funds.csv,
         producing a result sorted alphabetically by Fund (case-insensitive).
         """
-        with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), 'w', newline='') as f:
-            f.write('CIK,Fund,Manager,Denomination,CIKs,URL\n')
+        with open(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), "w", newline="") as f:
+            f.write("CIK,Fund,Manager,Denomination,CIKs,URL\n")
             f.write('"010","Charlie","Manager C","Denom C","",""\n')
             f.write('"011","apple","Manager A","Denom A","",""\n')
             f.write('"012","delta","Manager D","Denom D","",""\n')
 
-        excluded_path = os.path.join(self.test_db_folder, 'excluded_hedge_funds.csv')
-        with open(excluded_path, 'w', newline='') as f:
-            f.write('CIK,Fund,Manager,Denomination,CIKs,URL\n')
+        excluded_path = os.path.join(self.test_db_folder, "excluded_hedge_funds.csv")
+        with open(excluded_path, "w", newline="") as f:
+            f.write("CIK,Fund,Manager,Denomination,CIKs,URL\n")
             f.write('"099","Bravo","Manager B","Denom B","","https://bravo.example.com/"\n')
             f.write('"100","Other","Manager O","Denom O","",""\n')
 
-        restore_fund_to_database({'Fund': 'Bravo', 'CIK': '099'})
+        restore_fund_to_database({"Fund": "Bravo", "CIK": "099"})
 
         # Removed from excluded
         df_ex = pd.read_csv(excluded_path, dtype=str)
-        self.assertNotIn('Bravo', df_ex['Fund'].values)
-        self.assertIn('Other', df_ex['Fund'].values)
+        self.assertNotIn("Bravo", df_ex["Fund"].values)
+        self.assertIn("Other", df_ex["Fund"].values)
 
         df_hf = pd.read_csv(os.path.join(self.test_db_folder, HEDGE_FUNDS_FILE), dtype=str)
-        self.assertEqual(list(df_hf['Fund']), ['apple', 'Bravo', 'Charlie', 'delta'])
+        self.assertEqual(list(df_hf["Fund"]), ["apple", "Bravo", "Charlie", "delta"])
         self.assertEqual(
-            df_hf.loc[df_hf['Fund'] == 'Bravo', 'URL'].iloc[0],
-            'https://bravo.example.com/'
+            df_hf.loc[df_hf["Fund"] == "Bravo", "URL"].iloc[0], "https://bravo.example.com/"
         )
-
 
     def test_load_excluded_hedge_funds(self):
         """
         Loads excluded hedge funds from CSV as a list of dicts.
         """
-        excluded_path = os.path.join(self.test_db_folder, 'excluded_hedge_funds.csv')
-        with open(excluded_path, 'w', newline='') as f:
-            f.write('CIK,Fund,Manager,Denomination,CIKs,URL\n')
+        excluded_path = os.path.join(self.test_db_folder, "excluded_hedge_funds.csv")
+        with open(excluded_path, "w", newline="") as f:
+            f.write("CIK,Fund,Manager,Denomination,CIKs,URL\n")
             f.write('"099","Fund X","Manager X","Denom X","","https://fund-x.example.com/"\n')
 
         excluded = load_excluded_hedge_funds()
         self.assertEqual(len(excluded), 1)
-        self.assertEqual(excluded[0]['Fund'], 'Fund X')
-
+        self.assertEqual(excluded[0]["Fund"], "Fund X")
 
     def tearDown(self):
         """
@@ -418,5 +420,5 @@ class TestDatabase(unittest.TestCase):
         self.patcher.stop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

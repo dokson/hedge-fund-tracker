@@ -1,25 +1,23 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from app.stocks.libraries.finnhub import Finnhub
 
 
-def _make_lookup_response(symbol='AAPL', description='Apple Inc', stock_type='Common Stock'):
+def _make_lookup_response(symbol="AAPL", description="Apple Inc", stock_type="Common Stock"):
     """
     Creates a minimal Finnhub symbol_lookup response.
     """
-    return {
-        'result': [{'symbol': symbol, 'description': description, 'type': stock_type}]
-    }
+    return {"result": [{"symbol": symbol, "description": description, "type": stock_type}]}
 
 
 class TestFinnhubGetTicker(unittest.TestCase):
-
     def setUp(self):
         """
         Patches time.sleep to avoid the 1-second rate-limit pause in _ticker_lookup.
         """
         # Patch time.sleep to avoid the 1-second rate-limit pause in _ticker_lookup
-        self.sleep_patcher = patch('time.sleep')
+        self.sleep_patcher = patch("time.sleep")
         self.sleep_patcher.start()
 
     def tearDown(self):
@@ -32,8 +30,8 @@ class TestFinnhubGetTicker(unittest.TestCase):
         """
         Returns None immediately when no FINNHUB_API_KEY is configured (CLIENT is None).
         """
-        with patch.object(Finnhub, 'CLIENT', None):
-            result = Finnhub.get_ticker('037833100', company_name='Apple Inc')
+        with patch.object(Finnhub, "CLIENT", None):
+            result = Finnhub.get_ticker("037833100", company_name="Apple Inc")
 
         self.assertIsNone(result)
 
@@ -42,12 +40,12 @@ class TestFinnhubGetTicker(unittest.TestCase):
         Returns the ticker symbol when the CUSIP resolves via the Finnhub API.
         """
         mock_client = MagicMock()
-        mock_client.symbol_lookup.return_value = _make_lookup_response(symbol='AAPL')
+        mock_client.symbol_lookup.return_value = _make_lookup_response(symbol="AAPL")
 
-        with patch.object(Finnhub, 'CLIENT', mock_client):
-            result = Finnhub.get_ticker('037833100')
+        with patch.object(Finnhub, "CLIENT", mock_client):
+            result = Finnhub.get_ticker("037833100")
 
-        self.assertEqual(result, 'AAPL')
+        self.assertEqual(result, "AAPL")
 
     def test_falls_back_to_company_first_word_when_cusip_fails(self):
         """
@@ -59,28 +57,28 @@ class TestFinnhubGetTicker(unittest.TestCase):
             """
             Returns no result for CUSIP but finds ticker via company first word.
             """
-            if query == '037833100':
-                return {'result': []}  # CUSIP not found
-            if query == 'Apple':
-                return _make_lookup_response(symbol='AAPL')
-            return {'result': []}
+            if query == "037833100":
+                return {"result": []}  # CUSIP not found
+            if query == "Apple":
+                return _make_lookup_response(symbol="AAPL")
+            return {"result": []}
 
         mock_client.symbol_lookup.side_effect = symbol_lookup_side_effect
 
-        with patch.object(Finnhub, 'CLIENT', mock_client):
-            result = Finnhub.get_ticker('037833100', company_name='Apple Inc')
+        with patch.object(Finnhub, "CLIENT", mock_client):
+            result = Finnhub.get_ticker("037833100", company_name="Apple Inc")
 
-        self.assertEqual(result, 'AAPL')
+        self.assertEqual(result, "AAPL")
 
     def test_does_not_use_common_words_as_fallback_query(self):
         """
         Does not attempt a company name fallback when the first word is a common word (e.g. 'The', 'Inc').
         """
         mock_client = MagicMock()
-        mock_client.symbol_lookup.return_value = {'result': []}
+        mock_client.symbol_lookup.return_value = {"result": []}
 
-        with patch.object(Finnhub, 'CLIENT', mock_client):
-            result = Finnhub.get_ticker('037833100', company_name='Corp Holdings Ltd')
+        with patch.object(Finnhub, "CLIENT", mock_client):
+            result = Finnhub.get_ticker("037833100", company_name="Corp Holdings Ltd")
 
         self.assertIsNone(result)
         # Only called once (with CUSIP), not with 'Corp' since it's in COMMON_COMPANY_WORDS
@@ -91,10 +89,10 @@ class TestFinnhubGetTicker(unittest.TestCase):
         Returns None when neither the CUSIP nor the company name lookup finds a match.
         """
         mock_client = MagicMock()
-        mock_client.symbol_lookup.return_value = {'result': []}
+        mock_client.symbol_lookup.return_value = {"result": []}
 
-        with patch.object(Finnhub, 'CLIENT', mock_client):
-            result = Finnhub.get_ticker('000000000', company_name='Unknown Company')
+        with patch.object(Finnhub, "CLIENT", mock_client):
+            result = Finnhub.get_ticker("000000000", company_name="Unknown Company")
 
         self.assertIsNone(result)
 
@@ -103,19 +101,18 @@ class TestFinnhubGetTicker(unittest.TestCase):
         Does not attempt a company name fallback if company_name is not provided.
         """
         mock_client = MagicMock()
-        mock_client.symbol_lookup.return_value = {'result': []}
+        mock_client.symbol_lookup.return_value = {"result": []}
 
-        with patch.object(Finnhub, 'CLIENT', mock_client):
-            result = Finnhub.get_ticker('000000000')
+        with patch.object(Finnhub, "CLIENT", mock_client):
+            result = Finnhub.get_ticker("000000000")
 
         self.assertIsNone(result)
         self.assertEqual(mock_client.symbol_lookup.call_count, 1)
 
 
 class TestFinnhubGetCompany(unittest.TestCase):
-
     def setUp(self):
-        self.sleep_patcher = patch('time.sleep')
+        self.sleep_patcher = patch("time.sleep")
         self.sleep_patcher.start()
 
     def tearDown(self):
@@ -130,23 +127,23 @@ class TestFinnhubGetCompany(unittest.TestCase):
         """
         mock_client = MagicMock()
         mock_client.symbol_lookup.return_value = _make_lookup_response(
-            symbol='AAPL', description='APPLE INC'
+            symbol="AAPL", description="APPLE INC"
         )
 
-        with patch.object(Finnhub, 'CLIENT', mock_client):
-            result = Finnhub.get_company('037833100')
+        with patch.object(Finnhub, "CLIENT", mock_client):
+            result = Finnhub.get_company("037833100")
 
-        self.assertEqual(result, 'Apple Inc')
+        self.assertEqual(result, "Apple Inc")
 
     def test_returns_none_when_no_match_found(self):
         """
         Returns None when no match is found via the CUSIP lookup.
         """
         mock_client = MagicMock()
-        mock_client.symbol_lookup.return_value = {'result': []}
+        mock_client.symbol_lookup.return_value = {"result": []}
 
-        with patch.object(Finnhub, 'CLIENT', mock_client):
-            result = Finnhub.get_company('000000000')
+        with patch.object(Finnhub, "CLIENT", mock_client):
+            result = Finnhub.get_company("000000000")
 
         self.assertIsNone(result)
 
@@ -154,16 +151,15 @@ class TestFinnhubGetCompany(unittest.TestCase):
         """
         Returns None when the Finnhub client is not configured.
         """
-        with patch.object(Finnhub, 'CLIENT', None):
-            result = Finnhub.get_company('037833100')
+        with patch.object(Finnhub, "CLIENT", None):
+            result = Finnhub.get_company("037833100")
 
         self.assertIsNone(result)
 
 
 class TestFinnhubLookup(unittest.TestCase):
-
     def setUp(self):
-        self.sleep_patcher = patch('time.sleep')
+        self.sleep_patcher = patch("time.sleep")
         self.sleep_patcher.start()
 
     def tearDown(self):
@@ -178,16 +174,16 @@ class TestFinnhubLookup(unittest.TestCase):
         """
         mock_client = MagicMock()
         mock_client.symbol_lookup.return_value = {
-            'result': [
-                {'symbol': 'AAPL.W', 'description': 'Apple Warrant', 'type': 'Warrant'},
-                {'symbol': 'AAPL', 'description': 'Apple Inc', 'type': 'Common Stock'},
+            "result": [
+                {"symbol": "AAPL.W", "description": "Apple Warrant", "type": "Warrant"},
+                {"symbol": "AAPL", "description": "Apple Inc", "type": "Common Stock"},
             ]
         }
 
-        with patch.object(Finnhub, 'CLIENT', mock_client):
-            result = Finnhub.get_ticker('037833100')
+        with patch.object(Finnhub, "CLIENT", mock_client):
+            result = Finnhub.get_ticker("037833100")
 
-        self.assertEqual(result, 'AAPL')
+        self.assertEqual(result, "AAPL")
 
     def test_falls_back_to_first_result_when_no_common_stock(self):
         """
@@ -195,26 +191,26 @@ class TestFinnhubLookup(unittest.TestCase):
         """
         mock_client = MagicMock()
         mock_client.symbol_lookup.return_value = {
-            'result': [
-                {'symbol': 'AAPL.W', 'description': 'Apple Warrant', 'type': 'Warrant'},
-                {'symbol': 'AAPL.P', 'description': 'Apple Preferred', 'type': 'Preferred'},
+            "result": [
+                {"symbol": "AAPL.W", "description": "Apple Warrant", "type": "Warrant"},
+                {"symbol": "AAPL.P", "description": "Apple Preferred", "type": "Preferred"},
             ]
         }
 
-        with patch.object(Finnhub, 'CLIENT', mock_client):
-            result = Finnhub.get_ticker('037833100')
+        with patch.object(Finnhub, "CLIENT", mock_client):
+            result = Finnhub.get_ticker("037833100")
 
-        self.assertEqual(result, 'AAPL.W')
+        self.assertEqual(result, "AAPL.W")
 
     def test_returns_none_when_result_list_is_empty(self):
         """
         Returns None when the API returns an empty result list.
         """
         mock_client = MagicMock()
-        mock_client.symbol_lookup.return_value = {'result': []}
+        mock_client.symbol_lookup.return_value = {"result": []}
 
-        with patch.object(Finnhub, 'CLIENT', mock_client):
-            result = Finnhub._lookup('037833100')
+        with patch.object(Finnhub, "CLIENT", mock_client):
+            result = Finnhub._lookup("037833100")
 
         self.assertIsNone(result)
 
@@ -225,11 +221,11 @@ class TestFinnhubLookup(unittest.TestCase):
         mock_client = MagicMock()
         mock_client.symbol_lookup.return_value = {}
 
-        with patch.object(Finnhub, 'CLIENT', mock_client):
-            result = Finnhub._lookup('037833100')
+        with patch.object(Finnhub, "CLIENT", mock_client):
+            result = Finnhub._lookup("037833100")
 
         self.assertIsNone(result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

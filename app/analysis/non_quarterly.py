@@ -1,3 +1,5 @@
+import pandas as pd
+
 from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
 from app.stocks.price_fetcher import PriceFetcher
 from app.stocks.ticker_resolver import TickerResolver
@@ -5,10 +7,11 @@ from app.utils.database import load_non_quarterly_data
 from app.utils.github import open_issue
 from app.utils.pd import coalesce, format_value_series, get_numeric_series
 from app.utils.strings import format_percentage
-import pandas as pd
 
 
-def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_denomination: str, cik: str) -> pd.DataFrame | None:
+def get_non_quarterly_filings_dataframe(
+    non_quarterly_filings: list[dict], fund_denomination: str, cik: str
+) -> pd.DataFrame | None:
     """
     Processes all raw schedule filings (13D/G + 4) and returns a DataFrame with the most recent holding for each CUSIP.
 
@@ -17,25 +20,27 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_
     - Combines all valid filings and de-duplicates them to keep only the latest entry per CUSIP.
     """
     filing_list = []
-    
+
     for filing in non_quarterly_filings:
-        if filing['type'] == 'SCHEDULE':
-            filing_df = xml_to_dataframe_schedule(filing['xml_content'])
+        if filing["type"] == "SCHEDULE":
+            filing_df = xml_to_dataframe_schedule(filing["xml_content"])
         else:
-            filing_df = xml_to_dataframe_4(filing['xml_content'])
-        
-        filing_df = filing_df[filing_df['CIK'] != cik]
+            filing_df = xml_to_dataframe_4(filing["xml_content"])
+
+        filing_df = filing_df[filing_df["CIK"] != cik]
         if filing_df.empty:
-            print(f"{filing['type']} filing ({filing['date']}) is referring to {fund_denomination} ({cik}) shares itself: skipping because it is not relevant.")
+            print(
+                f"{filing['type']} filing ({filing['date']}) is referring to {fund_denomination} ({cik}) shares itself: skipping because it is not relevant."
+            )
             continue
 
-        filtered_df = filing_df[filing_df['Owner'].str.upper() == fund_denomination.upper()].copy()
+        filtered_df = filing_df[filing_df["Owner"].str.upper() == fund_denomination.upper()].copy()
         if filtered_df.empty:
-            filtered_df = filing_df[filing_df['Owner_CIK'] == cik].copy()
+            filtered_df = filing_df[filing_df["Owner_CIK"] == cik].copy()
 
         if not filtered_df.empty:
-            filtered_df['Filing_Date'] = pd.to_datetime(filing['date'])
-            filtered_df['Accepted_On'] = pd.to_datetime(filing['accepted_on'])
+            filtered_df["Filing_Date"] = pd.to_datetime(filing["date"])
+            filtered_df["Accepted_On"] = pd.to_datetime(filing["accepted_on"])
             filing_list.append(filtered_df)
         else:
             # If no match is found, open an issue on GitHub to investigate `hedge_funds.csv` file
@@ -55,37 +60,45 @@ def get_non_quarterly_filings_dataframe(non_quarterly_filings: list[dict], fund_
     non_quarterly_filings_df = TickerResolver.resolve_ticker(non_quarterly_filings_df)
 
     # Keep only the most recent accepted entry for each Ticker-Date combination because there can be amendments on the same Filing Date
-    non_quarterly_filings_df = non_quarterly_filings_df.sort_values(by=['Ticker', 'Date', 'Accepted_On'], ascending=False).drop_duplicates(subset=['Ticker', 'Date'], keep='first')
+    non_quarterly_filings_df = non_quarterly_filings_df.sort_values(
+        by=["Ticker", "Date", "Accepted_On"], ascending=False
+    ).drop_duplicates(subset=["Ticker", "Date"], keep="first")
 
     # Initialize columns before the loop to prevent KeyError
-    non_quarterly_filings_df['Value'] = pd.NA
-    non_quarterly_filings_df['Avg_Price'] = pd.NA
+    non_quarterly_filings_df["Value"] = pd.NA
+    non_quarterly_filings_df["Avg_Price"] = pd.NA
 
     for index, row in non_quarterly_filings_df.iterrows():
-        ticker = row['Ticker']
+        ticker = row["Ticker"]
         if ticker is None or pd.isna(ticker):
-            if row['Shares'] == 0:
-                non_quarterly_filings_df.at[index, 'Value'] = 0
+            if row["Shares"] == 0:
+                non_quarterly_filings_df.at[index, "Value"] = 0
             continue
-        date = row['Date'].date()
+        date = row["Date"].date()
         price = PriceFetcher.get_avg_price(ticker, date)
         if price:
-            non_quarterly_filings_df.at[index, 'Avg_Price'] = price
-            non_quarterly_filings_df.at[index, 'Value'] = price * row['Shares']
+            non_quarterly_filings_df.at[index, "Avg_Price"] = price
+            non_quarterly_filings_df.at[index, "Value"] = price * row["Shares"]
         else:
             # If shares are 0, value is 0 regardless of price availability
-            if row['Shares'] == 0:
-                non_quarterly_filings_df.at[index, 'Value'] = 0
+            if row["Shares"] == 0:
+                non_quarterly_filings_df.at[index, "Value"] = 0
             print(f"🚨 Could not find price for {ticker} on {date}.")
 
     # Numerics to String format
-    non_quarterly_filings_df['Value'] = format_value_series(non_quarterly_filings_df['Value'])
-    non_quarterly_filings_df['Avg_Price'] = format_value_series(non_quarterly_filings_df['Avg_Price'])
+    non_quarterly_filings_df["Value"] = format_value_series(non_quarterly_filings_df["Value"])
+    non_quarterly_filings_df["Avg_Price"] = format_value_series(
+        non_quarterly_filings_df["Avg_Price"]
+    )
 
-    return non_quarterly_filings_df[['CUSIP', 'Ticker', 'Company', 'Shares', 'Value', 'Avg_Price', 'Date', 'Filing_Date']]
+    return non_quarterly_filings_df[
+        ["CUSIP", "Ticker", "Company", "Shares", "Value", "Avg_Price", "Date", "Filing_Date"]
+    ]
 
 
-def update_quarter_with_nq_filings(quarter_df: pd.DataFrame, funds_to_update: list[str], idx_13f_funds: list[str] = None) -> pd.DataFrame:
+def update_quarter_with_nq_filings(
+    quarter_df: pd.DataFrame, funds_to_update: list[str], idx_13f_funds: list[str] = None
+) -> pd.DataFrame:
     """
     Updates the 13F holdings dataframe with more recent data from non quarterly filings.
 
@@ -98,44 +111,74 @@ def update_quarter_with_nq_filings(quarter_df: pd.DataFrame, funds_to_update: li
         idx_13f_funds (list[str], optional): The list of funds that have officially filed a 13F for this quarter.
     """
     schedule_df = load_non_quarterly_data()
-    schedule_df = schedule_df[schedule_df['Fund'].isin(funds_to_update)].set_index(['Fund', 'CUSIP'])
-    schedule_df['Value_Num'] = get_numeric_series(schedule_df['Value'])
+    schedule_df = schedule_df[schedule_df["Fund"].isin(funds_to_update)].set_index(
+        ["Fund", "CUSIP"]
+    )
+    schedule_df["Value_Num"] = get_numeric_series(schedule_df["Value"])
 
     updated_df = pd.merge(
         quarter_df,
         schedule_df,
-        on=['Fund', 'CUSIP'],
-        how='outer',
-        suffixes=('_13f', '_schedule'),
-        indicator=True
+        on=["Fund", "CUSIP"],
+        how="outer",
+        suffixes=("_13f", "_schedule"),
+        indicator=True,
     )
 
     # Filter out stagnant positions from previous quarters:
-    # If a fund hasn't filed a 13F for this quarter (not in idx_13f_funds), 
+    # If a fund hasn't filed a 13F for this quarter (not in idx_13f_funds),
     # we only keep positions that have actual NQ activity this quarter.
     if idx_13f_funds is not None:
         updated_df = updated_df[
-            (updated_df['Fund'].isin(idx_13f_funds)) |
-            (updated_df['_merge'] != 'left_only')
+            (updated_df["Fund"].isin(idx_13f_funds)) | (updated_df["_merge"] != "left_only")
         ].copy()
 
-    updated_df['Ticker'] = coalesce(updated_df['Ticker_13f'], updated_df['Ticker_schedule'])
-    updated_df['Company'] = coalesce(updated_df['Company_13f'], updated_df['Company_schedule'].str.upper())
-    updated_df['Shares'] = coalesce(updated_df['Shares_schedule'], updated_df['Shares_13f']).astype('int64')
-    updated_df['Delta_Shares'] = coalesce(updated_df['Shares_schedule'] - coalesce(updated_df['Shares_13f'], 0), updated_df['Delta_Shares'])
-    updated_df['Delta_Value_Num'] = coalesce(updated_df['Value_Num_schedule'] - coalesce(updated_df['Value_Num_13f'], 0), updated_df['Delta_Value_Num'])
-    
-    updated_df['Delta'] = updated_df.apply(
-        lambda row:
-        'NEW' if pd.isna(row['Shares_13f']) or row['Shares_13f'] == 0
-        else 'CLOSE' if row['Shares_schedule'] == 0
-        else (row['Shares_schedule'] - row['Shares_13f']) / row['Shares_13f'] * 100 if not pd.isna(row['Shares_schedule'])
-        else format_percentage(row['Delta']),
-        axis=1
+    updated_df["Ticker"] = coalesce(updated_df["Ticker_13f"], updated_df["Ticker_schedule"])
+    updated_df["Company"] = coalesce(
+        updated_df["Company_13f"], updated_df["Company_schedule"].str.upper()
+    )
+    updated_df["Shares"] = coalesce(updated_df["Shares_schedule"], updated_df["Shares_13f"]).astype(
+        "int64"
+    )
+    updated_df["Delta_Shares"] = coalesce(
+        updated_df["Shares_schedule"] - coalesce(updated_df["Shares_13f"], 0),
+        updated_df["Delta_Shares"],
+    )
+    updated_df["Delta_Value_Num"] = coalesce(
+        updated_df["Value_Num_schedule"] - coalesce(updated_df["Value_Num_13f"], 0),
+        updated_df["Delta_Value_Num"],
     )
 
-    updated_df['Value_Num'] = coalesce(updated_df['Value_Num_schedule'], updated_df['Value_Num_13f'])
-    total_value_per_fund = updated_df.groupby('Fund')['Value_Num'].transform('sum')
-    updated_df['Portfolio_Pct'] = (updated_df['Value_Num'] / total_value_per_fund) * 100
+    updated_df["Delta"] = updated_df.apply(
+        lambda row: (
+            "NEW"
+            if pd.isna(row["Shares_13f"]) or row["Shares_13f"] == 0
+            else "CLOSE"
+            if row["Shares_schedule"] == 0
+            else (row["Shares_schedule"] - row["Shares_13f"]) / row["Shares_13f"] * 100
+            if not pd.isna(row["Shares_schedule"])
+            else format_percentage(row["Delta"])
+        ),
+        axis=1,
+    )
 
-    return updated_df[['Fund', 'CUSIP', 'Ticker', 'Company', 'Shares', 'Delta_Shares', 'Value_Num', 'Delta_Value_Num', 'Delta', 'Portfolio_Pct']]
+    updated_df["Value_Num"] = coalesce(
+        updated_df["Value_Num_schedule"], updated_df["Value_Num_13f"]
+    )
+    total_value_per_fund = updated_df.groupby("Fund")["Value_Num"].transform("sum")
+    updated_df["Portfolio_Pct"] = (updated_df["Value_Num"] / total_value_per_fund) * 100
+
+    return updated_df[
+        [
+            "Fund",
+            "CUSIP",
+            "Ticker",
+            "Company",
+            "Shares",
+            "Delta_Shares",
+            "Value_Num",
+            "Delta_Value_Num",
+            "Delta",
+            "Portfolio_Pct",
+        ]
+    ]

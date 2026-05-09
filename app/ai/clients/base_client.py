@@ -5,10 +5,10 @@ class AIClient(ABC):
     """
     Abstract base class for AI clients
     """
+
     DEFAULT_MODEL: str | None = None
     LOG_RETENTION_LIMIT = 50
     CACHE_DIR = "__llmcache__"
-
 
     def generate_content(self, prompt: str, **kwargs) -> str:
         """
@@ -19,7 +19,6 @@ class AIClient(ABC):
         self._log_response(prompt, response)
         return response
 
-
     @abstractmethod
     def _generate_content_impl(self, prompt: str, **kwargs) -> str:
         """
@@ -28,16 +27,15 @@ class AIClient(ABC):
         """
         pass
 
-
     def _log_response(self, prompt: str, response: str):
         """
         Logs the prompt and response to a local cache file for analysis.
         Maintains a rolling window of the last LOG_RETENTION_LIMIT logs.
         """
+        import glob
         import os
         import time
         import uuid
-        import glob
 
         os.makedirs(self.CACHE_DIR, exist_ok=True)
 
@@ -59,7 +57,7 @@ class AIClient(ABC):
             # Cleanup old logs, keep last LOG_RETENTION_LIMIT
             files = sorted(glob.glob(os.path.join(self.CACHE_DIR, "response_*.log")))
             if len(files) > self.LOG_RETENTION_LIMIT:
-                for f in files[:-self.LOG_RETENTION_LIMIT]:
+                for f in files[: -self.LOG_RETENTION_LIMIT]:
                     try:
                         os.remove(f)
                     except OSError:
@@ -67,12 +65,11 @@ class AIClient(ABC):
         except Exception as e:
             print(f"⚠️ Warning: Failed to log AI response: {e}")
 
-
     @abstractmethod
     def get_model_name(self) -> str:
         """
         Get the name/identifier of the current model
-        
+
         Returns:
             Model name as string
         """

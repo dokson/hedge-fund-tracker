@@ -7,6 +7,7 @@ class FinanceLibrary(ABC):
 
     Defines a standard contract for classes that resolve CUSIPs to tickers and fetch company information from different financial data sources.
     """
+
     @staticmethod
     @abstractmethod
     def get_ticker(cusip: str, **kwargs) -> str | None:
@@ -14,7 +15,6 @@ class FinanceLibrary(ABC):
         Gets the ticker for a given CUSIP.
         """
         pass
-
 
     @staticmethod
     @abstractmethod

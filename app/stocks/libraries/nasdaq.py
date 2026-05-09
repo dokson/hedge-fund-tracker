@@ -1,6 +1,8 @@
-from app.stocks.libraries.base_library import FinanceLibrary
 from datetime import date, timedelta
+
 import requests
+
+from app.stocks.libraries.base_library import FinanceLibrary
 
 
 class Nasdaq(FinanceLibrary):
@@ -8,13 +10,12 @@ class Nasdaq(FinanceLibrary):
     Client for fetching stock prices from the Nasdaq API.
     Covers stocks, ETFs, and mutual funds that yfinance/TradingView may miss.
     """
+
     BASE_URL = "https://api.nasdaq.com/api/quote"
     HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
     ASSET_CLASSES = ["mutualfunds"]
 
-
     SYMBOL_CHANGE_URL = "https://api.nasdaq.com/api/quote/list-type-extended/symbolchangehistory"
-
 
     @staticmethod
     def get_symbol_changes() -> list[dict]:
@@ -31,7 +32,6 @@ class Nasdaq(FinanceLibrary):
         except Exception:
             return []
 
-
     @staticmethod
     def get_ticker(cusip: str, **kwargs) -> str | None:
         """
@@ -39,14 +39,12 @@ class Nasdaq(FinanceLibrary):
         """
         return None
 
-
     @staticmethod
     def get_company(cusip: str, **kwargs) -> str | None:
         """
         Not supported by the Nasdaq API.
         """
         return None
-
 
     @staticmethod
     def _fetch_historical(ticker: str, date_obj: date) -> dict | None:
@@ -73,7 +71,6 @@ class Nasdaq(FinanceLibrary):
                 continue
         return None
 
-
     @staticmethod
     def _parse_price(value: str) -> float | None:
         """
@@ -82,7 +79,6 @@ class Nasdaq(FinanceLibrary):
         if not value or value == "N/A":
             return None
         return float(value.replace("$", "").replace(",", ""))
-
 
     @staticmethod
     def get_avg_price(ticker: str, date_obj: date, **kwargs) -> float | None:
@@ -103,7 +99,6 @@ class Nasdaq(FinanceLibrary):
         # Mutual funds report the same value for open/high/low/close (NAV)
         close = Nasdaq._parse_price(row.get("close"))
         return round(close, 2) if close is not None else None
-
 
     @staticmethod
     def get_current_price(ticker: str, **kwargs) -> float | None:

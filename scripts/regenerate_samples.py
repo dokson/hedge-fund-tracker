@@ -11,6 +11,7 @@ include a `generated_at` ISO date for display in the UI.
 Run locally with the project's .env loaded:
     pipenv run python -X utf8 scripts/regenerate_samples.py
 """
+
 import json
 import math
 import sys
@@ -64,13 +65,20 @@ def regenerate_ranking() -> None:
         raise RuntimeError("Empty ranking result; aborting.")
 
     fields = [
-        "Ticker", "Company", "Promise_Score", "Momentum_Score",
-        "Low_Volatility_Score", "Risk_Score", "Growth_Score",
-        "Total_Value", "Holder_Count", "Net_Buyers", "High_Conviction_Count",
+        "Ticker",
+        "Company",
+        "Promise_Score",
+        "Momentum_Score",
+        "Low_Volatility_Score",
+        "Risk_Score",
+        "Growth_Score",
+        "Total_Value",
+        "Holder_Count",
+        "Net_Buyers",
+        "High_Conviction_Count",
     ]
     stocks = [
-        {f: _coerce(row.get(f)) for f in fields if f in row.index}
-        for _, row in df.iterrows()
+        {f: _coerce(row.get(f)) for f in fields if f in row.index} for _, row in df.iterrows()
     ]
 
     payload = {

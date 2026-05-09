@@ -1,28 +1,30 @@
-from app.utils.strings import get_next_yyyymmdd_day
-from bs4 import BeautifulSoup
-from tenacity import retry, stop_after_attempt, retry_if_result, wait_exponential, RetryError
-import requests
 import re
+
+import requests
+from bs4 import BeautifulSoup
+from tenacity import RetryError, retry, retry_if_result, stop_after_attempt, wait_exponential
+
+from app.utils.strings import get_next_yyyymmdd_day
 
 # SEC EDGAR requires a custom User-Agent that identifies the application and provides a contact email.
 # See: https://www.sec.gov/os/developer-support-policy
-USER_AGENT = 'Hedge Fund Tracker dok.son@msn.com'
-SEC_HOST = 'www.sec.gov'
-SEC_URL = 'https://' + SEC_HOST
+USER_AGENT = "Hedge Fund Tracker dok.son@msn.com"
+SEC_HOST = "www.sec.gov"
+SEC_URL = "https://" + SEC_HOST
 
 FILING_SPECS = {
-    '13F-HR': {
-        'xml_link_index': 3,
-        'type_prefix': '13F-HR',
+    "13F-HR": {
+        "xml_link_index": 3,
+        "type_prefix": "13F-HR",
     },
-    'SCHEDULE': {
-        'xml_link_index': 1,
-        'type_prefix': 'SC',
+    "SCHEDULE": {
+        "xml_link_index": 1,
+        "type_prefix": "SC",
     },
-    '4': {
-        'xml_link_index': 1,
-        'type_prefix': '4',
-        'type_reject': {'40-', '425'},
+    "4": {
+        "xml_link_index": 1,
+        "type_prefix": "4",
+        "type_reject": {"40-", "425"},
     },
 }
 
@@ -31,7 +33,9 @@ FILING_SPECS = {
     retry=retry_if_result(lambda value: value is None),
     wait=wait_exponential(multiplier=1, min=2, max=8),
     stop=stop_after_attempt(5),
-    before_sleep=lambda rs: print(f"Retrying request for '{rs.args[0]}' in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})")
+    before_sleep=lambda rs: print(
+        f"Retrying request for '{rs.args[0]}' in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})"
+    ),
 )
 def _get_request(url):
     """
@@ -39,9 +43,9 @@ def _get_request(url):
     Retries on failure.
     """
     headers = {
-        'User-Agent': USER_AGENT,
-        'Accept-Encoding': 'gzip, deflate',
-        'HOST': SEC_HOST,
+        "User-Agent": USER_AGENT,
+        "Accept-Encoding": "gzip, deflate",
+        "HOST": SEC_HOST,
     }
     try:
         response = requests.get(url, headers=headers)
@@ -52,17 +56,19 @@ def _get_request(url):
         return None
 
 
-def _create_search_url(cik, filing_type='13F-HR', start_date=None, start_offset=0):
+def _create_search_url(cik, filing_type="13F-HR", start_date=None, start_offset=0):
     """
     Creates the SEC EDGAR search URL for a given CIK and filing type.
     """
-    search_url = f'{SEC_URL}/cgi-bin/browse-edgar?CIK={cik}&action=getcompany&type={filing_type}&count=100'
+    search_url = (
+        f"{SEC_URL}/cgi-bin/browse-edgar?CIK={cik}&action=getcompany&type={filing_type}&count=100"
+    )
 
     if start_date:
-        search_url += f'&datea={start_date}'
-        
+        search_url += f"&datea={start_date}"
+
     if start_offset > 0:
-        search_url += f'&start={start_offset}'
+        search_url += f"&start={start_offset}"
 
     return search_url
 
@@ -72,7 +78,7 @@ def _get_accepted(report_page_soup):
     Extracts the accepted time from the report page's soup.
     """
     try:
-        filing_date_tag = report_page_soup.find('div', string=re.compile(r'Accepted'))
+        filing_date_tag = report_page_soup.find("div", string=re.compile(r"Accepted"))
         if filing_date_tag:
             return filing_date_tag.find_next().text.strip()
     except Exception as e:
@@ -85,7 +91,7 @@ def _get_filing_date(report_page_soup):
     Extracts the filing date from the report page's soup.
     """
     try:
-        filing_date_tag = report_page_soup.find('div', string=re.compile(r'Filing Date'))
+        filing_date_tag = report_page_soup.find("div", string=re.compile(r"Filing Date"))
         if filing_date_tag:
             return filing_date_tag.find_next().text.strip()
     except Exception as e:
@@ -98,7 +104,7 @@ def _get_report_date(report_page_soup):
     Extracts the report date from the report page's soup.
     """
     try:
-        report_date_tag = report_page_soup.find('div', string=re.compile(r'Period of Report'))
+        report_date_tag = report_page_soup.find("div", string=re.compile(r"Period of Report"))
         if report_date_tag:
             return report_date_tag.find_next().text.strip()
     except Exception as e:
@@ -112,12 +118,12 @@ def _get_primary_xml_url(report_page_soup, filing_type):
     Uses the configuration based on filing type.
     """
     try:
-        config = FILING_SPECS.get(filing_type)      
-        tags = report_page_soup.find_all('a', attrs={'href': re.compile('xml')})
+        config = FILING_SPECS.get(filing_type)
+        tags = report_page_soup.find_all("a", attrs={"href": re.compile("xml")})
 
-        xml_link_index = config['xml_link_index']
+        xml_link_index = config["xml_link_index"]
         if len(tags) > xml_link_index:
-            return SEC_URL + tags[xml_link_index].get('href')
+            return SEC_URL + tags[xml_link_index].get("href")
     except Exception as e:
         print(f"Error finding XML URL for filing type {filing_type}: {e}")
     return None
@@ -126,20 +132,20 @@ def _get_primary_xml_url(report_page_soup, filing_type):
 def _scrape_filing(document_tag, filing_type):
     """
     Processes a single filing document tag and extracts the XML content and metadata.
-    
+
     Args:
         document_tag: BeautifulSoup tag for the document link
         filing_type: Type of filing being processed
-    
+
     Returns:
         Dictionary with 'date' and 'xml_content' or None if processing fails
     """
-    report_page_url = SEC_URL + document_tag['href']
+    report_page_url = SEC_URL + document_tag["href"]
     try:
         report_page_response = _get_request(report_page_url)
         if not report_page_response:
             return None
-    except RetryError as e:
+    except RetryError:
         print(f"❌ Failed to fetch report page {report_page_url} after multiple retries.")
         return None
 
@@ -158,17 +164,20 @@ def _scrape_filing(document_tag, filing_type):
         if not xml_response:
             print(f"Failed to download XML from {xml_url}")
             return None
-    except RetryError as e:
+    except RetryError:
         print(f"❌ Failed to fetch XML file {xml_url} after multiple retries.")
         return None
 
-    print(f"Successfully scraped {filing_type} filing published on {filing_date}" + (f" (refering {report_date})" if filing_type == '13F-HR' else ""))
+    print(
+        f"Successfully scraped {filing_type} filing published on {filing_date}"
+        + (f" (refering {report_date})" if filing_type == "13F-HR" else "")
+    )
     return {
-        'date': filing_date,
-        'accepted_on': accepted,
-        'type': filing_type,
-        'reference_date': report_date,
-        'xml_content': xml_response.content
+        "date": filing_date,
+        "accepted_on": accepted,
+        "type": filing_type,
+        "reference_date": report_date,
+        "xml_content": xml_response.content,
     }
 
 
@@ -177,22 +186,22 @@ def fetch_latest_two_13f_filings(cik, offset=0):
     Fetches the raw XML content and filing dates for the two most recent 13F-HR filings for a given CIK.
     Returns a list of dictionaries, or None if an error occurs.
     """
-    search_url = _create_search_url(cik, '13F-HR')
+    search_url = _create_search_url(cik, "13F-HR")
     response = _get_request(search_url)
 
     if not response:
         return None
 
     soup = BeautifulSoup(response.text, "html.parser")
-    document_tags = soup.find_all('a', id="documentsbutton")
+    document_tags = soup.find_all("a", id="documentsbutton")
 
     if not document_tags:
         print(f"No 13F-HR filings found for CIK: {cik}")
         return None
 
     filings = []
-    for tag in document_tags[offset:offset+2]:
-        filing_data = _scrape_filing(tag, '13F-HR')
+    for tag in document_tags[offset : offset + 2]:
+        filing_data = _scrape_filing(tag, "13F-HR")
         if filing_data:
             filings.append(filing_data)
 
@@ -205,7 +214,7 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
     Returns a list of dictionaries, or None if an error occurs.
     """
     filings = []
-    yyyymmdd_date = start_date.replace('-', '')
+    yyyymmdd_date = start_date.replace("-", "")
 
     # Helper to fetch tags for a specific type with pagination
     def get_tags(filing_type):
@@ -216,10 +225,12 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
             try:
                 resp = _get_request(url)
                 if not resp:
-                    print(f"❌ Could not fetch {filing_type} filings for CIK {cik} (request failed at offset {offset})")
+                    print(
+                        f"❌ Could not fetch {filing_type} filings for CIK {cik} (request failed at offset {offset})"
+                    )
                     break
                 soup = BeautifulSoup(resp.text, "html.parser")
-                all_tags_on_page = soup.find_all('a', id="documentsbutton")
+                all_tags_on_page = soup.find_all("a", id="documentsbutton")
 
                 if not all_tags_on_page:
                     break
@@ -227,13 +238,13 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
                 # Filter by filing type prefix to avoid EDGAR prefix-matching false positives
                 # (e.g. searching for type=4 also returns 40-APP, 40-APP/A)
                 spec = FILING_SPECS[filing_type]
-                type_prefix = spec.get('type_prefix')
-                type_reject = spec.get('type_reject', set())
+                type_prefix = spec.get("type_prefix")
+                type_reject = spec.get("type_reject", set())
                 filtered_tags = []
                 for tag in all_tags_on_page:
-                    row = tag.find_parent('tr')
-                    cells = row.find_all('td') if row else []
-                    actual_type = cells[0].get_text(strip=True) if cells else ''
+                    row = tag.find_parent("tr")
+                    cells = row.find_all("td") if row else []
+                    actual_type = cells[0].get_text(strip=True) if cells else ""
                     if type_prefix and not actual_type.startswith(type_prefix):
                         continue
                     if any(actual_type.startswith(r) for r in type_reject):
@@ -244,19 +255,23 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
                 # Pagination based on pre-filter count (EDGAR returns pages of 100)
                 if len(all_tags_on_page) == 100:
                     offset += 100
-                    if offset >= 500: # Safety break to avoid infinite loops on extreme cases
-                        print(f"⚠️ Reached maximum pagination limit (500) for {filing_type} filings of CIK {cik}")
+                    if offset >= 500:  # Safety break to avoid infinite loops on extreme cases
+                        print(
+                            f"⚠️ Reached maximum pagination limit (500) for {filing_type} filings of CIK {cik}"
+                        )
                         break
                 else:
                     break
             except Exception as e:
-                print(f"❌ Error fetching {filing_type} filings for CIK {cik} at offset {offset}: {e}")
+                print(
+                    f"❌ Error fetching {filing_type} filings for CIK {cik} at offset {offset}: {e}"
+                )
                 break
         return all_type_tags
 
     all_tags = []
-    all_tags.extend(get_tags('SCHEDULE'))
-    all_tags.extend(get_tags('4'))
+    all_tags.extend(get_tags("SCHEDULE"))
+    all_tags.extend(get_tags("4"))
 
     if not all_tags:
         print(f"No non-quarterly filings found for CIK: {cik} after {start_date}")
@@ -280,7 +295,7 @@ def get_latest_13f_filing_date(cik: str) -> str:
     Returns:
         str: The filing date in 'YYYY-MM-DD' format
     """
-    search_url = _create_search_url(cik, '13F-HR')
+    search_url = _create_search_url(cik, "13F-HR")
     response = _get_request(search_url)
 
     if not response:
@@ -289,13 +304,13 @@ def get_latest_13f_filing_date(cik: str) -> str:
 
     try:
         soup = BeautifulSoup(response.text, "html.parser")
-        button = soup.find('a', id="documentsbutton")
+        button = soup.find("a", id="documentsbutton")
         if not button:
             print(f"No 'documentsbutton' found for CIK {cik} on page {search_url}")
             return None
-        
+
         # The filing date is in the 4th <td> of the same <tr> as the button
-        filing_date = button.find_parent('tr').find_all('td')[3].text.strip()
+        filing_date = button.find_parent("tr").find_all("td")[3].text.strip()
         return filing_date
     except (AttributeError, IndexError) as e:
         print(f"Error parsing filing date for CIK {cik}: {e}. Page structure may have changed.")
