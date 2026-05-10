@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
 
+# Least-privilege GITHUB_TOKEN: lint only needs to read the checkout.
+permissions:
+  contents: read
+
 # Cancel in-progress runs on the same branch when new commits land
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
