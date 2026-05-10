@@ -39,7 +39,7 @@ class Finnhub(FinanceLibrary):
         wait=wait_exponential(multiplier=2, min=30, max=60),
         retry=retry_if_exception(_is_rate_limit_exception),
         before_sleep=lambda rs: print(
-            f"🚨 Finnhub API rate limit hit. Retrying in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})"
+            f"🚨 Finnhub API rate limit hit. Retrying in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
         ),
     )
     def _ticker_lookup(query):
@@ -47,6 +47,7 @@ class Finnhub(FinanceLibrary):
         Performs the actual symbol lookup using the Finnhub client.
         This function is decorated for retries.
         """
+        assert Finnhub.CLIENT is not None  # caller checks CLIENT before calling
         time.sleep(1)  # Pause to respect API rate limits
         return Finnhub.CLIENT.symbol_lookup(query[: Finnhub.MAX_QUERY_LENGTH])
 

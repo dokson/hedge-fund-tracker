@@ -516,6 +516,9 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 | **Reliability** | [Tenacity](https://github.com/jd/tenacity), [Python-Dotenv](https://github.com/theskumar/python-dotenv) |
 | **Stocks Data** | [yfinance](https://github.com/ranaroussi/yfinance), [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/), [Nasdaq API](https://www.nasdaq.com/) |
 | **Gen AI** | [python-toon](https://github.com/xaviviro/python-toon), [Google AI SDK](https://googleapis.github.io/python-genai/), [OpenAI SDK](https://github.com/openai/openai-python) |
+| **Code Quality (Python)** | [Ruff](https://docs.astral.sh/ruff/) (lint + format), [mypy](https://mypy.readthedocs.io/) (type-check), [pre-commit](https://pre-commit.com/) |
+| **Code Quality (Frontend)** | [ESLint 10](https://eslint.org/) (with [@eslint-react](https://eslint-react.xyz/), [jsx-a11y](https://github.com/jsx-eslint/eslint-plugin-jsx-a11y), [react-hooks](https://github.com/facebook/react/tree/main/packages/eslint-plugin-react-hooks)), [Prettier](https://prettier.io/), [TypeScript strict](https://www.typescriptlang.org/) |
+| **CI/CD** | [GitHub Actions](https://docs.github.com/actions) (lint, tests, deploy), [Vitest](https://vitest.dev/) (frontend tests), `unittest` (Python tests) |
 
 ## 🤝🏼 Contributing & Support
 

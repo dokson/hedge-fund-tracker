@@ -32,24 +32,25 @@ def scrape_gics_from_wikipedia():
         print("❌ Could not find GICS table on Wikipedia page.")
         return None
 
-    data = []
+    data: list[dict[str, str | None]] = []
     # Using a slightly different approach to handle rowspans correctly in Python
     rows = table.find_all('tr')[1:] # Skip header
 
     # We need to keep track of active rowspans
     # Format: {column_index: [remaining_rows, value]}
-    active_rowspans = {}
+    active_rowspans: dict[int, tuple[int, str]] = {}
 
     for row_idx, tr in enumerate(rows):
         tds = tr.find_all(['td', 'th'])
-        row_data = [None] * 8 # 8 columns in the GICS table
+        row_data: list[str | None] = [None] * 8 # 8 columns in the GICS table
 
         td_idx = 0
         for col_idx in range(8):
             # Check if there's an active rowspan for this column
             if col_idx in active_rowspans and active_rowspans[col_idx][0] > 0:
-                row_data[col_idx] = active_rowspans[col_idx][1]
-                active_rowspans[col_idx][0] -= 1
+                remaining, value = active_rowspans[col_idx]
+                row_data[col_idx] = value
+                active_rowspans[col_idx] = (remaining - 1, value)
             else:
                 if td_idx < len(tds):
                     td = tds[td_idx]
@@ -63,9 +64,10 @@ def scrape_gics_from_wikipedia():
 
                     row_data[col_idx] = text
 
-                    rowspan = int(td.get('rowspan', 1))
+                    rowspan_attr = td.get('rowspan', '1')
+                    rowspan = int(str(rowspan_attr)) if rowspan_attr is not None else 1
                     if rowspan > 1:
-                        active_rowspans[col_idx] = [rowspan - 1, text]
+                        active_rowspans[col_idx] = (rowspan - 1, text)
 
                     td_idx += 1
 

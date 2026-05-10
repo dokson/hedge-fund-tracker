@@ -88,7 +88,9 @@ class ResponseParser:
         split_field_re = re.compile(rf"\s+(?=(?:{keys_alt})\s*:)")
         repaired_lines: list[str] = []
         for raw_line in text.split("\n"):
-            indent = re.match(r"^(\s*)", raw_line).group(1)
+            # `^(\s*)` always matches (zero-width is fine), but mypy can't prove that.
+            indent_match = re.match(r"^(\s*)", raw_line)
+            indent = indent_match.group(1) if indent_match else ""
             parts = split_field_re.split(raw_line)
             if len(parts) > 1:
                 repaired_lines.append(parts[0])

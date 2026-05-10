@@ -47,7 +47,7 @@ class Nasdaq(FinanceLibrary):
         return None
 
     @staticmethod
-    def _fetch_historical(ticker: str, date_obj: date) -> dict | None:
+    def _fetch_historical(ticker: str, date_obj: date) -> dict[str, str] | None:
         """
         Fetches a single day of historical data from the Nasdaq API, trying all asset classes.
         Returns the first row of data found, or None.
@@ -72,7 +72,7 @@ class Nasdaq(FinanceLibrary):
         return None
 
     @staticmethod
-    def _parse_price(value: str) -> float | None:
+    def _parse_price(value: str | None) -> float | None:
         """
         Parses a price string from the Nasdaq API, stripping $ and commas.
         """

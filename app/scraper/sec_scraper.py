@@ -1,4 +1,5 @@
 import re
+from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
@@ -12,7 +13,7 @@ USER_AGENT = "Hedge Fund Tracker dok.son@msn.com"
 SEC_HOST = "www.sec.gov"
 SEC_URL = "https://" + SEC_HOST
 
-FILING_SPECS = {
+FILING_SPECS: dict[str, dict[str, Any]] = {
     "13F-HR": {
         "xml_link_index": 3,
         "type_prefix": "13F-HR",
@@ -34,7 +35,7 @@ FILING_SPECS = {
     wait=wait_exponential(multiplier=1, min=2, max=8),
     stop=stop_after_attempt(5),
     before_sleep=lambda rs: print(
-        f"Retrying request for '{rs.args[0]}' in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})"
+        f"Retrying request for '{rs.args[0]}' in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
     ),
 )
 def _get_request(url):
@@ -119,9 +120,11 @@ def _get_primary_xml_url(report_page_soup, filing_type):
     """
     try:
         config = FILING_SPECS.get(filing_type)
+        if config is None:
+            return None
         tags = report_page_soup.find_all("a", attrs={"href": re.compile("xml")})
 
-        xml_link_index = config["xml_link_index"]
+        xml_link_index = int(config["xml_link_index"])
         if len(tags) > xml_link_index:
             return SEC_URL + tags[xml_link_index].get("href")
     except Exception as e:
@@ -213,7 +216,7 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
     Fetches the raw content and filing dates for the latest schedule (13D/G) and Form 4 filings for a given CIK.
     Returns a list of dictionaries, or None if an error occurs.
     """
-    filings = []
+    filings: list[dict] = []
     yyyymmdd_date = start_date.replace("-", "")
 
     # Helper to fetch tags for a specific type with pagination
@@ -285,7 +288,7 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
     return filings
 
 
-def get_latest_13f_filing_date(cik: str) -> str:
+def get_latest_13f_filing_date(cik: str) -> str | None:
     """
     Fetches and gets only the filing date of the most recent 13F-HR filing for a given CIK.
 
@@ -310,7 +313,10 @@ def get_latest_13f_filing_date(cik: str) -> str:
             return None
 
         # The filing date is in the 4th <td> of the same <tr> as the button
-        return button.find_parent("tr").find_all("td")[3].text.strip()
+        row = button.find_parent("tr")
+        if row is None:
+            return None
+        return row.find_all("td")[3].text.strip()
     except (AttributeError, IndexError) as e:
         print(f"Error parsing filing date for CIK {cik}: {e}. Page structure may have changed.")
         return None

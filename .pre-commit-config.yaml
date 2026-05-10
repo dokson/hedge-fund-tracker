@@ -27,20 +27,8 @@ repos:
         args: [--check]
         stages: [pre-push]
 
-  # Python: type-check with mypy (informational — doesn't block)
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
-    hooks:
-      - id: mypy
-        args: [--config-file=pyproject.toml]
-        additional_dependencies:
-          - pandas-stubs
-          - types-requests
-          - types-tabulate
-        files: ^(app|database|scripts)/.*\.py$
-        verbose: true # show output even when passing
-        # Don't block commits — mypy strict mode is incremental
-        stages: [manual]
+  # mypy runs in CI (lint.yml) and locally via `pipenv run typecheck`.
+  # Not in pre-commit: mirrors-mypy's isolated venv version-drifts vs pipenv's.
 
   # Frontend: format with Prettier
   - repo: https://github.com/pre-commit/mirrors-prettier

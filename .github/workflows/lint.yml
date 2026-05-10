@@ -37,10 +37,8 @@ jobs:
       - name: Ruff format check
         run: pipenv run ruff format --check .
 
-      # mypy is intentionally NOT in CI — too many existing errors create
-      # noisy logs. Run locally with `pipenv run typecheck` or via
-      # `pre-commit run mypy --hook-stage manual`. Will be re-enabled in
-      # CI module-by-module when type coverage improves.
+      - name: mypy
+        run: pipenv run mypy app database scripts
 
   frontend:
     name: Frontend · ESLint + Prettier + tsc

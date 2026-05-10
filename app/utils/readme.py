@@ -26,9 +26,9 @@ def generate_excluded_funds_list() -> str | None:
             url = row.URL
 
             if manager and manager != fund:
-                markdown_list.append(f"- _{manager}_'s [{fund}]({url})")
+                markdown_list.append(f"- _{manager!s}_'s [{fund!s}]({url!s})")
             else:
-                markdown_list.append(f"- [{fund}]({url})")
+                markdown_list.append(f"- [{fund!s}]({url!s})")
 
         if len(df) > README_DISPLAY_LIMIT:
             file_path = EXCLUDED_HEDGE_FUNDS_FILE.replace("./", "")

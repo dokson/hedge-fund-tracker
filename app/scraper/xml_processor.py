@@ -1,7 +1,7 @@
 import warnings
 
 import pandas as pd
-from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
 
 from app.stocks.ticker_resolver import TickerResolver
 
@@ -151,13 +151,14 @@ def xml_to_dataframe_4(xml_content):
         owner_shares[key] = shares_post
 
     non_derivative_table = soup_xml.find("nonderivativetable")
-    if non_derivative_table:
+    if isinstance(non_derivative_table, Tag):
         for child in non_derivative_table.children:
             if (
-                child.name
-                and "nonderivativetransaction" in child.name
-                or child.name
-                and "nonderivativeholding" in child.name
+                isinstance(child, Tag)
+                and child.name
+                and (
+                    "nonderivativetransaction" in child.name or "nonderivativeholding" in child.name
+                )
             ):
                 process_item(child)
 

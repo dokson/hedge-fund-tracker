@@ -32,7 +32,7 @@ class AnalystAgent:
     AI-powered analyst agent that interprets 13F data to generate strategic insights
     """
 
-    def __init__(self, quarter: str, ai_client: AIClient = None):
+    def __init__(self, quarter: str, ai_client: AIClient | None = None):
         self.quarter = quarter
         self.ai_client = ai_client
         self.filing_date = get_quarter_date(quarter)
@@ -43,7 +43,7 @@ class AnalystAgent:
         wait=wait_fixed(1),
         stop=stop_after_attempt(7),
         before_sleep=lambda rs: print(
-            f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."
+            f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
         ),
     )
     def _get_promise_score_weights(self) -> dict:
@@ -51,6 +51,7 @@ class AnalystAgent:
         Uses the LLM to determine the optimal weights for the Promise Score.
         Retries with tenacity if the weights or metrics are invalid.
         """
+        assert self.ai_client is not None, "AnalystAgent requires an AIClient"
         print(
             f"Sending request to AI ({self.ai_client.get_model_name()}) for Promise Score weighting strategy..."
         )
@@ -105,7 +106,7 @@ class AnalystAgent:
         wait=wait_fixed(1),
         stop=stop_after_attempt(5),
         before_sleep=lambda rs: print(
-            f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."
+            f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
         ),
     )
     def _get_ai_scores(self, stocks_context: list[dict]) -> dict:
@@ -113,6 +114,7 @@ class AnalystAgent:
         Uses the LLM to categorize stocks and generate thematic AI scores.
         Retries with tenacity if the response is invalid.
         """
+        assert self.ai_client is not None, "AnalystAgent requires an AIClient"
         prompt = quantivative_scores_prompt(encode(stocks_context), self.filing_date)
         required_keys = ["momentum_score", "low_volatility_score", "risk_score"]
 
@@ -245,7 +247,7 @@ class AnalystAgent:
         wait=wait_fixed(1),
         stop=stop_after_attempt(5),
         before_sleep=lambda rs: print(
-            f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."
+            f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
         ),
     )
     def run_stock_due_diligence(self, ticker: str) -> dict:
@@ -258,6 +260,7 @@ class AnalystAgent:
         Returns:
             dict: A dictionary containing the AI's analysis, or an empty dict if an error occurs.
         """
+        assert self.ai_client is not None, "AnalystAgent requires an AIClient"
         print(f"Gathering institutional data for {ticker} for quarter {self.quarter}...")
         stock_df = stock_analysis(ticker, self.quarter)
 

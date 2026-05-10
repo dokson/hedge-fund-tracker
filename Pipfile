@@ -32,6 +32,9 @@ websockets = "~=16.0"
 ruff = "~=0.15"
 mypy = "~=2.0"
 pre-commit = "~=4.6"
+pandas-stubs = "~=3.0"
+types-requests = "~=2.33"
+types-tabulate = "~=0.10"
 
 [pipenv]
 allow_prereleases = false

@@ -51,6 +51,7 @@ class YFinance(FinanceLibrary):
             if company_name:
                 return re.sub(r"[.,]", "", company_name)
             print(f"🚨 YFinance: No company found for CUSIP {cusip}.")
+            return None
         except Exception as e:
             print(f"❌ ERROR: Failed to get company for Ticker {ticker} using YFinance: {e}")
             return None
@@ -77,6 +78,7 @@ class YFinance(FinanceLibrary):
             for quote in quotes:
                 return quote["symbol"]
             print(f"🚨 YFinance: No ticker found for CUSIP {cusip}.")
+            return None
         except (requests.RequestException, ValueError) as e:
             print(f"❌ ERROR: Failed to get ticker for CUSIP {cusip} using YFinance: {e}")
             return None
@@ -89,7 +91,7 @@ class YFinance(FinanceLibrary):
             f"⏳ Retrying get_avg_price for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
         ),
     )
-    def get_avg_price(ticker: str, date: date) -> float | None:
+    def get_avg_price(ticker: str, date_obj: date, **kwargs) -> float | None:
         """
         Gets the average daily price for a ticker on a specific date using the yfinance library.
         The average price is calculated as (High + Low) / 2.
@@ -109,8 +111,8 @@ class YFinance(FinanceLibrary):
             with silence_output():
                 price_data = yf.download(
                     tickers=search_ticker,
-                    start=date,
-                    end=date + timedelta(days=1),
+                    start=date_obj,
+                    end=date_obj + timedelta(days=1),
                     auto_adjust=False,
                     progress=False,
                 )
@@ -141,12 +143,12 @@ class YFinance(FinanceLibrary):
                         continue
 
             print(
-                f"🚨 Using latest available price for {ticker} (requested date {date} not available)"
+                f"🚨 Using latest available price for {ticker} (requested date {date_obj} not available)"
             )
             return YFinance.get_current_price(ticker)
         except Exception as e:
             print(
-                f"❌ ERROR: Failed to get price for Ticker {ticker} on {date} using YFinance: {e}"
+                f"❌ ERROR: Failed to get price for Ticker {ticker} on {date_obj} using YFinance: {e}"
             )
             raise e
 
@@ -158,7 +160,7 @@ class YFinance(FinanceLibrary):
             f"⏳ Retrying get_current_price for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
         ),
     )
-    def get_current_price(ticker: str) -> float | None:
+    def get_current_price(ticker: str, **kwargs) -> float | None:
         """
         Gets the current market price for a ticker using the yfinance library.
 
@@ -277,7 +279,7 @@ class YFinance(FinanceLibrary):
     }
 
     @staticmethod
-    def get_history(ticker: str, period: str = "5y") -> list[dict] | None:
+    def get_history(ticker: str, period: str = "5y", **kwargs) -> list[dict] | None:
         """
         Gets OHLC price history for a ticker over the requested period.
 
@@ -330,7 +332,7 @@ class YFinance(FinanceLibrary):
             f"⏳ Retrying get_sector_tickers for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
         ),
     )
-    def get_sector_tickers(sector_key: str, limit: int = None) -> list[dict]:
+    def get_sector_tickers(sector_key: str, limit: int | None = None) -> list[dict]:
         """
         Gets a list of tickers for companies in a specific sector.
 

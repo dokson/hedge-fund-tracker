@@ -285,7 +285,7 @@ def _df_to_json_safe_records(df: "pd.DataFrame") -> list[dict[str, object]]:
     import numpy as np
 
     cleaned = df.replace([np.inf, -np.inf], np.nan).astype(object)
-    return cleaned.where(cleaned.notna(), None).to_dict(orient="records")
+    return cleaned.where(cleaned.notna(), None).to_dict(orient="records")  # type: ignore[arg-type,return-value]
 
 
 @app.post("/api/ai/promise-score")
@@ -441,7 +441,7 @@ _sse_lock = threading.Lock()
 
 def _make_sse_stream(target_fn):
     """Run target_fn in a thread, capture its stdout, and stream each line as SSE."""
-    log_q: queue.Queue = queue.SimpleQueue()
+    log_q: queue.SimpleQueue = queue.SimpleQueue()
 
     class _Writer:
         def write(self, text: str):

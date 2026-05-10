@@ -9,9 +9,9 @@ class PriceFetcher:
     """
 
     @staticmethod
-    def get_libraries() -> list[FinanceLibrary]:
+    def get_libraries() -> list[type[FinanceLibrary]]:
         """
-        Returns an ordered list of FinanceLibrary instances for price fetching.
+        Returns an ordered list of FinanceLibrary classes for price fetching.
         """
         return [YFinance, TradingView, Nasdaq]
 
@@ -42,8 +42,6 @@ class PriceFetcher:
         """
         for library in PriceFetcher.get_libraries():
             try:
-                if not hasattr(library, "get_history"):
-                    continue
                 points = library.get_history(ticker, period)
                 if points:
                     return points

@@ -97,7 +97,7 @@ def get_non_quarterly_filings_dataframe(
 
 
 def update_quarter_with_nq_filings(
-    quarter_df: pd.DataFrame, funds_to_update: list[str], idx_13f_funds: list[str] = None
+    quarter_df: pd.DataFrame, funds_to_update: list[str], idx_13f_funds: list[str] | None = None
 ) -> pd.DataFrame:
     """
     Updates the 13F holdings dataframe with more recent data from non quarterly filings.

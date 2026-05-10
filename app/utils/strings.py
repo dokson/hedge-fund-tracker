@@ -151,7 +151,7 @@ def get_signed_perc_formatter():
     return lambda x: format_percentage(x, True)
 
 
-def get_string_formatter(max_length: int = None):
+def get_string_formatter(max_length: int | None = None):
     """
     Creates a formatter function that formats a string to title case (if uppercase) and optionally truncates it to a maximum length.
 
@@ -187,15 +187,17 @@ def get_value_formatter():
     return lambda x: format_value(x)
 
 
-def get_numeric(formatted_value: str) -> int:
+def get_numeric(formatted_value: str) -> float:
     """
     Parses a formatted value string (e.g., '1.23B', '45.67M', '8.9K') back into a numeric value.
+
+    Returns NaN for "N/A" inputs, so the return type is float (NaN is not representable as int).
 
     Args:
         formatted_value (str): The formatted value string to parse.
 
     Returns:
-        int: The number represented by the formatted string.
+        float: The number represented by the formatted string, or NaN for "N/A".
     """
     if formatted_value == "N/A":
         return np.nan

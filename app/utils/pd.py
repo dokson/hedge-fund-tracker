@@ -4,12 +4,15 @@ import pandas as pd
 from app.utils.strings import VALUE_FORMAT_MAP
 
 
-def coalesce(*series: pd.Series) -> pd.Series:
+def coalesce(*series: pd.Series | int | float | str) -> pd.Series:
     """
     Returns the first non-null value at each position from a set of Series.
-    It's an equivalent of SQL's COALESCE.
+
+    The first argument must be a Series; subsequent arguments may be Series
+    or scalars (used as fillna defaults). Equivalent to SQL's COALESCE.
     """
     result = series[0]
+    assert isinstance(result, pd.Series), "first coalesce argument must be a Series"
     for s in series[1:]:
         result = result.fillna(s)
     return result
@@ -20,8 +23,8 @@ def format_value_series(series: pd.Series) -> pd.Series:
     Vectorized version of format_value.
     """
     # Base conditions for null and infinity
-    conditions = [series.isnull(), series == float("inf")]
-    choices = ["N/A", "∞"]
+    conditions: list = [series.isnull(), series == float("inf")]
+    choices: list = ["N/A", "∞"]
 
     # Dynamically build conditions and choices from the rules
     for threshold, suffix in VALUE_FORMAT_MAP:

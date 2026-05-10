@@ -66,7 +66,7 @@ class OpenAIClient(AIClient):
         wait=wait_exponential(multiplier=2, min=1, max=8),
         stop=stop_after_attempt(3),
         before_sleep=lambda rs: print(
-            f"⏳ Retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})"
+            f"⏳ Retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
         ),
     )
     def _generate_content_impl(self, prompt: str, **kwargs) -> str:

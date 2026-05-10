@@ -515,7 +515,7 @@ def clean_stocks(filepath=f"./database/{STOCKS_FILE}") -> None:
             return
 
         all_stock_cusips = set(stocks_df["CUSIP"])
-        all_filing_cusips = set()
+        all_filing_cusips: set[str] = set()
 
         # 1. Collect all CUSIPs from all quarterly reports
         for quarter in get_all_quarters():
@@ -599,7 +599,7 @@ def find_cusips_for_ticker(old_ticker: str) -> list[dict[str, str]]:
         list: A list of dictionaries containing CUSIP, Ticker, and Company information.
     """
     stocks_path = Path(DB_FOLDER) / STOCKS_FILE
-    matching_stocks = []
+    matching_stocks: list[dict[str, str]] = []
 
     if not stocks_path.exists():
         print(f"❌ Error: {STOCKS_FILE} not found at {stocks_path}")
@@ -640,7 +640,7 @@ def update_stocks_csv(old_ticker: str, new_ticker: str, new_company: str | None 
 
     with stocks_path.open(encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames
+        fieldnames = reader.fieldnames or []
 
         for row in reader:
             if row["Ticker"] == old_ticker:
@@ -684,7 +684,7 @@ def update_quarterly_filings(cusips: list[str], new_ticker: str) -> None:
 
                 with Path(csv_file).open(encoding="utf-8", newline="") as f:
                     reader = csv.DictReader(f)
-                    fieldnames = reader.fieldnames
+                    fieldnames = reader.fieldnames or []
 
                     if "CUSIP" not in fieldnames or "Ticker" not in fieldnames:
                         continue
@@ -726,7 +726,7 @@ def update_non_quarterly_filings(cusips: list[str], new_ticker: str) -> int:
     try:
         with nq_path.open(encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f)
-            fieldnames = reader.fieldnames
+            fieldnames = reader.fieldnames or []
 
             for row in reader:
                 if row["CUSIP"] in cusips:
@@ -777,7 +777,7 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str, new_company: str | None
 
     with stocks_path.open(encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames
+        fieldnames = reader.fieldnames or []
 
         for row in reader:
             if row["CUSIP"] == cusip:

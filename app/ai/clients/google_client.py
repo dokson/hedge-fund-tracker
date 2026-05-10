@@ -27,7 +27,7 @@ class GoogleAIClient(AIClient):
         wait=wait_exponential(multiplier=2, min=1, max=8),
         stop=stop_after_attempt(3),
         before_sleep=lambda rs: print(
-            f"Google AI service unavailable, retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})"
+            f"Google AI service unavailable, retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
         ),
     )
     def _generate_content_impl(self, prompt: str, **kwargs) -> str:
@@ -45,7 +45,7 @@ class GoogleAIClient(AIClient):
         """
         try:
             response = self.client.models.generate_content(model=self.model, contents=prompt)
-            return response.text
+            return response.text or ""
         except Exception as e:
             print(f"❌ ERROR: Google AI API call failed: {e}")
             raise
