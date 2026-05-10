@@ -12,9 +12,21 @@ class GoogleAIClient(AIClient):
 
     DEFAULT_MODEL = "gemini-2.5-flash"
 
-    def __init__(self, model: str = DEFAULT_MODEL):
-        load_dotenv()
-        self.client = genai.Client()
+    def __init__(self, model: str = DEFAULT_MODEL, api_key: str | None = None):
+        """
+        Initialise the Google AI client.
+
+        Args:
+            model: model name (default 'gemini-2.5-flash').
+            api_key: explicit API key. When None, falls back to GOOGLE_API_KEY
+                env var via genai.Client default — DEPRECATED, will be required
+                explicitly once BYOK is wired end-to-end.
+        """
+        if api_key is None:
+            load_dotenv()
+            self.client = genai.Client()
+        else:
+            self.client = genai.Client(api_key=api_key)
         self.model = model
 
     def get_model_name(self) -> str:

@@ -15,7 +15,9 @@ if TYPE_CHECKING:
 # Fix terminal width for output streamed to the web UI
 os.environ.setdefault("COLUMNS", "80")
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -24,11 +26,35 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.api.api_keys import router as api_keys_router
+from app.api.me import router as me_router
+from app.api.starred import router as starred_router
+from app.auth import current_active_verified_user, include_routers_for_auth
+from app.db.models import User
+from app.db.session import AsyncSessionLocal
+
 DATABASE_DIR = Path(__file__).parent.parent / "database"
 FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
 ENV_FILE = Path(__file__).parent.parent / ".env"
 
-app = FastAPI(title="Hedge Fund Tracker")
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """
+    Validate critical secrets eagerly at startup so a misconfigured deployment
+    crashes the worker immediately — rather than serving for hours and then
+    503-ing the first user who tries BYOK signup.
+    """
+    from app.security.envelope import _kek
+
+    # Touch the KEK loader; raises EncryptionConfigError if MASTER_KEY is unset
+    # or malformed. Fails the worker boot, surfaces the misconfig in `docker logs`.
+    _kek()
+    yield
+    # Shutdown: no cleanup yet.
+
+
+app = FastAPI(title="Hedge Fund Tracker", lifespan=_lifespan)
 
 # ── CORS allowlist ────────────────────────────────────────────────────────────
 # Read from env var (comma-separated). Defaults to localhost dev origins so a
@@ -87,6 +113,13 @@ app.add_middleware(SecurityHeadersMiddleware)
 limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+
+
+# ── Auth + per-user routes ────────────────────────────────────────────────────
+include_routers_for_auth(app)
+app.include_router(me_router)
+app.include_router(api_keys_router)
+app.include_router(starred_router)
 
 
 @app.get("/health")
@@ -346,13 +379,23 @@ def _df_to_json_safe_records(df: "pd.DataFrame") -> list[dict[str, object]]:
 
 @app.post("/api/ai/promise-score")
 @limiter.limit("10/minute")
-async def ai_promise_score(request: Request):
+async def ai_promise_score(
+    request: Request,
+    user: User = Depends(current_active_verified_user),
+):
+    """
+    Score-rank the top N stocks for a quarter via the user's BYOK AI provider.
+    Requires an authenticated, verified user with a stored API key for
+    `provider_id` — no env-var fallback, no shared/server-side keys.
+    """
     from app.ai.agent import AnalystAgent
 
     body = await request.json()
     quarter = _require_quarter(body.get("quarter"))
     top_n = body.get("top_n", 20)
-    ai_client = _build_ai_client(body.get("model_id"), body.get("provider_id"))
+    provider_id = body.get("provider_id")
+    api_key = await _resolve_byok_key(user, provider_id)
+    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
     agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
     df = agent.generate_scored_list(top_n=top_n)
     return _df_to_json_safe_records(df)
@@ -360,13 +403,21 @@ async def ai_promise_score(request: Request):
 
 @app.post("/api/ai/due-diligence")
 @limiter.limit("10/minute")
-async def ai_due_diligence(request: Request):
+async def ai_due_diligence(
+    request: Request,
+    user: User = Depends(current_active_verified_user),
+):
+    """
+    AI due-diligence on one ticker for one quarter via the user's BYOK key.
+    """
     from app.ai.agent import AnalystAgent
 
     body = await request.json()
     ticker = _require_ticker(body.get("ticker"))
     quarter = _require_quarter(body.get("quarter"))
-    ai_client = _build_ai_client(body.get("model_id"), body.get("provider_id"))
+    provider_id = body.get("provider_id")
+    api_key = await _resolve_byok_key(user, provider_id)
+    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
     agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
     return agent.run_stock_due_diligence(ticker=ticker)
 
@@ -589,13 +640,22 @@ def _make_sse_stream(target_fn):
 
 @app.post("/api/ai/promise-score/stream")
 @limiter.limit("10/minute")
-async def ai_promise_score_stream(request: Request):
+async def ai_promise_score_stream(
+    request: Request,
+    user: User = Depends(current_active_verified_user),
+):
+    """
+    SSE-streamed Promise Score analysis. BYOK gating identical to the
+    non-stream variant.
+    """
     from app.ai.agent import AnalystAgent
 
     body = await request.json()
     quarter = _require_quarter(body.get("quarter"))
     top_n = body.get("top_n", 20)
-    ai_client = _build_ai_client(body.get("model_id"), body.get("provider_id"))
+    provider_id = body.get("provider_id")
+    api_key = await _resolve_byok_key(user, provider_id)
+    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
 
     def run():
         agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
@@ -607,13 +667,21 @@ async def ai_promise_score_stream(request: Request):
 
 @app.post("/api/ai/due-diligence/stream")
 @limiter.limit("10/minute")
-async def ai_due_diligence_stream(request: Request):
+async def ai_due_diligence_stream(
+    request: Request,
+    user: User = Depends(current_active_verified_user),
+):
+    """
+    SSE-streamed due diligence. BYOK gating identical to the non-stream variant.
+    """
     from app.ai.agent import AnalystAgent
 
     body = await request.json()
     ticker = _require_ticker(body.get("ticker"))
     quarter = _require_quarter(body.get("quarter"))
-    ai_client = _build_ai_client(body.get("model_id"), body.get("provider_id"))
+    provider_id = body.get("provider_id")
+    api_key = await _resolve_byok_key(user, provider_id)
+    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
 
     def run():
         agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
@@ -657,8 +725,13 @@ async def serve_spa(full_path: str):
 # ── AI client factory ──────────────────────────────────────────────────────────
 
 
-def _build_ai_client(model_id: str | None = None, provider_id: str | None = None):
-    """Build the AI client for the requested provider, falling back to first available."""
+def _build_ai_client(provider_id: str, api_key: str, model_id: str | None = None):
+    """
+    Build the AI client for the requested provider, using the user's BYOK key.
+
+    No env-var fallback: callers (the /api/ai/* endpoints) must look up the
+    user's stored key first and pass it in. Unknown provider → 400.
+    """
     from app.ai.clients import (
         GitHubClient,
         GoogleAIClient,
@@ -667,26 +740,48 @@ def _build_ai_client(model_id: str | None = None, provider_id: str | None = None
         OpenRouterClient,
     )
 
-    provider_map = {
-        "github": ("GITHUB_TOKEN", GitHubClient),
-        "google": ("GOOGLE_API_KEY", GoogleAIClient),
-        "groq": ("GROQ_API_KEY", GroqClient),
-        "huggingface": ("HF_TOKEN", HuggingFaceClient),
-        "openrouter": ("OPENROUTER_API_KEY", OpenRouterClient),
+    client_map = {
+        "github": GitHubClient,
+        "google": GoogleAIClient,
+        "groq": GroqClient,
+        "huggingface": HuggingFaceClient,
+        "openrouter": OpenRouterClient,
     }
-    # If provider is known, use it directly (if its key is present)
-    if provider_id and provider_id in provider_map:
-        env_var, ClientClass = provider_map[provider_id]
-        if os.getenv(env_var):
-            return ClientClass() if model_id is None else ClientClass(model=model_id)
+    client_cls = client_map.get(provider_id)
+    if client_cls is None:
         raise HTTPException(
-            status_code=500,
-            detail=f"No API key configured for provider '{provider_id}'. Set {env_var} in .env.",
+            status_code=400,
+            detail=f"Unsupported provider {provider_id!r}. Allowed: {sorted(client_map.keys())}",
         )
-    # Fallback: first available provider
-    for env_var, ClientClass in provider_map.values():
-        if os.getenv(env_var):
-            return ClientClass() if model_id is None else ClientClass(model=model_id)
-    raise HTTPException(
-        status_code=500, detail="No AI provider configured. Set at least one API key in .env."
+
+    return (
+        client_cls(api_key=api_key)
+        if model_id is None
+        else client_cls(model=model_id, api_key=api_key)
     )
+
+
+async def _resolve_byok_key(user: "User", provider_id: str) -> str:
+    """
+    Look up the requesting user's stored API key for the provider. Raises
+    HTTPException 400 with a helpful message if the user hasn't added one
+    (the FE is expected to redirect them to Settings → API Keys).
+    """
+    from app.auth import api_keys as api_keys_svc
+
+    if not provider_id:
+        raise HTTPException(status_code=400, detail="provider_id is required")
+
+    async with AsyncSessionLocal() as session:
+        try:
+            return await api_keys_svc.get_for_use(session, user, provider_id)
+        except api_keys_svc.NoSuchApiKeyError:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"No API key configured for provider {provider_id!r}. "
+                    "Add one in Settings → API Keys."
+                ),
+            ) from None
+        finally:
+            await session.commit()  # persist last_used_at update from get_for_use

@@ -7,6 +7,9 @@ services:
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - ./database:/app/database
       - ./__llmcache__:/app/__llmcache__
@@ -14,9 +17,44 @@ services:
       - ./.env:/app/.env:ro
     environment:
       - DOCKER_ENV=1
+      # Required secrets — `${VAR:?msg}` aborts `docker compose up` if missing.
+      # NEVER set defaults here: any value committed to the repo is a leaked secret.
+      # Generate fresh values: `python scripts/generate_secrets.py` then write to .env.
+      - DATABASE_URL=postgresql+asyncpg://hft:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@db:5432/hft
+      - MASTER_KEY=${MASTER_KEY:?MASTER_KEY required (see .env.example)}
+      - MASTER_KEY_VERSION=${MASTER_KEY_VERSION:-1}
+      - RESET_PASSWORD_TOKEN_SECRET=${RESET_PASSWORD_TOKEN_SECRET:?RESET_PASSWORD_TOKEN_SECRET required}
+      - VERIFICATION_TOKEN_SECRET=${VERIFICATION_TOKEN_SECRET:?VERIFICATION_TOKEN_SECRET required}
+      # Optional BYOK provider credentials (legacy env-var path; deprecated).
       - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - HF_TOKEN=${HF_TOKEN:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+
+  db:
+    image: postgres:16-alpine
+    container_name: hedge-fund-tracker-db
+    restart: unless-stopped
+    environment:
+      # User + db name are not secrets — fixed values, no env override.
+      # Only the password is required from .env (fail-fast if missing).
+      - POSTGRES_USER=hft
+      - POSTGRES_DB=hft
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required (use a strong random string)}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Expose only on loopback so a stray firewall rule can't accidentally publish
+    # the DB to the public internet. Override to 5432:5432 if you need to attach
+    # an external client (DBeaver, psql).
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hft -d hft"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

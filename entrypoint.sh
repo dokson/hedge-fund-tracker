@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+
 # Seed the persistent volume with database files on first deploy.
 # Check for a known file (hedge_funds.csv) rather than emptiness,
 # since Railway volumes may contain internal metadata even when fresh.
@@ -24,6 +26,22 @@ if [ ! -f /app/.env ]; then
     echo "✅ .env file created."
 else
     echo "✅ .env file already exists."
+fi
+
+# Apply pending Postgres migrations (idempotent — alembic skips applied revisions).
+# Skipped when DATABASE_URL is unset (e.g. CSV-only legacy mode for self-hosters).
+# An explicit error message + non-zero exit makes a misconfig (wrong password,
+# unreachable host, missing privileges) visible in `docker logs` instead of
+# the generic Python traceback you'd get with `set -e` alone.
+if [ -n "$DATABASE_URL" ]; then
+    echo "🔧 Applying Alembic migrations..."
+    if ! alembic upgrade head; then
+        echo "❌ Alembic migration failed. Check DATABASE_URL, credentials, and that the DB is reachable." >&2
+        exit 1
+    fi
+    echo "✅ Migrations up to date."
+else
+    echo "⚠️ DATABASE_URL not set — skipping migrations (CSV-only mode)."
 fi
 
 exec "$@"

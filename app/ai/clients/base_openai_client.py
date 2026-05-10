@@ -12,18 +12,34 @@ class OpenAIClient(AIClient):
     """
     Abstract base class for AI clients that are compatible with the OpenAI API.
     Subclasses must implement `get_base_url` and `get_api_key_env_var`.
+
+    BYOK transition: instantiate with an explicit `api_key=...` from the
+    user's stored credentials. The env-var fallback below is DEPRECATED and
+    will be removed once every call site supplies an explicit key (target:
+    end of Phase 2).
     """
 
-    def __init__(self, model: str):
+    def __init__(self, model: str, api_key: str | None = None):
         """
         Initializes the OpenAI-compatible client.
+
+        Args:
+            model: model identifier (e.g. 'gpt-5').
+            api_key: explicit API key. When None, falls back to the legacy
+                env-var lookup with a deprecation notice.
         """
-        load_dotenv()
-        api_key = os.getenv(self.get_api_key_env_var())
-        if not api_key:
-            print(
-                f"🚨 WARNING: Environment variable {self.get_api_key_env_var()} not set. Client may not work."
-            )
+        if api_key is None:
+            load_dotenv()
+            api_key = os.getenv(self.get_api_key_env_var())
+            if not api_key:
+                print(
+                    f"🚨 WARNING: Environment variable {self.get_api_key_env_var()} not set. Client may not work."
+                )
+            else:
+                print(
+                    f"⚠️ DEPRECATED: {self.__class__.__name__} initialised from env var "
+                    f"{self.get_api_key_env_var()}. Pass `api_key=` from the user's BYOK store instead."
+                )
 
         self.client = OpenAI(
             base_url=self.get_base_url(), api_key=api_key, default_headers=self.get_headers()

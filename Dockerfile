@@ -1,7 +1,9 @@
 # Stage 1: Build React frontend
 FROM node:22-slim AS frontend-build
 WORKDIR /app/frontend
-COPY app/frontend/package.json app/frontend/package-lock.json ./
+# .npmrc must land before `npm ci` so legacy-peer-deps=true is honoured
+# (jsx-a11y@6.10 still declares eslint <=^9 as peer; we ship eslint 10).
+COPY app/frontend/package.json app/frontend/package-lock.json app/frontend/.npmrc ./
 RUN npm ci
 COPY app/frontend/ ./
 RUN npm run build
@@ -27,6 +29,9 @@ RUN pip install --no-cache-dir pipenv && \
 
 # Copy application code
 COPY app/ ./app/
+
+# Alembic config — needed by the entrypoint to apply migrations on boot.
+COPY alembic.ini ./
 
 # Seed data: stored separately so the volume mount doesn't hide it
 COPY database/ ./database-seed/

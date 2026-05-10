@@ -7,8 +7,13 @@ name = "pypi"
 python_version = "3.13"
 
 [packages]
+alembic = "~=1.18"
+asyncpg = "~=0.31"
 beautifulsoup4 = "~=4.14"
+cryptography = "~=48.0"
 fastapi = "~=0.136"
+fastapi-users = {extras = ["sqlalchemy"], version = "~=14.0"}
+fastapi-users-db-sqlalchemy = "~=7.0"
 financedatabase = "~=2.3"
 finnhub-python = "~=2.4"
 google-genai = "~=2.0"
@@ -21,19 +26,20 @@ python-dotenv = "~=1.2"
 python-multipart = "~=0.0"
 python-toon = "~=0.1"
 requests = "~=2.33"
+slowapi = "~=0.1"
+sqlalchemy = "~=2.0"
 tabulate = "~=0.10"
 tradingview-datafeed = "~=2.1"
 uvicorn = "~=0.46"
 uvloop = {version = "==0.22.1", markers = "sys_platform != 'win32'"}
 watchfiles = "~=1.1"
 websockets = "~=16.0"
-slowapi = "~=0.1"
 
 [dev-packages]
-ruff = "~=0.15"
 mypy = "~=2.0"
-pre-commit = "~=4.6"
 pandas-stubs = "~=3.0"
+pre-commit = "~=4.6"
+ruff = "~=0.15"
 types-requests = "~=2.33"
 types-tabulate = "~=0.10"
 
