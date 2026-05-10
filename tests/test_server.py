@@ -121,5 +121,75 @@ class TestServer(unittest.TestCase):
         self.assertLess(latest_idx, param_idx)
 
 
+class TestSSEContextIsolation(unittest.TestCase):
+    """
+    Tests that the SSE stdout-capture mechanism (`_ContextAwareStdout` +
+    `_request_log_q`) isolates concurrent requests. Each request must only see
+    its own prints, never another request's output. This is the contract that
+    makes the server multi-tenant safe.
+    """
+
+    def test_two_concurrent_runners_do_not_mix_output(self):
+        """
+        Run two SSE-style targets concurrently from different threads. Each
+        prints its own marker; the queues bound to each context must contain
+        only that context's marker, never the other's.
+        """
+        import threading
+
+        from app.server import _request_log_q
+
+        q_a: queue.SimpleQueue[tuple[str, str]] = queue.SimpleQueue()
+        q_b: queue.SimpleQueue[tuple[str, str]] = queue.SimpleQueue()
+        barrier = threading.Barrier(2)
+
+        def runner(q, marker):
+            token = _request_log_q.set(q)
+            try:
+                barrier.wait()  # ensure both threads are inside the context simultaneously
+                for _ in range(20):
+                    print(marker)
+            finally:
+                _request_log_q.reset(token)
+
+        ta = threading.Thread(target=runner, args=(q_a, "AAA"))
+        tb = threading.Thread(target=runner, args=(q_b, "BBB"))
+        ta.start()
+        tb.start()
+        ta.join()
+        tb.join()
+
+        a_lines = []
+        while not q_a.empty():
+            a_lines.append(q_a.get_nowait()[1])
+        b_lines = []
+        while not q_b.empty():
+            b_lines.append(q_b.get_nowait()[1])
+
+        self.assertEqual(a_lines, ["AAA"] * 20)
+        self.assertEqual(b_lines, ["BBB"] * 20)
+
+    def test_print_outside_context_falls_through_to_real_stdout(self):
+        """
+        When no contextvar is set (e.g. uvicorn logs, CLI mode), `print()` must
+        pass through to the original stdout instead of being swallowed.
+        """
+        import io
+
+        from app.server import _ContextAwareStdout, _request_log_q
+
+        buf = io.StringIO()
+        wrapper = _ContextAwareStdout(buf)
+
+        # Sanity: contextvar is None outside any handler.
+        self.assertIsNone(_request_log_q.get())
+
+        wrapper.write("hello\n")
+        self.assertEqual(buf.getvalue(), "hello\n")
+
+
+# Make `queue` available to the SSE isolation test without polluting module top
+import queue  # noqa: E402
+
 if __name__ == "__main__":
     unittest.main()

@@ -19,7 +19,7 @@ def scrape_gics_from_wikipedia():
     }
 
     try:
-        response = requests.get(GICS_WIKIPEDIA_URL, headers=headers)
+        response = requests.get(GICS_WIKIPEDIA_URL, headers=headers, timeout=10)
         response.raise_for_status()
     except Exception as e:
         print(f"❌ Error fetching Wikipedia page: {e}")

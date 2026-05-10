@@ -47,7 +47,7 @@ def open_issue(subject, body):
         search_url = "https://api.github.com/search/issues"
         query = f'repo:{repo} is:issue is:open in:title "{subject}"'
         params = {"q": query}
-        search_response = requests.get(search_url, headers=headers, params=params)
+        search_response = requests.get(search_url, headers=headers, params=params, timeout=10)
         search_response.raise_for_status()
         search_results = search_response.json()
 
@@ -68,7 +68,7 @@ def open_issue(subject, body):
     data = {"title": subject, "body": body, "labels": ["bug", "alert"], "assignees": [repo_owner]}
 
     try:
-        response = requests.post(create_url, json=data, headers=headers)
+        response = requests.post(create_url, json=data, headers=headers, timeout=10)
         response.raise_for_status()
 
         if response.status_code == 201:

@@ -24,6 +24,7 @@ class TestYFinance(unittest.TestCase):
         mock_get.assert_called_once_with(
             "https://query1.finance.yahoo.com/v1/finance/search?q=037833100",
             headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
         )
 
     @patch("app.stocks.libraries.yfinance.yf.Ticker")

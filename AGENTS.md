@@ -50,7 +50,7 @@ These are real incidents — read before changing code in these areas.
 
 - **Stale frontend dist served silently.** The dev server auto-rebuilds when `frontend/src/` mtimes are newer than `dist/index.html`. If you bypass `pipenv run app` and serve dist directly, edits to `.tsx` or `src/data/*.json` are invisible. Trust the auto-rebuild or run `pipenv run build-frontend` explicitly.
 
-- **SSE redirects `sys.stdout` globally.** `_make_sse_stream` in `app/server.py` captures `print()` output for streaming to the browser. Single-user this is fine. Multi-user it leaks: two concurrent requests will see each other's output. Do NOT add multi-user features without rearchitecting this — see security audit notes.
+- **SSE stdout capture is per-request.** `app/server.py` installs a `_ContextAwareStdout` wrapper at module import that consults a `ContextVar` on every `write()`. Each `_make_sse_stream` call sets its own queue in the contextvar; threads spawned to run the target inherit the context. Result: concurrent SSE streams are isolated, no global lock needed. Don't reintroduce `sys.stdout = ...` redirections — they break this isolation.
 
 - **Wrong `Denomination` breaks non-quarterly merging.** 13D/G and Form 4 filings match by *legal name string*, not CIK. The `Denomination` column in `hedge_funds.csv` must be exact. Mismatch = silent gap in non-quarterly view.
 
@@ -72,7 +72,7 @@ React 19 + TypeScript + Vite, served by FastAPI (`app/server.py`). `pipenv run a
 
 **Frontend stack**: React 19, TypeScript, Vite, Tailwind, shadcn/ui (subset), Recharts, TanStack Query, react-router-dom.
 
-**SSE pattern** (`_make_sse_stream`): redirects `sys.stdout` in a background thread, streams each line as `data: {"type": "log", ...}`, sends final `{"type": "result", ...}` then closes. Uses a `threading.Lock` to serialize concurrent redirections (see Footguns).
+**SSE pattern** (`_make_sse_stream`): runs the target in a background thread, captures stdout via a context-local queue (see `_ContextAwareStdout` + `_request_log_q`), streams each line as `data: {"type": "log", ...}`, sends final `{"type": "result", ...}` then closes. Concurrent streams isolated via `contextvars` — no shared lock.
 
 **Server port**: locally auto-discovers from 8000. In Docker (`DOCKER_ENV=1`) binds `0.0.0.0` on `PORT` env var. `/health` for container probes.
 

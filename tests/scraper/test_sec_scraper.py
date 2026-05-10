@@ -48,6 +48,7 @@ class TestSecScraper(unittest.TestCase):
                 "Accept-Encoding": "gzip, deflate",
                 "HOST": SEC_HOST,
             },
+            timeout=15,
         )
 
     @patch("app.scraper.sec_scraper.requests.get")

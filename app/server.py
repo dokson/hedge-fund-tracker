@@ -1,4 +1,5 @@
 import asyncio
+import contextvars
 import json
 import os
 import queue
@@ -18,6 +19,10 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from starlette.middleware.base import BaseHTTPMiddleware
 
 DATABASE_DIR = Path(__file__).parent.parent / "database"
 FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
@@ -25,12 +30,63 @@ ENV_FILE = Path(__file__).parent.parent / ".env"
 
 app = FastAPI(title="Hedge Fund Tracker")
 
+# ── CORS allowlist ────────────────────────────────────────────────────────────
+# Read from env var (comma-separated). Defaults to localhost dev origins so a
+# fresh checkout works without configuration. In production, set ALLOWED_ORIGINS
+# explicitly to your domain(s); never leave wildcards in a public deployment.
+_default_origins = "http://localhost:5173,http://localhost:8000,http://127.0.0.1:8000"
+ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get("ALLOWED_ORIGINS", _default_origins).split(",") if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+
+# ── Security headers ──────────────────────────────────────────────────────────
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Adds defensive HTTP headers to every response. CSP is intentionally lax in
+    style/script directives because Vite injects inline assets at build time;
+    tightening it requires nonces or hashes per build, deferred for later.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        # CSP report-only initially: logs violations without blocking, so we can
+        # tune the policy against the real React bundle before enforcing it.
+        response.headers["Content-Security-Policy-Report-Only"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data:; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'"
+        )
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+# Keyed by client IP for now (pre-auth). After we add user accounts, switch the
+# key_func to read the authenticated user_id from request.state.
+limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 
 @app.get("/health")
@@ -289,6 +345,7 @@ def _df_to_json_safe_records(df: "pd.DataFrame") -> list[dict[str, object]]:
 
 
 @app.post("/api/ai/promise-score")
+@limiter.limit("10/minute")
 async def ai_promise_score(request: Request):
     from app.ai.agent import AnalystAgent
 
@@ -302,6 +359,7 @@ async def ai_promise_score(request: Request):
 
 
 @app.post("/api/ai/due-diligence")
+@limiter.limit("10/minute")
 async def ai_due_diligence(request: Request):
     from app.ai.agent import AnalystAgent
 
@@ -436,37 +494,75 @@ async def apply_ticker_changes_endpoint():
 
 # ── AI streaming endpoints ─────────────────────────────────────────────────
 
-_sse_lock = threading.Lock()
+# ── Per-request stdout capture for SSE streaming ──────────────────────────────
+#
+# Multi-tenant safety: instead of redirecting sys.stdout globally (and serializing
+# requests with a lock to avoid output mixing), we install a single stdout wrapper
+# at startup that consults a ContextVar. Each SSE handler sets its own queue in
+# the contextvar before running the target function in a thread; the thread
+# inherits the context, so prints from that thread route to the right queue.
+# Prints from anywhere else (uvicorn logs, CLI mode, other endpoints) see no
+# queue and pass through to the original stdout.
+#
+# Result: no global lock, concurrent SSE streams are fully isolated.
+
+_request_log_q: contextvars.ContextVar[queue.SimpleQueue | None] = contextvars.ContextVar(
+    "_request_log_q", default=None
+)
+
+
+class _ContextAwareStdout:
+    """
+    sys.stdout replacement that routes prints to a per-context queue when set,
+    falling back to the original stdout otherwise.
+    """
+
+    def __init__(self, fallback):
+        self._fallback = fallback
+
+    def write(self, text: str) -> int:
+        q = _request_log_q.get()
+        if q is None:
+            return self._fallback.write(text)
+        for line in text.splitlines():
+            if line.strip():
+                q.put(("log", line))
+        return len(text)
+
+    def flush(self) -> None:
+        self._fallback.flush()
+
+    def __getattr__(self, name):
+        # Delegate everything else (encoding, fileno, isatty, ...) to fallback.
+        return getattr(self._fallback, name)
+
+
+# Install once at module import. Idempotent: re-importing won't re-wrap.
+if not isinstance(sys.stdout, _ContextAwareStdout):
+    sys.stdout = _ContextAwareStdout(sys.stdout)
 
 
 def _make_sse_stream(target_fn):
-    """Run target_fn in a thread, capture its stdout, and stream each line as SSE."""
+    """
+    Run target_fn in a thread, capture its stdout via contextvar, and stream
+    each line as SSE. Concurrent calls are fully isolated — no shared lock.
+    """
     log_q: queue.SimpleQueue = queue.SimpleQueue()
-
-    class _Writer:
-        def write(self, text: str):
-            for line in text.splitlines():
-                if line.strip():
-                    log_q.put(("log", line))
-
-        def flush(self):
-            pass
 
     def run():
         """
-        Executes target_fn while capturing stdout. Uses a lock to prevent concurrent
-        sys.stdout redirections from mixing output across SSE streams.
+        Executes target_fn with the per-request log queue bound to a contextvar.
+        Threads spawned by target_fn inherit the context, so their prints route
+        to this queue too.
         """
-        with _sse_lock:
-            old = sys.stdout
-            sys.stdout = _Writer()
-            try:
-                result = target_fn()
-                log_q.put(("result", result))
-            except Exception as e:
-                log_q.put(("error", str(e)))
-            finally:
-                sys.stdout = old
+        token = _request_log_q.set(log_q)
+        try:
+            result = target_fn()
+            log_q.put(("result", result))
+        except Exception as e:
+            log_q.put(("error", str(e)))
+        finally:
+            _request_log_q.reset(token)
 
     threading.Thread(target=run, daemon=True).start()
 
@@ -492,6 +588,7 @@ def _make_sse_stream(target_fn):
 
 
 @app.post("/api/ai/promise-score/stream")
+@limiter.limit("10/minute")
 async def ai_promise_score_stream(request: Request):
     from app.ai.agent import AnalystAgent
 
@@ -509,6 +606,7 @@ async def ai_promise_score_stream(request: Request):
 
 
 @app.post("/api/ai/due-diligence/stream")
+@limiter.limit("10/minute")
 async def ai_due_diligence_stream(request: Request):
     from app.ai.agent import AnalystAgent
 

@@ -70,7 +70,7 @@ class YFinance(FinanceLibrary):
         url = f"https://query1.finance.yahoo.com/v1/finance/search?q={cusip}"
         headers = {"User-Agent": "Mozilla/5.0"}
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
 

@@ -49,7 +49,7 @@ def _get_request(url):
         "HOST": SEC_HOST,
     }
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
         return response
     except requests.exceptions.RequestException as e:
