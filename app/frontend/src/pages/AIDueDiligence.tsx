@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { useQuery } from "@tanstack/react-query";
-import { runStockAnalysis, getStocks } from "@/lib/dataService";
+import { runStockAnalysis, getStocks, getModels } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { runDueDiligenceStream } from "@/lib/aiClient";
 import TerminalOutput from "@/components/TerminalOutput";
@@ -260,7 +260,13 @@ export default function AIDueDiligence() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-mono font-bold text-lg">{displayReport.ticker}</p>
+                <Link
+                  to={`/stock/${displayReport.ticker}`}
+                  className="font-mono font-bold text-lg hover:underline hover:text-primary transition-colors"
+                  title={`View ${displayReport.ticker} analysis`}
+                >
+                  {displayReport.ticker}
+                </Link>
                 <p className="text-xs text-muted-foreground">{displayReport.company}</p>
               </div>
             </div>

@@ -17,7 +17,7 @@ os.environ.setdefault("COLUMNS", "80")
 
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -29,7 +29,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.api.api_keys import router as api_keys_router
 from app.api.me import router as me_router
 from app.api.starred import router as starred_router
-from app.auth import current_active_verified_user, include_routers_for_auth
+from app.auth import include_routers_for_auth
 from app.db.models import User
 from app.db.session import AsyncSessionLocal
 
@@ -381,12 +381,10 @@ def _df_to_json_safe_records(df: "pd.DataFrame") -> list[dict[str, object]]:
 @limiter.limit("10/minute")
 async def ai_promise_score(
     request: Request,
-    user: User = Depends(current_active_verified_user),
 ):
     """
-    Score-rank the top N stocks for a quarter via the user's BYOK AI provider.
-    Requires an authenticated, verified user with a stored API key for
-    `provider_id` — no env-var fallback, no shared/server-side keys.
+    Score-rank the top N stocks for a quarter via the configured AI provider.
+    Auth disabled for local single-user mode; falls back to env-var API keys.
     """
     from app.ai.agent import AnalystAgent
 
@@ -394,8 +392,7 @@ async def ai_promise_score(
     quarter = _require_quarter(body.get("quarter"))
     top_n = body.get("top_n", 20)
     provider_id = body.get("provider_id")
-    api_key = await _resolve_byok_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
+    ai_client = _build_ai_client(provider_id, None, body.get("model_id"))
     agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
     df = agent.generate_scored_list(top_n=top_n)
     return _df_to_json_safe_records(df)
@@ -405,10 +402,10 @@ async def ai_promise_score(
 @limiter.limit("10/minute")
 async def ai_due_diligence(
     request: Request,
-    user: User = Depends(current_active_verified_user),
 ):
     """
-    AI due-diligence on one ticker for one quarter via the user's BYOK key.
+    AI due-diligence on one ticker for one quarter. Auth disabled for local
+    single-user mode; falls back to env-var API keys.
     """
     from app.ai.agent import AnalystAgent
 
@@ -416,8 +413,7 @@ async def ai_due_diligence(
     ticker = _require_ticker(body.get("ticker"))
     quarter = _require_quarter(body.get("quarter"))
     provider_id = body.get("provider_id")
-    api_key = await _resolve_byok_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
+    ai_client = _build_ai_client(provider_id, None, body.get("model_id"))
     agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
     return agent.run_stock_due_diligence(ticker=ticker)
 
@@ -642,11 +638,10 @@ def _make_sse_stream(target_fn):
 @limiter.limit("10/minute")
 async def ai_promise_score_stream(
     request: Request,
-    user: User = Depends(current_active_verified_user),
 ):
     """
-    SSE-streamed Promise Score analysis. BYOK gating identical to the
-    non-stream variant.
+    SSE-streamed Promise Score analysis. Auth disabled for local single-user
+    mode; falls back to env-var API keys.
     """
     from app.ai.agent import AnalystAgent
 
@@ -654,8 +649,7 @@ async def ai_promise_score_stream(
     quarter = _require_quarter(body.get("quarter"))
     top_n = body.get("top_n", 20)
     provider_id = body.get("provider_id")
-    api_key = await _resolve_byok_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
+    ai_client = _build_ai_client(provider_id, None, body.get("model_id"))
 
     def run():
         agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
@@ -669,10 +663,10 @@ async def ai_promise_score_stream(
 @limiter.limit("10/minute")
 async def ai_due_diligence_stream(
     request: Request,
-    user: User = Depends(current_active_verified_user),
 ):
     """
-    SSE-streamed due diligence. BYOK gating identical to the non-stream variant.
+    SSE-streamed due diligence. Auth disabled for local single-user mode;
+    falls back to env-var API keys.
     """
     from app.ai.agent import AnalystAgent
 
@@ -680,8 +674,7 @@ async def ai_due_diligence_stream(
     ticker = _require_ticker(body.get("ticker"))
     quarter = _require_quarter(body.get("quarter"))
     provider_id = body.get("provider_id")
-    api_key = await _resolve_byok_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
+    ai_client = _build_ai_client(provider_id, None, body.get("model_id"))
 
     def run():
         agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
@@ -725,7 +718,7 @@ async def serve_spa(full_path: str):
 # ── AI client factory ──────────────────────────────────────────────────────────
 
 
-def _build_ai_client(provider_id: str, api_key: str, model_id: str | None = None):
+def _build_ai_client(provider_id: str, api_key: str | None, model_id: str | None = None):
     """
     Build the AI client for the requested provider, using the user's BYOK key.
 
@@ -754,11 +747,12 @@ def _build_ai_client(provider_id: str, api_key: str, model_id: str | None = None
             detail=f"Unsupported provider {provider_id!r}. Allowed: {sorted(client_map.keys())}",
         )
 
-    return (
-        client_cls(api_key=api_key)
-        if model_id is None
-        else client_cls(model=model_id, api_key=api_key)
-    )
+    kwargs: dict = {}
+    if model_id is not None:
+        kwargs["model"] = model_id
+    if api_key is not None:
+        kwargs["api_key"] = api_key
+    return client_cls(**kwargs)
 
 
 async def _resolve_byok_key(user: "User", provider_id: str) -> str:

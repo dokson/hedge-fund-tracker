@@ -12,7 +12,8 @@ import {
   ReferenceLine,
   ReferenceArea,
 } from "recharts";
-import { Loader2, TrendingUp, TrendingDown, Activity, BarChart3 } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Activity, BarChart3, ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { API_BASE } from "@/lib/config";
 
 type RangeKey = "YTD" | "1Y" | "3Y" | "5Y" | "MAX";
@@ -312,7 +313,17 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
     <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
         <div>
-          <h3 className="section-title text-sm">Price History</h3>
+          <div className="flex items-center gap-2.5">
+            <Link
+              to={`/stock/${ticker}`}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs font-mono font-semibold tracking-wide text-foreground/80 hover:text-foreground hover:border-primary/50 hover:bg-muted/70 transition-colors"
+              title={`View ${ticker} analysis`}
+            >
+              {ticker}
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+            <h3 className="section-title text-sm">Price History</h3>
+          </div>
           {stats && (
             <div className="flex items-baseline gap-3 mt-1 flex-wrap">
               <span className="text-2xl font-bold font-mono">${stats.last.toFixed(2)}</span>
