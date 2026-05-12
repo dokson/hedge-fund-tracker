@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "b5f725392c1f3953d83335a6a562f7b12dbf40e6c55c92073a0092a2d02ed594"
+            "sha256": "de982e6660de87ea4c655af66b5ab6fc0ce959e12a90df780afbb0caec2e85c5"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -973,12 +973,12 @@
         },
         "google-genai": {
             "hashes": [
-                "sha256:32cec7c07157c0e65e4dfc740e3288ff8e8bfc2d506cde49f884d79ed8377867",
-                "sha256:5cb61ff5b8d33129bb7f5df0b5384ed2e71e5dd06ccc012cdbad28b070f6ce99"
+                "sha256:26b0815fd45fe4ccc07c3fb3a47a808732349a9fb3de74970c3d3ad897de4647",
+                "sha256:9e50fe798289b600360b523254b9fe5af72bbc1a4fcf7d774f849aa0a9748a9e"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==2.0.1"
+            "version": "==2.2.0"
         },
         "greenlet": {
             "hashes": [
@@ -1120,11 +1120,11 @@
         },
         "idna": {
             "hashes": [
-                "sha256:466d810d7a2cc1022bea9b037c39728d51ae7dad40d480fc9b7d7ecf98ba8ee3",
-                "sha256:e677eaf072e290f7b725f9acf0b3a2bd55f9fd6f7c70abe5f0e34823d0accf69"
+                "sha256:048adeaf8c2d788c40fee287673ccaa74c24ffd8dcf09ffa555a2fbb59f10ac8",
+                "sha256:ca962446ea538f7092a95e057da437618e886f4d349216d2b1e294abfdb65fdc"
             ],
             "markers": "python_version >= '3.8'",
-            "version": "==3.14"
+            "version": "==3.15"
         },
         "jiter": {
             "hashes": [
