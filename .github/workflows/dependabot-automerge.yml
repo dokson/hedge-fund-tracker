@@ -33,10 +33,18 @@ jobs:
       - name: Approve and auto-merge PR
         run: |
           gh pr review --approve "$PR_URL"
-          gh pr merge --auto --squash "$PR_URL" \
-            --subject "chore(deps): ${{ steps.metadata.outputs.dependency-names }}" \
-            --body "Auto-merged ${{ steps.metadata.outputs.update-type }} update" \
-            --delete-branch
+          SUBJECT="chore(deps): ${{ steps.metadata.outputs.dependency-names }}"
+          BODY="Auto-merged ${{ steps.metadata.outputs.update-type }} update"
+          # Try --auto first (queues the merge behind pending required checks).
+          # If GitHub rejects it (e.g. no pending checks to wait on, or
+          # auto-merge not enabled on the repo), fall back to an immediate
+          # squash merge.
+          if ! gh pr merge --auto --squash "$PR_URL" \
+                --subject "$SUBJECT" --body "$BODY" --delete-branch; then
+            echo "::notice::--auto rejected, attempting immediate merge"
+            gh pr merge --squash "$PR_URL" \
+              --subject "$SUBJECT" --body "$BODY" --delete-branch
+          fi
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

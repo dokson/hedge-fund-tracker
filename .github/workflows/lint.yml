@@ -33,7 +33,7 @@ jobs:
         run: python -m pip install --upgrade pip pipenv
 
       - name: Install dev dependencies
-        run: pipenv install --dev --deploy
+        run: pipenv sync --dev
 
       - name: Ruff check
         run: pipenv run ruff check . --output-format=github
