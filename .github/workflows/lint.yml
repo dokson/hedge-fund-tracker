@@ -26,8 +26,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-          cache: pipenv
-          cache-dependency-path: Pipfile.lock
 
       - name: Install pipenv
         run: python -m pip install --upgrade pip pipenv
