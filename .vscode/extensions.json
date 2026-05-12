@@ -10,7 +10,6 @@
     "redhat.vscode-yaml",
     "ms-azuretools.vscode-docker",
     "github.vscode-github-actions",
-    "streetsidesoftware.code-spell-checker",
     "mikestead.dotenv"
   ],
   "unwantedRecommendations": [
