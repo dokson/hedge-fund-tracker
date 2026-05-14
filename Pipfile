@@ -30,7 +30,7 @@ slowapi = "~=0.1"
 sqlalchemy = "~=2.0"
 tabulate = "~=0.10"
 tradingview-datafeed = "~=2.1"
-uvicorn = "~=0.46"
+uvicorn = "~=0.47"
 uvloop = {version = "==0.22.1", markers = "sys_platform != 'win32'"}
 watchfiles = "~=1.1"
 websockets = "~=16.0"
