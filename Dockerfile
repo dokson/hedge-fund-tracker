@@ -1,5 +1,5 @@
 # Stage 1: Build React frontend
-FROM node:22-slim AS frontend-build
+FROM node:26-slim AS frontend-build
 WORKDIR /app/frontend
 # .npmrc must land before `npm ci` so legacy-peer-deps=true is honoured
 # (jsx-a11y@6.10 still declares eslint <=^9 as peer; we ship eslint 10).
@@ -9,7 +9,7 @@ COPY app/frontend/ ./
 RUN npm run build
 
 # Stage 2: Python runtime with FastAPI
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
