@@ -34,7 +34,7 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
 
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: hedge-fund-tracker-db
     restart: unless-stopped
     environment:
