@@ -70,15 +70,16 @@ jobs:
       - name: Refresh excluded funds popularity ranking
         run: pipenv run python -X utf8 scripts/rank_excluded_funds_by_popularity.py --apply
 
-      - name: Check for changes
+      - name: Stage and check for real changes
         id: changes
         run: |
-          if git status --porcelain database/excluded_hedge_funds.csv README.md | grep .; then
-            echo "no_changes=false" >> $GITHUB_OUTPUT
-            git --no-pager diff --stat database/excluded_hedge_funds.csv README.md
-          else
+          git add database/excluded_hedge_funds.csv README.md
+          if git diff --cached --quiet; then
             echo "no_changes=true" >> $GITHUB_OUTPUT
             echo "Ranking unchanged this month."
+          else
+            echo "no_changes=false" >> $GITHUB_OUTPUT
+            git --no-pager diff --cached --stat
           fi
 
       - name: Commit and push
@@ -86,7 +87,6 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add database/excluded_hedge_funds.csv README.md
           git commit -m "chore: Refresh excluded funds popularity ranking ($(date -u +'%Y-%m'))"
           git push --set-upstream origin ${{ env.COMMIT_BRANCH }}
 
