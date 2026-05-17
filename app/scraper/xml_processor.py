@@ -1,11 +1,38 @@
+import re
 import warnings
 
 import pandas as pd
 from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
 
 from app.stocks.ticker_resolver import TickerResolver
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
+# Strip ``<!ENTITY ...>`` and ``<!DOCTYPE ...>`` declarations before parsing.
+# We currently use BeautifulSoup with lxml's HTML parser, which does not
+# resolve external entities, so XXE is not exploitable today. This sanitiser
+# is belt-and-suspenders: if a future change switches to ``lxml-xml`` or a
+# different parser that honours DTDs, SEC filings cannot smuggle in external
+# entity references that exfiltrate local files or trigger SSRF.
+# We strip ENTITY first so the subsequent DOCTYPE match doesn't have to deal
+# with nested ``>`` characters inside the internal subset.
+_ENTITY_RE = re.compile(rb"<!ENTITY[^>]*>", re.IGNORECASE)
+_DOCTYPE_RE = re.compile(rb"<!DOCTYPE[^>]*>", re.IGNORECASE)
+
+
+def _sanitize_xml(content):
+    """
+    Remove DOCTYPE/ENTITY declarations from raw filing bytes.
+    Accepts ``str`` or ``bytes`` and always returns ``bytes`` (the form
+    BeautifulSoup prefers and which avoids decode round-trips).
+    """
+    if isinstance(content, str):
+        content = content.encode("utf-8")
+    content = _ENTITY_RE.sub(b"", content)
+    return _DOCTYPE_RE.sub(b"", content)
 
 
 def _get_tag_text(element, tag_suffix):
@@ -27,7 +54,7 @@ def xml_to_dataframe_13f(xml_content):
     """
     Parses the XML content of a 13F filing and returns the data as a Pandas DataFrame.
     """
-    soup_xml = BeautifulSoup(xml_content, "lxml")
+    soup_xml = BeautifulSoup(_sanitize_xml(xml_content), "lxml")
 
     columns = ["Company", "CUSIP", "Value", "Shares", "Put/Call"]
 
@@ -81,7 +108,7 @@ def xml_to_dataframe_schedule(xml_content):
     """
     Parses the XML content of a Schedule 13G/D filing and returns the data as a Pandas DataFrame.
     """
-    soup_xml = BeautifulSoup(xml_content, "lxml")
+    soup_xml = BeautifulSoup(_sanitize_xml(xml_content), "lxml")
 
     columns = ["Company", "CUSIP", "CIK", "Shares", "Owner_CIK", "Owner", "Date"]
 
@@ -125,7 +152,7 @@ def xml_to_dataframe_4(xml_content):
     Parses the XML content of a Form 4 filing and returns the data as a Pandas DataFrame.
     It correctly extracts the final share ownership for each reporting owner.
     """
-    soup_xml = BeautifulSoup(xml_content, "lxml")
+    soup_xml = BeautifulSoup(_sanitize_xml(xml_content), "lxml")
 
     columns = ["Company", "Ticker", "CIK", "Shares", "Owner_CIK", "Owner", "Date"]
     data = []
@@ -142,7 +169,11 @@ def xml_to_dataframe_4(xml_content):
         """
         Helper to extract holding info from a transaction or holding tag.
         """
-        shares_post = float(_get_tag_text(item, "sharesownedfollowingtransaction"))
+        raw_shares = _get_tag_text(item, "sharesownedfollowingtransaction")
+        if raw_shares is None:
+            logger.warning("Form 4: skipping item without sharesownedfollowingtransaction")
+            return
+        shares_post = float(raw_shares)
         ownership_nature = item.find("ownershipnature")
         direct_indirect = _get_tag_text(ownership_nature, "directorindirectownership")
         nature_of_ownership = _get_tag_text(ownership_nature, "natureofownership") or "Direct"

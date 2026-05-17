@@ -8,6 +8,9 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.stocks.libraries.base_library import FinanceLibrary
 from app.utils.console import silence_output
+from app.utils.logger import get_logger, log_safe
+
+logger = get_logger(__name__)
 
 # Silence yfinance logger
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)
@@ -50,10 +53,14 @@ class YFinance(FinanceLibrary):
             company_name = stock_info.get("longName") or stock_info.get("shortName", "")
             if company_name:
                 return re.sub(r"[.,]", "", company_name)
-            print(f"🚨 YFinance: No company found for CUSIP {cusip}.")
+            logger.warning("YFinance: No company found for CUSIP %s.", log_safe(cusip))
             return None
-        except Exception as e:
-            print(f"❌ ERROR: Failed to get company for Ticker {ticker} using YFinance: {e}")
+        except Exception:
+            logger.error(
+                "Failed to get company for Ticker %s using YFinance",
+                log_safe(ticker),
+                exc_info=True,
+            )
             return None
 
     @staticmethod
@@ -77,18 +84,20 @@ class YFinance(FinanceLibrary):
             quotes = data.get("quotes", [])
             for quote in quotes:
                 return quote["symbol"]
-            print(f"🚨 YFinance: No ticker found for CUSIP {cusip}.")
+            logger.warning("YFinance: No ticker found for CUSIP %s.", log_safe(cusip))
             return None
-        except (requests.RequestException, ValueError) as e:
-            print(f"❌ ERROR: Failed to get ticker for CUSIP {cusip} using YFinance: {e}")
+        except (requests.RequestException, ValueError):
+            logger.error(
+                "Failed to get ticker for CUSIP %s using YFinance", log_safe(cusip), exc_info=True
+            )
             return None
 
     @staticmethod
     @retry(
         stop=stop_after_attempt(2),
         wait=wait_exponential(multiplier=1, min=2, max=8),
-        before_sleep=lambda retry_state: print(
-            f"⏳ Retrying get_avg_price for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
+        before_sleep=lambda retry_state: logger.progress(
+            f"Retrying get_avg_price for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
         ),
     )
     def get_avg_price(ticker: str, date_obj: date, **kwargs) -> float | None:
@@ -117,11 +126,11 @@ class YFinance(FinanceLibrary):
                     progress=False,
                 )
 
-            if not price_data.empty:
-                return round(
-                    (price_data["High"].iloc[0].item() + price_data["Low"].iloc[0].item()) / 2, 2
-                )
-            return None
+            if price_data is None or price_data.empty:
+                return None
+            return round(
+                (price_data["High"].iloc[0].item() + price_data["Low"].iloc[0].item()) / 2, 2
+            )
 
         try:
             # Try original ticker first
@@ -135,20 +144,29 @@ class YFinance(FinanceLibrary):
                 for suffix in YFinance.FALLBACK_SUFFIXES:
                     try:
                         fallback_ticker = ticker + suffix
-                        print(f"⏳ YFinance: Trying fallback {fallback_ticker} for {ticker}...")
+                        logger.progress(
+                            "YFinance: Trying fallback %s for %s...",
+                            log_safe(fallback_ticker),
+                            log_safe(ticker),
+                        )
                         price = _get_single_avg_price(fallback_ticker)
                         if price is not None:
                             return price
                     except Exception:
                         continue
 
-            print(
-                f"🚨 Using latest available price for {ticker} (requested date {date_obj} not available)"
+            logger.warning(
+                "Using latest available price for %s (requested date %s not available)",
+                log_safe(ticker),
+                date_obj,
             )
             return YFinance.get_current_price(ticker)
         except Exception as e:
-            print(
-                f"❌ ERROR: Failed to get price for Ticker {ticker} on {date_obj} using YFinance: {e}"
+            logger.error(
+                "Failed to get price for Ticker %s on %s using YFinance",
+                log_safe(ticker),
+                date_obj,
+                exc_info=True,
             )
             raise e
 
@@ -156,8 +174,8 @@ class YFinance(FinanceLibrary):
     @retry(
         stop=stop_after_attempt(2),
         wait=wait_exponential(multiplier=1, min=2, max=8),
-        before_sleep=lambda retry_state: print(
-            f"⏳ Retrying get_current_price for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
+        before_sleep=lambda retry_state: logger.progress(
+            f"Retrying get_current_price for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
         ),
     )
     def get_current_price(ticker: str, **kwargs) -> float | None:
@@ -181,8 +199,8 @@ class YFinance(FinanceLibrary):
                 for suffix in YFinance.FALLBACK_SUFFIXES:
                     try:
                         fallback_ticker = ticker + suffix
-                        print(
-                            f"⏳ YFinance: Trying current price fallback {fallback_ticker} for {ticker}..."
+                        logger.progress(
+                            f"YFinance: Trying current price fallback {fallback_ticker} for {ticker}..."
                         )
                         with silence_output():
                             price = yf.Ticker(fallback_ticker).info.get("currentPrice")
@@ -193,15 +211,19 @@ class YFinance(FinanceLibrary):
 
             return float(price) if price is not None else None
         except Exception as e:
-            print(f"❌ ERROR: Failed to get current price for Ticker {ticker} using YFinance: {e}")
+            logger.error(
+                "Failed to get current price for Ticker %s using YFinance",
+                log_safe(ticker),
+                exc_info=True,
+            )
             raise e
 
     @staticmethod
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=8),
-        before_sleep=lambda retry_state: print(
-            f"⏳ Retrying get_stocks_info for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
+        before_sleep=lambda retry_state: logger.progress(
+            f"Retrying get_stocks_info for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
         ),
     )
     def get_stocks_info(tickers: list[str]) -> dict[str, dict]:
@@ -235,13 +257,20 @@ class YFinance(FinanceLibrary):
                     progress=False,
                 )
 
+            data_to_use = None if data is None else data
+
             for sanitized, original in ticker_map.items():
                 try:
-                    ticker_data = data if len(sanitized_tickers) == 1 else data[sanitized]
+                    if data_to_use is None:
+                        continue
+                    ticker_data = (
+                        data_to_use if len(sanitized_tickers) == 1 else data_to_use[sanitized]
+                    )
 
-                    if not ticker_data.empty:
-                        price = ticker_data["Close"].dropna().iloc[-1].item()
-                        stocks_info[original] = {"price": float(price), "sector": None}
+                    if ticker_data is None or ticker_data.empty:
+                        continue
+                    price = ticker_data["Close"].dropna().iloc[-1].item()
+                    stocks_info[original] = {"price": float(price), "sector": None}
                 except Exception:
                     continue
 
@@ -256,7 +285,7 @@ class YFinance(FinanceLibrary):
                         stocks_info[original]["sector"] = sector
                     else:
                         # Price fallback
-                        print(f"⏳ Getting current price for {original}...")
+                        logger.progress("Getting current price for %s...", log_safe(original))
                         price = YFinance.get_current_price(original)
                         if price:
                             stocks_info[original] = {"price": price, "sector": sector}
@@ -265,7 +294,7 @@ class YFinance(FinanceLibrary):
 
             return stocks_info
         except Exception as e:
-            print(f"❌ ERROR: Failed to get stock info using YFinance: {e}")
+            logger.error("Failed to get stock info using YFinance", exc_info=True)
             raise e
 
     PERIOD_TO_INTERVAL = {
@@ -310,9 +339,14 @@ class YFinance(FinanceLibrary):
                 o, h, low, c = row.get("Open"), row.get("High"), row.get("Low"), row.get("Close")
                 if any(v is None or v != v for v in (o, h, low, c)):
                     continue
+                # The values are validated as non-None above; narrow for the type-checker.
+                assert o is not None and h is not None and low is not None and c is not None
+                # idx is a datetime/Timestamp at runtime (DatetimeIndex), but its
+                # static type widens to Hashable through DataFrame.iterrows() stubs.
+                date_str = idx.strftime("%Y-%m-%d")  # type: ignore[union-attr]
                 points.append(
                     {
-                        "date": idx.strftime("%Y-%m-%d"),
+                        "date": date_str,
                         "open": round(float(o), 4),
                         "high": round(float(h), 4),
                         "low": round(float(low), 4),
@@ -320,16 +354,20 @@ class YFinance(FinanceLibrary):
                     }
                 )
             return points or None
-        except Exception as e:
-            print(f"❌ ERROR: Failed to get history for Ticker {ticker} using YFinance: {e}")
+        except Exception:
+            logger.error(
+                "Failed to get history for Ticker %s using YFinance",
+                log_safe(ticker),
+                exc_info=True,
+            )
             return None
 
     @staticmethod
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=8),
-        before_sleep=lambda retry_state: print(
-            f"⏳ Retrying get_sector_tickers for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
+        before_sleep=lambda retry_state: logger.progress(
+            f"Retrying get_sector_tickers for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
         ),
     )
     def get_sector_tickers(sector_key: str, limit: int | None = None) -> list[dict]:
@@ -367,5 +405,7 @@ class YFinance(FinanceLibrary):
 
             return companies
         except Exception as e:
-            print(f"❌ ERROR: Failed to get tickers for sector '{sector_key}': {e}")
+            logger.error(
+                "Failed to get tickers for sector '%s'", log_safe(sector_key), exc_info=True
+            )
             raise e

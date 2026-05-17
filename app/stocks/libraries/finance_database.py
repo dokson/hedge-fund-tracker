@@ -6,7 +6,10 @@ import pandas as pd
 
 from app.stocks.libraries.base_library import FinanceLibrary
 from app.utils.github import open_issue
+from app.utils.logger import get_logger, log_safe
 from app.utils.strings import format_string
+
+logger = get_logger(__name__)
 
 
 class FinanceDatabase(FinanceLibrary):
@@ -52,7 +55,7 @@ class FinanceDatabase(FinanceLibrary):
         if result is not None:
             return result.index[0]
 
-        print(f"🚨 Finance Database: No ticker found for CUSIP {cusip}")
+        logger.warning("Finance Database: No ticker found for CUSIP %s", log_safe(cusip))
         return None
 
     @staticmethod
@@ -73,7 +76,7 @@ class FinanceDatabase(FinanceLibrary):
         if result is not None:
             return format_string(result.iloc[0]["name"])
 
-        print(f"🚨 Finance Database: No company found for CUSIP {cusip}")
+        logger.warning("Finance Database: No company found for CUSIP %s", log_safe(cusip))
         return None
 
     @staticmethod
@@ -92,7 +95,7 @@ class FinanceDatabase(FinanceLibrary):
         if result is not None:
             return result.iloc[0]["cusip"]
 
-        print(f"🚨 Finance Database: No CUSIP found for ticker {ticker}")
+        logger.warning("Finance Database: No CUSIP found for ticker %s", log_safe(ticker))
 
         subject = f"No CUSIP found for ticker '{ticker}'"
         body = f"Could not find any CUSIP for the ticker: {ticker}."

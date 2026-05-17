@@ -6,6 +6,9 @@ from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.ai.clients.base_client import AIClient
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class OpenAIClient(AIClient):
@@ -32,13 +35,15 @@ class OpenAIClient(AIClient):
             load_dotenv()
             api_key = os.getenv(self.get_api_key_env_var())
             if not api_key:
-                print(
-                    f"🚨 WARNING: Environment variable {self.get_api_key_env_var()} not set. Client may not work."
+                logger.warning(
+                    "Environment variable %s not set. Client may not work.",
+                    self.get_api_key_env_var(),
                 )
             else:
-                print(
-                    f"⚠️ DEPRECATED: {self.__class__.__name__} initialised from env var "
-                    f"{self.get_api_key_env_var()}. Pass `api_key=` from the user's BYOK store instead."
+                logger.deprecated(
+                    "%s initialised from env var %s. Pass `api_key=` from the user's BYOK store instead.",
+                    self.__class__.__name__,
+                    self.get_api_key_env_var(),
                 )
 
         self.client = OpenAI(
@@ -81,8 +86,8 @@ class OpenAIClient(AIClient):
     @retry(
         wait=wait_exponential(multiplier=2, min=1, max=8),
         stop=stop_after_attempt(3),
-        before_sleep=lambda rs: print(
-            f"⏳ Retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
+        before_sleep=lambda rs: logger.progress(
+            f"Retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
         ),
     )
     def _generate_content_impl(self, prompt: str, **kwargs) -> str:
@@ -102,8 +107,11 @@ class OpenAIClient(AIClient):
                 **kwargs,
             )
             return response.choices[0].message.content or ""
-        except Exception as e:
-            print(
-                f"❌ ERROR - {self.__class__.__name__}: API call failed for model {self.model}: {e}"
+        except Exception:
+            logger.error(
+                "%s: API call failed for model %s",
+                self.__class__.__name__,
+                self.model,
+                exc_info=True,
             )
             raise

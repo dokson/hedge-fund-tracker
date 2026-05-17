@@ -62,59 +62,88 @@ class TestReport(unittest.TestCase):
 
         # The function sorts by ['Delta_Value', 'Value'] descending.
         # Expected order: TSLA, GOOGL, MSFT, AMZN, Total
+        # Per-stock expected values, one dict per row. The subTest below tags
+        # failures with the position label so diagnostic output points at
+        # the exact stock that drifted.
+        per_stock = [
+            {
+                "label": "TSLA (increased)",
+                "idx": 0,
+                "CUSIP": "TC123456",
+                "Ticker": "TSLA",
+                "Shares": 1000,
+                "Delta_Shares": 500,
+                "Value": format_value(25000),
+                # Delta_Value = (1000 - 500) * (25000 / 1000) = 12500
+                "Delta_Value": format_value(12500),
+                "Delta": format_percentage(100, True),
+                "Portfolio%": format_percentage((25000 / 38000) * 100),
+            },
+            {
+                "label": "GOOGL (new)",
+                "idx": 1,
+                "CUSIP": "TC789012",
+                "Ticker": "GOOGL",
+                "Shares": 200,
+                "Delta_Shares": 200,
+                "Value": format_value(5000),
+                "Delta_Value": format_value(5000),
+                "Delta": "NEW",
+                "Portfolio%": format_percentage((5000 / 38000) * 100),
+            },
+            {
+                "label": "MSFT (no change)",
+                "idx": 2,
+                "CUSIP": "TC901234",
+                "Ticker": "MSFT",
+                "Shares": 400,
+                "Delta_Shares": 0,
+                "Value": format_value(8000),
+                "Delta_Value": format_value(0),
+                "Delta": "NO CHANGE",
+                "Portfolio%": format_percentage((8000 / 38000) * 100),
+            },
+            {
+                "label": "AMZN (closed)",
+                "idx": 3,
+                "CUSIP": "TC345678",
+                "Ticker": "AMZN",
+                "Shares": 0,
+                "Delta_Shares": -300,
+                "Value": format_value(0),
+                "Delta_Value": format_value(-6000),
+                "Delta": "CLOSE",
+                "Portfolio%": format_percentage(0),
+            },
+        ]
+        for stock in per_stock:
+            idx = stock["idx"]
+            for column in (
+                "CUSIP",
+                "Ticker",
+                "Shares",
+                "Delta_Shares",
+                "Value",
+                "Delta_Value",
+                "Delta",
+                "Portfolio%",
+            ):
+                with self.subTest(stock=stock["label"], column=column):
+                    self.assertEqual(df_output.loc[idx, column], stock[column])
 
-        # Assertions for Stock 1 (TSLA - Increased) - Index 0
-        self.assertEqual(df_output.loc[0, "CUSIP"], "TC123456")
-        self.assertEqual(df_output.loc[0, "Ticker"], "TSLA")
-        self.assertEqual(df_output.loc[0, "Shares"], 1000)
-        self.assertEqual(df_output.loc[0, "Delta_Shares"], 500)
-        self.assertEqual(df_output.loc[0, "Value"], format_value(25000))
-        # Delta_Value = Delta_Shares * Price_per_Share_recent = (1000 - 500) * (25000 / 1000) = 500 * 25 = 12500
-        self.assertEqual(df_output.loc[0, "Delta_Value"], format_value(12500))
-        self.assertEqual(df_output.loc[0, "Delta"], format_percentage(100, True))
-        self.assertEqual(df_output.loc[0, "Portfolio%"], format_percentage((25000 / 38000) * 100))
-
-        # Assertions for Stock 2 (GOOGL - New) - Index 1
-        self.assertEqual(df_output.loc[1, "CUSIP"], "TC789012")
-        self.assertEqual(df_output.loc[1, "Ticker"], "GOOGL")
-        self.assertEqual(df_output.loc[1, "Shares"], 200)
-        self.assertEqual(df_output.loc[1, "Delta_Shares"], 200)
-        self.assertEqual(df_output.loc[1, "Value"], format_value(5000))
-        self.assertEqual(df_output.loc[1, "Delta_Value"], format_value(5000))
-        self.assertEqual(df_output.loc[1, "Delta"], "NEW")
-        self.assertEqual(df_output.loc[1, "Portfolio%"], format_percentage((5000 / 38000) * 100))
-
-        # Assertions for Stock 3 (MSFT - No Change) - Index 2
-        self.assertEqual(df_output.loc[2, "CUSIP"], "TC901234")
-        self.assertEqual(df_output.loc[2, "Ticker"], "MSFT")
-        self.assertEqual(df_output.loc[2, "Shares"], 400)
-        self.assertEqual(df_output.loc[2, "Delta_Shares"], 0)
-        self.assertEqual(df_output.loc[2, "Value"], format_value(8000))
-        self.assertEqual(df_output.loc[2, "Delta_Value"], format_value(0))
-        self.assertEqual(df_output.loc[2, "Delta"], "NO CHANGE")
-        self.assertEqual(df_output.loc[2, "Portfolio%"], format_percentage((8000 / 38000) * 100))
-
-        # Assertions for Stock 4 (AMZN - Closed) - Index 3
-        self.assertEqual(df_output.loc[3, "CUSIP"], "TC345678")
-        self.assertEqual(df_output.loc[3, "Ticker"], "AMZN")
-        self.assertEqual(df_output.loc[3, "Shares"], 0)
-        self.assertEqual(df_output.loc[3, "Delta_Shares"], -300)
-        self.assertEqual(df_output.loc[3, "Value"], format_value(0))
-        self.assertEqual(df_output.loc[3, "Delta_Value"], format_value(-6000))
-        self.assertEqual(df_output.loc[3, "Delta"], "CLOSE")
-        self.assertEqual(df_output.loc[3, "Portfolio%"], format_percentage(0))
-
-        total_row_index = len(df_output) - 1
-        self.assertEqual(df_output.loc[total_row_index, "CUSIP"], "Total")
-        # Total Portfolio Value (Recent): 25000 + 5000 + 8000 = 38000
-        self.assertEqual(df_output.loc[total_row_index, "Value"], format_value(38000))
-        # Total Delta Value: 12500 + 5000 - 6000 + 0 = 11500
-        self.assertEqual(df_output.loc[total_row_index, "Delta_Value"], format_value(11500))
-        # Total Delta %: total_delta_value / previous_portfolio_value * 100 = 11500 / (10000 + 6000 + 8000) * 100 = 11500 / 24000 * 100
-        self.assertEqual(
-            df_output.loc[total_row_index, "Delta"], format_percentage((11500 / 24000) * 100, True)
-        )
-        self.assertEqual(df_output.loc[total_row_index, "Portfolio%"], format_percentage(100))
+        # Totals row: total portfolio = 38000, total delta = 12500 + 5000 - 6000 = 11500,
+        # previous portfolio = 10000 + 6000 + 8000 = 24000.
+        total_idx = len(df_output) - 1
+        total_expected = {
+            "CUSIP": "Total",
+            "Value": format_value(38000),
+            "Delta_Value": format_value(11500),
+            "Delta": format_percentage((11500 / 24000) * 100, True),
+            "Portfolio%": format_percentage(100),
+        }
+        for column, expected in total_expected.items():
+            with self.subTest(stock="Total", column=column):
+                self.assertEqual(df_output.loc[total_idx, column], expected)
 
 
 if __name__ == "__main__":

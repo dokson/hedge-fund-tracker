@@ -12,8 +12,8 @@ import uuid
 from collections.abc import AsyncGenerator
 
 from fastapi import Depends, Request
-from fastapi_users import BaseUserManager, UUIDIDMixin
-from fastapi_users.db import SQLAlchemyUserDatabase
+from fastapi_users import BaseUserManager, UUIDIDMixin  # pyright: ignore[reportMissingImports]
+from fastapi_users.db import SQLAlchemyUserDatabase  # pyright: ignore[reportMissingImports]
 
 from app.auth import api_keys as api_keys_svc
 from app.auth.email import send_password_reset_email, send_verification_email
@@ -116,7 +116,7 @@ async def get_user_db() -> AsyncGenerator[SQLAlchemyUserDatabase]:
     at router-include time, before our app's dependency machinery is known.
     """
     async with AsyncSessionLocal() as session:
-        yield SQLAlchemyUserDatabase(session, User)
+        yield SQLAlchemyUserDatabase(session, User)  # pyright: ignore[reportArgumentType]
 
 
 async def get_user_manager(

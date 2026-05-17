@@ -39,3 +39,55 @@ updates:
           - "major"
           - "minor"
           - "patch"
+
+  # Pre-commit hook versions (ruff-pre-commit, conventional-pre-commit,
+  # mirrors-prettier, pre-commit-hooks) declared in .pre-commit-config.yaml.
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(pre-commit)"
+      include: "scope"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
+
+  # Docker base images: Dockerfile (node:22-slim, python:3.13-slim) and
+  # docker-compose.yml (postgres:16-alpine).
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(docker)"
+      include: "scope"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(docker)"
+      include: "scope"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"

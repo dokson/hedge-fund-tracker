@@ -27,93 +27,114 @@ class TestStrings(unittest.TestCase):
         """
         Tests the format_percentage function.
         """
-        self.assertEqual(format_percentage(0.1), "0.1%")
-        self.assertEqual(format_percentage(0.02), "0%")
-        self.assertEqual(format_percentage(0.02, decimal_places=2), "0.02%")
-        self.assertEqual(format_percentage(0.09), "0.1%")
-        self.assertEqual(format_percentage(0.09, decimal_places=2), "0.09%")
-        self.assertEqual(format_percentage(0.009), "<.01%")
-        self.assertEqual(format_percentage(0.1234), "0.1%")
-        self.assertEqual(format_percentage(0.1234, decimal_places=2), "0.12%")
-        self.assertEqual(format_percentage(0.1234, decimal_places=3), "0.123%")
-        self.assertEqual(format_percentage(0.1234, decimal_places=4), "0.1234%")
-        self.assertEqual(format_percentage(0.1234, show_sign=True, decimal_places=2), "+0.12%")
-        self.assertEqual(format_percentage(-0.1234, show_sign=True, decimal_places=2), "-0.12%")
-        self.assertEqual(format_percentage(1.2, show_sign=True), "+1.2%")
-        self.assertEqual(format_percentage(0.005), "<.01%")
-        self.assertEqual(format_percentage(9.87), "9.9%")
-        self.assertEqual(format_percentage(9.87, decimal_places=2), "9.87%")
-        self.assertEqual(format_percentage(9.876, decimal_places=2), "9.88%")
-        self.assertEqual(format_percentage(0.0), "0%")
-        self.assertEqual(format_percentage(0.0, show_sign=True), "+0%")
-        self.assertEqual(format_percentage(100), "100%")
+        cases = [
+            ((0.1,), {}, "0.1%"),
+            ((0.02,), {}, "0%"),
+            ((0.02,), {"decimal_places": 2}, "0.02%"),
+            ((0.09,), {}, "0.1%"),
+            ((0.09,), {"decimal_places": 2}, "0.09%"),
+            ((0.009,), {}, "<.01%"),
+            ((0.1234,), {}, "0.1%"),
+            ((0.1234,), {"decimal_places": 2}, "0.12%"),
+            ((0.1234,), {"decimal_places": 3}, "0.123%"),
+            ((0.1234,), {"decimal_places": 4}, "0.1234%"),
+            ((0.1234,), {"show_sign": True, "decimal_places": 2}, "+0.12%"),
+            ((-0.1234,), {"show_sign": True, "decimal_places": 2}, "-0.12%"),
+            ((1.2,), {"show_sign": True}, "+1.2%"),
+            ((0.005,), {}, "<.01%"),
+            ((9.87,), {}, "9.9%"),
+            ((9.87,), {"decimal_places": 2}, "9.87%"),
+            ((9.876,), {"decimal_places": 2}, "9.88%"),
+            ((0.0,), {}, "0%"),
+            ((0.0,), {"show_sign": True}, "+0%"),
+            ((100,), {}, "100%"),
+        ]
+        for args, kwargs, expected in cases:
+            with self.subTest(args=args, kwargs=kwargs):
+                self.assertEqual(format_percentage(*args, **kwargs), expected)
 
     def test_format_value(self):
         """
         Tests the format_value function.
         """
-        self.assertEqual(format_value(210), "210")
-        self.assertEqual(format_value(-210), "-210")
-        self.assertEqual(format_value(1234), "1.23K")
-        self.assertEqual(format_value(-1234), "-1.23K")
-        self.assertEqual(format_value(1234567), "1.23M")
-        self.assertEqual(format_value(-1234567), "-1.23M")
-        self.assertEqual(format_value(9870123456), "9.87B")
-        self.assertEqual(format_value(-9870123456), "-9.87B")
-        self.assertEqual(format_value(9876543210), "9.88B")
-        self.assertEqual(format_value(-9876543210), "-9.88B")
-        self.assertEqual(format_value(1234567891011), "1.23T")
-        self.assertEqual(format_value(-1234567891011), "-1.23T")
-        self.assertEqual(format_value(9999999999999), "10T")
-        self.assertEqual(format_value(-9999999999999), "-10T")
+        cases = [
+            (210, "210"),
+            (-210, "-210"),
+            (1234, "1.23K"),
+            (-1234, "-1.23K"),
+            (1234567, "1.23M"),
+            (-1234567, "-1.23M"),
+            (9870123456, "9.87B"),
+            (-9870123456, "-9.87B"),
+            (9876543210, "9.88B"),
+            (-9876543210, "-9.88B"),
+            (1234567891011, "1.23T"),
+            (-1234567891011, "-1.23T"),
+            (9999999999999, "10T"),
+            (-9999999999999, "-10T"),
+        ]
+        for value, expected in cases:
+            with self.subTest(value=value):
+                self.assertEqual(format_value(value), expected)
 
     def test_get_numeric(self):
         """
         Tests the get_numeric function.
         """
-        self.assertEqual(get_numeric("500"), 500)
-        self.assertEqual(get_numeric("-500"), -500)
-        self.assertEqual(get_numeric("1.23K"), 1230)
-        self.assertEqual(get_numeric("-1.23K"), -1230)
-        self.assertEqual(get_numeric("1.23M"), 1230000)
-        self.assertEqual(get_numeric("-1.23M"), -1230000)
-        self.assertEqual(get_numeric("9.87B"), 9870000000)
-        self.assertEqual(get_numeric("-9.87B"), -9870000000)
-        self.assertEqual(get_numeric("9.88B"), 9880000000)
-        self.assertEqual(get_numeric("-9.88B"), -9880000000)
-        self.assertEqual(get_numeric("1.23T"), 1230000000000)
-        self.assertEqual(get_numeric("-1.23T"), -1230000000000)
-        self.assertEqual(get_numeric("1.00M"), 1000000)
-        self.assertEqual(get_numeric("-1.00M"), -1000000)
+        cases = [
+            ("500", 500),
+            ("-500", -500),
+            ("1.23K", 1230),
+            ("-1.23K", -1230),
+            ("1.23M", 1230000),
+            ("-1.23M", -1230000),
+            ("9.87B", 9870000000),
+            ("-9.87B", -9870000000),
+            ("9.88B", 9880000000),
+            ("-9.88B", -9880000000),
+            ("1.23T", 1230000000000),
+            ("-1.23T", -1230000000000),
+            ("1.00M", 1000000),
+            ("-1.00M", -1000000),
+        ]
+        for raw, expected in cases:
+            with self.subTest(raw=raw):
+                self.assertEqual(get_numeric(raw), expected)
 
     def test_get_percentage_number(self):
         """
         Tests the get_percentage_number function.
         """
-        self.assertEqual(get_percentage_number("12.3%"), 12.3)
-        self.assertEqual(get_percentage_number("100%"), 100.0)
-        self.assertEqual(get_percentage_number("<.01%"), 0.0)
-        self.assertEqual(get_percentage_number("5%"), 5.0)
-        self.assertEqual(get_percentage_number(".5%"), 0.5)
-        self.assertEqual(get_percentage_number("-10.5%"), -10.5)
-        self.assertEqual(get_percentage_number("0%"), 0.0)
+        cases = [
+            ("12.3%", 12.3),
+            ("100%", 100.0),
+            ("<.01%", 0.0),
+            ("5%", 5.0),
+            (".5%", 0.5),
+            ("-10.5%", -10.5),
+            ("0%", 0.0),
+        ]
+        for raw, expected in cases:
+            with self.subTest(raw=raw):
+                self.assertEqual(get_percentage_number(raw), expected)
 
     def test_get_quarter(self):
         """
-        Tests the get_quarter function.
+        Tests the get_quarter function on quarter boundary dates.
         """
-        # Test Q1 boundaries
-        self.assertEqual(get_quarter("2023-01-01"), "2023Q1")
-        self.assertEqual(get_quarter("2023-03-31"), "2023Q1")
-        # Test Q2 boundaries
-        self.assertEqual(get_quarter("2024-04-01"), "2024Q2")
-        self.assertEqual(get_quarter("2024-06-30"), "2024Q2")
-        # Test Q3 boundaries
-        self.assertEqual(get_quarter("2020-07-01"), "2020Q3")
-        self.assertEqual(get_quarter("2020-09-30"), "2020Q3")
-        # Test Q4 boundaries
-        self.assertEqual(get_quarter("2022-10-01"), "2022Q4")
-        self.assertEqual(get_quarter("2022-12-31"), "2022Q4")
+        cases = [
+            ("2023-01-01", "2023Q1"),
+            ("2023-03-31", "2023Q1"),
+            ("2024-04-01", "2024Q2"),
+            ("2024-06-30", "2024Q2"),
+            ("2020-07-01", "2020Q3"),
+            ("2020-09-30", "2020Q3"),
+            ("2022-10-01", "2022Q4"),
+            ("2022-12-31", "2022Q4"),
+        ]
+        for date, expected in cases:
+            with self.subTest(date=date):
+                self.assertEqual(get_quarter(date), expected)
 
     def test_parse_quarter(self):
         """
@@ -138,28 +159,43 @@ class TestStrings(unittest.TestCase):
         """
         Tests the get_quarter_date function.
         """
-        self.assertEqual(get_quarter_date("2024Q1"), "2024-03-31")
-        self.assertEqual(get_quarter_date("2025Q2"), "2025-06-30")
-        self.assertEqual(get_quarter_date("2023Q3"), "2023-09-30")
-        self.assertEqual(get_quarter_date("2021Q4"), "2021-12-31")
+        cases = [
+            ("2024Q1", "2024-03-31"),
+            ("2025Q2", "2025-06-30"),
+            ("2023Q3", "2023-09-30"),
+            ("2021Q4", "2021-12-31"),
+        ]
+        for quarter, expected in cases:
+            with self.subTest(quarter=quarter):
+                self.assertEqual(get_quarter_date(quarter), expected)
 
     def test_get_previous_quarter_end_date(self):
         """
         Tests the get_previous_quarter_end_date function.
         """
-        self.assertEqual(get_previous_quarter_end_date("2024-05-15"), "2024-03-31")
-        self.assertEqual(get_previous_quarter_end_date("2024-02-10"), "2023-12-31")
-        self.assertEqual(get_previous_quarter_end_date("2024-01-01"), "2023-12-31")
+        cases = [
+            ("2024-05-15", "2024-03-31"),
+            ("2024-02-10", "2023-12-31"),
+            ("2024-01-01", "2023-12-31"),
+        ]
+        for date, expected in cases:
+            with self.subTest(date=date):
+                self.assertEqual(get_previous_quarter_end_date(date), expected)
 
     def test_isin_to_cusip(self):
         """
         Tests the isin_to_cusip function.
         """
-        self.assertEqual(isin_to_cusip("US0378331005"), "037833100")
-        self.assertEqual(isin_to_cusip("CA0000000000"), "000000000")
-        self.assertEqual(isin_to_cusip("CUSIP123"), None)
-        self.assertEqual(isin_to_cusip(""), None)
-        self.assertEqual(isin_to_cusip(None), None)
+        cases = [
+            ("US0378331005", "037833100"),
+            ("CA0000000000", "000000000"),
+            ("CUSIP123", None),
+            ("", None),
+            (None, None),
+        ]
+        for isin, expected in cases:
+            with self.subTest(isin=isin):
+                self.assertEqual(isin_to_cusip(isin), expected)
 
     def test_format_string(self):
         """

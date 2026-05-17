@@ -16,7 +16,10 @@ from app.analysis.performance_evaluator import PerformanceEvaluator
 from app.analysis.stocks import quarter_analysis, stock_analysis
 from app.stocks.libraries import YFinance
 from app.stocks.price_fetcher import PriceFetcher
+from app.utils.logger import get_logger, log_safe
 from app.utils.strings import get_quarter_date
+
+logger = get_logger(__name__)
 
 
 class InvalidAIResponseError(Exception):
@@ -42,8 +45,8 @@ class AnalystAgent:
         retry=retry_if_exception_type(InvalidAIResponseError),
         wait=wait_fixed(1),
         stop=stop_after_attempt(7),
-        before_sleep=lambda rs: print(
-            f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
+        before_sleep=lambda rs: logger.progress(
+            f"{rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
         ),
     )
     def _get_promise_score_weights(self) -> dict:
@@ -52,8 +55,9 @@ class AnalystAgent:
         Retries with tenacity if the weights or metrics are invalid.
         """
         assert self.ai_client is not None, "AnalystAgent requires an AIClient"
-        print(
-            f"Sending request to AI ({self.ai_client.get_model_name()}) for Promise Score weighting strategy..."
+        logger.progress(
+            "Sending request to AI (%s) for Promise Score weighting strategy...",
+            self.ai_client.get_model_name(),
         )
         prompt = promise_score_weights_prompt(self.quarter)
 
@@ -77,7 +81,7 @@ class AnalystAgent:
         weights_str = "\n\t" + "\n\t".join(
             [f"{k:<20} = {v:5.2f}" for k, v in parsed_weights.items()]
         )
-        print(f"✅ AI Agent selected weights (sum: {total:.2f}):{weights_str}")
+        logger.success("AI Agent selected weights (sum: %.2f):%s", total, weights_str)
         return parsed_weights
 
     def _calculate_promise_scores(self, df: pd.DataFrame, promise_weights: dict) -> pd.DataFrame:
@@ -94,8 +98,8 @@ class AnalystAgent:
                 df[rank_col] = df[metric].rank(pct=True)
                 df["Promise_Score"] += df[rank_col] * weight
             else:
-                print(
-                    f"🚨 Warning: Metric '{metric}' suggested by AI not found in analysis data. Skipping."
+                logger.warning(
+                    "Metric '%s' suggested by AI not found in analysis data. Skipping.", metric
                 )
 
         df["Promise_Score"] *= 100
@@ -105,8 +109,8 @@ class AnalystAgent:
         retry=retry_if_exception_type(InvalidAIResponseError),
         wait=wait_fixed(1),
         stop=stop_after_attempt(5),
-        before_sleep=lambda rs: print(
-            f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
+        before_sleep=lambda rs: logger.progress(
+            f"{rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
         ),
     )
     def _get_ai_scores(self, stocks_context: list[dict]) -> dict:
@@ -118,7 +122,9 @@ class AnalystAgent:
         prompt = quantivative_scores_prompt(encode(stocks_context), self.filing_date)
         required_keys = ["momentum_score", "low_volatility_score", "risk_score"]
 
-        print(f"Sending request to AI ({self.ai_client.get_model_name()}) for thematic scores...")
+        logger.progress(
+            "Sending request to AI (%s) for thematic scores...", self.ai_client.get_model_name()
+        )
         response_text = self.ai_client.generate_content(prompt)
         parsed_data = ResponseParser().extract_and_decode_toon(response_text)
 
@@ -128,7 +134,7 @@ class AnalystAgent:
         if not all(all(key in data for key in required_keys) for data in parsed_data.values()):
             raise InvalidAIResponseError("AI response was missing required keys")
 
-        print(f"✅ Successfully parsed AI scores for {len(parsed_data)} tickers")
+        logger.success("Successfully parsed AI scores for %d tickers", len(parsed_data))
         return parsed_data
 
     def generate_scored_list(self, top_n: int) -> pd.DataFrame:
@@ -138,9 +144,10 @@ class AnalystAgent:
         try:
             # Let the LLM define the weights for the Promise score
             promise_weights = self._get_promise_score_weights()
-        except RetryError as e:
-            print(
-                f"❌ ERROR: Failed to get valid promise score weights after multiple attempts: {e.last_attempt.exception()}"
+        except RetryError:
+            logger.error(
+                "Failed to get valid promise score weights after multiple attempts",
+                exc_info=True,
             )
             return pd.DataFrame()
 
@@ -156,7 +163,9 @@ class AnalystAgent:
             return suggestions_df
 
         # 1. Get industry and current price programmatically from YFinance
-        print(f"🔍 Fetching programmatic data for {len(tickers)} tickers from YFinance...")
+        logger.progress(
+            "Fetching programmatic data for %d tickers from YFinance...", len(tickers), emoji="🔍"
+        )
         stocks_info = YFinance.get_stocks_info(tickers)
 
         # 2. Calculate Growth scores autonomously
@@ -165,6 +174,9 @@ class AnalystAgent:
             info = stocks_info.get(ticker, {})
             current_price = info.get("price")
             industry = info.get("sector")
+            filing_price: float | None = None
+            pct_change: float | None = None
+            growth_score: float | None = None
 
             if current_price:
                 # Get historical price
@@ -173,7 +185,7 @@ class AnalystAgent:
                 )
 
                 if filing_price:
-                    pct_change = ((current_price - filing_price) / filing_price) * 100
+                    pct_change = ((float(current_price) - filing_price) / filing_price) * 100
                     growth_score = PerformanceEvaluator.calculate_growth_score(pct_change)
 
             autonomous_scores[ticker] = {
@@ -181,7 +193,7 @@ class AnalystAgent:
                 "Growth_Score": growth_score if growth_score else "N/A",
                 "Current_Price": f"${current_price:,.2f}" if current_price else "N/A",
                 "Filing_Price": f"${filing_price:,.2f}" if filing_price else "N/A",
-                "Pct_Change": f"{pct_change:+.2f}%" if current_price and filing_price else "N/A",
+                "Pct_Change": f"{pct_change:+.2f}%" if pct_change is not None else "N/A",
             }
 
         # 3. Get LLM scores (Momentum, Volatility, Risk)
@@ -225,9 +237,10 @@ class AnalystAgent:
                 lambda t: ai_scores_data.get(t, {}).get("low_volatility_score", 0)
             )
 
-        except RetryError as e:
-            print(
-                f"❌ ERROR: Failed to get valid AI scores after multiple attempts: {e.last_attempt.exception()}"
+        except RetryError:
+            logger.error(
+                "Failed to get valid AI scores after multiple attempts",
+                exc_info=True,
             )
             # Set defaults if AI fails
             suggestions_df["Industry"] = suggestions_df["Ticker"].map(
@@ -246,8 +259,8 @@ class AnalystAgent:
         retry=retry_if_exception_type(InvalidAIResponseError),
         wait=wait_fixed(1),
         stop=stop_after_attempt(5),
-        before_sleep=lambda rs: print(
-            f"🚨 Warning: {rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
+        before_sleep=lambda rs: logger.progress(
+            f"{rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
         ),
     )
     def run_stock_due_diligence(self, ticker: str) -> dict:
@@ -261,26 +274,39 @@ class AnalystAgent:
             dict: A dictionary containing the AI's analysis, or an empty dict if an error occurs.
         """
         assert self.ai_client is not None, "AnalystAgent requires an AIClient"
-        print(f"Gathering institutional data for {ticker} for quarter {self.quarter}...")
+        logger.progress(
+            "Gathering institutional data for %s for quarter %s...", log_safe(ticker), self.quarter
+        )
         stock_df = stock_analysis(ticker, self.quarter)
 
         if stock_df.empty:
-            print(f"❌ No data found for ticker {ticker} in quarter {self.quarter}.")
+            logger.error(
+                "No data found for ticker %s in quarter %s.", log_safe(ticker), self.quarter
+            )
             return {}
 
         current_price = PriceFetcher.get_current_price(ticker)
         if current_price is None:
-            print(f"❌ Could not fetch current price for {ticker}. Aborting due diligence.")
+            logger.error(
+                "Could not fetch current price for %s. Aborting due diligence.", log_safe(ticker)
+            )
             return {}
-        print(f"💲 Current price for {ticker}: ${current_price:,.2f}")
+        logger.money("Current price for %s: $%s", log_safe(ticker), f"{current_price:,.2f}")
 
         filing_date_price = PriceFetcher.get_avg_price(ticker, date.fromisoformat(self.filing_date))
         price_delta_pct = None
         if filing_date_price:
-            print(f"💲 Price on filing date ({self.filing_date}): ${filing_date_price:,.2f}")
+            logger.info(
+                "Price on filing date (%s): $%s",
+                self.filing_date,
+                f"{filing_date_price:,.2f}",
+                emoji="💲",
+            )
             price_delta_pct = ((current_price - filing_date_price) / filing_date_price) * 100
-            print(
-                f"{'📈' if price_delta_pct >= 0 else '📉'} Price change since filing: {price_delta_pct:+.2f}%"
+            logger.info(
+                "Price change since filing: %s",
+                f"{price_delta_pct:+.2f}%",
+                emoji=("📈" if price_delta_pct >= 0 else "📉"),
             )
 
         total_value = stock_df["Value"].sum()
@@ -328,7 +354,7 @@ class AnalystAgent:
         }
         stock_context_toon = encode(stock_data)
 
-        print(
+        logger.progress(
             f"Sending request to AI ({self.ai_client.get_model_name()}) for due diligence on {ticker}..."
         )
         prompt = stock_due_diligence_prompt(stock_context_toon)

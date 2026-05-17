@@ -31,6 +31,7 @@ from app.utils.database import (
     get_most_recent_quarter,
     load_non_quarterly_data,
 )
+from app.utils.logger import get_logger
 from app.utils.strings import (
     format_percentage,
     format_value,
@@ -40,6 +41,8 @@ from app.utils.strings import (
     get_string_formatter,
     get_value_formatter,
 )
+
+logger = get_logger(__name__)
 
 APP_NAME = "HEDGE FUND TRACKER"
 
@@ -320,13 +323,13 @@ def run_stock_analysis():
     if selected_quarter:
         ticker = input("Enter stock ticker to analyze: ").strip().upper()
         if not ticker:
-            print("❌ Ticker cannot be empty.")
+            logger.error("Ticker cannot be empty.")
             return
 
         df_analysis = stock_analysis(ticker, selected_quarter)
 
         if df_analysis.empty:
-            print(f"❌ No data found for ticker {ticker} in quarter {selected_quarter}.")
+            logger.error("No data found for ticker %s in quarter %s.", ticker, selected_quarter)
             return
 
         horizontal_rule("-")
@@ -395,7 +398,7 @@ def run_performance_evaluation():
         )
 
         if "error" in result:
-            print(f"❌ {result['error']}")
+            logger.error("%s", result["error"])
             return
 
         horizontal_rule("-")
@@ -405,11 +408,15 @@ def run_performance_evaluation():
         horizontal_rule("-")
 
         print("\n")
+        # The performance result dict mixes string and numeric values; narrow here.
+        portfolio_return = float(result["portfolio_return"])
+        start_value = float(result["start_value"])
+        end_value = float(result["end_value"])
         print_centered(
-            f"Portfolio Return: {format_percentage(result['portfolio_return'], show_sign=True, decimal_places=2)}"
+            f"Portfolio Return: {format_percentage(portfolio_return, show_sign=True, decimal_places=2)}"
         )
-        print_centered(f"Start Value: {format_value(result['start_value'])}")
-        print_centered(f"End Value: {format_value(result['end_value'])}")
+        print_centered(f"Start Value: {format_value(start_value)}")
+        print_centered(f"End Value: {format_value(end_value)}")
 
         formatters = {
             "Company": get_string_formatter(40),
@@ -493,8 +500,8 @@ def run_ai_analyst():
                 },
             )
 
-    except Exception as e:
-        print(f"❌ An unexpected error occurred while running AI Financial Agent: {e}")
+    except Exception:
+        logger.error("An unexpected error occurred while running AI Financial Agent", exc_info=True)
 
 
 def run_ai_due_diligence():
@@ -507,7 +514,7 @@ def run_ai_due_diligence():
 
     ticker = input("Enter stock ticker to analyze: ").strip().upper()
     if not ticker:
-        print("❌ Ticker cannot be empty.")
+        logger.error("Ticker cannot be empty.")
         return
 
     try:
@@ -519,7 +526,7 @@ def run_ai_due_diligence():
         analysis_quarter = get_most_recent_quarter(ticker)
 
         if not analysis_quarter:
-            print(f"❌ No recent data found for ticker {ticker} (last two quarters).")
+            logger.error("No recent data found for ticker %s (last two quarters).", ticker)
             return
         if analysis_quarter != last_available_quarter:
             print(
@@ -588,8 +595,8 @@ def run_ai_due_diligence():
                     pass  # Ignore if conversion fails
 
             print(f"Target Price (3 months): {target_price or 'N/A'}{potential_upside_str}")
-    except Exception as e:
-        print(f"❌ An unexpected error occurred while running AI Due Diligence: {e}")
+    except Exception:
+        logger.error("An unexpected error occurred while running AI Due Diligence", exc_info=True)
 
 
 def run_cli():
@@ -713,7 +720,9 @@ def run_server(host: str | None = None, port: int | None = None):
         print(f"🔨 Building frontend ({reason})…")
         result = subprocess.run(["npm", "run", "build"], cwd=frontend_dir, shell=(os.name == "nt"))
         if result.returncode != 0:
-            print("❌ Frontend build failed. Run 'npm run build' manually inside app/frontend/.")
+            logger.error(
+                "Frontend build failed. Run 'npm run build' manually inside app/frontend/."
+            )
             sys.exit(1)
         print("✅ Frontend built.")
 

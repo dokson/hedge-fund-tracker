@@ -1,6 +1,10 @@
 import contextlib
 from abc import ABC, abstractmethod
 
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class AIClient(ABC):
     """
@@ -60,8 +64,8 @@ class AIClient(ABC):
                 for old_file in files[: -self.LOG_RETENTION_LIMIT]:
                     with contextlib.suppress(OSError):
                         old_file.unlink()
-        except Exception as e:
-            print(f"⚠️ Warning: Failed to log AI response: {e}")
+        except Exception:
+            logger.error("Warning: Failed to log AI response", exc_info=True)
 
     @abstractmethod
     def get_model_name(self) -> str:

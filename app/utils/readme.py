@@ -5,6 +5,9 @@ import pandas as pd
 
 from app.utils.database import DB_FOLDER
 from app.utils.database import EXCLUDED_HEDGE_FUNDS_FILE as EXCLUDED_FILENAME
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 EXCLUDED_HEDGE_FUNDS_FILE = f"{DB_FOLDER}/{EXCLUDED_FILENAME}"
 README_FILE = "./README.md"
@@ -38,7 +41,7 @@ def generate_excluded_funds_list() -> str | None:
 
         return "\n".join(markdown_list)
     except FileNotFoundError:
-        print(f"❌ Error: {EXCLUDED_HEDGE_FUNDS_FILE} was not found.")
+        logger.error("%s was not found.", EXCLUDED_HEDGE_FUNDS_FILE, exc_info=True)
         return None
 
 
@@ -62,4 +65,4 @@ def update_readme() -> None:
             with Path(README_FILE).open("w", encoding="utf-8") as f:
                 f.write(new_readme_text)
         except FileNotFoundError:
-            print(f"❌ Error: {README_FILE} was not found.")
+            logger.error("%s was not found.", README_FILE, exc_info=True)

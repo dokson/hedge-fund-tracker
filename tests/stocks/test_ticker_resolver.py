@@ -39,10 +39,10 @@ class TestTickerResolverGetLibraries(unittest.TestCase):
         """
         libraries = TickerResolver.get_libraries()
 
-        self.assertEqual(libraries[0].__name__, "YFinance")
-        self.assertEqual(libraries[1].__name__, "Finnhub")
-        self.assertEqual(libraries[2].__name__, "FinanceDatabase")
-        self.assertEqual(libraries[3].__name__, "TradingView")
+        expected_order = ["YFinance", "Finnhub", "FinanceDatabase", "TradingView"]
+        for position, name in enumerate(expected_order):
+            with self.subTest(position=position, expected=name):
+                self.assertEqual(libraries[position].__name__, name)
 
 
 class TestTickerResolverResolveTicker(unittest.TestCase):
@@ -194,8 +194,9 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
 
         result = TickerResolver.resolve_ticker(df)
 
-        self.assertEqual(result.loc[0, "Ticker"], "AAPL")
-        self.assertEqual(result.loc[1, "Ticker"], "JNJ")
+        for idx, expected in [(0, "AAPL"), (1, "JNJ")]:
+            with self.subTest(row=idx):
+                self.assertEqual(result.loc[idx, "Ticker"], expected)
         self.assertEqual(mock_save.call_count, 2)
 
     @patch("app.stocks.ticker_resolver.open_issue")

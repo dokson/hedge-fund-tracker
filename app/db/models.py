@@ -23,8 +23,10 @@ import enum
 import uuid
 from datetime import datetime
 
-from fastapi_users.db import SQLAlchemyBaseUserTableUUID
-from fastapi_users_db_sqlalchemy.access_token import SQLAlchemyBaseAccessTokenTableUUID
+from fastapi_users.db import SQLAlchemyBaseUserTableUUID  # pyright: ignore[reportMissingImports]
+from fastapi_users_db_sqlalchemy.access_token import (  # pyright: ignore[reportMissingImports]
+    SQLAlchemyBaseAccessTokenTableUUID,
+)
 from sqlalchemy import (
     Boolean,
     DateTime,

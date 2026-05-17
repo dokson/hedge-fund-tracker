@@ -65,13 +65,24 @@ class TestPerformanceEvaluator(unittest.TestCase):
         # W1 = 1/3, R1 = 0.1, WR1 = 0.0333
         # W2 = 2/3, R2 = -0.1, WR2 = -0.0666
         # Portfolio Return = -0.0333...
+        equal_fields = [("fund", "Test Fund"), ("quarter", "2025Q1")]
+        for field, expected in equal_fields:
+            with self.subTest(field=field):
+                self.assertEqual(result[field], expected)
 
-        self.assertEqual(result["fund"], "Test Fund")
-        self.assertEqual(result["quarter"], "2025Q1")
-        self.assertAlmostEqual(result["portfolio_return"], -3.333333333333333)
-        self.assertAlmostEqual(result["end_value"], 2900.0)  # 3000 * (1 - 0.0333...)
-        self.assertEqual(len(result["top_contributors"]), 2)
-        self.assertEqual(result["top_contributors"][0]["Ticker"], "T1")
+        almost_fields = [
+            ("portfolio_return", -3.333333333333333),
+            ("end_value", 2900.0),  # 3000 * (1 - 0.0333...)
+        ]
+        for field, expected in almost_fields:
+            with self.subTest(field=field):
+                self.assertAlmostEqual(float(result[field]), expected)
+
+        with self.subTest(field="top_contributors"):
+            top_contributors = result["top_contributors"]
+            assert isinstance(top_contributors, list)
+            self.assertEqual(len(top_contributors), 2)
+            self.assertEqual(top_contributors[0]["Ticker"], "T1")
 
     @patch("app.analysis.performance_evaluator.load_fund_holdings")
     @patch("app.analysis.performance_evaluator.get_previous_quarter")
@@ -118,8 +129,8 @@ class TestPerformanceEvaluator(unittest.TestCase):
         result = PerformanceEvaluator.calculate_quarterly_performance("Test Fund", "2025Q1")
 
         # Price start = 10.0, Price end = 12.0 (fetched) -> Return = 0.2
-        self.assertAlmostEqual(result["portfolio_return"], 20.0)
-        self.assertAlmostEqual(result["end_value"], 1200.0)
+        self.assertAlmostEqual(float(result["portfolio_return"]), 20.0)
+        self.assertAlmostEqual(float(result["end_value"]), 1200.0)
         mock_get_avg_price.assert_called_once()
 
     @patch("app.analysis.performance_evaluator.load_fund_holdings")

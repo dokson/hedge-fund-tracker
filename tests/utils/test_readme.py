@@ -34,12 +34,12 @@ class TestReadme(unittest.TestCase):
         mock_read_csv.assert_called_once_with(EXCLUDED_HEDGE_FUNDS_FILE, keep_default_na=False)
 
     @patch("app.utils.readme.pd.read_csv")
-    @patch("builtins.print")
-    def test_generate_excluded_funds_list_file_not_found(self, mock_print, mock_read_csv):
+    def test_generate_excluded_funds_list_file_not_found(self, mock_read_csv):
         """
-        Tests that the function returns None and prints an error when the CSV file is not found.
+        Tests that the function returns None and logs an error when the CSV file is not found.
         """
         mock_read_csv.side_effect = FileNotFoundError
-        result = generate_excluded_funds_list()
+        with self.assertLogs("app.utils.readme", level="ERROR") as cm:
+            result = generate_excluded_funds_list()
         self.assertIsNone(result)
-        mock_print.assert_called_with(f"❌ Error: {EXCLUDED_HEDGE_FUNDS_FILE} was not found.")
+        self.assertIn(EXCLUDED_HEDGE_FUNDS_FILE, "\n".join(cm.output))

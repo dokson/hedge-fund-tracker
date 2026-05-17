@@ -1,6 +1,9 @@
 import pandas as pd
 
 from app.utils.database import load_gics_hierarchy
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def load_standard_sectors() -> pd.DataFrame:
@@ -15,8 +18,8 @@ def load_standard_sectors() -> pd.DataFrame:
         if hierarchy_df.empty:
             return pd.DataFrame()
         return hierarchy_df[["Sector Code", "Sector"]].drop_duplicates().reset_index(drop=True)
-    except Exception as e:
-        print(f"❌ Error while loading standard sectors: {e}")
+    except Exception:
+        logger.error("while loading standard sectors", exc_info=True)
         return pd.DataFrame()
 
 
@@ -52,8 +55,8 @@ def load_yf_sectors() -> pd.DataFrame:
         sectors["Key"] = sectors["Sector"].apply(get_yfinance_key)
 
         return sectors.rename(columns={"Sector": "Name"}).reset_index(drop=True)
-    except Exception as e:
-        print(f"❌ Error while deriving yfinance sectors from hierarchy: {e}")
+    except Exception:
+        logger.error("while deriving yfinance sectors from hierarchy", exc_info=True)
         return pd.DataFrame()
 
 
@@ -73,8 +76,8 @@ def load_industry_groups() -> pd.DataFrame:
             .drop_duplicates()
             .reset_index(drop=True)
         )
-    except Exception as e:
-        print(f"❌ Error while loading industry groups: {e}")
+    except Exception:
+        logger.error("while loading industry groups", exc_info=True)
         return pd.DataFrame()
 
 
@@ -90,8 +93,8 @@ def load_industries() -> pd.DataFrame:
         if hierarchy_df.empty:
             return pd.DataFrame()
         return hierarchy_df[["Industry Code", "Industry"]].drop_duplicates().reset_index(drop=True)
-    except Exception as e:
-        print(f"❌ Error while loading industries: {e}")
+    except Exception:
+        logger.error("while loading industries", exc_info=True)
         return pd.DataFrame()
 
 
@@ -111,6 +114,6 @@ def load_sub_industries() -> pd.DataFrame:
             .drop_duplicates()
             .reset_index(drop=True)
         )
-    except Exception as e:
-        print(f"❌ Error while loading sub-industries: {e}")
+    except Exception:
+        logger.error("while loading sub-industries", exc_info=True)
         return pd.DataFrame()

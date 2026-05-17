@@ -29,14 +29,15 @@ nacl.secret.SecretBox.
 
 from __future__ import annotations
 
-import logging
 import os
 from dataclasses import dataclass
 from typing import Final
 
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
-logger = logging.getLogger(__name__)
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 # Env vars holding KEKs. MASTER_KEY is the current/write key; MASTER_KEY_PREV
 # is the previous one (read-only) during a rotation window. Both must be

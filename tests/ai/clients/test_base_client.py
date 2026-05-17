@@ -1,6 +1,8 @@
 import shutil
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from app.ai.clients.base_client import AIClient
 
@@ -19,16 +21,21 @@ class MockAIClient(AIClient):
 
 class TestBaseClient(unittest.TestCase):
     def setUp(self):
-        self.cache_dir = AIClient.CACHE_DIR
+        """
+        Use an isolated tempdir as cache root so tests can't wipe or pollute
+        the real ``__llmcache__/`` directory in the repo.
+        """
+        self.cache_dir = tempfile.mkdtemp(prefix="hft_llmcache_")
+        cache_patcher = patch.object(AIClient, "CACHE_DIR", self.cache_dir)
+        self.addCleanup(cache_patcher.stop)
+        cache_patcher.start()
         self.client = MockAIClient()
-        # Clean cache before tests
-        if Path(self.cache_dir).exists():
-            shutil.rmtree(self.cache_dir)
 
     def tearDown(self):
-        # Clean up after tests
-        if Path(self.cache_dir).exists():
-            shutil.rmtree(self.cache_dir)
+        """
+        Remove the tempdir; ignore errors on Windows file-locking edge cases.
+        """
+        shutil.rmtree(self.cache_dir, ignore_errors=True)
 
     def test_log_response_creates_file(self):
         """

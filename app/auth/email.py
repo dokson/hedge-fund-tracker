@@ -11,13 +11,14 @@ This module is the single seam that has to change.
 
 from __future__ import annotations
 
-import logging
 import os
 from typing import Final
 
 import requests
 
-logger = logging.getLogger(__name__)
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 RESEND_API_KEY: Final = os.environ.get("RESEND_API_KEY", "")
 FROM_EMAIL: Final = os.environ.get("FROM_EMAIL", "no-reply@hedge-fund-tracker.local")

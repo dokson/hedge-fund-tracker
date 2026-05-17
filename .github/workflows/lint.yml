@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   python:
-    name: Python · Ruff + mypy
+    name: Python · Ruff + pyright + mypy
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -38,6 +38,9 @@ jobs:
 
       - name: Ruff format check
         run: pipenv run ruff format --check .
+
+      - name: Pyright
+        run: pipenv run pyright
 
       - name: mypy
         run: pipenv run mypy app database scripts

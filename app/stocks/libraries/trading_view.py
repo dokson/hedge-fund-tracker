@@ -7,6 +7,9 @@ from tvDatafeed import TvDatafeed
 
 from app.stocks.libraries.base_library import FinanceLibrary
 from app.utils.console import silence_output
+from app.utils.logger import get_logger, log_safe
+
+logger = get_logger(__name__)
 
 # Silence tvDatafeed related loggers if any
 logging.getLogger("tvDatafeed").setLevel(logging.CRITICAL)
@@ -49,8 +52,8 @@ class TradingView(FinanceLibrary):
 
             return None
 
-        except Exception as e:
-            print(f"⚠️ TradingView fallback failed for {ticker}: {e}")
+        except Exception:
+            logger.error("TradingView fallback failed for %s", log_safe(ticker), exc_info=True)
             return None
 
     @staticmethod
@@ -99,9 +102,16 @@ class TradingView(FinanceLibrary):
                             )
                             if any(v is None or v != v for v in (o, h, low, c)):
                                 continue
+                            assert (
+                                o is not None
+                                and h is not None
+                                and low is not None
+                                and c is not None
+                            )
+                            date_str = idx.strftime("%Y-%m-%d")  # type: ignore[union-attr]
                             points.append(
                                 {
-                                    "date": idx.strftime("%Y-%m-%d"),
+                                    "date": date_str,
                                     "open": round(float(o), 4),
                                     "high": round(float(h), 4),
                                     "low": round(float(low), 4),
@@ -113,8 +123,8 @@ class TradingView(FinanceLibrary):
                 except Exception:
                     continue
             return None
-        except Exception as e:
-            print(f"⚠️ TradingView get_history failed for {ticker}: {e}")
+        except Exception:
+            logger.error("TradingView get_history failed for %s", log_safe(ticker), exc_info=True)
             return None
 
     @staticmethod
@@ -158,9 +168,9 @@ class TradingView(FinanceLibrary):
                 low = day_data["low"].iloc[0]
                 return round((high + low) / 2, 2)
 
-            print(f"🚨 TradingView: No data for {ticker} on {date_obj}.")
+            logger.warning("TradingView: No data for %s on %s.", log_safe(ticker), date_obj)
             return None
 
-        except Exception as e:
-            print(f"⚠️ TradingView get_avg_price failed for {ticker}: {e}")
+        except Exception:
+            logger.error("TradingView get_avg_price failed for %s", log_safe(ticker), exc_info=True)
             return None

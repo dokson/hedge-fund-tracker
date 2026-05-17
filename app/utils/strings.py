@@ -64,7 +64,7 @@ def format_percentage(value: float, show_sign: bool = False, decimal_places: int
     return f"{formatted}%"
 
 
-def format_string(string: str) -> str:
+def format_string(string: str | None) -> str | None:
     """
     Formats a string to title case only if it is entirely in uppercase.
 
@@ -166,7 +166,7 @@ def get_string_formatter(max_length: int | None = None):
     """
 
     def formatter(x):
-        s = format_string(str(x))
+        s = format_string(str(x)) or ""
         if max_length and len(s) > max_length:
             return s[: max_length - 3] + "..."
         return s

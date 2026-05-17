@@ -14,6 +14,12 @@ SEC EDGAR → app/scraper/ → app/analysis/ → app/ai/ (Promise Scores) → we
 
 **The angle that makes this tool different**: 13F-only trackers show data 45+ days stale. We merge 13D/G (≤10 days) and Form 4 (≤2 business days) on top of quarterly snapshots, so the consensus view reflects recent institutional activity.
 
+## Running Python tooling (must read)
+
+**Always run Python tooling through the pipenv venv** — `pipenv run <cmd>` (or `python -m pipenv run <cmd>` if `pipenv` is not on PATH, common on Windows). The system Python has a polluted `toon` namespace, lacks `pandas-stubs`, and lacks `fastapi_users` — running tests/pyright outside the venv produces import errors and ~150 false type errors. Sanity-check at session start: `python -m pipenv --venv`.
+
+A `PreToolUse` hook in `.claude/settings.json` (script: `.claude/scripts/enforce_pipenv.py`) blocks bare invocations of `pyright`/`ruff`/`mypy`/`pytest` and `python -m <those>` when not preceded by `pipenv run`.
+
 ## Common tasks
 
 ```bash
@@ -35,7 +41,8 @@ cd app/frontend && npm test                                              # front
 # Lint & format
 pipenv run lint            # ruff check (Python)
 pipenv run format          # ruff format
-pipenv run typecheck       # mypy (informational)
+pipenv run pyright         # primary type-checker (config: pyrightconfig.json)
+pipenv run typecheck       # mypy (informational, secondary)
 cd app/frontend && npm run lint && npm run type-check && npm run format:check
 pre-commit run --all-files # everything at once
 
@@ -44,17 +51,41 @@ docker compose up --build                   # foreground
 pipenv run docker-up                        # auto-port discovery wrapper
 ```
 
+## Logging conventions
+
+All status/error reporting goes through `app.utils.logger.get_logger(__name__)`. The shared `_PrefixFormatter` auto-prepends a per-level emoji marker; **don't repeat the marker inside the message body** — it doubles up.
+
+Available levels and their auto-prefix:
+
+| Method | Level | Auto-prefix | Typical use |
+|---|---|---|---|
+| `logger.debug` | 10 | `🚧 ` | dev diagnostics (filtered by default) |
+| `logger.info` | 20 | `ℹ️  ` | normal events |
+| `logger.progress` | 22 | `⏳ ` | "Sending request", "Trying fallback X" |
+| `logger.money` | 23 | `💲 ` | price / value reporting |
+| `logger.success` | 25 | `✅ ` | completed operation |
+| `logger.warning` | 30 | `🚨 WARNING: ` | recoverable anomaly |
+| `logger.deprecated` | 35 | `⚠️  DEPRECATED: ` | obsolete API in use |
+| `logger.error` | 40 | `❌ ERROR - ` | failure (always pair with `exc_info=True` inside `except`) |
+| `logger.critical` | 50 | `❌ CRITICAL - ` | severe failure |
+
+The `emoji="..."` kwarg works on every method and **overrides the default prefix** — use it for occasional one-off markers (`logger.info("Rebuilding", emoji="🔄")`).
+
+**Don't use `print()` outside `app/main.py` and `app/utils/console.py`.** Those two are CLI/UI rendering and are intentionally exempt; everything else goes through the logger so the SSE pipeline in `app/server.py` (`_ContextAwareStdout`) can route each log line to the right per-request queue. The logger's stdout handler resolves `sys.stdout` lazily on every emit, which is what keeps SSE working — don't rebind the handler's stream.
+
 ## Footguns
 
 These are real incidents — read before changing code in these areas.
 
 - **Stale frontend dist served silently.** The dev server auto-rebuilds when `frontend/src/` mtimes are newer than `dist/index.html`. If you bypass `pipenv run app` and serve dist directly, edits to `.tsx` or `src/data/*.json` are invisible. Trust the auto-rebuild or run `pipenv run build-frontend` explicitly.
 
-- **SSE stdout capture is per-request.** `app/server.py` installs a `_ContextAwareStdout` wrapper at module import that consults a `ContextVar` on every `write()`. Each `_make_sse_stream` call sets its own queue in the contextvar; threads spawned to run the target inherit the context. Result: concurrent SSE streams are isolated, no global lock needed. Don't reintroduce `sys.stdout = ...` redirections — they break this isolation.
+- **SSE stdout capture is per-request.** `app/server.py` installs a `_ContextAwareStdout` wrapper at module import that consults a `ContextVar` on every `write()`. Concurrent SSE streams are isolated via `contextvars` — no global lock. Don't reintroduce `sys.stdout = ...` redirections, and don't bind a logger handler to a fixed stream (the project logger resolves `sys.stdout` lazily on every emit — see "Logging conventions"). Both patterns break isolation.
 
 - **Wrong `Denomination` breaks non-quarterly merging.** 13D/G and Form 4 filings match by *legal name string*, not CIK. The `Denomination` column in `hedge_funds.csv` must be exact. Mismatch = silent gap in non-quarterly view.
 
-- **`os.path.basename()` in `_sanitize_path_parts` is intentional.** It's the CodeQL-recognised sanitizer for `py/path-injection`. The `# noqa: PTH119` is load-bearing — don't "modernize" it to `Path(s).name`.
+- **`os.path.basename()` in `_safe_db_join` is intentional.** It's the CodeQL-recognised sanitizer for `py/path-injection`. The `# noqa: PTH119` is load-bearing — don't "modernize" it to `Path(s).name`.
+
+- **`log_safe()` in `app/utils/logger.py` sanitizes log interpolations.** Fund names, tickers, CUSIPs and other user-controlled values are wrapped in `log_safe(...)` before being passed to `logger.X("msg %s", value)`. The helper strips non-printable characters (newlines, ANSI escapes, NUL) and truncates to 64 chars, preventing log forgery (a CSV row injecting `\nFAKE LOG LINE` would otherwise appear as a separate log entry in the SSE stream and CI logs). Apply the same wrapping when adding new logs that interpolate external strings; prefer lazy `%`-formatting (`"... %s ...", log_safe(x)`) over f-strings so the sanitized value is the one ultimately serialized.
 
 - **`stocks.csv` is auto-sorted on exit.** A diff that only shows reordering = something else changed. Don't commit "sort cleanup" PRs without inspecting actual content changes.
 
@@ -160,7 +191,8 @@ Iron rule: **no production code without a failing test first**.
 Before marking a task complete:
 
 - [ ] Failing test written first (watched it fail for the right reason)
-- [ ] All tests green: Python (`pipenv run python -m unittest discover`) + frontend (`cd app/frontend && npm test`)
+- [ ] All tests green: `pipenv run python -m unittest discover` + `cd app/frontend && npm test`
+- [ ] Type-check clean: `pipenv run pyright` (config in `pyrightconfig.json`)
 - [ ] Lint clean: `pipenv run lint && cd app/frontend && npm run lint && npm run type-check`
 - [ ] Format clean: `pipenv run format` and `cd app/frontend && npm run format`
 - [ ] Edge cases covered, no rationalizations ("I'll test after" / "I already manually tested")

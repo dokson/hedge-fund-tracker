@@ -18,7 +18,6 @@ The session is committed by the caller; this helper only adds the row.
 
 from __future__ import annotations
 
-import logging
 import re
 import uuid
 from typing import Any
@@ -26,8 +25,9 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AuditLog, User
+from app.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Metadata keys whose presence is almost certainly a coding mistake.
 # Lookarounds use `[a-zA-Z0-9]` (NOT `\w`) so underscore is treated as a

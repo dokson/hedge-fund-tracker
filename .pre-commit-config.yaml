@@ -27,8 +27,12 @@ repos:
         args: [--check]
         stages: [pre-push]
 
-  # mypy runs in CI (lint.yml) and locally via `pipenv run typecheck`.
-  # Not in pre-commit: mirrors-mypy's isolated venv version-drifts vs pipenv's.
+  # mypy + pyright run in CI (lint.yml) and locally via `pipenv run typecheck`
+  # / `pipenv run pyright`. Not in pre-commit:
+  # - mirrors-mypy's isolated venv version-drifts vs pipenv's;
+  # - a local pyright hook would need pipenv on the inner Python, which
+  #   isn't reliably resolvable inside pre-commit's `language: system` env
+  #   on Windows. CI is the source of truth.
 
   # Frontend: format with Prettier
   - repo: https://github.com/pre-commit/mirrors-prettier

@@ -1,6 +1,9 @@
 from datetime import date
 
 from app.stocks.libraries import FinanceLibrary, Nasdaq, TradingView, YFinance
+from app.utils.logger import get_logger, log_safe
+
+logger = get_logger(__name__)
 
 
 class PriceFetcher:
@@ -25,11 +28,20 @@ class PriceFetcher:
                 price = library.get_current_price(ticker)
                 if price is not None:
                     return price
-            except Exception as e:
-                print(f"⚠️ {library.__name__} failed to get price for {ticker}: {e}")
+            except Exception:
+                logger.error(
+                    "%s failed to get price for %s",
+                    library.__name__,
+                    log_safe(ticker),
+                    exc_info=True,
+                )
                 continue
 
-        print(f"❌ PriceFetcher: Failed to get current price for {ticker} from all sources.")
+        logger.error(
+            "PriceFetcher: Failed to get current price for %s from all sources.",
+            log_safe(ticker),
+            exc_info=True,
+        )
         return None
 
     @staticmethod
@@ -45,11 +57,20 @@ class PriceFetcher:
                 points = library.get_history(ticker, period)
                 if points:
                     return points
-            except Exception as e:
-                print(f"⚠️ {library.__name__} failed to get history for {ticker}: {e}")
+            except Exception:
+                logger.error(
+                    "%s failed to get history for %s",
+                    library.__name__,
+                    log_safe(ticker),
+                    exc_info=True,
+                )
                 continue
 
-        print(f"❌ PriceFetcher: Failed to get history for {ticker} from all sources.")
+        logger.error(
+            "PriceFetcher: Failed to get history for %s from all sources.",
+            log_safe(ticker),
+            exc_info=True,
+        )
         return []
 
     @staticmethod
@@ -62,11 +83,18 @@ class PriceFetcher:
                 price = library.get_avg_price(ticker, date_obj)
                 if price is not None:
                     return price
-            except Exception as e:
-                print(f"⚠️ {library.__name__} failed to get avg price for {ticker}: {e}")
+            except Exception:
+                logger.error(
+                    "%s failed to get avg price for %s",
+                    library.__name__,
+                    log_safe(ticker),
+                    exc_info=True,
+                )
                 continue
 
-        print(
-            f"❌ PriceFetcher: Failed to get avg price for {ticker} on {date_obj} from all sources."
+        logger.error(
+            "PriceFetcher: Failed to get avg price for %s on %s from all sources.",
+            log_safe(ticker),
+            date_obj,
         )
         return None

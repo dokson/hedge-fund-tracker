@@ -15,9 +15,12 @@ from app.scraper.sec_scraper import (
     _get_report_date,
     _get_request,
     _scrape_filing,
+    close_session,
     fetch_latest_two_13f_filings,
     fetch_non_quarterly_after_date,
     get_latest_13f_filing_date,
+    reset_session,
+    scraper_session,
 )
 
 
@@ -30,31 +33,47 @@ class TestSecScraper(unittest.TestCase):
     def tearDown(self):
         self.sleep_patcher.stop()
 
-    @patch("app.scraper.sec_scraper.requests.get")
-    def test_get_request_success(self, mock_get):
+    @patch("app.scraper.sec_scraper._session")
+    def test_get_request_success(self, mock_session):
         """Test _get_request returns response on success."""
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
+        mock_session.get.return_value = mock_response
 
         url = "http://test.com"
         response = _get_request(url)
 
         self.assertEqual(response, mock_response)
-        mock_get.assert_called_with(
-            url,
-            headers={
-                "User-Agent": USER_AGENT,
-                "Accept-Encoding": "gzip, deflate",
-                "HOST": SEC_HOST,
-            },
-            timeout=15,
-        )
+        mock_session.get.assert_called_with(url, timeout=15)
 
-    @patch("app.scraper.sec_scraper.requests.get")
-    def test_get_request_failure(self, mock_get):
+    @patch("app.scraper.sec_scraper._rate_limiter")
+    @patch("app.scraper.sec_scraper._session")
+    def test_get_request_acquires_rate_limiter_before_request(self, mock_session, mock_limiter):
+        """
+        Each network call must acquire a token first so parallel workers stay
+        within SEC EDGAR's per-host budget. Regression guard: if a future
+        refactor drops the acquire() call, this test fails.
+        """
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_session.get.return_value = mock_response
+
+        _get_request("http://test.com")
+
+        mock_limiter.acquire.assert_called_once()
+
+    def test_session_has_sec_headers(self):
+        """The shared Session must carry the SEC-required headers."""
+        from app.scraper.sec_scraper import _session
+
+        self.assertEqual(_session.headers["User-Agent"], USER_AGENT)
+        self.assertEqual(_session.headers["HOST"], SEC_HOST)
+        self.assertEqual(_session.headers["Accept-Encoding"], "gzip, deflate")
+
+    @patch("app.scraper.sec_scraper._session")
+    def test_get_request_failure(self, mock_session):
         """Test _get_request raises RetryError on persistent failure."""
-        mock_get.side_effect = requests.exceptions.RequestException("Error")
+        mock_session.get.side_effect = requests.exceptions.RequestException("Error")
 
         url = "http://test.com"
 
@@ -174,6 +193,7 @@ class TestSecScraper(unittest.TestCase):
             filings = fetch_latest_two_13f_filings("CIK123")
 
             # Verify we only got 2 results
+            assert filings is not None
             self.assertEqual(len(filings), 2)
 
             self.assertEqual(filings[0]["date"], "2023-06-30")
@@ -206,6 +226,7 @@ class TestSecScraper(unittest.TestCase):
             filings = fetch_non_quarterly_after_date("CIK123", "2023-01-01")
 
             # Should call scrape for SCHEDULE and Form 4 (found 1 doc each in mock)
+            assert filings is not None
             self.assertEqual(len(filings), 2)
 
     @patch("app.scraper.sec_scraper._get_request")
@@ -225,6 +246,91 @@ class TestSecScraper(unittest.TestCase):
 
         date = get_latest_13f_filing_date("CIK123")
         self.assertEqual(date, "2023-05-15")
+
+
+class TestSecScraperLifecycle(unittest.TestCase):
+    def tearDown(self):
+        # Always rebuild after tests in this class so other tests get a fresh session.
+        reset_session()
+
+    def test_close_session_closes_shared_session(self):
+        """close_session() must call .close() on the module-level session."""
+        import app.scraper.sec_scraper as scraper
+
+        with patch.object(scraper._session, "close") as mock_close:
+            close_session()
+            mock_close.assert_called_once()
+
+    def test_close_session_is_idempotent(self):
+        """Calling close_session twice must not raise."""
+        close_session()
+        close_session()  # should not raise
+
+    def test_reset_session_rebuilds_singletons(self):
+        """reset_session must replace _session and _rate_limiter with fresh instances."""
+        import app.scraper.sec_scraper as scraper
+
+        old_session = scraper._session
+        old_limiter = scraper._rate_limiter
+
+        reset_session()
+
+        self.assertIsNot(scraper._session, old_session)
+        self.assertIsNot(scraper._rate_limiter, old_limiter)
+        # Headers must still be present on the rebuilt session
+        self.assertEqual(scraper._session.headers["User-Agent"], USER_AGENT)
+        self.assertEqual(scraper._session.headers["HOST"], SEC_HOST)
+
+    def test_scraper_session_closes_on_exit(self):
+        """scraper_session() context manager must close the session on exit."""
+        import app.scraper.sec_scraper as scraper
+
+        with patch.object(scraper._session, "close") as mock_close:
+            with scraper_session():
+                pass
+            mock_close.assert_called_once()
+
+    def test_scraper_session_closes_even_when_body_raises(self):
+        """
+        The cleanup happens in a `finally` block, so an exception raised inside
+        the `with` body must still close the session and then propagate.
+        """
+        import app.scraper.sec_scraper as scraper
+
+        with patch.object(scraper._session, "close") as mock_close:
+            with self.assertRaises(RuntimeError), scraper_session():
+                raise RuntimeError("boom")
+            mock_close.assert_called_once()
+
+    def test_reset_after_close_produces_a_usable_session(self):
+        """
+        After close → reset, the new session must be live (not closed) and
+        carry the SEC headers — proving reset rebuilds, not just rebinds to
+        the closed instance.
+        """
+        import app.scraper.sec_scraper as scraper
+
+        close_session()
+        reset_session()
+
+        # urllib3's PoolManager exposes `pools` on a live adapter; absence/None
+        # would indicate the session is closed. The simpler liveness probe is
+        # that the headers dict is non-empty and the object is a new instance.
+        self.assertIsInstance(scraper._session, requests.Session)
+        self.assertIn("User-Agent", scraper._session.headers)
+        # And it must still wire through the rate limiter on a fresh request.
+        with (
+            patch.object(scraper._session, "get") as mock_get,
+            patch.object(scraper._rate_limiter, "acquire") as mock_acquire,
+        ):
+            mock_response = MagicMock()
+            mock_response.raise_for_status.return_value = None
+            mock_get.return_value = mock_response
+
+            _get_request("http://test.com")
+
+            mock_acquire.assert_called_once()
+            mock_get.assert_called_once()
 
 
 if __name__ == "__main__":

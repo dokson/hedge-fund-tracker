@@ -74,42 +74,41 @@ class TestKPILogic(unittest.TestCase):
         )
 
     def test_kpi_calculations(self):
-        # 1. Test Flags
+        """
+        Tests TSLA's high-conviction flag, aggregation, and derived metrics across funds.
+        """
+        # 1. Test Flags — TSLA must be high-conviction only in FundA.
         df_flags = _calculate_fund_level_flags(self.df_fund)
+        conviction_cases = [
+            ("FundA", True),
+            ("FundB", False),  # NEW but rank/pct too low
+            ("FundC", False),  # existing position, not NEW
+        ]
+        for fund, expected in conviction_cases:
+            with self.subTest(stage="flags", fund=fund):
+                row = df_flags[(df_flags["Fund"] == fund) & (df_flags["Ticker"] == "TSLA")].iloc[0]
+                self.assertEqual(bool(row["is_high_conviction"]), expected)
 
-        # Verify TSLA in FundA is high conviction
-        tsla_a = df_flags[(df_flags["Fund"] == "FundA") & (df_flags["Ticker"] == "TSLA")].iloc[0]
-        self.assertTrue(tsla_a["is_high_conviction"])
-
-        # Verify TSLA in FundB is NOT high conviction (even if NEW, rank/pct too low)
-        tsla_b = df_flags[(df_flags["Fund"] == "FundB") & (df_flags["Ticker"] == "TSLA")].iloc[0]
-        self.assertFalse(tsla_b["is_high_conviction"])
-
-        # Verify TSLA in FundC is NOT high conviction (not NEW)
-        tsla_c = df_flags[(df_flags["Fund"] == "FundC") & (df_flags["Ticker"] == "TSLA")].iloc[0]
-        self.assertFalse(tsla_c["is_high_conviction"])
-
-        # 2. Test Aggregation
+        # 2. Test Aggregation — TSLA summary across funds.
         df_agg = _aggregate_stock_data(df_flags)
-
         tsla_summary = df_agg[df_agg["Ticker"] == "TSLA"].iloc[0]
+        agg_expected = {
+            "High_Conviction_Count": 1,  # only FundA
+            "Avg_Fund_Concentration": 40.0,  # (40 + 30 + 50) / 3
+            "Ownership_Delta_Avg": 50.0,  # only FundC's +50% (NEW positions excluded)
+        }
+        for col, expected in agg_expected.items():
+            with self.subTest(stage="aggregation", column=col):
+                self.assertEqual(tsla_summary[col], expected)
 
-        # High_Conviction_Count should be 1 (only FundA)
-        self.assertEqual(tsla_summary["High_Conviction_Count"], 1)
-
-        # Avg_Fund_Concentration: (40 + 30 + 50) / 3 = 40.0
-        self.assertEqual(tsla_summary["Avg_Fund_Concentration"], 40.0)
-
-        # Ownership_Delta_Avg: FundC increased by 50%. A and B were NEW (excluded). So mean of [50] = 50.0
-        self.assertEqual(tsla_summary["Ownership_Delta_Avg"], 50.0)
-
-        # 3. Test Derived Metrics
+        # 3. Test Derived Metrics — values + required-column presence.
         df_derived = _calculate_derived_metrics(df_agg)
         tsla_final = df_derived[df_derived["Ticker"] == "TSLA"].iloc[0]
-
-        self.assertEqual(tsla_final["Portfolio_Concentration_Avg"], 40.0)
-        self.assertIn("High_Conviction_Count", tsla_final)
-        self.assertIn("Ownership_Delta_Avg", tsla_final)
+        with self.subTest(stage="derived", column="Portfolio_Concentration_Avg"):
+            self.assertEqual(tsla_final["Portfolio_Concentration_Avg"], 40.0)
+        for col in ("High_Conviction_Count", "Ownership_Delta_Avg"):
+            with self.subTest(stage="derived", column=col):
+                self.assertIn(col, tsla_final)
 
 
 if __name__ == "__main__":

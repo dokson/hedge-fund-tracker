@@ -15,9 +15,13 @@ from app.ai.clients import (
     HuggingFaceClient,
     OpenRouterClient,
 )
+from app.utils.logger import get_logger, log_safe
 from app.utils.strings import get_quarter
 
+logger = get_logger(__name__)
+
 _stocks_thread_lock = threading.Lock()
+
 
 DB_FOLDER = "./database"
 HEDGE_FUNDS_FILE = "hedge_funds.csv"
@@ -241,25 +245,33 @@ def load_fund_holdings(fund: str, quarter: str) -> pd.DataFrame:
     return df
 
 
-def load_hedge_funds(filepath=f"./{DB_FOLDER}/{HEDGE_FUNDS_FILE}") -> list:
+def load_hedge_funds(filepath: str | None = None) -> list:
     """
-    Loads hedge funds from file (hedge_funds.csv)
+    Loads hedge funds from file (hedge_funds.csv).
+
+    Default path is resolved at call time against the current DB_FOLDER, so
+    tests that patch DB_FOLDER see the override without having to pass the
+    filepath explicitly.
     """
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / HEDGE_FUNDS_FILE)
     try:
         df = pd.read_csv(filepath, dtype={"CIK": str, "CIKs": str}, keep_default_na=False)
         return df.to_dict("records")
-    except Exception as e:
-        print(f"❌ Error while reading '{filepath}': {e}")
+    except Exception:
+        logger.error("while reading '%s'", filepath, exc_info=True)
         return []
 
 
-def load_models(filepath=f"./{DB_FOLDER}/{MODELS_FILE}") -> list:
+def load_models(filepath: str | None = None) -> list:
     """
     Loads AI models from the file (models.csv).
 
     Returns:
         list: A list of dictionaries, each representing an AI model with the 'client' key holding the corresponding client class.
     """
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / MODELS_FILE)
     client_map = {
         "GitHub": GitHubClient,
         "Google": GoogleAIClient,
@@ -271,48 +283,38 @@ def load_models(filepath=f"./{DB_FOLDER}/{MODELS_FILE}") -> list:
         df = pd.read_csv(filepath, keep_default_na=False)
         df["Client"] = df["Client"].map(client_map)
         return df.to_dict("records")
-    except Exception as e:
-        print(f"❌ Error while reading models from '{filepath}': {e}")
+    except Exception:
+        logger.error("while reading models from '%s'", filepath, exc_info=True)
         return []
 
 
-def load_non_quarterly_data(
-    filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}",
-) -> pd.DataFrame:
+def load_non_quarterly_data(filepath: str | None = None) -> pd.DataFrame:
     """
     Loads the latest non-quarterly (13D/G and 4) filings from the CSV file.
-
-    Args:
-        filepath (str, optional): The path to the CSV file.
-
-    Returns:
-        pd.DataFrame: A DataFrame containing the most recent filing for each Fund-Ticker combination.
     """
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / LATEST_SCHEDULE_FILINGS_FILE)
     try:
         df = pd.read_csv(filepath, dtype={"Fund": str, "CUSIP": str}, keep_default_na=False)
         # Keep only the most recent entry for each Ticker for each Fund
         return df.sort_values(by=["Date", "Filing_Date"], ascending=False).drop_duplicates(
             subset=["Fund", "Ticker"], keep="first"
         )
-    except Exception as e:
-        print(f"❌ Error while reading schedule filings from '{filepath}': {e}")
+    except Exception:
+        logger.error("while reading schedule filings from '%s'", filepath, exc_info=True)
         return pd.DataFrame()
 
 
-def load_gics_hierarchy(filepath=f"./{DB_FOLDER}/{GICS_HIERARCHY_FILE}") -> pd.DataFrame:
+def load_gics_hierarchy(filepath: str | None = None) -> pd.DataFrame:
     """
     Loads the full GICS hierarchy from the CSV file.
-
-    Args:
-        filepath (str, optional): The path to the GICS hierarchy CSV file.
-
-    Returns:
-        pd.DataFrame: A DataFrame with the full GICS hierarchy mapping.
     """
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / GICS_HIERARCHY_FILE)
     try:
         return pd.read_csv(filepath)
-    except Exception as e:
-        print(f"❌ Error while reading GICS hierarchy from '{filepath}': {e}")
+    except Exception:
+        logger.error("while reading GICS hierarchy from '%s'", filepath, exc_info=True)
         return pd.DataFrame()
 
 
@@ -336,23 +338,19 @@ def load_quarterly_data(quarter: str) -> pd.DataFrame:
     return pd.concat(all_fund_data, ignore_index=True)
 
 
-def load_stocks(filepath=f"./{DB_FOLDER}/{STOCKS_FILE}") -> pd.DataFrame:
+def load_stocks(filepath: str | None = None) -> pd.DataFrame:
     """
     Loads the stock master data (CUSIP, Ticker, Company) from the CSV file.
-
-    Args:
-        filepath (str, optional): The path to the stocks CSV file.
-
-    Returns:
-        pd.DataFrame: A DataFrame with CUSIP as the index, or an empty DataFrame if the file is not found or an error occurs.
     """
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / STOCKS_FILE)
     try:
         df = pd.read_csv(
             filepath, dtype={"CUSIP": str, "Ticker": str, "Company": str}, keep_default_na=False
         )
         return df.set_index("CUSIP")
-    except Exception as e:
-        print(f"❌ Error while reading stocks file from '{filepath}': {e}")
+    except Exception:
+        logger.error("while reading stocks file from '%s'", filepath, exc_info=True)
         return pd.DataFrame()
 
 
@@ -375,24 +373,23 @@ def save_comparison(comparison_dataframe: pd.DataFrame, date: str, fund_name: st
 
         filename = _safe_db_join(quarter_name, f"{fund_name.replace(' ', '_')}.csv")
         comparison_dataframe.to_csv(filename, index=False)
-        print(f"Created {filename}")
-    except (Exception, ValueError) as e:
-        print(f"❌ An error occurred while writing comparison file for '{fund_name}': {e}")
-        print(f"❌ An error occurred while writing comparison file for '{fund_name}': {e}")
+        logger.success("Created %s", filename)
+    except Exception:
+        logger.error(
+            "An error occurred while writing comparison file for '%s'",
+            log_safe(fund_name),
+            exc_info=True,
+        )
 
 
-def save_non_quarterly_filings(
-    schedule_filings: list, filepath=f"./{DB_FOLDER}/{LATEST_SCHEDULE_FILINGS_FILE}"
-) -> None:
+def save_non_quarterly_filings(schedule_filings: list, filepath: str | None = None) -> None:
     """
     Combines the list of schedule filing DataFrames and saves them to a single CSV file.
-
-    Args:
-        schedule_filings (list): A list of pandas DataFrames, each representing schedule filings.
-        filepath (str, optional): The path to the output CSV file.
     """
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / LATEST_SCHEDULE_FILINGS_FILE)
     if not schedule_filings:
-        print("No schedule filings found to process.")
+        logger.info("No schedule filings found to process.")
         return
 
     try:
@@ -403,9 +400,13 @@ def save_non_quarterly_filings(
             inplace=True,
         )
         combined_schedules_df.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
-        print(f"Latest schedule filings saved to {filepath}")
-    except Exception as e:
-        print(f"❌ An error occurred while saving latest schedule filings to '{filepath}': {e}")
+        logger.success("Latest schedule filings saved to %s", filepath)
+    except Exception:
+        logger.error(
+            "An error occurred while saving latest schedule filings to '%s'",
+            filepath,
+            exc_info=True,
+        )
 
 
 @contextmanager
@@ -485,30 +486,30 @@ def save_stock(cusip: str, ticker: str, company: str) -> None:
             ) as stocks_file:
                 writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
                 writer.writerow([cusip.strip(), ticker.strip(), company.strip()])
-    except Exception as e:
-        print(f"❌ An error occurred while writing to '{STOCKS_FILE}': {e}")
+    except Exception:
+        logger.error("An error occurred while writing to '%s'", STOCKS_FILE, exc_info=True)
 
 
-def save_stocks(stocks_df: pd.DataFrame, filepath=f"./{DB_FOLDER}/{STOCKS_FILE}") -> None:
+def save_stocks(stocks_df: pd.DataFrame, filepath: str | None = None) -> None:
     """
     Overwrites the master stocks CSV file with the given DataFrame.
-
-    Args:
-        stocks_df (pd.DataFrame): A DataFrame with CUSIP as the index and 'Ticker', 'Company' columns.
-        filepath (str, optional): The path to the stocks CSV file.
     """
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / STOCKS_FILE)
     try:
         stocks_df.to_csv(filepath, quoting=csv.QUOTE_ALL)
-    except Exception as e:
-        print(f"❌ An error occurred while writing to '{STOCKS_FILE}': {e}")
+    except Exception:
+        logger.error("An error occurred while writing to '%s'", STOCKS_FILE, exc_info=True)
 
 
-def clean_stocks(filepath=f"./database/{STOCKS_FILE}") -> None:
+def clean_stocks(filepath: str | None = None) -> None:
     """
     Identifies and removes orphan CUSIPs from the master stocks CSV file.
     An orphan CUSIP is one that exists in stocks.csv but not in any filing (quarterly or non-quarterly),
     and belongs to a ticker that has more than one CUSIP entry.
     """
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / STOCKS_FILE)
     try:
         stocks_df = load_stocks().reset_index()
         if stocks_df.empty:
@@ -547,9 +548,14 @@ def clean_stocks(filepath=f"./database/{STOCKS_FILE}") -> None:
         if final_orphans_df.empty:
             return
 
-        print(f"🧹 Found {len(final_orphans_df)} orphan CUSIPs to remove:")
+        logger.info("Found %d orphan CUSIPs to remove:", len(final_orphans_df), emoji="🧹")
         for _, row in final_orphans_df.iterrows():
-            print(f"  - {row['CUSIP']} ({row['Ticker']}): {row['Company']}")
+            logger.info(
+                "  - %s (%s): %s",
+                log_safe(row["CUSIP"]),
+                log_safe(row["Ticker"]),
+                log_safe(row["Company"]),
+            )
 
         orphan_cusips_to_remove = set(final_orphans_df["CUSIP"])
 
@@ -561,31 +567,32 @@ def clean_stocks(filepath=f"./database/{STOCKS_FILE}") -> None:
                 ~current_stocks_df["CUSIP"].isin(orphan_cusips_to_remove)
             ]
             cleaned_df.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
-            print(f"✅ Removed {len(orphan_cusips_to_remove)} orphan CUSIPs from {STOCKS_FILE}.")
+            logger.success(
+                "Removed %d orphan CUSIPs from %s.", len(orphan_cusips_to_remove), STOCKS_FILE
+            )
 
-    except Exception as e:
-        print(f"❌ An error occurred while removing orphan CUSIPs: {e}")
+    except Exception:
+        logger.error("An error occurred while removing orphan CUSIPs", exc_info=True)
 
 
-def sort_stocks(filepath=f"./database/{STOCKS_FILE}") -> None:
+def sort_stocks(filepath: str | None = None) -> None:
     """
     Reads, sorts, and overwrites the master stocks CSV file.
 
     This function ensures the stocks file is clean, sorted, and consistently formatted.
     It sorts entries primarily by 'Ticker' and secondarily by 'CUSIP'.
     Any duplicates are removed keeping 'CUSIP' as the primary key.
-
-    Args:
-        filepath (str, optional): The path to the stocks CSV file.
     """
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / STOCKS_FILE)
     try:
         with stocks_lock():
             df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna("")
             df.drop_duplicates(subset=["CUSIP"], keep="first", inplace=True)
             df.sort_values(by=["Ticker", "CUSIP"], inplace=True)
             df.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
-    except Exception as e:
-        print(f"❌ An error occurred while processing file '{filepath}': {e}")
+    except Exception:
+        logger.error("An error occurred while processing file '%s'", filepath, exc_info=True)
 
 
 def find_cusips_for_ticker(old_ticker: str) -> list[dict[str, str]]:
@@ -602,7 +609,7 @@ def find_cusips_for_ticker(old_ticker: str) -> list[dict[str, str]]:
     matching_stocks: list[dict[str, str]] = []
 
     if not stocks_path.exists():
-        print(f"❌ Error: {STOCKS_FILE} not found at {stocks_path}")
+        logger.error("%s not found at %s", STOCKS_FILE, stocks_path)
         return matching_stocks
 
     with stocks_path.open(encoding="utf-8", newline="") as f:
@@ -631,7 +638,7 @@ def update_stocks_csv(old_ticker: str, new_ticker: str, new_company: str | None 
     stocks_path = Path(DB_FOLDER) / STOCKS_FILE
 
     if not stocks_path.exists():
-        print(f"❌ Error: {STOCKS_FILE} not found")
+        logger.error("%s not found", STOCKS_FILE)
         return 0
 
     # Read all rows
@@ -701,10 +708,10 @@ def update_quarterly_filings(cusips: list[str], new_ticker: str) -> None:
                         writer.writeheader()
                         writer.writerows(rows)
 
-                    print(f"✅ Updated {quarter}/{csv_file.name}")
+                    logger.success("Updated %s/%s", quarter, csv_file.name)
 
-            except Exception as e:
-                print(f"❌ Error processing {csv_file}: {e}")
+            except Exception:
+                logger.error("processing %s", csv_file, exc_info=True)
 
 
 def update_non_quarterly_filings(cusips: list[str], new_ticker: str) -> int:
@@ -740,10 +747,10 @@ def update_non_quarterly_filings(cusips: list[str], new_ticker: str) -> int:
             writer.writerows(rows)
 
         if updated_count > 0:
-            print(f"✅ Updated {updated_count} row(s) in {LATEST_SCHEDULE_FILINGS_FILE}")
+            logger.success("Updated %d row(s) in %s", updated_count, LATEST_SCHEDULE_FILINGS_FILE)
 
-    except Exception as e:
-        print(f"❌ Error processing {LATEST_SCHEDULE_FILINGS_FILE}: {e}")
+    except Exception:
+        logger.error("processing %s", LATEST_SCHEDULE_FILINGS_FILE, exc_info=True)
         return 0
 
     return updated_count
@@ -766,7 +773,7 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str, new_company: str | None
     stocks_path = Path(DB_FOLDER) / STOCKS_FILE
 
     if not stocks_path.exists():
-        print(f"❌ Error: {STOCKS_FILE} not found")
+        logger.error("%s not found", STOCKS_FILE)
         return
 
     # Update stocks.csv
@@ -790,11 +797,15 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str, new_company: str | None
             rows.append(row)
 
     if not found:
-        print(f"❌ CUSIP '{cusip}' not found in {STOCKS_FILE}")
+        logger.error("CUSIP '%s' not found in %s", log_safe(cusip), STOCKS_FILE)
         return
 
-    print(
-        f"  - CUSIP: {cusip}, Company: {company}, Old Ticker: {old_ticker} -> New Ticker: {new_ticker}"
+    logger.info(
+        "  - CUSIP: %s, Company: %s, Old Ticker: %s -> New Ticker: %s",
+        log_safe(cusip),
+        log_safe(company),
+        log_safe(old_ticker),
+        log_safe(new_ticker),
     )
 
     # Write back stocks.csv
@@ -826,11 +837,11 @@ def update_ticker(old_ticker: str, new_ticker: str, new_company: str | None = No
     matching_stocks = find_cusips_for_ticker(old_ticker)
 
     if not matching_stocks:
-        print(f"❌ No stocks found with ticker '{old_ticker}'")
+        logger.error("No stocks found with ticker '%s'", log_safe(old_ticker))
         return
 
     for stock in matching_stocks:
-        print(f"  - CUSIP: {stock['CUSIP']}, Company: {stock['Company']}")
+        logger.info("  - CUSIP: %s, Company: %s", stock["CUSIP"], stock["Company"])
 
     cusips = [stock["CUSIP"] for stock in matching_stocks]
 
@@ -852,10 +863,10 @@ def delete_fund_from_database(fund_info: dict) -> None:
     """
     fund_name = fund_info.get("Fund")
     if not fund_name:
-        print("❌ Error: Fund name is missing.")
+        logger.error("Fund name is missing.")
         return
 
-    print(f"Deleting '{fund_name}' from database...")
+    logger.info("Deleting '%s' from database...", log_safe(fund_name))
 
     # 1. Delete quarterly filing files
     fund_filename = f"{fund_name.replace(' ', '_')}.csv"
@@ -864,9 +875,9 @@ def delete_fund_from_database(fund_info: dict) -> None:
             filepath = _safe_db_join(quarter, fund_filename)
             if filepath.exists():
                 filepath.unlink()
-                print(f"  - Deleted: {quarter}/{fund_filename}")
-        except Exception as e:
-            print(f"  - ❌ Error deleting record in {quarter}: {e}")
+                logger.info("  - Deleted: %s/%s", quarter, fund_filename)
+        except Exception:
+            logger.error("  - Error deleting record in %s", quarter, exc_info=True)
 
     # 2. Update CSV files
     hedge_funds_path = Path(DB_FOLDER) / HEDGE_FUNDS_FILE
@@ -880,7 +891,7 @@ def delete_fund_from_database(fund_info: dict) -> None:
         record_to_move = df_hedge_funds[df_hedge_funds["Fund"] == fund_name]
 
         if record_to_move.empty:
-            print(f"❌ Fund '{fund_name}' not found in {HEDGE_FUNDS_FILE}")
+            logger.error("Fund '%s' not found in %s", log_safe(fund_name), HEDGE_FUNDS_FILE)
         else:
             # Both files share the same schema (URL included), so the row moves as-is.
             if excluded_path.exists():
@@ -889,17 +900,17 @@ def delete_fund_from_database(fund_info: dict) -> None:
                 )
             else:
                 record_to_move.to_csv(excluded_path, index=False, quoting=csv.QUOTE_ALL)
-            print(f"  - Added '{fund_name}' to excluded_hedge_funds.csv")
+            logger.info("  - Added '%s' to excluded_hedge_funds.csv", log_safe(fund_name))
 
             # Remove from hedge_funds.csv
             df_hedge_funds = df_hedge_funds[df_hedge_funds["Fund"] != fund_name]
             df_hedge_funds.to_csv(hedge_funds_path, index=False, quoting=csv.QUOTE_ALL)
-            print(f"  - Removed '{fund_name}' from {HEDGE_FUNDS_FILE}")
+            logger.info("  - Removed '%s' from %s", log_safe(fund_name), HEDGE_FUNDS_FILE)
 
-    except Exception as e:
-        print(f"❌ Error updating CSV files: {e}")
+    except Exception:
+        logger.error("updating CSV files", exc_info=True)
 
-    print(f"✅ Deletion of '{fund_name}' completed.")
+    logger.success("Deletion of '%s' completed.", log_safe(fund_name))
 
 
 def load_excluded_hedge_funds() -> list:
@@ -912,8 +923,8 @@ def load_excluded_hedge_funds() -> list:
     try:
         df = pd.read_csv(filepath, dtype={"CIK": str, "CIKs": str}, keep_default_na=False)
         return df.to_dict("records")
-    except Exception as e:
-        print(f"❌ Error while reading '{filepath}': {e}")
+    except Exception:
+        logger.error("while reading '%s'", filepath, exc_info=True)
         return []
 
 
@@ -923,16 +934,16 @@ def restore_fund_to_database(fund_info: dict) -> None:
     """
     fund_name = fund_info.get("Fund")
     if not fund_name:
-        print("❌ Error: Fund name is missing.")
+        logger.error("Fund name is missing.")
         return
 
-    print(f"Restoring '{fund_name}' to active hedge funds...")
+    logger.info("Restoring '%s' to active hedge funds...", log_safe(fund_name))
 
     hedge_funds_path = Path(DB_FOLDER) / HEDGE_FUNDS_FILE
     excluded_path = Path(DB_FOLDER) / EXCLUDED_HEDGE_FUNDS_FILE
 
     if not excluded_path.exists():
-        print(f"❌ '{EXCLUDED_HEDGE_FUNDS_FILE}' not found.")
+        logger.error("'%s' not found.", EXCLUDED_HEDGE_FUNDS_FILE)
         return
 
     try:
@@ -940,7 +951,9 @@ def restore_fund_to_database(fund_info: dict) -> None:
         record_to_move = df_excluded[df_excluded["Fund"] == fund_name]
 
         if record_to_move.empty:
-            print(f"❌ Fund '{fund_name}' not found in {EXCLUDED_HEDGE_FUNDS_FILE}")
+            logger.error(
+                "Fund '%s' not found in %s", log_safe(fund_name), EXCLUDED_HEDGE_FUNDS_FILE
+            )
             return
 
         if hedge_funds_path.exists():
@@ -952,17 +965,19 @@ def restore_fund_to_database(fund_info: dict) -> None:
             by="Fund", key=lambda s: s.str.casefold(), kind="stable"
         ).reset_index(drop=True)
         df_hedge_funds.to_csv(hedge_funds_path, index=False, quoting=csv.QUOTE_ALL)
-        print(f"  - Added '{fund_name}' to {HEDGE_FUNDS_FILE} (alphabetical order)")
+        logger.info(
+            "  - Added '%s' to %s (alphabetical order)", log_safe(fund_name), HEDGE_FUNDS_FILE
+        )
 
         df_excluded = df_excluded[df_excluded["Fund"] != fund_name]
         df_excluded.to_csv(excluded_path, index=False, quoting=csv.QUOTE_ALL)
-        print(f"  - Removed '{fund_name}' from {EXCLUDED_HEDGE_FUNDS_FILE}")
+        logger.info("  - Removed '%s' from %s", log_safe(fund_name), EXCLUDED_HEDGE_FUNDS_FILE)
 
-    except Exception as e:
-        print(f"❌ Error updating CSV files: {e}")
+    except Exception:
+        logger.error("updating CSV files", exc_info=True)
         return
 
-    print(f"✅ Restoration of '{fund_name}' completed.")
+    logger.success("Restoration of '%s' completed.", log_safe(fund_name))
 
 
 def get_funds_missing_quarters() -> dict[str, list[str]]:

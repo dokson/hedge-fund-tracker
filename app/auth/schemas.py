@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi_users import schemas
+from fastapi_users import schemas  # pyright: ignore[reportMissingImports]
 from pydantic import ConfigDict, Field
 
 from app.db.models import UserTier

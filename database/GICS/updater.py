@@ -1,9 +1,10 @@
-from bs4 import BeautifulSoup
 import csv
-import os
-import pandas as pd
 import re
+from pathlib import Path
+
+import pandas as pd
 import requests
+from bs4 import BeautifulSoup
 
 GICS_WIKIPEDIA_URL = "https://en.wikipedia.org/wiki/Global_Industry_Classification_Standard"
 
@@ -40,7 +41,7 @@ def scrape_gics_from_wikipedia():
     # Format: {column_index: [remaining_rows, value]}
     active_rowspans: dict[int, tuple[int, str]] = {}
 
-    for row_idx, tr in enumerate(rows):
+    for tr in rows:
         tds = tr.find_all(['td', 'th'])
         row_data: list[str | None] = [None] * 8 # 8 columns in the GICS table
 
@@ -97,8 +98,7 @@ def main():
 
     if df is not None and not df.empty:
         # Determine the base path (relative to this script's location)
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        output_path = os.path.join(script_dir, 'hierarchy.csv')
+        output_path = Path(__file__).resolve().parent / "hierarchy.csv"
 
         df.to_csv(output_path, index=False, quoting=csv.QUOTE_ALL)
         print(f"✅ GICS hierarchy saved to {output_path} ({len(df)} sub-industries)")

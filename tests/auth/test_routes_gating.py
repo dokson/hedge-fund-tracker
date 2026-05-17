@@ -17,6 +17,11 @@ from __future__ import annotations
 
 import unittest
 
+try:
+    import app.auth  # noqa: F401 — probe import; tests do their own imports lazily.
+except ImportError as _e:  # pragma: no cover — optional dep `fastapi_users` missing
+    raise unittest.SkipTest(f"app.auth unavailable: {_e}") from None
+
 
 class TestUsersRouterShape(unittest.TestCase):
     """

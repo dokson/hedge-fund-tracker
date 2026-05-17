@@ -4,7 +4,10 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 from tenacity import RetryError
 
-from app.ai.agent import AnalystAgent
+try:
+    from app.ai.agent import AnalystAgent
+except ImportError as _e:  # pragma: no cover — optional dep `toon` missing
+    raise unittest.SkipTest(f"app.ai.agent unavailable: {_e}") from None
 
 
 def _make_stock_df(**kwargs):
@@ -101,21 +104,18 @@ class TestCalculatePromiseScores(unittest.TestCase):
     def setUp(self):
         """
         Patches quarter_analysis and get_quarter_date for AnalystAgent instantiation.
-        """
-        self.q_analysis_patcher = patch(
-            "app.ai.agent.quarter_analysis", return_value=pd.DataFrame()
-        )
-        self.date_patcher = patch("app.ai.agent.get_quarter_date", return_value="2023-12-31")
-        self.q_analysis_patcher.start()
-        self.date_patcher.start()
-        self.agent = AnalystAgent("2023Q4", ai_client=MagicMock())
 
-    def tearDown(self):
+        addCleanup runs even if setUp raises mid-way, so no patcher can leak
+        into subsequent tests if a future patcher addition fails.
         """
-        Stops all active patchers started in setUp.
-        """
-        self.q_analysis_patcher.stop()
-        self.date_patcher.stop()
+        q_analysis_patcher = patch("app.ai.agent.quarter_analysis", return_value=pd.DataFrame())
+        date_patcher = patch("app.ai.agent.get_quarter_date", return_value="2023-12-31")
+        self.addCleanup(q_analysis_patcher.stop)
+        self.addCleanup(date_patcher.stop)
+        q_analysis_patcher.start()
+        date_patcher.start()
+        self.mock_ai_client = MagicMock()
+        self.agent = AnalystAgent("2023Q4", ai_client=self.mock_ai_client)
 
     def test_adds_promise_score_column(self):
         """
@@ -177,23 +177,15 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         Patches time.sleep and initializes AnalystAgent with mocked dependencies.
         """
         # Patch time.sleep to speed up tenacity retries (wait_fixed(1) would add ~6s per test)
-        self.sleep_patcher = patch("time.sleep")
-        self.sleep_patcher.start()
-        self.q_analysis_patcher = patch(
-            "app.ai.agent.quarter_analysis", return_value=pd.DataFrame()
-        )
-        self.date_patcher = patch("app.ai.agent.get_quarter_date", return_value="2023-12-31")
-        self.q_analysis_patcher.start()
-        self.date_patcher.start()
-        self.agent = AnalystAgent("2023Q4", ai_client=MagicMock())
-
-    def tearDown(self):
-        """
-        Stops all active patchers started in setUp.
-        """
-        self.sleep_patcher.stop()
-        self.q_analysis_patcher.stop()
-        self.date_patcher.stop()
+        for patcher in (
+            patch("time.sleep"),
+            patch("app.ai.agent.quarter_analysis", return_value=pd.DataFrame()),
+            patch("app.ai.agent.get_quarter_date", return_value="2023-12-31"),
+        ):
+            self.addCleanup(patcher.stop)
+            patcher.start()
+        self.mock_ai_client = MagicMock()
+        self.agent = AnalystAgent("2023Q4", ai_client=self.mock_ai_client)
 
     @patch("app.ai.agent.PromiseScoreValidator.validate_metrics")
     @patch("app.ai.agent.PromiseScoreValidator.validate_weights")
@@ -206,7 +198,7 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         Returns the parsed weights dict when the AI response is valid.
         """
         valid_weights = {"Metric1": 0.5, "Metric2": 0.5}
-        self.agent.ai_client.generate_content.return_value = "mock_response"
+        self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = valid_weights
         mock_val_weights.return_value = True
         mock_val_metrics.return_value = None
@@ -224,7 +216,7 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         """
         Raises InvalidAIResponseError (triggering tenacity retry) when weights don't sum to 1.0.
         """
-        self.agent.ai_client.generate_content.return_value = "mock_response"
+        self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = {"Metric1": 0.9}
         mock_val_weights.return_value = False
 
@@ -241,7 +233,7 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         """
         Raises InvalidAIResponseError when any metric key is not in the recognized set.
         """
-        self.agent.ai_client.generate_content.return_value = "mock_response"
+        self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = {"UnknownMetric": 1.0}
         mock_val_weights.return_value = True
         mock_val_metrics.return_value = ["UnknownMetric"]
@@ -260,7 +252,7 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         String values that look like numbers (e.g. '0.5') are coerced to float so the
         downstream sum() and arithmetic don't crash with 'unsupported operand types'.
         """
-        self.agent.ai_client.generate_content.return_value = "mock_response"
+        self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = {"Metric1": "0.5", "Metric2": 0.5}
         mock_val_weights.return_value = True
         mock_val_metrics.return_value = None
@@ -282,7 +274,7 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         such as '0.30Max_Portfolio_Pct') triggers InvalidAIResponseError so tenacity
         retries instead of letting a TypeError propagate.
         """
-        self.agent.ai_client.generate_content.return_value = "mock_response"
+        self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = {"Metric1": "0.30Max_Portfolio_Pct"}
 
         with self.assertRaises(RetryError):
@@ -297,23 +289,15 @@ class TestGetAIScores(unittest.TestCase):
         Patches time.sleep and initializes AnalystAgent with mocked dependencies.
         """
         # Patch time.sleep to speed up tenacity retries (wait_fixed(1) would add ~4s per test)
-        self.sleep_patcher = patch("time.sleep")
-        self.sleep_patcher.start()
-        self.q_analysis_patcher = patch(
-            "app.ai.agent.quarter_analysis", return_value=pd.DataFrame()
-        )
-        self.date_patcher = patch("app.ai.agent.get_quarter_date", return_value="2023-12-31")
-        self.q_analysis_patcher.start()
-        self.date_patcher.start()
-        self.agent = AnalystAgent("2023Q4", ai_client=MagicMock())
-
-    def tearDown(self):
-        """
-        Stops all active patchers started in setUp.
-        """
-        self.sleep_patcher.stop()
-        self.q_analysis_patcher.stop()
-        self.date_patcher.stop()
+        for patcher in (
+            patch("time.sleep"),
+            patch("app.ai.agent.quarter_analysis", return_value=pd.DataFrame()),
+            patch("app.ai.agent.get_quarter_date", return_value="2023-12-31"),
+        ):
+            self.addCleanup(patcher.stop)
+            patcher.start()
+        self.mock_ai_client = MagicMock()
+        self.agent = AnalystAgent("2023Q4", ai_client=self.mock_ai_client)
 
     @patch("app.ai.agent.encode")
     @patch("app.ai.agent.ResponseParser.extract_and_decode_toon")
@@ -325,7 +309,7 @@ class TestGetAIScores(unittest.TestCase):
         valid_scores = {
             "AAPL": {"momentum_score": 0.8, "low_volatility_score": 0.6, "risk_score": 0.4}
         }
-        self.agent.ai_client.generate_content.return_value = "mock_response"
+        self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = valid_scores
 
         result = self.agent._get_ai_scores([{"ticker": "AAPL", "company": "Apple"}])
@@ -341,7 +325,7 @@ class TestGetAIScores(unittest.TestCase):
         """
         Raises InvalidAIResponseError when the parsed AI response is empty.
         """
-        self.agent.ai_client.generate_content.return_value = "mock_response"
+        self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = {}
 
         with self.assertRaises(RetryError):
@@ -359,7 +343,7 @@ class TestGetAIScores(unittest.TestCase):
         incomplete_scores = {
             "AAPL": {"momentum_score": 0.8}
         }  # missing low_volatility_score, risk_score
-        self.agent.ai_client.generate_content.return_value = "mock_response"
+        self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = incomplete_scores
 
         with self.assertRaises(RetryError):
@@ -372,8 +356,6 @@ class TestRunStockDueDiligence(unittest.TestCase):
         Patches time.sleep and initializes AnalystAgent with mocked dependencies.
         """
         # Patch time.sleep to speed up tenacity retries (wait_fixed(1) would add ~4s per test)
-        self.sleep_patcher = patch("time.sleep")
-        self.sleep_patcher.start()
         analysis_df = pd.DataFrame(
             {
                 "Ticker": ["AAPL"],
@@ -382,19 +364,15 @@ class TestRunStockDueDiligence(unittest.TestCase):
                 "Portfolio_Concentration_Avg": [1.2],
             }
         )
-        self.q_analysis_patcher = patch("app.ai.agent.quarter_analysis", return_value=analysis_df)
-        self.date_patcher = patch("app.ai.agent.get_quarter_date", return_value="2023-12-31")
-        self.q_analysis_patcher.start()
-        self.date_patcher.start()
-        self.agent = AnalystAgent("2023Q4", ai_client=MagicMock())
-
-    def tearDown(self):
-        """
-        Stops all active patchers started in setUp.
-        """
-        self.sleep_patcher.stop()
-        self.q_analysis_patcher.stop()
-        self.date_patcher.stop()
+        for patcher in (
+            patch("time.sleep"),
+            patch("app.ai.agent.quarter_analysis", return_value=analysis_df),
+            patch("app.ai.agent.get_quarter_date", return_value="2023-12-31"),
+        ):
+            self.addCleanup(patcher.stop)
+            patcher.start()
+        self.mock_ai_client = MagicMock()
+        self.agent = AnalystAgent("2023Q4", ai_client=self.mock_ai_client)
 
     @patch("app.ai.agent.stock_analysis")
     def test_returns_empty_dict_when_no_institutional_data(self, mock_stock_analysis):
@@ -437,7 +415,7 @@ class TestRunStockDueDiligence(unittest.TestCase):
         mock_stock_analysis.return_value = _make_stock_df()
         mock_price.return_value = 150.0
         mock_avg_price.return_value = 145.0
-        self.agent.ai_client.generate_content.return_value = "mock_response"
+        self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = {"thesis": "Strong buy"}
 
         result = self.agent.run_stock_due_diligence("AAPL")
@@ -460,7 +438,7 @@ class TestRunStockDueDiligence(unittest.TestCase):
         mock_stock_analysis.return_value = _make_stock_df()
         mock_price.return_value = 150.0
         mock_avg_price.return_value = None  # filing date price not available
-        self.agent.ai_client.generate_content.return_value = "mock_response"
+        self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = {"thesis": "Buy"}
 
         result = self.agent.run_stock_due_diligence("AAPL")
@@ -482,7 +460,7 @@ class TestRunStockDueDiligence(unittest.TestCase):
         mock_stock_analysis.return_value = _make_stock_df()
         mock_price.return_value = 150.0
         mock_avg_price.return_value = 145.0
-        self.agent.ai_client.generate_content.return_value = "mock_response"
+        self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = {}
 
         with self.assertRaises(RetryError):

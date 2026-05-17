@@ -1,15 +1,37 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from tabulate import tabulate
+
 from app.analysis.non_quarterly import get_non_quarterly_filings_dataframe
 from app.analysis.quarterly_report import generate_comparison
-from app.scraper.sec_scraper import fetch_latest_two_13f_filings, fetch_non_quarterly_after_date, get_latest_13f_filing_date
+from app.scraper.sec_scraper import (
+    fetch_latest_two_13f_filings,
+    fetch_non_quarterly_after_date,
+    get_latest_13f_filing_date,
+)
 from app.scraper.xml_processor import xml_to_dataframe_13f
-from app.utils.console import horizontal_rule, print_centered, print_centered_table, select_excluded_fund, select_fund, select_period
-from app.utils.database import clean_stocks, find_cusips_for_ticker, get_funds_missing_quarters, delete_fund_from_database, load_hedge_funds, restore_fund_to_database, save_comparison, save_non_quarterly_filings, sort_stocks, update_ticker, update_ticker_for_cusip
+from app.utils.console import (
+    horizontal_rule,
+    print_centered,
+    print_centered_table,
+    select_excluded_fund,
+    select_fund,
+    select_period,
+)
+from app.utils.database import (
+    clean_stocks,
+    delete_fund_from_database,
+    get_funds_missing_quarters,
+    load_hedge_funds,
+    restore_fund_to_database,
+    save_comparison,
+    save_non_quarterly_filings,
+    sort_stocks,
+    update_ticker,
+    update_ticker_for_cusip,
+)
 from app.utils.readme import update_readme
 from app.utils.strings import get_previous_quarter_end_date
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-from tabulate import tabulate
-import os
-
 
 APP_NAME = "HEDGE FUND TRACKER - DATABASE UPDATER"
 MIN_REFERENCE_DATE = "2025-03-31"
@@ -89,6 +111,8 @@ def process_fund(fund_info, offset=0, skip_old=False):
 
             offset += 1
             filings = fetch_latest_two_13f_filings(cik, offset)
+            if not filings:
+                break
             previous_filing = filings[1] if len(filings) == 2 else None
 
         previous_filing = found_previous or fallback_previous
@@ -112,19 +136,14 @@ def run_all_funds_report():
     print(f"Starting updating reports for all {total_funds} funds...")
     print("This will generate last vs previous quarter comparisons.")
 
-    # Use 1 worker on GitHub Actions to stay within rate limits and have cleaner logs
-    max_workers = 1 if os.getenv('GITHUB_ACTIONS') == 'true' else 5
-    if max_workers == 1:
-        print("Running sequentially (GitHub Actions detected).")
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {executor.submit(process_fund, fund, skip_old=True): fund for fund in hedge_funds}
 
         for i, future in enumerate(as_completed(futures)):
             fund = futures[future]
             print_centered(f"Processed {i + 1:2}/{total_funds}: {fund['Fund']}", "-")
 
-    print_centered(f"All funds processed", "-")
+    print_centered("All funds processed", "-")
 
 
 def process_fund_nq(fund):
@@ -183,12 +202,9 @@ def run_fetch_nq_filings():
     completed_count = 0
     error_occurred = False
 
-    # Use 1 worker on GitHub Actions to stay within rate limits and have cleaner logs
-    max_workers = 1 if os.getenv('GITHUB_ACTIONS') == 'true' else 5
-    if max_workers == 1:
-        print("Running sequentially (GitHub Actions detected).")
-
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    # I/O-bound: threads share the SEC connection pool and rate limiter, so a
+    # single process with a thread pool is enough to stay within EDGAR's budget.
+    with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {executor.submit(process_fund_nq, fund): fund for fund in hedge_funds}
 
         for future in as_completed(futures):
@@ -199,20 +215,7 @@ def run_fetch_nq_filings():
                 if results:
                     nq_filings.extend(results)
                 print_centered(f"Processed {completed_count:2}/{total_funds}: {fund_name}", "-")
-
             except Exception as e:
-                if isinstance(e, TypeError) and "pickle" in str(e):
-                    print_centered(f"❌ Pickle Error for {fund['Fund']}: retrying once in main thread...", "-")
-                    try:
-                        fund_name, results = process_fund_nq(fund)
-                        if results:
-                            nq_filings.extend(results)
-                        print_centered(f"Successfully processed {fund_name} on retry", "-")
-                        continue
-                    except Exception as retry_e:
-                        print_centered(f"❌ Retry failed for {fund['Fund']}: {retry_e}", "-")
-                        e = retry_e
-
                 print_centered(f"❌ Unrecoverable error processing {fund['Fund']}: {e}", "-")
                 error_occurred = True
                 break  # Exit the loop on unrecoverable error

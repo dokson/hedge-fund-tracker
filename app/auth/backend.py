@@ -16,15 +16,17 @@ import uuid
 from collections.abc import AsyncGenerator
 
 from fastapi import Depends
-from fastapi_users.authentication import (
+from fastapi_users.authentication import (  # pyright: ignore[reportMissingImports]
     AuthenticationBackend,
     CookieTransport,
 )
-from fastapi_users.authentication.strategy.db import (
+from fastapi_users.authentication.strategy.db import (  # pyright: ignore[reportMissingImports]
     AccessTokenDatabase,
     DatabaseStrategy,
 )
-from fastapi_users_db_sqlalchemy.access_token import SQLAlchemyAccessTokenDatabase
+from fastapi_users_db_sqlalchemy.access_token import (  # pyright: ignore[reportMissingImports]
+    SQLAlchemyAccessTokenDatabase,
+)
 
 from app.db.models import AccessToken, User
 from app.db.session import AsyncSessionLocal
@@ -71,5 +73,5 @@ def get_database_strategy(
 auth_backend = AuthenticationBackend(
     name="cookie-db",
     transport=cookie_transport,
-    get_strategy=get_database_strategy,
+    get_strategy=get_database_strategy,  # pyright: ignore[reportArgumentType]
 )  # type: ignore[type-var]

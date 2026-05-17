@@ -1,0 +1,34 @@
+{
+  "include": [
+    "app",
+    "database",
+    "tests"
+  ],
+  "exclude": [
+    "**/__llmcache__",
+    "**/__reports__",
+    "**/.venv",
+    "**/build",
+    "**/dist",
+    "**/node_modules",
+    "app/frontend"
+  ],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": "error",
+  "reportPossiblyUnboundVariable": "error",
+  "reportOptionalSubscript": "error",
+  "reportOptionalMemberAccess": "error",
+  "reportUndefinedVariable": "error",
+  "executionEnvironments": [
+    {
+      "root": "tests",
+      "extraPaths": [
+        "."
+      ],
+      "reportOptionalSubscript": "none",
+      "reportOptionalMemberAccess": "none"
+    }
+  ]
+}

@@ -47,15 +47,17 @@ class TestOpenAIClientInit(unittest.TestCase):
         )
 
     @patch("app.ai.clients.base_openai_client.OpenAI")
-    def test_prints_warning_when_api_key_not_set(self, mock_openai):
+    def test_logs_warning_when_api_key_not_set(self, mock_openai):
         """
-        Prints a warning when the required API key env var is not set.
+        Emits a warning log when the required API key env var is not set.
         """
-        with patch.dict("os.environ", {}, clear=True), patch("builtins.print") as mock_print:
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            self.assertLogs("app.ai.clients.base_openai_client", level="WARNING") as cm,
+        ):
             ConcreteOpenAIClient()
 
-        printed_messages = " ".join(str(call) for call in mock_print.call_args_list)
-        self.assertIn("TEST_API_KEY", printed_messages)
+        self.assertIn("TEST_API_KEY", "\n".join(cm.output))
 
 
 class TestOpenAIClientGetModelName(unittest.TestCase):

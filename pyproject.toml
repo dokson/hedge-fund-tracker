@@ -24,12 +24,14 @@ select = [
     "RET", # flake8-return
     "PTH", # flake8-use-pathlib
     "N",   # pep8-naming
+    "G",   # flake8-logging-format — no f-string / .format in logger calls; forces lazy %-formatting
 ]
 ignore = [
     "E501",  # line-too-long (formatter handles it)
     "B008",  # do not perform function call in argument defaults (FastAPI Depends pattern)
     "N803",  # argument name should be lowercase (DataFrame columns often PascalCase)
     "N806",  # variable in function should be lowercase (idem)
+    "G201",  # use .exception() instead of .error(..., exc_info=True) — stylistic, not security
 ]
 
 [tool.ruff.lint.per-file-ignores]

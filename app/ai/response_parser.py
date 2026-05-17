@@ -2,6 +2,10 @@ import re
 
 from toon import decode
 
+from app.utils.logger import get_logger, log_safe
+
+logger = get_logger(__name__)
+
 
 class ResponseParser:
     """
@@ -49,13 +53,18 @@ class ResponseParser:
             if toon_content:
                 # Sanitize the content to help toon library (strip comments, collapse lists)
                 clean_content = ResponseParser._sanitize_toon(toon_content)
-                return decode(clean_content)
+                decoded = decode(clean_content)
+                return decoded if isinstance(decoded, dict) else {}
 
-        except Exception as e:
-            print(f"❌ ERROR: Invalid TOON structure: {e}")
+        except Exception:
+            logger.error("Invalid TOON structure", exc_info=True)
             return {}
 
-        print(f"🚨 Warning: Could not find TOON in response: {response_text[:200]}...")
+        logger.error(
+            "Could not find TOON in response: %s...",
+            log_safe(response_text[:200], max_len=200),
+            exc_info=True,
+        )
         return {}
 
     @staticmethod

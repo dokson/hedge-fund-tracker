@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi_users import FastAPIUsers
+from fastapi_users import FastAPIUsers  # pyright: ignore[reportMissingImports]
 
 from app.auth.backend import auth_backend
 from app.auth.manager import get_user_manager

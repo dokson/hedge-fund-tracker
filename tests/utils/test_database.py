@@ -1,6 +1,7 @@
 import contextlib
 import io
 import shutil
+import tempfile
 import threading
 import time
 import unittest
@@ -42,10 +43,12 @@ class TestDatabase(unittest.TestCase):
         """
         Set up a temporary database directory and files for testing.
         This runs before each test.
+
+        Uses tempfile.mkdtemp so parallel test runs don't collide on a shared
+        path and so a crashed test doesn't leave residue inside the repo.
         """
-        self.test_db_folder = "test_db"
+        self.test_db_folder = tempfile.mkdtemp(prefix="hft_test_db_")
         test_db_path = Path(self.test_db_folder)
-        test_db_path.mkdir(parents=True, exist_ok=True)
 
         # Create dummy quarter directories and files
         (test_db_path / "2025Q1").mkdir(parents=True, exist_ok=True)
@@ -99,31 +102,45 @@ class TestDatabase(unittest.TestCase):
         """
         Returns the count of CSV files in a given quarter folder; 0 for non-existent quarters.
         """
-        self.assertEqual(count_funds_in_quarter("2025Q1"), 2)
-        self.assertEqual(count_funds_in_quarter("2023Q1"), 0)
+        cases = [("2025Q1", 2), ("2023Q1", 0)]
+        for quarter, expected in cases:
+            with self.subTest(quarter=quarter):
+                self.assertEqual(count_funds_in_quarter(quarter), expected)
 
     def test_get_last_quarter_for_fund(self):
         """
         Returns the most recent quarter with data for a fund; None if no data found.
         """
-        self.assertEqual(get_last_quarter_for_fund("Fund A"), "2025Q1")
-        self.assertIsNone(get_last_quarter_for_fund("Fund C"))
+        cases = [("Fund A", "2025Q1"), ("Fund C", None)]
+        for fund, expected in cases:
+            with self.subTest(fund=fund):
+                self.assertEqual(get_last_quarter_for_fund(fund), expected)
 
     def test_get_quarters_for_fund(self):
         """
         Returns all quarters where a fund has data, in descending order.
         """
-        self.assertEqual(get_quarters_for_fund("Fund A"), ["2025Q1", "2024Q4"])
-        self.assertEqual(get_quarters_for_fund("Fund B"), ["2025Q1"])
-        self.assertEqual(get_quarters_for_fund("Fund C"), [])
+        cases = [
+            ("Fund A", ["2025Q1", "2024Q4"]),
+            ("Fund B", ["2025Q1"]),
+            ("Fund C", []),
+        ]
+        for fund, expected in cases:
+            with self.subTest(fund=fund):
+                self.assertEqual(get_quarters_for_fund(fund), expected)
 
     def test_get_most_recent_quarter(self):
         """
         Returns the most recent quarter containing a holding for the given ticker; None if unknown.
         """
-        self.assertEqual(get_most_recent_quarter("TICKA"), "2025Q1")
-        self.assertEqual(get_most_recent_quarter("TICKB"), "2025Q1")
-        self.assertIsNone(get_most_recent_quarter("UNKNOWN"))
+        cases = [
+            ("TICKA", "2025Q1"),
+            ("TICKB", "2025Q1"),
+            ("UNKNOWN", None),
+        ]
+        for ticker, expected in cases:
+            with self.subTest(ticker=ticker):
+                self.assertEqual(get_most_recent_quarter(ticker), expected)
 
     def test_load_fund_holdings(self):
         """
@@ -138,7 +155,7 @@ class TestDatabase(unittest.TestCase):
         """
         Parses hedge_funds.csv into a list of fund dicts, including the URL column.
         """
-        funds = load_hedge_funds(f"./{self.test_db_folder}/{HEDGE_FUNDS_FILE}")
+        funds = load_hedge_funds()
         self.assertEqual(len(funds), 1)
         self.assertEqual(funds[0]["Fund"], "Fund A")
         self.assertEqual(funds[0]["URL"], "https://fund-a.example.com/")
@@ -147,7 +164,7 @@ class TestDatabase(unittest.TestCase):
         """
         Parses models.csv into a list of model dicts.
         """
-        models = load_models(f"./{self.test_db_folder}/{MODELS_FILE}")
+        models = load_models()
         self.assertEqual(len(models), 1)
         self.assertEqual(models[0]["ID"], "model-1")
 
@@ -155,7 +172,7 @@ class TestDatabase(unittest.TestCase):
         """
         Loads non-quarterly filings (13D/G, Form 4) from the CSV file.
         """
-        df = load_non_quarterly_data(f"./{self.test_db_folder}/{LATEST_SCHEDULE_FILINGS_FILE}")
+        df = load_non_quarterly_data()
         self.assertEqual(len(df), 1)
         self.assertEqual(df.iloc[0]["Ticker"], "TICKA")
 
@@ -163,7 +180,7 @@ class TestDatabase(unittest.TestCase):
         """
         Loads the GICS classification hierarchy from CSV.
         """
-        df = load_gics_hierarchy(f"./{self.test_db_folder}/{GICS_HIERARCHY_FILE}")
+        df = load_gics_hierarchy()
         self.assertEqual(len(df), 1)
         self.assertEqual(df.iloc[0]["Sector"], "Tech")
 
@@ -172,8 +189,8 @@ class TestDatabase(unittest.TestCase):
         Saves a new stock to the database and verifies it appears after sort.
         """
         save_stock("789", "TICKC", "Company C")
-        sort_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
-        df = load_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        sort_stocks(str(Path(self.test_db_folder) / STOCKS_FILE))
+        df = load_stocks()
         self.assertIn("789", df.index)
         self.assertEqual(df.loc["789", "Ticker"], "TICKC")
 
@@ -182,8 +199,8 @@ class TestDatabase(unittest.TestCase):
         Strips leading/trailing whitespace from all fields when saving a stock.
         """
         save_stock(" 999 ", " TRIM ", " Trimmed Company ")
-        sort_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
-        df = load_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        sort_stocks(str(Path(self.test_db_folder) / STOCKS_FILE))
+        df = load_stocks()
         self.assertIn("999", df.index)
         self.assertEqual(df.loc["999", "Ticker"], "TRIM")
         self.assertEqual(df.loc["999", "Company"], "Trimmed Company")
@@ -202,13 +219,13 @@ class TestDatabase(unittest.TestCase):
         """
         update_ticker("TICKA", "TICKNEW")
 
-        df_stocks = load_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        df_stocks = load_stocks()
         self.assertEqual(df_stocks.loc["123", "Ticker"], "TICKNEW")
 
         df_q = load_fund_holdings("Fund A", "2025Q1")
         self.assertEqual(df_q.iloc[0]["Ticker"], "TICKNEW")
 
-        df_nq = load_non_quarterly_data(f"./{self.test_db_folder}/{LATEST_SCHEDULE_FILINGS_FILE}")
+        df_nq = load_non_quarterly_data()
         self.assertEqual(df_nq.iloc[0]["Ticker"], "TICKNEW")
 
     def test_update_ticker_with_new_company_name(self):
@@ -217,7 +234,7 @@ class TestDatabase(unittest.TestCase):
         """
         update_ticker("TICKA", "TICKNEW", new_company="New Company Name")
 
-        df_stocks = load_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        df_stocks = load_stocks()
         self.assertEqual(df_stocks.loc["123", "Ticker"], "TICKNEW")
         self.assertEqual(df_stocks.loc["123", "Company"], "New Company Name")
 
@@ -227,7 +244,7 @@ class TestDatabase(unittest.TestCase):
         """
         update_ticker("TICKA", "TICKNEW")
 
-        df_stocks = load_stocks(f"./{self.test_db_folder}/{STOCKS_FILE}")
+        df_stocks = load_stocks()
         self.assertEqual(df_stocks.loc["123", "Ticker"], "TICKNEW")
         self.assertEqual(df_stocks.loc["123", "Company"], "Company A")
 
@@ -305,7 +322,7 @@ class TestDatabase(unittest.TestCase):
         SORTER_INTERVAL_S = 0.02
         RUN_DURATION_S = 1
 
-        stocks_path = f"./{self.test_db_folder}/{STOCKS_FILE}"
+        stocks_path = str(Path(self.test_db_folder) / STOCKS_FILE)
         stop_event = threading.Event()
 
         def saver():
@@ -405,17 +422,8 @@ class TestDatabase(unittest.TestCase):
     def tearDown(self):
         """
         Clean up the temporary database directory.
-        This runs after each test.
         """
-        # Retry logic to handle Windows file locking issues
-        for _ in range(5):
-            try:
-                shutil.rmtree(self.test_db_folder)
-                break
-            except PermissionError:
-                time.sleep(0.1)
-        else:
-            shutil.rmtree(self.test_db_folder)
+        shutil.rmtree(self.test_db_folder, ignore_errors=True)
         self.patcher.stop()
 
 

@@ -5,8 +5,11 @@ from app.stocks.price_fetcher import PriceFetcher
 from app.stocks.ticker_resolver import TickerResolver
 from app.utils.database import load_non_quarterly_data
 from app.utils.github import open_issue
+from app.utils.logger import get_logger, log_safe
 from app.utils.pd import coalesce, format_value_series, get_numeric_series
 from app.utils.strings import format_percentage
+
+logger = get_logger(__name__)
 
 
 def get_non_quarterly_filings_dataframe(
@@ -29,8 +32,12 @@ def get_non_quarterly_filings_dataframe(
 
         filing_df = filing_df[filing_df["CIK"] != cik]
         if filing_df.empty:
-            print(
-                f"{filing['type']} filing ({filing['date']}) is referring to {fund_denomination} ({cik}) shares itself: skipping because it is not relevant."
+            logger.info(
+                "%s filing (%s) is referring to %s (%s) shares itself: skipping because it is not relevant.",
+                filing["type"],
+                filing["date"],
+                log_safe(fund_denomination),
+                log_safe(cik),
             )
             continue
 
@@ -83,7 +90,7 @@ def get_non_quarterly_filings_dataframe(
             # If shares are 0, value is 0 regardless of price availability
             if row["Shares"] == 0:
                 non_quarterly_filings_df.at[index, "Value"] = 0
-            print(f"🚨 Could not find price for {ticker} on {date}.")
+            logger.warning("Could not find price for %s on %s.", log_safe(ticker), date)
 
     # Numerics to String format
     non_quarterly_filings_df["Value"] = format_value_series(non_quarterly_filings_df["Value"])

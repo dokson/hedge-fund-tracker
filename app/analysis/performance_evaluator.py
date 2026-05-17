@@ -4,7 +4,10 @@ import pandas as pd
 
 from app.stocks.price_fetcher import PriceFetcher
 from app.utils.database import load_fund_holdings
+from app.utils.logger import get_logger, log_safe
 from app.utils.strings import get_previous_quarter, get_quarter_date
+
+logger = get_logger(__name__)
 
 EVAL_TOP_N_POSITIONS = 100
 
@@ -95,7 +98,11 @@ class PerformanceEvaluator:
             # If the position was closed, it won't appear in the current report.
             # We fetch the approximate end-of-quarter price to calculate the return.
             if pd.isna(price_end) or price_end == 0:
-                print(f"Fetching price for {row['Ticker']} on {end_date} (closed position)...")
+                logger.progress(
+                    "Fetching price for %s on %s (closed position)...",
+                    log_safe(row["Ticker"]),
+                    end_date,
+                )
                 price_end = PriceFetcher.get_avg_price(row["Ticker"], end_date)
 
                 # Fallback to no gain (return 0.0) if price fetching fails.

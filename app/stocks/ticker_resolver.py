@@ -5,6 +5,9 @@ from app.stocks.libraries import FinanceDatabase, FinanceLibrary, Finnhub, Tradi
 from app.stocks.libraries.nasdaq import Nasdaq
 from app.utils.database import load_stocks, save_stock, save_stocks
 from app.utils.github import open_issue
+from app.utils.logger import get_logger, log_safe
+
+logger = get_logger(__name__)
 
 
 class TickerResolver:
@@ -37,19 +40,22 @@ class TickerResolver:
         for index, row in df.iterrows():
             cusip = row["CUSIP"]
             company = row["Company"]
+            ticker = None
 
             # If CUSIP is not in our local database, try to resolve it
             if cusip not in stocks.index:
-                ticker = None
                 # Strategy: Try each library to find the ticker
                 for library in libraries:
                     try:
                         ticker = library.get_ticker(cusip, company_name=company)
                         if ticker:
                             break
-                    except Exception as e:
-                        print(
-                            f"⚠️ {library.__name__}: Failed to resolve ticker for CUSIP {cusip}: {e}"
+                    except Exception:
+                        logger.warning(
+                            "%s: Failed to resolve ticker for CUSIP %s",
+                            library.__name__,
+                            log_safe(cusip),
+                            exc_info=True,
                         )
                         continue
 
@@ -133,7 +139,14 @@ class TickerResolver:
                         "company": company_name,
                     }
                 )
-                print(f"🔄 {old_symbol} → {new_symbol} (CUSIP {cusip}) — {company_name}")
+                logger.info(
+                    "%s → %s (CUSIP %s) — %s",
+                    log_safe(old_symbol),
+                    log_safe(new_symbol),
+                    log_safe(cusip),
+                    log_safe(company_name),
+                    emoji="🔄",
+                )
 
         if updates:
             save_stocks(stocks)
@@ -174,8 +187,10 @@ class TickerResolver:
                     if cusip:
                         save_stock(cusip, row["Ticker"], row["Company"])
                     return cusip
-                except Exception as e:
-                    print(f"⚠️ Failed to fetch CUSIP for {row['Ticker']}: {e}")
+                except Exception:
+                    logger.error(
+                        "Failed to fetch CUSIP for %s", log_safe(row["Ticker"]), exc_info=True
+                    )
                     return None
 
             df.loc[missing_stocks, "CUSIP"] = df[missing_stocks].apply(fetch_and_save, axis=1)

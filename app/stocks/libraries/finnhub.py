@@ -6,7 +6,10 @@ from dotenv import load_dotenv
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from app.stocks.libraries.base_library import FinanceLibrary
+from app.utils.logger import get_logger, log_safe
 from app.utils.strings import format_string
+
+logger = get_logger(__name__)
 
 
 class Finnhub(FinanceLibrary):
@@ -22,8 +25,8 @@ class Finnhub(FinanceLibrary):
     MAX_QUERY_LENGTH = 20
 
     if not CLIENT:
-        print(
-            "🚨 FINNHUB_API_KEY not found: Finnhub will not be used. Falling back to FinanceDatabase for ticker resolution."
+        logger.warning(
+            "FINNHUB_API_KEY not found: Finnhub will not be used. Falling back to FinanceDatabase for ticker resolution."
         )
 
     @staticmethod
@@ -38,8 +41,8 @@ class Finnhub(FinanceLibrary):
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=30, max=60),
         retry=retry_if_exception(_is_rate_limit_exception),
-        before_sleep=lambda rs: print(
-            f"🚨 Finnhub API rate limit hit. Retrying in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
+        before_sleep=lambda rs: logger.progress(
+            f"Finnhub API rate limit hit. Retrying in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
         ),
     )
     def _ticker_lookup(query):
@@ -93,7 +96,11 @@ class Finnhub(FinanceLibrary):
                 best_match = Finnhub._lookup(first_word)
 
         if not best_match:
-            print(f"🚨 Finnhub: No ticker found for CUSIP {cusip} / Company '{company_name}'.")
+            logger.warning(
+                "Finnhub: No ticker found for CUSIP %s / Company '%s'.",
+                log_safe(cusip),
+                log_safe(company_name),
+            )
             return None
 
         return best_match.get("symbol")
@@ -107,5 +114,5 @@ class Finnhub(FinanceLibrary):
         if best_match:
             return format_string(best_match.get("description", ""))
 
-        print(f"🚨 Finnhub: No company found for CUSIP {cusip}")
+        logger.warning("Finnhub: No company found for CUSIP %s", log_safe(cusip))
         return None

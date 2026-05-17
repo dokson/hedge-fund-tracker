@@ -1,17 +1,88 @@
+import atexit
 import re
+from contextlib import contextmanager
 from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
 from tenacity import RetryError, retry, retry_if_result, stop_after_attempt, wait_exponential
 
+from app.scraper.rate_limiter import RateLimiter
+from app.utils.logger import get_logger, log_safe
 from app.utils.strings import get_next_yyyymmdd_day
+
+logger = get_logger(__name__)
 
 # SEC EDGAR requires a custom User-Agent that identifies the application and provides a contact email.
 # See: https://www.sec.gov/os/developer-support-policy
 USER_AGENT = "Hedge Fund Tracker dok.son@msn.com"
 SEC_HOST = "www.sec.gov"
 SEC_URL = "https://" + SEC_HOST
+
+
+def _build_session() -> requests.Session:
+    """
+    Builds a requests.Session pre-configured with SEC-required headers.
+    """
+    s = requests.Session()
+    s.headers.update(
+        {
+            "User-Agent": USER_AGENT,
+            "Accept-Encoding": "gzip, deflate",
+            "HOST": SEC_HOST,
+        }
+    )
+    return s
+
+
+# Shared session + rate limiter: process-wide singletons.
+# - requests.Session reuses TCP+TLS across parallel workers (thread-safe via urllib3 PoolManager).
+# - SEC EDGAR fair-access policy caps clients at ~10 req/s per User-Agent; the token bucket
+#   bounds requests across all worker threads regardless of pool size.
+# Lifecycle: created at import, closed at interpreter exit via atexit. Use reset_session() in
+# tests to drop and rebuild both singletons, or scraper_session() for a scoped override.
+_session: requests.Session = _build_session()
+_rate_limiter = RateLimiter(rate=9, capacity=9)
+
+
+def close_session() -> None:
+    """
+    Closes the shared session, releasing pooled connections. Safe to call multiple times.
+    """
+    global _session
+    try:
+        _session.close()
+    except Exception:
+        logger.debug("Error closing shared SEC session", exc_info=True)
+
+
+def reset_session() -> None:
+    """
+    Closes and rebuilds the shared session and rate limiter. Intended for test isolation.
+    """
+    global _session, _rate_limiter
+    close_session()
+    _session = _build_session()
+    _rate_limiter = RateLimiter(rate=9, capacity=9)
+
+
+@contextmanager
+def scraper_session():
+    """
+    Context manager that ensures the shared session is closed on exit.
+
+    Use around long-running batch jobs to guarantee connection cleanup:
+
+        with scraper_session():
+            fetch_latest_two_13f_filings(cik)
+    """
+    try:
+        yield
+    finally:
+        close_session()
+
+
+atexit.register(close_session)
 
 FILING_SPECS: dict[str, dict[str, Any]] = {
     "13F-HR": {
@@ -34,26 +105,24 @@ FILING_SPECS: dict[str, dict[str, Any]] = {
     retry=retry_if_result(lambda value: value is None),
     wait=wait_exponential(multiplier=1, min=2, max=8),
     stop=stop_after_attempt(5),
-    before_sleep=lambda rs: print(
+    before_sleep=lambda rs: logger.progress(
         f"Retrying request for '{rs.args[0]}' in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
     ),
 )
 def _get_request(url):
     """
-    Sends a GET request to the specified URL with custom headers.
-    Retries on failure.
+    Sends a GET request to the specified URL via the shared Session.
+
+    Rate-limited via a process-wide token bucket so parallel workers stay
+    within SEC EDGAR's fair-access policy. Retries on failure via tenacity.
     """
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Accept-Encoding": "gzip, deflate",
-        "HOST": SEC_HOST,
-    }
+    _rate_limiter.acquire()
     try:
-        response = requests.get(url, headers=headers, timeout=15)
+        response = _session.get(url, timeout=15)
         response.raise_for_status()
         return response
-    except requests.exceptions.RequestException as e:
-        print(f"Request failed for {url}: {e}")
+    except requests.exceptions.RequestException:
+        logger.error("Request failed for %s", log_safe(url, max_len=200), exc_info=True)
         return None
 
 
@@ -82,8 +151,8 @@ def _get_accepted(report_page_soup):
         filing_date_tag = report_page_soup.find("div", string=re.compile(r"Accepted"))
         if filing_date_tag:
             return filing_date_tag.find_next().text.strip()
-    except Exception as e:
-        print(f"Error extracting filing accepted time: {e}")
+    except Exception:
+        logger.error("Error extracting filing accepted time", exc_info=True)
     return None
 
 
@@ -95,8 +164,8 @@ def _get_filing_date(report_page_soup):
         filing_date_tag = report_page_soup.find("div", string=re.compile(r"Filing Date"))
         if filing_date_tag:
             return filing_date_tag.find_next().text.strip()
-    except Exception as e:
-        print(f"Error extracting filing date: {e}")
+    except Exception:
+        logger.error("Error extracting filing date", exc_info=True)
     return None
 
 
@@ -108,8 +177,8 @@ def _get_report_date(report_page_soup):
         report_date_tag = report_page_soup.find("div", string=re.compile(r"Period of Report"))
         if report_date_tag:
             return report_date_tag.find_next().text.strip()
-    except Exception as e:
-        print(f"Error extracting report date: {e}")
+    except Exception:
+        logger.error("Error extracting report date", exc_info=True)
     return None
 
 
@@ -127,8 +196,8 @@ def _get_primary_xml_url(report_page_soup, filing_type):
         xml_link_index = int(config["xml_link_index"])
         if len(tags) > xml_link_index:
             return SEC_URL + tags[xml_link_index].get("href")
-    except Exception as e:
-        print(f"Error finding XML URL for filing type {filing_type}: {e}")
+    except Exception:
+        logger.error("Error finding XML URL for filing type %s", filing_type, exc_info=True)
     return None
 
 
@@ -149,7 +218,11 @@ def _scrape_filing(document_tag, filing_type):
         if not report_page_response:
             return None
     except RetryError:
-        print(f"❌ Failed to fetch report page {report_page_url} after multiple retries.")
+        logger.error(
+            "Failed to fetch report page %s after multiple retries.",
+            log_safe(report_page_url, max_len=200),
+            exc_info=True,
+        )
         return None
 
     report_page_soup = BeautifulSoup(report_page_response.text, "html.parser")
@@ -159,22 +232,33 @@ def _scrape_filing(document_tag, filing_type):
     xml_url = _get_primary_xml_url(report_page_soup, filing_type)
 
     if not (filing_date and xml_url):
-        print(f"Could not get metadata for report page {report_page_url}")
+        logger.info(
+            "Could not get metadata for report page %s", log_safe(report_page_url, max_len=200)
+        )
         return None
 
     try:
         xml_response = _get_request(xml_url)
         if not xml_response:
-            print(f"Failed to download XML from {xml_url}")
+            logger.info("Failed to download XML from %s", log_safe(xml_url, max_len=200))
             return None
     except RetryError:
-        print(f"❌ Failed to fetch XML file {xml_url} after multiple retries.")
+        logger.error(
+            "Failed to fetch XML file %s after multiple retries.",
+            log_safe(xml_url, max_len=200),
+            exc_info=True,
+        )
         return None
 
-    print(
-        f"Successfully scraped {filing_type} filing published on {filing_date}"
-        + (f" (refering {report_date})" if filing_type == "13F-HR" else "")
-    )
+    if filing_type == "13F-HR":
+        logger.info(
+            "Successfully scraped %s filing published on %s (refering %s)",
+            filing_type,
+            filing_date,
+            report_date,
+        )
+    else:
+        logger.info("Successfully scraped %s filing published on %s", filing_type, filing_date)
     return {
         "date": filing_date,
         "accepted_on": accepted,
@@ -199,7 +283,7 @@ def fetch_latest_two_13f_filings(cik, offset=0):
     document_tags = soup.find_all("a", id="documentsbutton")
 
     if not document_tags:
-        print(f"No 13F-HR filings found for CIK: {cik}")
+        logger.info("No 13F-HR filings found for CIK: %s", log_safe(cik))
         return None
 
     filings = []
@@ -228,8 +312,11 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
             try:
                 resp = _get_request(url)
                 if not resp:
-                    print(
-                        f"❌ Could not fetch {filing_type} filings for CIK {cik} (request failed at offset {offset})"
+                    logger.error(
+                        "Could not fetch %s filings for CIK %s (request failed at offset %d)",
+                        filing_type,
+                        log_safe(cik),
+                        offset,
                     )
                     break
                 soup = BeautifulSoup(resp.text, "html.parser")
@@ -259,15 +346,21 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
                 if len(all_tags_on_page) == 100:
                     offset += 100
                     if offset >= 500:  # Safety break to avoid infinite loops on extreme cases
-                        print(
-                            f"⚠️ Reached maximum pagination limit (500) for {filing_type} filings of CIK {cik}"
+                        logger.warning(
+                            "Reached maximum pagination limit (500) for %s filings of CIK %s",
+                            filing_type,
+                            log_safe(cik),
                         )
                         break
                 else:
                     break
-            except Exception as e:
-                print(
-                    f"❌ Error fetching {filing_type} filings for CIK {cik} at offset {offset}: {e}"
+            except Exception:
+                logger.error(
+                    "fetching %s filings for CIK %s at offset %d",
+                    filing_type,
+                    log_safe(cik),
+                    offset,
+                    exc_info=True,
                 )
                 break
         return all_type_tags
@@ -277,7 +370,11 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | No
     all_tags.extend(get_tags("4"))
 
     if not all_tags:
-        print(f"No non-quarterly filings found for CIK: {cik} after {start_date}")
+        logger.info(
+            "No non-quarterly filings found for CIK: %s after %s",
+            log_safe(cik),
+            log_safe(start_date),
+        )
         return filings
 
     for tag, f_type in all_tags:
@@ -302,14 +399,20 @@ def get_latest_13f_filing_date(cik: str) -> str | None:
     response = _get_request(search_url)
 
     if not response:
-        print(f"Failed to get latest filing date for CIK {cik} because request failed.")
+        logger.info(
+            "Failed to get latest filing date for CIK %s because request failed.", log_safe(cik)
+        )
         return None
 
     try:
         soup = BeautifulSoup(response.text, "html.parser")
         button = soup.find("a", id="documentsbutton")
         if not button:
-            print(f"No 'documentsbutton' found for CIK {cik} on page {search_url}")
+            logger.info(
+                "No 'documentsbutton' found for CIK %s on page %s",
+                log_safe(cik),
+                log_safe(search_url, max_len=200),
+            )
             return None
 
         # The filing date is in the 4th <td> of the same <tr> as the button
@@ -317,6 +420,10 @@ def get_latest_13f_filing_date(cik: str) -> str | None:
         if row is None:
             return None
         return row.find_all("td")[3].text.strip()
-    except (AttributeError, IndexError) as e:
-        print(f"Error parsing filing date for CIK {cik}: {e}. Page structure may have changed.")
+    except (AttributeError, IndexError):
+        logger.error(
+            "Error parsing filing date for CIK %s. Page structure may have changed.",
+            log_safe(cik),
+            exc_info=True,
+        )
         return None
