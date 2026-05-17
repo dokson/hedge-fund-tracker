@@ -1,5 +1,3 @@
-from typing import cast
-
 import pandas as pd
 
 from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
@@ -95,19 +93,14 @@ def get_non_quarterly_filings_dataframe(
             logger.warning("Could not find price for %s on %s.", log_safe(ticker), date)
 
     # Numerics to String format
-    non_quarterly_filings_df["Value"] = format_value_series(
-        cast(pd.Series, non_quarterly_filings_df["Value"])
-    )
+    non_quarterly_filings_df["Value"] = format_value_series(non_quarterly_filings_df["Value"])
     non_quarterly_filings_df["Avg_Price"] = format_value_series(
-        cast(pd.Series, non_quarterly_filings_df["Avg_Price"])
+        non_quarterly_filings_df["Avg_Price"]
     )
 
-    return cast(
-        pd.DataFrame,
-        non_quarterly_filings_df[
-            ["CUSIP", "Ticker", "Company", "Shares", "Value", "Avg_Price", "Date", "Filing_Date"]
-        ],
-    )
+    return non_quarterly_filings_df[
+        ["CUSIP", "Ticker", "Company", "Shares", "Value", "Avg_Price", "Date", "Filing_Date"]
+    ]
 
 
 def update_quarter_with_nq_filings(
@@ -182,20 +175,17 @@ def update_quarter_with_nq_filings(
     total_value_per_fund = updated_df.groupby("Fund")["Value_Num"].transform("sum")
     updated_df["Portfolio_Pct"] = (updated_df["Value_Num"] / total_value_per_fund) * 100
 
-    return cast(
-        pd.DataFrame,
-        updated_df[
-            [
-                "Fund",
-                "CUSIP",
-                "Ticker",
-                "Company",
-                "Shares",
-                "Delta_Shares",
-                "Value_Num",
-                "Delta_Value_Num",
-                "Delta",
-                "Portfolio_Pct",
-            ]
-        ],
-    )
+    return updated_df[
+        [
+            "Fund",
+            "CUSIP",
+            "Ticker",
+            "Company",
+            "Shares",
+            "Delta_Shares",
+            "Value_Num",
+            "Delta_Value_Num",
+            "Delta",
+            "Portfolio_Pct",
+        ]
+    ]

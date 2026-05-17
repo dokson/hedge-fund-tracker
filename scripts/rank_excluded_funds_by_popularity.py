@@ -31,6 +31,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import cast
 from urllib.parse import quote
 
 import requests
@@ -380,7 +381,7 @@ def fetch_pageviews(title: str, start: str, end: str) -> int:
     cache_key = f"{title}::{start}::{end}"
     present, cached = _cache_get(_PAGEVIEWS_CACHE, cache_key)
     if present:
-        return int(cached)  # type: ignore[arg-type]
+        return cast(int, cached)
 
     url = PAGEVIEWS_API.format(title=quote(title, safe=""), start=start, end=end)
     try:
@@ -480,6 +481,11 @@ def main() -> int:
             writer.writeheader()
             writer.writerows(top_rows + tail_rows)
         print(f"\nApplied: rewrote {csv_path} with new top {args.top}.")
+
+        from app.utils.readme import update_readme
+
+        update_readme()
+        print("README excluded-funds section regenerated.")
     else:
         print("\nDry-run: pass --apply to rewrite the CSV.")
 

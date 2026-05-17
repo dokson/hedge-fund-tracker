@@ -73,9 +73,9 @@ jobs:
       - name: Check for changes
         id: changes
         run: |
-          if git status --porcelain database/excluded_hedge_funds.csv | grep .; then
+          if git status --porcelain database/excluded_hedge_funds.csv README.md | grep .; then
             echo "no_changes=false" >> $GITHUB_OUTPUT
-            git --no-pager diff --stat database/excluded_hedge_funds.csv
+            git --no-pager diff --stat database/excluded_hedge_funds.csv README.md
           else
             echo "no_changes=true" >> $GITHUB_OUTPUT
             echo "Ranking unchanged this month."
@@ -86,7 +86,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add database/excluded_hedge_funds.csv
+          git add database/excluded_hedge_funds.csv README.md
           git commit -m "chore: Refresh excluded funds popularity ranking ($(date -u +'%Y-%m'))"
           git push --set-upstream origin ${{ env.COMMIT_BRANCH }}
 
