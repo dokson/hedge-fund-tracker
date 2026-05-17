@@ -69,27 +69,27 @@ class _StyledLogger(logging.Logger):
     method names cannot collide with future stdlib additions.
     """
 
-    def debug(self, msg, *args, emoji: str | None = None, **kwargs):  # type: ignore[override]
+    def debug(self, msg, *args, emoji: str | None = None, **kwargs):
         _attach_emoji(kwargs, emoji)
         _bump_stacklevel(kwargs, 1)
         super().debug(msg, *args, **kwargs)
 
-    def info(self, msg, *args, emoji: str | None = None, **kwargs):  # type: ignore[override]
+    def info(self, msg, *args, emoji: str | None = None, **kwargs):
         _attach_emoji(kwargs, emoji)
         _bump_stacklevel(kwargs, 1)
         super().info(msg, *args, **kwargs)
 
-    def warning(self, msg, *args, emoji: str | None = None, **kwargs):  # type: ignore[override]
+    def warning(self, msg, *args, emoji: str | None = None, **kwargs):
         _attach_emoji(kwargs, emoji)
         _bump_stacklevel(kwargs, 1)
         super().warning(msg, *args, **kwargs)
 
-    def error(self, msg, *args, emoji: str | None = None, **kwargs):  # type: ignore[override]
+    def error(self, msg, *args, emoji: str | None = None, **kwargs):
         _attach_emoji(kwargs, emoji)
         _bump_stacklevel(kwargs, 1)
         super().error(msg, *args, **kwargs)
 
-    def critical(self, msg, *args, emoji: str | None = None, **kwargs):  # type: ignore[override]
+    def critical(self, msg, *args, emoji: str | None = None, **kwargs):
         _attach_emoji(kwargs, emoji)
         _bump_stacklevel(kwargs, 1)
         super().critical(msg, *args, **kwargs)
@@ -171,7 +171,7 @@ def _configure_root_once() -> None:
         bypass the per-request SSE queue.
         """
 
-        @property  # type: ignore[override]
+        @property
         def stream(self):
             return sys.stdout
 

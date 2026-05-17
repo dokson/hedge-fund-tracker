@@ -595,6 +595,42 @@ def sort_stocks(filepath: str | None = None) -> None:
         logger.error("An error occurred while processing file '%s'", filepath, exc_info=True)
 
 
+def sort_hedge_funds(filepath: str | None = None) -> None:
+    """
+    Sorts the hedge_funds.csv file alphabetically by Fund name (case-insensitive).
+    """
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / HEDGE_FUNDS_FILE)
+    try:
+        df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna("")
+        df.sort_values(by="Fund", key=lambda s: s.str.lower(), inplace=True, kind="stable")
+        df.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
+    except Exception:
+        logger.error("An error occurred while processing file '%s'", filepath, exc_info=True)
+
+
+def sort_excluded_hedge_funds(filepath: str | None = None) -> None:
+    """
+    Sorts excluded_hedge_funds.csv, preserving the first README_DISPLAY_LIMIT rows
+    (the curated "most popular" set shown in the README) and sorting the remaining
+    rows alphabetically by Fund name (case-insensitive).
+    """
+    from app.utils.readme import README_DISPLAY_LIMIT
+
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / EXCLUDED_HEDGE_FUNDS_FILE)
+    try:
+        df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna("")
+        head = df.iloc[:README_DISPLAY_LIMIT]
+        tail = df.iloc[README_DISPLAY_LIMIT:].sort_values(
+            by="Fund", key=lambda s: s.str.lower(), kind="stable"
+        )
+        result = pd.concat([head, tail], ignore_index=True)
+        result.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
+    except Exception:
+        logger.error("An error occurred while processing file '%s'", filepath, exc_info=True)
+
+
 def find_cusips_for_ticker(old_ticker: str) -> list[dict[str, str]]:
     """
     Finds all CUSIPs associated with a given ticker in the stocks.csv file.

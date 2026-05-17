@@ -2,12 +2,12 @@ import logging
 import re
 from datetime import date, timedelta
 
+import pandas as pd
 import requests
 import yfinance as yf
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.stocks.libraries.base_library import FinanceLibrary
-from app.utils.console import silence_output
 from app.utils.logger import get_logger, log_safe
 
 logger = get_logger(__name__)
@@ -48,8 +48,7 @@ class YFinance(FinanceLibrary):
         ticker = YFinance.get_ticker(cusip) if not ticker else YFinance._sanitize_ticker(ticker)
 
         try:
-            with silence_output():
-                stock_info = yf.Ticker(ticker).info
+            stock_info = yf.Ticker(ticker).info
             company_name = stock_info.get("longName") or stock_info.get("shortName", "")
             if company_name:
                 return re.sub(r"[.,]", "", company_name)
@@ -117,14 +116,13 @@ class YFinance(FinanceLibrary):
         def _get_single_avg_price(t: str) -> float | None:
             search_ticker = YFinance._sanitize_ticker(t)
             # 'end' parameter is exclusive: To get a single day, we need the next day as the end.
-            with silence_output():
-                price_data = yf.download(
-                    tickers=search_ticker,
-                    start=date_obj,
-                    end=date_obj + timedelta(days=1),
-                    auto_adjust=False,
-                    progress=False,
-                )
+            price_data = yf.download(
+                tickers=search_ticker,
+                start=date_obj,
+                end=date_obj + timedelta(days=1),
+                auto_adjust=False,
+                progress=False,
+            )
 
             if price_data is None or price_data.empty:
                 return None
@@ -190,9 +188,8 @@ class YFinance(FinanceLibrary):
         """
         try:
             search_ticker = YFinance._sanitize_ticker(ticker)
-            with silence_output():
-                stock = yf.Ticker(search_ticker)
-                price = stock.info.get("currentPrice")
+            stock = yf.Ticker(search_ticker)
+            price = stock.info.get("currentPrice")
 
             # Fallback for international tickers (e.g., TSX, TSXV)
             if price is None and "." not in ticker and "-" not in ticker:
@@ -202,8 +199,7 @@ class YFinance(FinanceLibrary):
                         logger.progress(
                             f"YFinance: Trying current price fallback {fallback_ticker} for {ticker}..."
                         )
-                        with silence_output():
-                            price = yf.Ticker(fallback_ticker).info.get("currentPrice")
+                        price = yf.Ticker(fallback_ticker).info.get("currentPrice")
                         if price is not None:
                             break
                     except Exception:
@@ -247,15 +243,14 @@ class YFinance(FinanceLibrary):
         stocks_info = {}
 
         try:
-            with silence_output():
-                data = yf.download(
-                    tickers=sanitized_tickers,
-                    period="1d",
-                    interval="1m",
-                    group_by="ticker",
-                    auto_adjust=False,
-                    progress=False,
-                )
+            data = yf.download(
+                tickers=sanitized_tickers,
+                period="1d",
+                interval="1m",
+                group_by="ticker",
+                auto_adjust=False,
+                progress=False,
+            )
 
             data_to_use = None if data is None else data
 
@@ -277,9 +272,8 @@ class YFinance(FinanceLibrary):
             # Get sector info for all tickers (both successful and failed price fetches)
             for sanitized, original in ticker_map.items():
                 try:
-                    with silence_output():
-                        stock = yf.Ticker(sanitized)
-                        sector = stock.info.get("sector") or stock.info.get("industry")
+                    stock = yf.Ticker(sanitized)
+                    sector = stock.info.get("sector") or stock.info.get("industry")
 
                     if original in stocks_info:
                         stocks_info[original]["sector"] = sector
@@ -325,10 +319,9 @@ class YFinance(FinanceLibrary):
         interval = YFinance.PERIOD_TO_INTERVAL.get(period, "1mo")
         try:
             search_ticker = YFinance._sanitize_ticker(ticker)
-            with silence_output():
-                history = yf.Ticker(search_ticker).history(
-                    period=period, interval=interval, auto_adjust=False
-                )
+            history = yf.Ticker(search_ticker).history(
+                period=period, interval=interval, auto_adjust=False
+            )
 
             required = {"Open", "High", "Low", "Close"}
             if history is None or history.empty or not required.issubset(history.columns):
@@ -341,9 +334,12 @@ class YFinance(FinanceLibrary):
                     continue
                 # The values are validated as non-None above; narrow for the type-checker.
                 assert o is not None and h is not None and low is not None and c is not None
-                # idx is a datetime/Timestamp at runtime (DatetimeIndex), but its
-                # static type widens to Hashable through DataFrame.iterrows() stubs.
-                date_str = idx.strftime("%Y-%m-%d")  # type: ignore[union-attr]
+                # idx is a Timestamp at runtime (DatetimeIndex), but DataFrame.iterrows()
+                # widens its static type to Hashable. Narrow with isinstance so pyright
+                # accepts .strftime without a `# type: ignore`.
+                if not isinstance(idx, pd.Timestamp):
+                    continue
+                date_str = idx.strftime("%Y-%m-%d")
                 points.append(
                     {
                         "date": date_str,
@@ -383,9 +379,8 @@ class YFinance(FinanceLibrary):
                        Example: [{'symbol': 'AAPL', 'name': 'Apple Inc.', 'weight': 0.15}, ...]
         """
         try:
-            with silence_output():
-                sector = yf.Sector(sector_key)
-                top_companies = sector.top_companies
+            sector = yf.Sector(sector_key)
+            top_companies = sector.top_companies
 
             if top_companies is None or top_companies.empty:
                 # Raise error to trigger @retry

@@ -33,6 +33,8 @@ from app.utils.database import (
     load_stocks,
     restore_fund_to_database,
     save_stock,
+    sort_excluded_hedge_funds,
+    sort_hedge_funds,
     sort_stocks,
     update_ticker,
 )
@@ -204,6 +206,49 @@ class TestDatabase(unittest.TestCase):
         self.assertIn("999", df.index)
         self.assertEqual(df.loc["999", "Ticker"], "TRIM")
         self.assertEqual(df.loc["999", "Company"], "Trimmed Company")
+
+    def test_sort_hedge_funds_alphabetical(self):
+        """
+        Sorts hedge_funds.csv alphabetically by Fund name (case-insensitive).
+        """
+        hf_path = Path(self.test_db_folder) / HEDGE_FUNDS_FILE
+        with hf_path.open("w", newline="") as f:
+            f.write(
+                "CIK,Fund,Manager,Denomination,CIKs,URL\n"
+                "003,charlie,Mgr C,Denom C,,https://c.example.com/\n"
+                "001,Alpha,Mgr A,Denom A,,https://a.example.com/\n"
+                "002,Bravo,Mgr B,Denom B,,https://b.example.com/\n"
+            )
+        sort_hedge_funds(str(hf_path))
+        df = pd.read_csv(hf_path, dtype=str, keep_default_na=False)
+        self.assertEqual(list(df["Fund"]), ["Alpha", "Bravo", "charlie"])
+
+    def test_sort_excluded_hedge_funds_preserves_top(self):
+        """
+        Keeps the first README_DISPLAY_LIMIT rows in place and sorts the rest alphabetically.
+        """
+        from app.utils.database import EXCLUDED_HEDGE_FUNDS_FILE
+        from app.utils.readme import README_DISPLAY_LIMIT
+
+        ex_path = Path(self.test_db_folder) / EXCLUDED_HEDGE_FUNDS_FILE
+        # Top N curated (kept in given order) + 3 unsorted tail rows
+        rows = ["CIK,Fund,Manager,Denomination,CIKs,URL"]
+        top_names = [f"Top_{i:03d}" for i in range(README_DISPLAY_LIMIT)]
+        for i, n in enumerate(top_names):
+            rows.append(f"{i:04d},{n},Mgr,Denom,,https://x.example.com/")
+        rows.append("9001,zeta,Mgr Z,Denom Z,,https://z.example.com/")
+        rows.append("9002,alpha,Mgr A,Denom A,,https://a.example.com/")
+        rows.append("9003,Mike,Mgr M,Denom M,,https://m.example.com/")
+        with ex_path.open("w", newline="") as f:
+            f.write("\n".join(rows) + "\n")
+
+        sort_excluded_hedge_funds(str(ex_path))
+        df = pd.read_csv(ex_path, dtype=str, keep_default_na=False)
+
+        # Top N preserved in original order
+        self.assertEqual(list(df["Fund"].iloc[:README_DISPLAY_LIMIT]), top_names)
+        # Tail sorted alphabetically (case-insensitive)
+        self.assertEqual(list(df["Fund"].iloc[README_DISPLAY_LIMIT:]), ["alpha", "Mike", "zeta"])
 
     def test_find_cusips_for_ticker(self):
         """

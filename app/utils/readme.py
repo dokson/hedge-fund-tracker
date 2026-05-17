@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 
 EXCLUDED_HEDGE_FUNDS_FILE = f"{DB_FOLDER}/{EXCLUDED_FILENAME}"
 README_FILE = "./README.md"
-README_DISPLAY_LIMIT = 50
+README_DISPLAY_LIMIT = 60
 
 
 def generate_excluded_funds_list() -> str | None:

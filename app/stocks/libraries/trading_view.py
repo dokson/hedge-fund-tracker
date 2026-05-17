@@ -6,7 +6,6 @@ from tvDatafeed import Interval as TvInterval
 from tvDatafeed import TvDatafeed
 
 from app.stocks.libraries.base_library import FinanceLibrary
-from app.utils.console import silence_output
 from app.utils.logger import get_logger, log_safe
 
 logger = get_logger(__name__)
@@ -41,10 +40,9 @@ class TradingView(FinanceLibrary):
         try:
             for exchange in TradingView.EXCHANGES:
                 try:
-                    with silence_output():
-                        hist = tv.get_hist(
-                            symbol=ticker, exchange=exchange, interval=TvInterval.in_daily, n_bars=2
-                        )
+                    hist = tv.get_hist(
+                        symbol=ticker, exchange=exchange, interval=TvInterval.in_daily, n_bars=2
+                    )
                     if hist is not None and not hist.empty:
                         return float(hist["close"].iloc[-1])
                 except Exception:
@@ -83,10 +81,9 @@ class TradingView(FinanceLibrary):
         try:
             for exchange in TradingView.EXCHANGES:
                 try:
-                    with silence_output():
-                        hist = tv.get_hist(
-                            symbol=ticker, exchange=exchange, interval=tv_interval, n_bars=n_bars
-                        )
+                    hist = tv.get_hist(
+                        symbol=ticker, exchange=exchange, interval=tv_interval, n_bars=n_bars
+                    )
                     if hist is not None and not hist.empty:
                         hist.index = pd.to_datetime(hist.index)
                         if period == "ytd":
@@ -108,7 +105,9 @@ class TradingView(FinanceLibrary):
                                 and low is not None
                                 and c is not None
                             )
-                            date_str = idx.strftime("%Y-%m-%d")  # type: ignore[union-attr]
+                            if not isinstance(idx, pd.Timestamp):
+                                continue
+                            date_str = idx.strftime("%Y-%m-%d")
                             points.append(
                                 {
                                     "date": date_str,
@@ -140,13 +139,12 @@ class TradingView(FinanceLibrary):
             for exchange in TradingView.EXCHANGES:
                 try:
                     # Fetching 120 daily bars to cover the last quarter data
-                    with silence_output():
-                        hist = tv.get_hist(
-                            symbol=ticker,
-                            exchange=exchange,
-                            interval=TvInterval.in_daily,
-                            n_bars=120,
-                        )
+                    hist = tv.get_hist(
+                        symbol=ticker,
+                        exchange=exchange,
+                        interval=TvInterval.in_daily,
+                        n_bars=120,
+                    )
                     if hist is not None and not hist.empty:
                         df = hist
                         break

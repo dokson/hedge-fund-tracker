@@ -30,8 +30,17 @@ if sys.stderr.encoding.lower() != "utf-8":
 @contextmanager
 def silence_output():
     """
-    Context manager to silence stdout and stderr.
-    Useful for suppressing verbose output from third-party libraries.
+    Context manager to silence stdout and stderr in single-threaded code.
+
+    WARNING: NOT thread-safe. ``redirect_stdout`` / ``redirect_stderr`` rebind
+    the process-global ``sys.stdout`` / ``sys.stderr``; concurrent callers
+    leave the restore stack in an inconsistent state, eventually pointing
+    one of the streams at an already-closed file descriptor (symptom:
+    ``ValueError: I/O operation on closed file. lost sys.stderr``).
+
+    Prefer silencing the library at its logger
+    (``logging.getLogger("<lib>").setLevel(logging.CRITICAL)``) when the code
+    can run inside a ``ThreadPoolExecutor`` or any other multi-threaded context.
     """
     with Path(os.devnull).open("w") as devnull, redirect_stderr(devnull), redirect_stdout(devnull):
         yield

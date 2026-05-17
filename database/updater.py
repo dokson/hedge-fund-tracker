@@ -26,6 +26,8 @@ from app.utils.database import (
     restore_fund_to_database,
     save_comparison,
     save_non_quarterly_filings,
+    sort_excluded_hedge_funds,
+    sort_hedge_funds,
     sort_stocks,
     update_ticker,
     update_ticker_for_cusip,
@@ -41,10 +43,13 @@ def exit():
     """
     0. Exits the application (after maintenance operations).
 
-    This function cleans orphan CUSIPs, sorts the stock master file and updates the README with the latest data.
+    This function cleans orphan CUSIPs, sorts the stock master file, sorts the hedge funds files
+    (preserving the curated top of excluded_hedge_funds.csv) and updates the README with the latest data.
     """
     clean_stocks()
     sort_stocks()
+    sort_hedge_funds()
+    sort_excluded_hedge_funds()
     update_readme()
     print("Bye! 👋 Exited.")
     return False
