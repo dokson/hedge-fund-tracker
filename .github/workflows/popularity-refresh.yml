@@ -1,0 +1,100 @@
+name: Monthly Excluded Funds Popularity Refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 1st of every month at 05:00 UTC — after the early-morning filings-fetch
+    # but well before the next daily run.
+    - cron: "0 5 1 * *"
+
+jobs:
+  popularity-refresh:
+    runs-on: ubuntu-latest
+
+    env:
+      COMMIT_BRANCH: automated/popularity-refresh
+      PIPENV_VENV_IN_PROJECT: "1"
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create or reset the commit branch
+        run: |
+          if git ls-remote --exit-code --heads origin ${{ env.COMMIT_BRANCH }}; then
+            echo "::notice::Deleting '${{ env.COMMIT_BRANCH }}' branch."
+            git push origin --delete ${{ env.COMMIT_BRANCH }} || true
+          fi
+          git checkout -B ${{ env.COMMIT_BRANCH }}
+
+      - name: Compute cache month key
+        id: cache_key
+        run: echo "month=$(date -u +'%Y-%m')" >> $GITHUB_OUTPUT
+
+      - name: Restore Wikipedia cache
+        uses: actions/cache@v5
+        with:
+          path: __wikicache__
+          key: wiki-popularity-${{ steps.cache_key.outputs.month }}
+          restore-keys: |
+            wiki-popularity-
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: "pipenv"
+          cache-dependency-path: "**/Pipfile.lock"
+
+      - name: Cache pipenv dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pipenv-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pipenv virtualenv
+          python -m virtualenv .venv
+          pipenv install --dev
+
+      - name: Refresh excluded funds popularity ranking
+        run: pipenv run python -X utf8 scripts/rank_excluded_funds_by_popularity.py --apply
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git status --porcelain database/excluded_hedge_funds.csv | grep .; then
+            echo "no_changes=false" >> $GITHUB_OUTPUT
+            git --no-pager diff --stat database/excluded_hedge_funds.csv
+          else
+            echo "no_changes=true" >> $GITHUB_OUTPUT
+            echo "Ranking unchanged this month."
+          fi
+
+      - name: Commit and push
+        if: steps.changes.outputs.no_changes == 'false'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add database/excluded_hedge_funds.csv
+          git commit -m "chore: Refresh excluded funds popularity ranking ($(date -u +'%Y-%m'))"
+          git push --set-upstream origin ${{ env.COMMIT_BRANCH }}
+
+      - name: Log completion
+        run: |
+          if [[ "${{ steps.changes.outputs.no_changes }}" == "true" ]]; then
+            echo "✅ Workflow completed - No ranking changes this month"
+          else
+            echo "✅ Workflow completed - Ranking updated and pushed to ${{ env.COMMIT_BRANCH }}"
+            echo "🔗 https://github.com/${{ github.repository }}/commits/${{ env.COMMIT_BRANCH }}"
+          fi

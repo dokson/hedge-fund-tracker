@@ -1,6 +1,7 @@
 __llmcache__
 __pycache__
 __reports__
+__wikicache__
 .claude/settings.local.json
 node_modules/
 app/frontend/dist/
