@@ -3,6 +3,7 @@ import os
 import re
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager, suppress
 from pathlib import Path
 
@@ -518,11 +519,24 @@ def clean_stocks(filepath: str | None = None) -> None:
         all_stock_cusips = set(stocks_df["CUSIP"])
         all_filing_cusips: set[str] = set()
 
-        # 1. Collect all CUSIPs from all quarterly reports
-        for quarter in get_all_quarters():
-            quarter_df = load_quarterly_data(quarter)
-            if not quarter_df.empty:
-                all_filing_cusips.update(quarter_df["CUSIP"].dropna().unique())
+        # 1. Collect CUSIPs from every quarterly fund CSV.
+        # Hot path: this used to call load_quarterly_data() which reads every
+        # column of every fund CSV (then concats) — ~600 files × full schema
+        # only to extract the CUSIP column. Now we stream usecols=["CUSIP"] in
+        # parallel across all quarters/funds; the work is pure I/O so a
+        # ThreadPoolExecutor scales near-linearly with the file count.
+        def _cusips_from_file(file_path: str) -> set[str]:
+            cusips = pd.read_csv(file_path, usecols=["CUSIP"], dtype=str)["CUSIP"]
+            return {c for c in cusips.dropna() if c != "Total"}
+
+        all_files = [
+            file_path
+            for quarter in get_all_quarters()
+            for file_path in get_all_quarter_files(quarter)
+        ]
+        with ThreadPoolExecutor(max_workers=min(16, max(4, len(all_files)))) as pool:
+            for partial in pool.map(_cusips_from_file, all_files):
+                all_filing_cusips.update(partial)
 
         # 2. Collect all CUSIPs from non-quarterly filings
         non_quarterly = load_non_quarterly_data()
