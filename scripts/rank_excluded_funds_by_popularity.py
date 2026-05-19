@@ -327,11 +327,10 @@ def resolve_fund_title(fund_name: str, denomination: str) -> str | None:
         "lp",
         "company.",
     }
-    fund_tokens = {
-        t.lower()
-        for t in re.split(r"[\s.,&]+", f"{fund_name} {denomination}")
-        if len(t) >= 4 and t.lower() not in stoplist
+    all_fund_tokens = {
+        t.lower() for t in re.split(r"[\s.,&]+", f"{fund_name} {denomination}") if len(t) >= 4
     }
+    fund_tokens = {t for t in all_fund_tokens if t not in stoplist}
     if not fund_tokens:
         return None
     token_patterns = [re.compile(rf"\b{re.escape(t)}\b") for t in fund_tokens]
@@ -364,6 +363,14 @@ def resolve_fund_title(fund_name: str, denomination: str) -> str | None:
             if title_low.startswith("list of") or "(disambiguation)" in title_low:
                 continue
             if not any(p.search(title_low) for p in token_patterns):
+                continue
+            # Reject titles that introduce tokens absent from the firm name —
+            # e.g. "Berkshire Hathaway" or "Berkshire Partners" must not match
+            # "Berkshire Capital Holdings Inc" just because they share "berkshire".
+            # Compare against the full token set (stoplist words included) so
+            # that "partners" / "hathaway" are detected as foreign.
+            title_tokens = {t.lower() for t in re.split(r"[\s.,&]+", title) if len(t) >= 4}
+            if title_tokens - all_fund_tokens:
                 continue
             snippet = re.sub(r"<[^>]+>", "", hit.get("snippet", "")).lower()
             if any(term in snippet for term in FINANCE_TERMS):
