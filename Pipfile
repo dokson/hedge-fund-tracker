@@ -16,7 +16,7 @@ fastapi-users = {extras = ["sqlalchemy"], version = "~=15.0"}
 fastapi-users-db-sqlalchemy = "~=7.0"
 financedatabase = "~=2.3"
 finnhub-python = "~=2.4"
-google-genai = "~=2.4"
+google-genai = "~=2.5"
 httptools = {version = "==0.7.1", markers = "sys_platform != 'win32'"}
 lxml = "~=6.1"
 openai = "~=2.36"
