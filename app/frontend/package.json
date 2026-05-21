@@ -71,7 +71,7 @@
     "tailwindcss": "^4.2.1",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^6.0.3",
-    "vite": "^8.0.13"
+    "vite": "^8.0.14"
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^5.8.3",
