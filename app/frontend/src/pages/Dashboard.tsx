@@ -85,7 +85,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [fundFilter, setFundFilter] = useState("all");
   const [typeFilters, setTypeFilters] = useState<Set<string>>(() => new Set());
-  const [daysBack, setDaysBack] = useState("30");
+  const [daysBackPick, setDaysBackPick] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const { starred: starredStocks } = useStarred("stock");
@@ -118,6 +118,15 @@ export default function Dashboard() {
     },
     [sortField],
   );
+
+  const autoDaysBack = useMemo(() => {
+    if (filings.length === 0) return "30";
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return filings.some((f) => f.date >= cutoffStr) ? "30" : "9999";
+  }, [filings]);
+  const daysBack = daysBackPick ?? autoDaysBack;
 
   const filtered = useMemo(() => {
     const cutoff = new Date();
@@ -311,7 +320,7 @@ export default function Dashboard() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={daysBack} onValueChange={setDaysBack}>
+        <Select value={daysBack} onValueChange={setDaysBackPick}>
           <SelectTrigger className="w-36 bg-card border-border">
             <SelectValue />
           </SelectTrigger>
