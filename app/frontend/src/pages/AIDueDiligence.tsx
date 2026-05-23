@@ -3,13 +3,16 @@ import { useSearchParams, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { useQuery } from "@tanstack/react-query";
-import { runStockAnalysis, getStocks, getModels } from "@/lib/dataService";
+import { runStockAnalysis, getStocks } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
+import { useAIRun } from "@/hooks/useAIRun";
 import { runDueDiligenceStream } from "@/lib/aiClient";
 import TerminalOutput from "@/components/TerminalOutput";
 import { Button } from "@/components/ui/button";
 import TickerAutocomplete from "@/components/TickerAutocomplete";
 import ModelSelector from "@/components/ModelSelector";
+import LocalOnlyNotice from "@/components/ai/LocalOnlyNotice";
+import AIEmptyState from "@/components/ai/AIEmptyState";
 import { Brain, ClipboardCheck } from "lucide-react";
 import {
   Accordion,
@@ -26,21 +29,21 @@ interface DueDiligenceReport {
   current_price: string;
   filing_date_price: string;
   price_delta_percentage: string;
-  analysis: {
-    business_summary: string;
-    financial_health: string;
-    financial_health_sentiment: string;
-    valuation: string;
-    valuation_sentiment: string;
-    growth_vs_risks: string;
-    growth_vs_risks_sentiment: string;
-    institutional_sentiment: string;
-    institutional_sentiment_sentiment: string;
+  analysis?: {
+    business_summary?: string;
+    financial_health?: string;
+    financial_health_sentiment?: string;
+    valuation?: string;
+    valuation_sentiment?: string;
+    growth_vs_risks?: string;
+    growth_vs_risks_sentiment?: string;
+    institutional_sentiment?: string;
+    institutional_sentiment_sentiment?: string;
   };
-  investment_thesis: {
-    overall_sentiment: string;
-    thesis: string;
-    price_target: string;
+  investment_thesis?: {
+    overall_sentiment?: string;
+    thesis?: string;
+    price_target?: string;
   };
 }
 
@@ -88,18 +91,35 @@ export default function AIDueDiligence() {
   const [ticker, setTicker] = useState(initialTicker);
   const [inputTicker, setInputTicker] = useState(initialTicker);
   const { latestQuarter: quarter } = useAvailableQuarters();
-  const [selectedModel, setSelectedModel] = useState<string>("");
-  const [selectedProviderId, setSelectedProviderId] = useState<string>("");
-  const [report, setReport] = useState<DueDiligenceReport | null>(null);
   const [generatedAt, setGeneratedAt] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [_progressPct, setProgressPct] = useState(0);
-  const [_statusMsg, setStatusMsg] = useState("");
-  void _progressPct;
-  void _statusMsg;
-  const [modelUsed, setModelUsed] = useState("");
-  const [terminalLines, setTerminalLines] = useState<string[]>([]);
   const isReadOnly = IS_GH_PAGES_MODE;
+
+  const {
+    selectedModel,
+    setSelectedModel,
+    setSelectedProviderId,
+    loading,
+    terminalLines,
+    modelUsed,
+    result: report,
+    run,
+  } = useAIRun<DueDiligenceReport>({
+    execute: async ({ modelId, providerId, onLog }) => {
+      if (!quarter) throw new Error("No quarters available");
+      const t = inputTicker.toUpperCase();
+      setTicker(t);
+      const result = (await runDueDiligenceStream(
+        t,
+        quarter,
+        modelId,
+        providerId,
+        onLog,
+      )) as DueDiligenceReport;
+      setGeneratedAt(new Date().toISOString().split("T")[0]);
+      return result;
+    },
+    successMessage: (r) => `Due diligence report generated for ${r.ticker}`,
+  });
 
   const { data: stocks = [] } = useQuery({
     queryKey: ["stocks"],
@@ -124,38 +144,7 @@ export default function AIDueDiligence() {
       toast.error("No quarters available");
       return;
     }
-    const t = inputTicker.toUpperCase();
-    setTicker(t);
-    setLoading(true);
-    setReport(null);
-    setProgressPct(15);
-    setTerminalLines([]);
-
-    const models = await getModels();
-    const modelDesc = models.find((m) => m.id === selectedModel)?.description || selectedModel;
-    setModelUsed(modelDesc);
-
-    try {
-      setStatusMsg(`Running AI due diligence on ${t} via Python backend…`);
-      const result = await runDueDiligenceStream(
-        t,
-        quarter,
-        selectedModel || undefined,
-        selectedProviderId || undefined,
-        (line) => setTerminalLines((prev) => [...prev, line]),
-      );
-      setProgressPct(100);
-      setStatusMsg("Complete");
-      setReport(result as DueDiligenceReport);
-      setGeneratedAt(new Date().toISOString().split("T")[0]);
-      toast.success(`Due diligence report generated for ${t}`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      toast.error(`AI Error: ${msg}`);
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    await run();
   };
 
   const sample = sampleDueDiligence as DueDiligenceReport & {
@@ -212,17 +201,11 @@ export default function AIDueDiligence() {
       </div>
 
       {isReadOnly && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800 px-4 py-3">
-          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
-            <Brain className="h-4 w-4" /> Local-Only Feature
-          </p>
-          <p className="text-xs text-blue-600/80 dark:text-blue-400/80 leading-relaxed mt-1">
-            Stock Due Diligence requires a local Python backend to analyze data via LLMs. This live
-            demo shows the interface only. To use this feature, run the app locally with your own
-            API keys.
-            {isSample && (
+        <LocalOnlyNotice
+          description="Stock Due Diligence requires a local Python backend to analyze data via LLMs. This live demo shows the interface only. To use this feature, run the app locally with your own API keys."
+          sampleNote={
+            isSample && (
               <>
-                <br />
                 Below is a sample output for{" "}
                 <span className="font-mono font-semibold">{sample.ticker}</span>
                 {sample.generated_at && (
@@ -233,9 +216,9 @@ export default function AIDueDiligence() {
                 )}
                 .
               </>
-            )}
-          </p>
-        </div>
+            )
+          }
+        />
       )}
 
       {(loading || terminalLines.length > 0) && !report && (
@@ -244,30 +227,42 @@ export default function AIDueDiligence() {
 
       {displayReport && !loading && (
         <div className="animate-slide-up space-y-5">
-          <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <SentimentBadge sentiment={displayReport.investment_thesis.overall_sentiment} />
-                <div>
-                  <p className="text-sm text-muted-foreground">3-Month Price Target</p>
-                  <p className="text-xl font-bold font-mono flex items-baseline gap-2">
-                    <span>{displayReport.investment_thesis.price_target || "N/A"}</span>
+          <div className="rounded-lg border border-border bg-card p-6 space-y-5">
+            <div className="flex items-start justify-between gap-6 flex-wrap">
+              <div className="flex items-stretch gap-4 min-w-0">
+                <div className="w-1 rounded-full bg-primary/70 shrink-0" aria-hidden="true" />
+                <div className="min-w-0">
+                  <Link
+                    to={`/stock/${displayReport.ticker}`}
+                    className="font-mono font-black tracking-tight text-5xl md:text-6xl leading-none hover:text-primary transition-colors block"
+                    title={`View ${displayReport.ticker} analysis`}
+                  >
+                    {displayReport.ticker}
+                  </Link>
+                  <p
+                    className="mt-2 text-lg md:text-xl font-semibold text-foreground/90 truncate"
+                    title={displayReport.company}
+                  >
+                    {displayReport.company}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4 shrink-0">
+                <SentimentBadge
+                  sentiment={displayReport.investment_thesis?.overall_sentiment ?? ""}
+                />
+                <div className="text-right">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    3-Month Price Target
+                  </p>
+                  <p className="text-2xl font-bold font-mono flex items-baseline gap-2 justify-end mt-0.5">
+                    <span>{displayReport.investment_thesis?.price_target || "N/A"}</span>
                     <PriceTargetDelta
-                      priceTarget={displayReport.investment_thesis.price_target}
+                      priceTarget={displayReport.investment_thesis?.price_target}
                       currentPrice={displayReport.current_price}
                     />
                   </p>
                 </div>
-              </div>
-              <div className="text-right">
-                <Link
-                  to={`/stock/${displayReport.ticker}`}
-                  className="font-mono font-bold text-lg hover:underline hover:text-primary transition-colors"
-                  title={`View ${displayReport.ticker} analysis`}
-                >
-                  {displayReport.ticker}
-                </Link>
-                <p className="text-xs text-muted-foreground">{displayReport.company}</p>
               </div>
             </div>
             <div className="flex gap-6 pt-1 border-t border-border">
@@ -326,7 +321,7 @@ export default function AIDueDiligence() {
                 Business Summary
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {displayReport.analysis.business_summary}
+                {displayReport.analysis?.business_summary}
               </AccordionContent>
             </AccordionItem>
 
@@ -337,11 +332,13 @@ export default function AIDueDiligence() {
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Financial Health
-                  <SentimentBadge sentiment={displayReport.analysis.financial_health_sentiment} />
+                  <SentimentBadge
+                    sentiment={displayReport.analysis?.financial_health_sentiment ?? ""}
+                  />
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {displayReport.analysis.financial_health}
+                {displayReport.analysis?.financial_health}
               </AccordionContent>
             </AccordionItem>
 
@@ -352,11 +349,11 @@ export default function AIDueDiligence() {
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Valuation
-                  <SentimentBadge sentiment={displayReport.analysis.valuation_sentiment} />
+                  <SentimentBadge sentiment={displayReport.analysis?.valuation_sentiment ?? ""} />
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {displayReport.analysis.valuation}
+                {displayReport.analysis?.valuation}
               </AccordionContent>
             </AccordionItem>
 
@@ -367,11 +364,13 @@ export default function AIDueDiligence() {
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Growth vs. Risks
-                  <SentimentBadge sentiment={displayReport.analysis.growth_vs_risks_sentiment} />
+                  <SentimentBadge
+                    sentiment={displayReport.analysis?.growth_vs_risks_sentiment ?? ""}
+                  />
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {displayReport.analysis.growth_vs_risks}
+                {displayReport.analysis?.growth_vs_risks}
               </AccordionContent>
             </AccordionItem>
 
@@ -383,12 +382,12 @@ export default function AIDueDiligence() {
                 <div className="flex items-center gap-2">
                   Institutional Sentiment
                   <SentimentBadge
-                    sentiment={displayReport.analysis.institutional_sentiment_sentiment}
+                    sentiment={displayReport.analysis?.institutional_sentiment_sentiment ?? ""}
                   />
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {displayReport.analysis.institutional_sentiment}
+                {displayReport.analysis?.institutional_sentiment}
               </AccordionContent>
             </AccordionItem>
 
@@ -396,11 +395,13 @@ export default function AIDueDiligence() {
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Investment Thesis
-                  <SentimentBadge sentiment={displayReport.investment_thesis.overall_sentiment} />
+                  <SentimentBadge
+                    sentiment={displayReport.investment_thesis?.overall_sentiment ?? ""}
+                  />
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
-                {displayReport.investment_thesis.thesis}
+                {displayReport.investment_thesis?.thesis}
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -414,12 +415,7 @@ export default function AIDueDiligence() {
       )}
 
       {!displayReport && !loading && (
-        <div className="rounded-lg border border-border bg-card p-12 text-center">
-          <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-30" />
-          <p className="text-muted-foreground">
-            Select a model, enter a ticker and click "Run" to generate a comprehensive analysis.
-          </p>
-        </div>
+        <AIEmptyState message='Select a model, enter a ticker and click "Run" to generate a comprehensive analysis.' />
       )}
     </div>
   );

@@ -1,10 +1,12 @@
 import { Fragment, useState } from "react";
 import { formatValue } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
+import { useAIRun } from "@/hooks/useAIRun";
 import { runPromiseScoreStream } from "@/lib/aiClient";
-import { getModels } from "@/lib/dataService";
 import TerminalOutput from "@/components/TerminalOutput";
 import { TickerLink } from "@/components/EntityLinks";
+import LocalOnlyNotice from "@/components/ai/LocalOnlyNotice";
+import AIEmptyState from "@/components/ai/AIEmptyState";
 
 import { Button } from "@/components/ui/button";
 import ModelSelector from "@/components/ModelSelector";
@@ -114,48 +116,23 @@ export default function AIRanking() {
   const navigate = useNavigate();
   const { latestQuarter: quarter } = useAvailableQuarters();
   const [topN] = useState(20);
-  const [selectedModel, setSelectedModel] = useState("");
-  const [selectedProviderId, setSelectedProviderId] = useState("");
-  const [results, setResults] = useState<RankedStock[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [_statusMsg, setStatusMsg] = useState("");
-  const [_progressPct, setProgressPct] = useState(0);
-  void _statusMsg;
-  void _progressPct;
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [weights, setWeights] = useState<Record<string, number> | null>(null);
-  const [modelUsed, setModelUsed] = useState("");
-  const [terminalLines, setTerminalLines] = useState<string[]>([]);
 
-  const runAnalysis = async () => {
-    if (!quarter) {
-      toast.error("No quarters available");
-      return;
-    }
-    setLoading(true);
-    setResults([]);
-    setWeights(null);
-    setTerminalLines([]);
-
-    try {
-      const models = await getModels();
-      const modelDesc = models.find((m) => m.id === selectedModel)?.description || selectedModel;
-      setModelUsed(modelDesc);
-      setStatusMsg("Running AI Promise Score analysis…");
-      setProgressPct(15);
-
-      const data = await runPromiseScoreStream(
-        quarter,
-        topN,
-        selectedModel || undefined,
-        selectedProviderId || undefined,
-        (line) => setTerminalLines((prev) => [...prev, line]),
-      );
-
-      setProgressPct(95);
-      setStatusMsg("Combining results…");
-
-      const ranked: RankedStock[] = (data as RawRankedStock[]).map((s, i) => ({
+  const {
+    selectedModel,
+    setSelectedModel,
+    setSelectedProviderId,
+    loading,
+    terminalLines,
+    modelUsed,
+    result: results,
+    run,
+  } = useAIRun<RankedStock[]>({
+    execute: async ({ modelId, providerId, onLog }) => {
+      if (!quarter) throw new Error("No quarters available");
+      const data = await runPromiseScoreStream(quarter, topN, modelId, providerId, onLog);
+      return (data as RawRankedStock[]).map((s, i) => ({
         rank: i + 1,
         ticker: s.Ticker ?? s.ticker ?? "",
         company: s.Company ?? s.company ?? "",
@@ -169,23 +146,23 @@ export default function AIRanking() {
         netBuyers: s.Net_Buyers ?? s.netBuyers ?? 0,
         highConvictionCount: s.High_Conviction_Count ?? s.highConvictionCount ?? 0,
       }));
+    },
+    successMessage: (ranked) => `AI ranking complete: ${ranked.length} stocks analyzed`,
+  });
 
-      setResults(ranked);
-      setProgressPct(100);
-      setStatusMsg("Complete");
-      toast.success(`AI ranking complete: ${ranked.length} stocks analyzed`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      toast.error(`AI Error: ${msg}`);
-      console.error(err);
-    } finally {
-      setLoading(false);
+  const runAnalysis = async () => {
+    if (!quarter) {
+      toast.error("No quarters available");
+      return;
     }
+    setWeights(null);
+    await run();
   };
 
   const isReadOnly = IS_GH_PAGES_MODE;
+  const hasLiveResults = (results?.length ?? 0) > 0;
   const sampleResults: RankedStock[] =
-    isReadOnly && results.length === 0
+    isReadOnly && !hasLiveResults
       ? (sampleRanking.stocks as RawRankedStock[]).map((s, i) => ({
           rank: i + 1,
           ticker: s.Ticker,
@@ -201,9 +178,9 @@ export default function AIRanking() {
           highConvictionCount: s.High_Conviction_Count ?? 0,
         }))
       : [];
-  const displayResults = results.length > 0 ? results : sampleResults;
+  const displayResults: RankedStock[] = (results?.length ?? 0) > 0 ? results! : sampleResults;
   const hasResults = displayResults.length > 0;
-  const isSample = isReadOnly && results.length === 0;
+  const isSample = isReadOnly && (results?.length ?? 0) === 0;
 
   return (
     <div className="space-y-5 max-w-7xl">
@@ -238,16 +215,11 @@ export default function AIRanking() {
       </div>
 
       {isReadOnly && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800 px-4 py-3">
-          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
-            <Brain className="h-4 w-4" /> Local-Only Feature
-          </p>
-          <p className="text-xs text-blue-600/80 dark:text-blue-400/80 leading-relaxed mt-1">
-            AI-powered discovery requires a local Python backend and API keys. This live demo shows
-            the interface only. To use this feature, run the app locally with your own API keys.
-            {isSample && (
+        <LocalOnlyNotice
+          description="AI-powered discovery requires a local Python backend and API keys. This live demo shows the interface only. To use this feature, run the app locally with your own API keys."
+          sampleNote={
+            isSample && (
               <>
-                <br />
                 Below is a sample ranking for{" "}
                 <span className="font-mono">{sampleRanking.quarter}</span>
                 {(sampleRanking as { generated_at?: string }).generated_at && (
@@ -261,9 +233,9 @@ export default function AIRanking() {
                 )}
                 .
               </>
-            )}
-          </p>
-        </div>
+            )
+          }
+        />
       )}
 
       {(loading || terminalLines.length > 0) && !hasResults && (
@@ -464,12 +436,7 @@ export default function AIRanking() {
       )}
 
       {!hasResults && !loading && (
-        <div className="rounded-lg border border-border bg-card p-12 text-center">
-          <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-30" />
-          <p className="text-muted-foreground">
-            Select a model and click "Run" to generate stock rankings.
-          </p>
-        </div>
+        <AIEmptyState message='Select a model and click "Run" to generate stock rankings.' />
       )}
     </div>
   );

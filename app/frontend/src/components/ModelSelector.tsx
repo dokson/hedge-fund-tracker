@@ -67,6 +67,16 @@ export default function ModelSelector({
     ? value
     : availableModels[0]?.id || "";
 
+  useEffect(() => {
+    if (effectiveValue && effectiveValue !== value) {
+      onChange(effectiveValue);
+      const model = availableModels.find((m) => m.id === effectiveValue);
+      if (model && onProviderChange) {
+        onProviderChange(CLIENT_TO_PROVIDER_ID[model.client] ?? "");
+      }
+    }
+  }, [effectiveValue, value, availableModels, onChange, onProviderChange]);
+
   const handleChange = (modelId: string) => {
     onChange(modelId);
     const model = availableModels.find((m) => m.id === modelId);
