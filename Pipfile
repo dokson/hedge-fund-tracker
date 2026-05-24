@@ -18,7 +18,7 @@ google-genai = "~=2.6"
 httptools = {version = "==0.7.1", markers = "sys_platform != 'win32'"}
 lxml = "~=6.1"
 openai = "~=2.38"
-pandas = "~=2.3"
+pandas = "~=3.0"
 psutil = "~=7.2"
 python-dotenv = "~=1.2"
 python-multipart = "~=0.0"
