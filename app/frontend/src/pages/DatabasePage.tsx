@@ -4,10 +4,10 @@ import { IS_GH_PAGES_MODE } from "@/lib/config";
 
 export default function DatabasePage() {
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-5 max-w-screen-2xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Database className="h-6 w-6" /> Update Operations
+        <h1 className="page-title">
+          <Database className="page-title-icon" /> Update Operations
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Invoke local Python commands from{" "}

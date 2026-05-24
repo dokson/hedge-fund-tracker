@@ -20,8 +20,8 @@ SCORING CRITERIA:
 
 1. INDUSTRY:
    - Verify the provided `industry`.
-   - **IMPORTANT**: If the provided industry is `"N/A"`, you **MUST** research and provide the correct GICS Industry classification (e.g., "Software", "Biotechnology", "Oil, Gas & Consumable Fuels").
-   - **ETF Rule**: If the ticker represents an Exchange Traded Fund (ETF), you **MUST** set the industry to `"Exchange Traded Funds"`.
+   - **IMPORTANT**: If the provided industry is `"N/A"`, you **MUST** research and provide the correct industry classification using Yahoo Finance taxonomy (e.g., "Software—Application", "Biotechnology", "Oil & Gas Integrated").
+   - **ETF Rule**: If the ticker represents an Exchange Traded Fund (ETF), you **MUST** set the industry to `"ETF"`.
    - If a valid industry value is already provided, keep it.
 
 2. MOMENTUM_SCORE (1-100):
@@ -77,7 +77,7 @@ Respond using TOON format (Token-Oriented Object Notation). Use `key: value` syn
 
 ## SCHEMA
 TICKER:
-  industry: "GICS Industry"
+  industry: "Yahoo Finance industry"
   momentum_score: integer_1_to_100
   low_volatility_score: integer_1_to_100
   risk_score: integer_1_to_100

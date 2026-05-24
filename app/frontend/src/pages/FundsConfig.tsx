@@ -355,10 +355,10 @@ export default function FundsConfig() {
   };
 
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-5 max-w-screen-2xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Settings2 className="h-6 w-6" /> Hedge Funds Configuration
+        <h1 className="page-title">
+          <Settings2 className="page-title-icon" /> Hedge Funds Configuration
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {IS_GH_PAGES_MODE

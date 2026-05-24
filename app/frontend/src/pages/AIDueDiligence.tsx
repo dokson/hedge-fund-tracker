@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
@@ -8,6 +8,7 @@ import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useAIRun } from "@/hooks/useAIRun";
 import { runDueDiligenceStream } from "@/lib/aiClient";
 import TerminalOutput from "@/components/TerminalOutput";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import { Button } from "@/components/ui/button";
 import TickerAutocomplete from "@/components/TickerAutocomplete";
 import ModelSelector from "@/components/ModelSelector";
@@ -77,7 +78,7 @@ function PriceTargetDelta({
   const cls = pct >= 0 ? "text-green-500" : "text-red-500";
   return (
     <span
-      className={`text-sm font-semibold tabular-nums ${cls}`}
+      className={`text-base md:text-lg font-semibold tabular-nums ${cls}`}
       title={`${pct >= 0 ? "Upside" : "Downside"} vs current price`}
     >
       {pct >= 0 ? "↗" : "↘"} {Math.abs(pct).toFixed(1)}%
@@ -119,6 +120,7 @@ export default function AIDueDiligence() {
       return result;
     },
     successMessage: (r) => `Due diligence report generated for ${r.ticker}`,
+    cacheKey: "ai-diligence",
   });
 
   const { data: stocks = [] } = useQuery({
@@ -153,13 +155,28 @@ export default function AIDueDiligence() {
     generated_at?: string;
   };
   const displayReport: DueDiligenceReport | null = report ?? (isReadOnly ? sample : null);
+
+  // When the cached report rehydrates after a page revisit (no URL param), seed
+  // the ticker input so the UI matches the displayed report. One-shot: don't
+  // overwrite if the user has already typed something.
+  // setState-in-effect is the documented React pattern when syncing component
+  // state with an external system (here: the cached run result rehydrated by
+  // useAIRun). The one-shot guard prevents the cascade the linter flags.
+  /* eslint-disable @eslint-react/set-state-in-effect, react-hooks/set-state-in-effect, @eslint-react/exhaustive-deps, react-hooks/exhaustive-deps */
+  useEffect(() => {
+    if (report && !inputTicker && !initialTicker) {
+      setInputTicker(report.ticker);
+      setTicker(report.ticker);
+    }
+  }, [report]);
+  /* eslint-enable @eslint-react/set-state-in-effect, react-hooks/set-state-in-effect, @eslint-react/exhaustive-deps, react-hooks/exhaustive-deps */
   const isSample = isReadOnly && !report;
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-5 max-w-screen-2xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <h1 className="page-title">
             <ClipboardCheck className="h-6 w-6" /> Stock Due Diligence
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Comprehensive AI-generated analysis</p>
@@ -231,6 +248,9 @@ export default function AIDueDiligence() {
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div className="flex items-stretch gap-4 min-w-0">
                 <div className="w-1 rounded-full bg-primary/70 shrink-0" aria-hidden="true" />
+                <div className="rounded-xl border border-border bg-neutral-200 p-2 shadow-sm ring-1 ring-border/50 shrink-0 self-start">
+                  <CompanyLogo ticker={displayReport.ticker} size={56} className="rounded-lg" />
+                </div>
                 <div className="min-w-0">
                   <Link
                     to={`/stock/${displayReport.ticker}`}
@@ -252,10 +272,10 @@ export default function AIDueDiligence() {
                   sentiment={displayReport.investment_thesis?.overall_sentiment ?? ""}
                 />
                 <div className="text-right">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
                     3-Month Price Target
                   </p>
-                  <p className="text-2xl font-bold font-mono flex items-baseline gap-2 justify-end mt-0.5">
+                  <p className="text-3xl md:text-4xl font-black font-mono flex items-baseline gap-2 justify-end mt-1">
                     <span>{displayReport.investment_thesis?.price_target || "N/A"}</span>
                     <PriceTargetDelta
                       priceTarget={displayReport.investment_thesis?.price_target}

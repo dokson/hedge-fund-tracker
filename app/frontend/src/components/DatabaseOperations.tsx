@@ -33,6 +33,8 @@ import {
   RefreshCw,
   ArrowRightLeft,
   Terminal,
+  CalendarSearch,
+  ShieldCheck,
 } from "lucide-react";
 import TickerAutocomplete from "@/components/TickerAutocomplete";
 import CusipAutocomplete from "@/components/CusipAutocomplete";
@@ -56,6 +58,8 @@ interface Operation {
   icon: React.ReactNode;
   endpoint: string;
   streamable?: boolean;
+  /** Read-only operations skip the destructive-action confirmation dialog. */
+  readonly?: boolean;
 }
 
 const operations: Operation[] = [
@@ -75,6 +79,23 @@ const operations: Operation[] = [
     icon: <RefreshCw className="h-5 w-5" />,
     endpoint: "/fetch-nq",
     streamable: true,
+  },
+  {
+    id: "funds-missing-quarters",
+    title: "Show Funds With Missing Quarters",
+    description:
+      "Lists every tracked hedge fund that is missing 13F data for at least one available quarter.",
+    icon: <CalendarSearch className="h-5 w-5" />,
+    endpoint: "/funds-missing-quarters",
+    readonly: true,
+  },
+  {
+    id: "apply-ticker-changes",
+    title: "Auto-Apply Ticker Changes (NASDAQ)",
+    description:
+      "Pulls the latest symbol-change feed from NASDAQ and applies any matches against stocks.csv automatically.",
+    icon: <ShieldCheck className="h-5 w-5" />,
+    endpoint: "/apply-ticker-changes",
   },
   {
     id: "update-ticker",
@@ -125,6 +146,15 @@ export default function DatabaseOperations() {
   const [confirmOp, setConfirmOp] = useState<Operation | null>(null);
   const [activeOp, setActiveOp] = useState<Operation | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
+  // Abort any in-flight stream on unmount so the FastAPI worker is released
+  // when the user navigates away — otherwise subsequent CSV / API requests
+  // queue behind the dangling stream and the next page appears frozen.
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const { data: stocks = [] } = useQuery({
     queryKey: ["stocks"],
@@ -163,12 +193,17 @@ export default function DatabaseOperations() {
     const addLog = (line: string) =>
       setLogs((prev) => ({ ...prev, [op.id]: [...(prev[op.id] || []), line] }));
 
+    abortRef.current?.abort();
+    const abortController = new AbortController();
+    abortRef.current = abortController;
+
     try {
       if (op.streamable) {
         const res = await fetch(`${API_BASE}${op.endpoint}/stream`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(params),
+          signal: abortController.signal,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -201,6 +236,7 @@ export default function DatabaseOperations() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(params),
+          signal: abortController.signal,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -241,6 +277,13 @@ export default function DatabaseOperations() {
         toast.error('"New Ticker" is required');
         return;
       }
+    }
+
+    // Read-only operations don't touch the disk, so skip the destructive-action
+    // confirmation dialog and run immediately.
+    if (op.readonly) {
+      runOperation(op, params);
+      return;
     }
 
     setConfirmOp(op);
@@ -360,20 +403,24 @@ export default function DatabaseOperations() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {operations.map((op) => {
           const state = states[op.id] || { status: "idle" };
           const isRunning = state.status === "running";
 
           return (
-            <Card key={op.id} className="transition-all">
+            <Card key={op.id} className="transition-all flex flex-col h-full">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-md bg-primary/10 text-primary">{op.icon}</div>
-                    <div>
-                      <CardTitle className="text-sm font-semibold">{op.title}</CardTitle>
-                      <CardDescription className="text-xs mt-0.5 min-h-[2.5rem]">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="p-2 rounded-md bg-primary/10 text-primary shrink-0">
+                      {op.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <CardTitle className="text-sm font-semibold leading-snug">
+                        {op.title}
+                      </CardTitle>
+                      <CardDescription className="text-xs mt-1 leading-relaxed">
                         {op.description}
                       </CardDescription>
                     </div>
@@ -381,12 +428,12 @@ export default function DatabaseOperations() {
                   <StatusBadge status={state.status} />
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {renderFields(op, isRunning)}
+              <CardContent className="flex-1 flex flex-col gap-3">
+                <div className="flex-1">{renderFields(op, isRunning)}</div>
 
                 <Button
                   size="sm"
-                  className="w-full gap-1.5"
+                  className="w-full gap-1.5 mt-auto"
                   disabled={isRunDisabled(op, isRunning) || IS_GH_PAGES_MODE}
                   onClick={() => handleRun(op)}
                 >

@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/AppSidebar";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import GlobalSearch from "@/components/GlobalSearch";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Sun, Moon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
@@ -11,11 +12,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <SidebarProvider>
       <div className="h-screen flex flex-col w-full">
-        <header className="h-14 flex items-center justify-between border-b border-border px-5 shrink-0 bg-background z-10">
-          <div className="flex items-center gap-3">
+        <header className="h-14 flex items-center justify-between border-b border-border px-3 sm:px-5 shrink-0 bg-background z-10 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <SidebarTrigger className="md:hidden" />
             <button
               type="button"
-              className="flex items-center gap-3 cursor-pointer text-left"
+              className="flex items-center gap-2 sm:gap-3 cursor-pointer text-left min-w-0"
               onClick={() => navigate("/")}
               aria-label="Go to home"
             >
@@ -24,13 +26,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 alt="Hedge Fund Tracker"
                 className="h-9 w-9 rounded-lg shrink-0"
               />
-              <div>
-                <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-foreground leading-tight truncate">
                   Hedge Fund Tracker
                 </h1>
               </div>
             </button>
-            <p className="text-[9px] text-muted-foreground leading-tight">
+            <p className="hidden sm:block text-[9px] text-muted-foreground leading-tight">
               by{" "}
               <a
                 href="https://github.com/dokson"
@@ -42,7 +44,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </a>
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="hidden md:flex flex-1 justify-center px-6">
+            <GlobalSearch />
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded cursor-pointer"
@@ -65,7 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
-          <main className="flex-1 overflow-auto p-6">{children}</main>
+          <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">{children}</main>
         </div>
       </div>
     </SidebarProvider>

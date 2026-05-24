@@ -21,16 +21,16 @@
     --secondary-foreground: 220 15% 25%;
 
     --muted: 220 10% 94%;
-    --muted-foreground: 220 10% 46%;
+    --muted-foreground: 220 10% 38%;
 
     --accent: 217 85% 48%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 42%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 10% 88%;
-    --input: 220 10% 88%;
+    --border: 220 10% 80%;
+    --input: 220 10% 72%;
     --ring: 217 85% 48%;
 
     --radius: 0.5rem;
@@ -44,14 +44,14 @@
     --sidebar-border: 220 10% 90%;
     --sidebar-ring: 217 85% 48%;
 
-    /* Custom semantic tokens */
-    --positive: 142 71% 35%;
+    /* Custom semantic tokens — light theme contrasts on white card / #f1f3f5 bg */
+    --positive: 142 71% 28%; /* #14803a → 6.6:1 on white */
     --positive-foreground: 0 0% 100%;
-    --negative: 0 80% 50%;
+    --negative: 0 72% 42%; /* #ba1b1b → 6.3:1 on white */
     --negative-foreground: 0 0% 100%;
-    --warning: 38 92% 45%;
-    --warning-foreground: 0 0% 0%;
-    --info: 217 85% 48%;
+    --warning: 32 95% 32%; /* #a05607 → 5.8:1 on white */
+    --warning-foreground: 0 0% 100%;
+    --info: 217 85% 42%; /* #1259c6 → 5.9:1 on white */
 
     --chart-1: 217 85% 48%;
     --chart-2: 142 71% 35%;
@@ -90,8 +90,8 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 18%;
-    --input: 220 13% 18%;
+    --border: 220 13% 28%;
+    --input: 220 13% 30%;
     --ring: 217 91% 60%;
 
     --sidebar-background: 220 20% 5%;
@@ -132,6 +132,14 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Centralised interactive cursor: every enabled <button> across the app
+     (shadcn Button primitive, native <button>, third-party libs) gets the
+     hand pointer. Disabled buttons fall back to the default cursor so the
+     "not interactive" cue is preserved. */
+  button:not(:disabled):not([aria-disabled="true"]):not([data-disabled="true"]) {
+    cursor: pointer;
   }
 
   /* Custom scrollbar */
@@ -178,18 +186,18 @@
 
   .badge-new {
     @apply inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold;
-    background: hsl(142, 71%, 45%, 0.15);
-    color: hsl(142, 71%, 45%);
+    background: hsl(var(--positive) / 0.15);
+    color: hsl(var(--positive));
   }
   .badge-closed {
     @apply inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold;
-    background: hsl(0, 84%, 60%, 0.15);
-    color: hsl(0, 84%, 60%);
+    background: hsl(var(--negative) / 0.15);
+    color: hsl(var(--negative));
   }
   .badge-nochange {
     @apply inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap;
-    background: hsl(0, 0%, 50%, 0.15);
-    color: hsl(0, 0%, 55%);
+    background: hsl(var(--muted-foreground) / 0.15);
+    color: hsl(var(--muted-foreground));
   }
   .badge-bullish {
     @apply inline-flex items-center rounded px-2 py-0.5 text-xs font-bold;
@@ -211,8 +219,44 @@
     @apply text-lg font-semibold tracking-tight text-foreground;
   }
 
+  /* Page-level H1 used across all top-level routes. Scales down on small
+     screens so the header doesn't dominate the viewport on mobile. */
+  .page-title {
+    @apply text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2;
+  }
+  .page-title-icon {
+    @apply h-5 w-5 sm:h-6 sm:w-6;
+  }
+
   .ticker-link {
     @apply font-mono font-semibold text-primary hover:underline cursor-pointer;
+  }
+
+  /* Sans, full-contrast company name — used everywhere a security's display
+     name appears alongside its ticker pill. Sans + medium weight is deliberate:
+     names are proper nouns, not codes, and need different typographic treatment
+     than the mono ticker. Hover hints at the link without competing with the
+     pill's stronger affordance. */
+  .company-link {
+    @apply font-sans font-medium text-foreground/95 hover:text-primary
+           focus-visible:text-primary focus-visible:outline-none
+           transition-colors cursor-pointer
+           inline-block align-bottom max-w-full truncate;
+    letter-spacing: -0.005em;
+  }
+
+  /* Pill-style ticker chip with inline company logo. Used by <TickerLink>. */
+  .ticker-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40
+           pl-1 pr-2.5 py-0.5 font-mono text-xs font-semibold text-foreground
+           cursor-pointer transition-colors;
+  }
+  .ticker-pill:hover,
+  .ticker-pill:focus-visible {
+    @apply bg-accent/10 border-primary/50 text-primary;
+  }
+  .ticker-pill:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-1 ring-offset-background;
   }
 
   .fund-link {

@@ -27,9 +27,9 @@ _stocks_thread_lock = threading.Lock()
 DB_FOLDER = "./database"
 HEDGE_FUNDS_FILE = "hedge_funds.csv"
 EXCLUDED_HEDGE_FUNDS_FILE = "excluded_hedge_funds.csv"
-GICS_HIERARCHY_FILE = "GICS/hierarchy.csv"
 LATEST_SCHEDULE_FILINGS_FILE = "non_quarterly.csv"
 MODELS_FILE = "models.csv"
+SECTOR_HIERARCHY_FILE = "sector_hierarchy.csv"
 STOCKS_FILE = "stocks.csv"
 
 
@@ -306,19 +306,6 @@ def load_non_quarterly_data(filepath: str | None = None) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def load_gics_hierarchy(filepath: str | None = None) -> pd.DataFrame:
-    """
-    Loads the full GICS hierarchy from the CSV file.
-    """
-    if filepath is None:
-        filepath = str(Path(DB_FOLDER) / GICS_HIERARCHY_FILE)
-    try:
-        return pd.read_csv(filepath)
-    except Exception:
-        logger.error("while reading GICS hierarchy from '%s'", filepath, exc_info=True)
-        return pd.DataFrame()
-
-
 def load_quarterly_data(quarter: str) -> pd.DataFrame:
     """
     Loads all fund comparison data for a given quarter (e.g., '2025Q1').
@@ -339,16 +326,37 @@ def load_quarterly_data(quarter: str) -> pd.DataFrame:
     return pd.concat(all_fund_data, ignore_index=True)
 
 
+def load_sector_hierarchy(filepath: str | None = None) -> pd.DataFrame:
+    """
+    Loads the Yahoo Finance sector → industry hierarchy from the CSV file.
+
+    The hierarchy maps each Industry to its parent Sector. It is used to derive
+    the Sector for any stock by joining on the Industry column of stocks.csv.
+    """
+    if filepath is None:
+        filepath = str(Path(DB_FOLDER) / SECTOR_HIERARCHY_FILE)
+    try:
+        return pd.read_csv(filepath, dtype=str, keep_default_na=False)
+    except Exception:
+        logger.error("while reading sector hierarchy from '%s'", filepath, exc_info=True)
+        return pd.DataFrame()
+
+
 def load_stocks(filepath: str | None = None) -> pd.DataFrame:
     """
-    Loads the stock master data (CUSIP, Ticker, Company) from the CSV file.
+    Loads the stock master data (CUSIP, Ticker, Company, Industry) from the CSV file.
+
+    The Sector is intentionally not stored here — it is derivable by joining the
+    `Industry` column against `database/sector_hierarchy.csv`. Legacy CSVs missing
+    the Industry column are backfilled with empty strings so callers always see
+    the full schema.
     """
     if filepath is None:
         filepath = str(Path(DB_FOLDER) / STOCKS_FILE)
     try:
-        df = pd.read_csv(
-            filepath, dtype={"CUSIP": str, "Ticker": str, "Company": str}, keep_default_na=False
-        )
+        df = pd.read_csv(filepath, dtype=str, keep_default_na=False)
+        if "Industry" not in df.columns:
+            df["Industry"] = ""
         return df.set_index("CUSIP")
     except Exception:
         logger.error("while reading stocks file from '%s'", filepath, exc_info=True)
@@ -462,7 +470,12 @@ def stocks_lock(timeout=30):
                     Path(lock_path).unlink()
 
 
-def save_stock(cusip: str, ticker: str, company: str) -> None:
+def save_stock(
+    cusip: str,
+    ticker: str,
+    company: str,
+    industry: str = "",
+) -> None:
     """Appends a new stock record to the master stocks CSV file.
 
     This function appends a new row while ensuring no duplicates are created.
@@ -472,6 +485,8 @@ def save_stock(cusip: str, ticker: str, company: str) -> None:
         cusip (str): The CUSIP identifier of the stock.
         ticker (str): The stock ticker symbol.
         company (str): The name of the company.
+        industry (str): Yahoo Finance industry classification (default empty).
+            The Sector is not stored — derive it via database/sector_hierarchy.csv.
     """
     try:
         # Use csv.writer to properly handle quoting, ensuring all fields are enclosed in double quotes.
@@ -486,7 +501,14 @@ def save_stock(cusip: str, ticker: str, company: str) -> None:
                 "a", newline="", encoding="utf-8"
             ) as stocks_file:
                 writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
-                writer.writerow([cusip.strip(), ticker.strip(), company.strip()])
+                writer.writerow(
+                    [
+                        cusip.strip(),
+                        ticker.strip(),
+                        company.strip(),
+                        industry.strip(),
+                    ]
+                )
     except Exception:
         logger.error("An error occurred while writing to '%s'", STOCKS_FILE, exc_info=True)
 

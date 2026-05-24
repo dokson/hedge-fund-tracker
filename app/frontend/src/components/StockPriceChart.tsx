@@ -12,8 +12,7 @@ import {
   ReferenceLine,
   ReferenceArea,
 } from "recharts";
-import { Loader2, TrendingUp, TrendingDown, Activity, BarChart3, ArrowUpRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Loader2, TrendingUp, TrendingDown, Activity, BarChart3 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 
 type RangeKey = "YTD" | "1Y" | "3Y" | "5Y" | "MAX";
@@ -111,7 +110,7 @@ type Selection = { start: Candle; end: Candle };
 
 export function StockPriceChart({ ticker, staticData }: { ticker: string; staticData?: Candle[] }) {
   const [range, setRange] = useState<RangeKey>("5Y");
-  const [mode, setMode] = useState<ChartMode>("area");
+  const [mode, setMode] = useState<ChartMode>("candles");
   const period = RANGES.find((r) => r.key === range)!.period;
   const [containerRef, size] = useElementSize();
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -313,17 +312,7 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
     <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
         <div>
-          <div className="flex items-center gap-2.5">
-            <Link
-              to={`/stock/${ticker}`}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs font-mono font-semibold tracking-wide text-foreground/80 hover:text-foreground hover:border-primary/50 hover:bg-muted/70 transition-colors"
-              title={`View ${ticker} analysis`}
-            >
-              {ticker}
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
-            <h3 className="section-title text-sm">Price History</h3>
-          </div>
+          <h3 className="section-title text-sm">Price History</h3>
           {stats && (
             <div className="flex items-baseline gap-3 mt-1 flex-wrap">
               <span className="text-2xl font-bold font-mono">${stats.last.toFixed(2)}</span>
@@ -352,18 +341,6 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
             aria-label="Chart type"
           >
             <button
-              onClick={() => setMode("area")}
-              title="Area chart"
-              aria-pressed={mode === "area"}
-              className={`px-2.5 py-1.5 inline-flex items-center gap-1 transition-colors ${
-                mode === "area"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
-            >
-              <Activity className="h-3.5 w-3.5" />
-            </button>
-            <button
               onClick={() => setMode("candles")}
               title="Candlestick chart"
               aria-pressed={mode === "candles"}
@@ -374,6 +351,18 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
               }`}
             >
               <BarChart3 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setMode("area")}
+              title="Area chart"
+              aria-pressed={mode === "area"}
+              className={`px-2.5 py-1.5 inline-flex items-center gap-1 transition-colors ${
+                mode === "area"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+            >
+              <Activity className="h-3.5 w-3.5" />
             </button>
           </div>
           <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">

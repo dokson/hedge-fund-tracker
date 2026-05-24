@@ -7,9 +7,12 @@ import {
   getStocks,
   getFundQuarterlyHoldings,
   getFundAvailableQuarters,
+  parseValueString,
 } from "@/lib/dataService";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { TickerLink, formatFundName } from "@/components/EntityLinks";
+import { TickerLink, CompanyLink, formatFundName } from "@/components/EntityLinks";
+import { FundLogo } from "@/components/FundLogo";
+import { Delta } from "@/components/Delta";
 import { toInitCap } from "@/lib/utils";
 import {
   Select,
@@ -104,10 +107,10 @@ function FundGrid() {
   }, [funds, search, tab, fundAumMap]);
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-5 max-w-screen-2xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Wallet className="h-6 w-6" /> Hedge Fund Portfolios
+        <h1 className="page-title">
+          <Wallet className="page-title-icon" /> Hedge Fund Portfolios
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Browse {funds.length} tracked institutional investors
@@ -129,7 +132,7 @@ function FundGrid() {
               <SortAsc className="h-3.5 w-3.5" /> Alphabetical
             </TabsTrigger>
             <TabsTrigger value="byvalue" className="gap-1.5">
-              <DollarSign className="h-3.5 w-3.5" /> By AUM
+              <DollarSign className="h-3.5 w-3.5" /> AUM
             </TabsTrigger>
           </TabsList>
           <div className="relative w-72">
@@ -171,23 +174,35 @@ function FundGrid() {
                       }
                     }}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold truncate">{fund.denomination}</p>
-                        <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-md border border-border bg-neutral-200 p-1 shrink-0">
+                        <FundLogo
+                          fundName={fund.fund}
+                          url={fund.url}
+                          size={20}
+                          className="rounded-sm"
+                        />
                       </div>
-                      <StarButton
-                        active={true}
-                        onClick={() => toggleStar(fund.fund)}
-                        size={14}
-                        className="mt-0.5 shrink-0"
-                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold truncate">{fund.denomination}</p>
+                            <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
+                          </div>
+                          <StarButton
+                            active={true}
+                            onClick={() => toggleStar(fund.fund)}
+                            size={14}
+                            className="mt-0.5 shrink-0"
+                          />
+                        </div>
+                        {aum !== undefined && (
+                          <p className="text-xs font-mono text-muted-foreground mt-1.5">
+                            AUM {aum > 0 ? formatValue(aum) : "$0"}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    {aum !== undefined && (
-                      <p className="text-xs font-mono text-muted-foreground mt-1.5">
-                        AUM {aum > 0 ? formatValue(aum) : "$0"}
-                      </p>
-                    )}
                   </div>
                 );
               })}
@@ -219,23 +234,37 @@ function FundGrid() {
                         }
                       }}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate">{fund.denomination}</p>
-                          <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-md border border-border bg-neutral-200 p-1 shrink-0">
+                          <FundLogo
+                            fundName={fund.fund}
+                            url={fund.url}
+                            size={20}
+                            className="rounded-sm"
+                          />
                         </div>
-                        <StarButton
-                          active={isStarred(fund.fund)}
-                          onClick={() => toggleStar(fund.fund)}
-                          size={14}
-                          className="mt-0.5 shrink-0"
-                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold truncate">{fund.denomination}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {fund.manager}
+                              </p>
+                            </div>
+                            <StarButton
+                              active={isStarred(fund.fund)}
+                              onClick={() => toggleStar(fund.fund)}
+                              size={14}
+                              className="mt-0.5 shrink-0"
+                            />
+                          </div>
+                          {aum !== undefined && (
+                            <p className="text-xs font-mono text-muted-foreground mt-1.5">
+                              AUM {aum > 0 ? formatValue(aum) : "$0"}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      {aum !== undefined && (
-                        <p className="text-xs font-mono text-muted-foreground mt-1.5">
-                          AUM {aum > 0 ? formatValue(aum) : "$0"}
-                        </p>
-                      )}
                     </div>
                   );
                 })}
@@ -264,28 +293,42 @@ function FundGrid() {
                         }
                       }}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate">{fund.denomination}</p>
-                          <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <StarButton
-                            active={isStarred(fund.fund)}
-                            onClick={() => toggleStar(fund.fund)}
-                            size={14}
-                            className="mt-0.5"
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-md border border-border bg-neutral-200 p-1 shrink-0">
+                          <FundLogo
+                            fundName={fund.fund}
+                            url={fund.url}
+                            size={20}
+                            className="rounded-sm"
                           />
-                          <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
-                            #{i + 1}
-                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold truncate">{fund.denomination}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {fund.manager}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <StarButton
+                                active={isStarred(fund.fund)}
+                                onClick={() => toggleStar(fund.fund)}
+                                size={14}
+                                className="mt-0.5"
+                              />
+                              <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                                #{i + 1}
+                              </span>
+                            </div>
+                          </div>
+                          {aum !== undefined && (
+                            <p className="text-xs font-mono text-muted-foreground mt-1.5">
+                              AUM {aum > 0 ? formatValue(aum) : "$0"}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      {aum !== undefined && (
-                        <p className="text-xs font-mono text-muted-foreground mt-1.5">
-                          AUM {aum > 0 ? formatValue(aum) : "$0"}
-                        </p>
-                      )}
                     </div>
                   );
                 })}
@@ -331,6 +374,56 @@ type SortKey = "portfolioPct" | "value" | "shares" | "deltaShares" | "delta";
 type SortDir = "asc" | "desc";
 
 // ────────────────────────── Fund Detail ──────────────────────────
+
+/**
+ * Renders the Δ cell for a single holding row. Top-level component instead of
+ * an inline IIFE so it can be optimised by React Compiler.
+ */
+function HoldingDeltaCell({
+  isNew,
+  isClosed,
+  deltaPct,
+  deltaValueRaw,
+}: {
+  isNew: boolean;
+  isClosed: boolean;
+  deltaPct: number;
+  deltaValueRaw: string;
+}) {
+  const deltaValueNum = parseValueString(deltaValueRaw);
+  const deltaValue =
+    deltaValueNum !== 0 ? (
+      <div className="mt-0.5 opacity-70 flex justify-end">
+        <Delta value={deltaValueNum} mode="currency" size="sm" />
+      </div>
+    ) : null;
+
+  if (isNew) {
+    return (
+      <>
+        <span className="badge-new">NEW</span>
+        {deltaValue}
+      </>
+    );
+  }
+  if (isClosed) {
+    return (
+      <>
+        <span className="badge-closed">CLOSE</span>
+        {deltaValue}
+      </>
+    );
+  }
+  if (deltaPct === 0) {
+    return <span className="badge-nochange">NO CHANGE</span>;
+  }
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <Delta value={deltaPct} mode="percent" />
+      {deltaValue}
+    </div>
+  );
+}
 
 function FundDetail({ fundName }: { fundName: string }) {
   const navigate = useNavigate();
@@ -450,6 +543,38 @@ function FundDetail({ fundName }: { fundName: string }) {
     });
   }, [holdings]);
 
+  // Sector-level treemap: aggregate the fund's current positions by Yahoo
+  // Finance sector (joined via stocks.csv → sector_hierarchy.csv inside
+  // getStocks). Δ is a value-weighted average across the holdings in each
+  // sector so the colour reflects net institutional behaviour at the sector
+  // level, not just the largest single position.
+  const tickerSectorMap = useMemo(
+    () => new Map(stocksMaster.map((s) => [s.ticker, s.sector ?? "Unclassified"])),
+    [stocksMaster],
+  );
+  const sectorTreemapData = useMemo(() => {
+    const buckets = new Map<string, { value: number; weightedDelta: number }>();
+    for (const h of holdings) {
+      if (h.delta === "CLOSE" || h.portfolioPct <= 0) continue;
+      const sector = tickerSectorMap.get(h.ticker) ?? "Unclassified";
+      const prevShares = h.shares - h.deltaShares;
+      const deltaPct = prevShares > 0 && h.shares > 0 ? (h.deltaShares / prevShares) * 100 : 0;
+      const acc = buckets.get(sector) ?? { value: 0, weightedDelta: 0 };
+      acc.value += h.portfolioPct;
+      acc.weightedDelta += deltaPct * h.portfolioPct;
+      buckets.set(sector, acc);
+    }
+    return [...buckets.entries()]
+      .map(([sector, agg]) => ({
+        name: sector,
+        company: sector,
+        value: agg.value,
+        deltaPct: agg.value > 0 ? agg.weightedDelta / agg.value : 0,
+        delta: "",
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [holdings, tickerSectorMap]);
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
@@ -475,13 +600,16 @@ function FundDetail({ fundName }: { fundName: string }) {
 
   if (availableQuarters.length === 0) {
     return (
-      <div className="space-y-5 max-w-7xl">
+      <div className="space-y-5 max-w-screen-2xl">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/funds")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Wallet className="h-6 w-6" /> {fund?.denomination || formatFundName(fundName)}
+          <div className="rounded-lg border border-border bg-neutral-200 p-2 shadow-sm ring-1 ring-border/50 shrink-0">
+            <FundLogo fundName={fundName} url={fund?.url} size={28} className="rounded-md" />
+          </div>
+          <h1 className="page-title">
+            {fund?.denomination || formatFundName(fundName)}
             <StarButton
               active={isStarred(fundName)}
               onClick={() => toggleStar(fundName)}
@@ -497,15 +625,18 @@ function FundDetail({ fundName }: { fundName: string }) {
   }
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-5 max-w-screen-2xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/funds")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
+          <div className="rounded-lg border border-border bg-neutral-200 p-2 shadow-sm ring-1 ring-border/50 shrink-0">
+            <FundLogo fundName={fundName} url={fund?.url} size={28} className="rounded-md" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Wallet className="h-6 w-6" /> {fund?.denomination || formatFundName(fundName)}
+            <h1 className="page-title">
+              {fund?.denomination || formatFundName(fundName)}
               <StarButton
                 active={isStarred(fundName)}
                 onClick={() => toggleStar(fundName)}
@@ -533,7 +664,7 @@ function FundDetail({ fundName }: { fundName: string }) {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-4 gap-6">
+      <div className="grid lg:grid-cols-5 gap-6">
         {/* Left: KPIs + Table */}
         <div className="lg:col-span-3 space-y-5">
           {/* Summary KPIs */}
@@ -592,7 +723,7 @@ function FundDetail({ fundName }: { fundName: string }) {
                         className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
                         onClick={() => toggleSort("delta")}
                       >
-                        Δ%{sortIndicator("delta")}
+                        Δ{sortIndicator("delta")}
                       </th>
                       <th
                         className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
@@ -613,27 +744,22 @@ function FundDetail({ fundName }: { fundName: string }) {
                           <td className="p-3">
                             <TickerLink ticker={h.ticker} />
                           </td>
-                          <td
-                            className="p-3 text-muted-foreground max-w-[200px] truncate cursor-pointer hover:text-foreground transition-colors"
-                            onClick={() => navigate(`/stock/${h.ticker}`)}
-                          >
-                            {toInitCap(h.company)}
+                          <td className="p-3">
+                            <CompanyLink
+                              ticker={h.ticker}
+                              company={toInitCap(h.company)}
+                              className="max-w-[180px] xl:max-w-[260px]"
+                              showStar
+                            />
                           </td>
                           <td className="p-3 text-right font-mono">{h.value}</td>
                           <td className="p-3 text-right font-mono">
-                            {isNew ? (
-                              <span className="badge-new">NEW</span>
-                            ) : isClosed ? (
-                              <span className="badge-closed">CLOSE</span>
-                            ) : deltaParsed === 0 ? (
-                              <span className="badge-nochange">NO CHANGE</span>
-                            ) : (
-                              <span
-                                className={deltaParsed > 0 ? "delta-positive" : "delta-negative"}
-                              >
-                                {`${deltaParsed > 0 ? "+" : ""}${deltaParsed.toFixed(2)}%`}
-                              </span>
-                            )}
+                            <HoldingDeltaCell
+                              isNew={isNew}
+                              isClosed={isClosed}
+                              deltaPct={deltaParsed}
+                              deltaValueRaw={h.deltaValue}
+                            />
                           </td>
                           <td className="p-3 text-right font-mono">{h.portfolioPct.toFixed(1)}%</td>
                         </tr>
@@ -662,14 +788,26 @@ function FundDetail({ fundName }: { fundName: string }) {
           )}
         </div>
 
-        {/* Right: Holdings Map - full height */}
-        <div className="lg:sticky lg:top-4 lg:self-start rounded-lg border border-border bg-card p-5">
-          <h3 className="section-title mb-3 text-sm">Holdings Map</h3>
-          <HoldingsTreemap
-            data={treemapData}
-            onClickTicker={(t) => navigate(`/stock/${t}`)}
-            displayMode="pct"
-          />
+        {/* Right: Holdings Map + Sector Map side-by-side (stack on narrow viewports) */}
+        <div className="lg:col-span-2 lg:sticky lg:top-4 lg:self-start grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-lg border border-border bg-card p-5">
+            <h3 className="section-title mb-3 text-sm">Holdings Map</h3>
+            <HoldingsTreemap
+              data={treemapData}
+              onClickTicker={(t) => navigate(`/stock/${t}`)}
+              displayMode="pct"
+            />
+          </div>
+          {sectorTreemapData.length > 0 && (
+            <div className="rounded-lg border border-border bg-card p-5">
+              <h3 className="section-title mb-3 text-sm">Sector Map</h3>
+              <HoldingsTreemap
+                data={sectorTreemapData}
+                onClickTicker={() => navigate("/stocks?tab=sectors")}
+                displayMode="pct"
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

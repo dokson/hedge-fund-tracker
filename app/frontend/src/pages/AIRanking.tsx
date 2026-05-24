@@ -4,7 +4,7 @@ import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useAIRun } from "@/hooks/useAIRun";
 import { runPromiseScoreStream } from "@/lib/aiClient";
 import TerminalOutput from "@/components/TerminalOutput";
-import { TickerLink } from "@/components/EntityLinks";
+import { TickerLink, CompanyLink } from "@/components/EntityLinks";
 import LocalOnlyNotice from "@/components/ai/LocalOnlyNotice";
 import AIEmptyState from "@/components/ai/AIEmptyState";
 
@@ -148,6 +148,7 @@ export default function AIRanking() {
       }));
     },
     successMessage: (ranked) => `AI ranking complete: ${ranked.length} stocks analyzed`,
+    cacheKey: "ai-ranking",
   });
 
   const runAnalysis = async () => {
@@ -183,10 +184,10 @@ export default function AIRanking() {
   const isSample = isReadOnly && (results?.length ?? 0) === 0;
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-5 max-w-screen-2xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <h1 className="page-title">
             <Search className="h-6 w-6" /> Most Promising Stocks
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -335,11 +336,13 @@ export default function AIRanking() {
                     <td className="p-3">
                       <TickerLink ticker={s.ticker} />
                     </td>
-                    <td
-                      className="p-3 text-muted-foreground truncate max-w-[200px] cursor-pointer hover:text-foreground transition-colors"
-                      onClick={() => navigate(`/stock/${s.ticker}`)}
-                    >
-                      {s.company}
+                    <td className="p-3">
+                      <CompanyLink
+                        ticker={s.ticker}
+                        company={s.company}
+                        className="max-w-[180px] xl:max-w-[260px]"
+                        showStar
+                      />
                     </td>
                     <td className="p-3 text-center">
                       <ScoreBadge score={s.promiseScore} />

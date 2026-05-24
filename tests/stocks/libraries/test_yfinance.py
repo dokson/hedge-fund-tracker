@@ -68,6 +68,97 @@ class TestYFinance(unittest.TestCase):
         self.assertIsNone(company)
         mock_yf_ticker.assert_not_called()
 
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_get_classification_returns_sector_and_industry(self, mock_yf_ticker):
+        """
+        Returns a dict {sector, industry} built from yf.Ticker(ticker).info.
+        """
+        mock_instance = MagicMock()
+        mock_instance.info = {"sector": "Technology", "industry": "Consumer Electronics"}
+        mock_yf_ticker.return_value = mock_instance
+
+        classification = YFinance.get_classification("AAPL")
+
+        self.assertEqual(
+            classification,
+            {"sector": "Technology", "industry": "Consumer Electronics"},
+        )
+        mock_yf_ticker.assert_called_with("AAPL")
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_get_classification_sanitizes_share_class_ticker(self, mock_yf_ticker):
+        """
+        Replaces the dot in share-class tickers (BRK.B -> BRK-B) before querying
+        yfinance, matching the convention used elsewhere in this client.
+        """
+        mock_instance = MagicMock()
+        mock_instance.info = {"sector": "Financial Services", "industry": "Insurance—Diversified"}
+        mock_yf_ticker.return_value = mock_instance
+
+        YFinance.get_classification("BRK.B")
+
+        mock_yf_ticker.assert_called_with("BRK-B")
+
+    def test_get_classification_returns_none_for_empty_ticker(self):
+        """
+        Returns None without invoking yf.Ticker when the input is empty or None.
+        """
+        self.assertIsNone(YFinance.get_classification(""))
+        self.assertIsNone(YFinance.get_classification(None))  # type: ignore[arg-type]
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_get_classification_returns_none_when_both_fields_missing(self, mock_yf_ticker):
+        """
+        Returns None when the info payload exposes neither sector nor industry and
+        the ticker is not an ETF — avoids writing empty-string placeholders into
+        stocks.csv.
+        """
+        mock_instance = MagicMock()
+        mock_instance.info = {"quoteType": "EQUITY"}
+        mock_yf_ticker.return_value = mock_instance
+
+        self.assertIsNone(YFinance.get_classification("ZZZZ"))
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_get_classification_buckets_etfs_into_synthetic_etf_category(self, mock_yf_ticker):
+        """
+        ETFs do not carry a sector classification in Yahoo's data (no sector/industry
+        fields), so we group them under a synthetic 'ETF' category for both
+        sector and industry. Detected via quoteType == 'ETF'.
+        """
+        mock_instance = MagicMock()
+        mock_instance.info = {"quoteType": "ETF", "longName": "SPDR S&P 500 ETF Trust"}
+        mock_yf_ticker.return_value = mock_instance
+
+        self.assertEqual(
+            YFinance.get_classification("SPY"),
+            {"sector": "ETF", "industry": "ETF"},
+        )
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_get_classification_partial_fields(self, mock_yf_ticker):
+        """
+        When only one of {sector, industry} is present, returns a dict where the
+        missing field is None and the present one is the original string.
+        """
+        mock_instance = MagicMock()
+        mock_instance.info = {"sector": "Energy"}
+        mock_yf_ticker.return_value = mock_instance
+
+        self.assertEqual(
+            YFinance.get_classification("XOM"),
+            {"sector": "Energy", "industry": None},
+        )
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_get_classification_returns_none_on_exception(self, mock_yf_ticker):
+        """
+        Returns None when yfinance raises (e.g. ticker not found, network error).
+        """
+        mock_yf_ticker.side_effect = Exception("Yahoo unreachable")
+
+        self.assertIsNone(YFinance.get_classification("AAPL"))
+
     @patch("app.stocks.libraries.yfinance.requests.get")
     def test_get_ticker_returns_none_when_quote_symbol_is_empty(self, mock_get):
         """

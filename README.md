@@ -46,7 +46,6 @@ A comprehensive **Python tool** for tracking **hedge fund portfolios** through *
     - [Prerequisites](#prerequisites)
     - [Data Management](#data-management)
     - [Database Updater](#database-updater)
-    - [GICS Classification](#gics-classification)
     - [API Configuration](#api-configuration)
   - [📁 Project Structure](#-project-structure)
   - [👨🏻‍💻 How This Tool Tracks Hedge Funds](#-how-this-tool-tracks-hedge-funds)
@@ -118,7 +117,9 @@ The app will be available at `http://localhost:8000`.
 | **⚙️ Automated Data Pipeline** | Scheduled GitHub Actions to fetch, process, and commit the latest SEC filings directly to your repository. |
 | **🌐 GitHub Pages Demo** | Static deployment with bundled data — all analysis features work without a backend. |
 | **⭐ Personalized Watchlist** | Star your favorite funds or stocks for quick access and personalized tracking across the platform. |
-| **🗃️ GICS Hierarchy** | Autonomous parser to build a granular [GICS](https://www.msci.com/indexes/index-resources/gics) classification database. |
+| **🏷️ Sector & Industry** | Every stock is auto-tagged with Yahoo Finance industry; sector is derived via `sector_hierarchy.csv`. ETFs share a single "ETF" bucket. New tickers run through a `yfinance → same-Company match → Groq LLM` fallback chain. |
+| **🔎 Global Search** | Top-bar search across tickers, companies, fund names and managers, with grouped results, keyboard navigation (`⌘K`) and company logos inline. |
+| **🖼️ Company Logos** | Logos served via Cloudinary's edge CDN, sourced lazily from Financial Modeling Prep. Pre-warmed for the full universe of tracked stocks. |
 
 ## 📦 Installation
 
@@ -194,18 +195,14 @@ This will open a separate menu for data management:
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### GICS Classification
-
-The project includes an **autonomous GICS (Global Industry Classification Standard) parser** (`database/gics/updater.py`). Originally developed by [MSCI](https://www.msci.com/) and [S&P](https://www.spglobal.com/), it scrapes Wikipedia to build a full hierarchy of 163 sub-industries. This provides the AI Analyst with granular industry context while remaining independent of third-party libraries.
-
 ### API Configuration
 
 The tool can utilize API keys for enhanced functionality, but all are optional:
 
 | Service | Purpose | Get Free API Key |
 | :--- | :--- | :--- |
-| **[OpenFIGI](https://www.openfigi.com/)** | [CUSIP](https://en.wikipedia.org/wiki/CUSIP) → [stock ticker](https://en.wikipedia.org/wiki/Ticker_symbol) (Bloomberg's free identifier mapping). Works **without a key** at 25 req/min; a key raises the limit to 250 req/min. | [OpenFIGI Keys](https://www.openfigi.com/api) |
-| **[Financial Modeling Prep](https://site.financialmodelingprep.com/)** | Reverse ticker → CUSIP lookup for Form 4 filings (free tier 250 req/day). **Key required** — without it the reverse lookup is skipped and unresolved tickers open a GitHub issue. | [FMP Keys](https://site.financialmodelingprep.com/developer/docs) |
+| **[![OpenFIGI](https://github.com/user-attachments/assets/4103d2d0-9317-4c99-a69f-51126e189c96)](https://www.openfigi.com/) [OpenFIGI](https://www.openfigi.com/)** | [CUSIP](https://en.wikipedia.org/wiki/CUSIP) → [stock ticker](https://en.wikipedia.org/wiki/Ticker_symbol) (Bloomberg's free identifier mapping). Works **without a key** at 25 req/min; a key raises the limit to 250 req/min. | [OpenFIGI Keys](https://www.openfigi.com/api/overview) |
+| **[![FMP](https://github.com/user-attachments/assets/603b12b2-c5cf-4669-8e9e-89f4e1d47d2a)](https://site.financialmodelingprep.com/) [Financial Modeling Prep](https://site.financialmodelingprep.com/)** | Reverse ticker → CUSIP lookup for Form 4 filings (free tier 250 req/day). **Key required** — without it the reverse lookup is skipped and unresolved tickers open a GitHub issue. | [FMP Keys](https://site.financialmodelingprep.com/developer/docs) |
 | **[![GitHub Models](https://github.com/user-attachments/assets/3e8ca2f8-1bb0-4ec3-9374-d6106499adde)](https://github.com/marketplace/models) [GitHub Models](https://github.com/marketplace/models)** | Access to top-tier models (e.g., [xAI Grok-3](https://x.ai/news/grok-3), [OpenAI GPT-5](https://openai.com/en-US/gpt-5/), etc...) | [GitHub Tokens](https://github.com/settings/personal-access-tokens/new?description=Used+to+call+GitHub+Models+APIs+to+easily+run+LLMs%3A+https%3A%2F%2Fdocs.github.com%2Fgithub-models%2Fquickstart%23step-2-make-an-api-call&name=GitHub+Models+token&user_models=read) |
 | **[![Google AI Studio](https://github.com/user-attachments/assets/3b351d8e-d7f6-4337-9c2f-d2af77f30711)](https://aistudio.google.com/) [Google AI Studio](https://aistudio.google.com/)** | Access to [Google Gemini](https://gemini.google.com/) models | [AI Studio Keys](https://aistudio.google.com/app/apikey) |
 | **[![Groq AI](https://github.com/user-attachments/assets/c56394b5-79f8-4c25-a24a-2e2a8bde829c)](https://console.groq.com/) [Groq AI](https://console.groq.com/)** | Access to various LLMs (e.g., OpenAI [gpt-oss](https://github.com/openai/gpt-oss), Meta [Llama](https://www.llama.com/), etc...) | [Groq Keys](https://console.groq.com/keys) |
@@ -254,13 +251,11 @@ hedge-fund-tracker/
 │   │   ├── 📊 fund_2.csv
 │   │   └── 📊 fund_n.csv
 │   ├── 📁 YYYYQN/
-│   ├── 📁 GICS/
-│   │   ├── 🗃️ hierarchy.csv        # Full GICS hierarchy
-│   │   └── ▶️ updater.py           # GICS updater script
 │   ├── 📝 hedge_funds.csv          # Curated hedge funds list -> EDIT THIS to add or remove funds to track
 │   ├── 📝 models.csv               # LLMs list to use for AI Financial Analyst -> EDIT THIS to add or remove AI models
 │   ├── 📊 non_quarterly.csv        # Stores latest 13D/G and Form 4 filings
-│   ├── 📊 stocks.csv               # Master data for stocks (CUSIP-Ticker-Name)
+│   ├── 📊 sector_hierarchy.csv     # Yahoo Finance sector → industry taxonomy
+│   ├── 📊 stocks.csv               # Master data for stocks (CUSIP-Ticker-Name-Sector-Industry)
 │   └── ▶️ updater.py               # Main entry point for updating the database
 ├── 📁 tests/                        # Test suite
 ├── 📝 .env.example                 # Template for your API keys
@@ -562,9 +557,6 @@ This tool is in active development, and your input is valuable. For questions or
 - [SEC Developer Resources](https://www.sec.gov/about/developer-resources)
 - [SEC: Frequently Asked Questions About Form 13F](https://www.sec.gov/rules-regulations/staff-guidance/division-investment-management-frequently-asked-questions/frequently-asked-questions-about-form-13f)
 - [SEC: Guidance on Beneficial Ownership Reporting (Sections 13D/G)](https://www.sec.gov/rules-regulations/staff-guidance/compliance-disclosure-interpretations/exchange-act-sections-13d-13g-regulation-13d-g-beneficial-ownership-reporting)
-- [Wikipedia: Global Industry Classification Standard](https://en.wikipedia.org/wiki/Global_Industry_Classification_Standard)
-- [MSCI: Global Industry Classification Standard (GICS)](https://www.msci.com/indexes/index-resources/gics)
-- [S&P Global: GICS Structure & Methodology](https://www.spglobal.com/spdji/en/documents/methodologies/methodology-gics.pdf)
 - [CUSIP (Committee on Uniform Security Identification Procedures)](https://en.wikipedia.org/wiki/CUSIP)
 - [Modern Portfolio Theory (MPT)](https://en.wikipedia.org/wiki/Modern_portfolio_theory)
 

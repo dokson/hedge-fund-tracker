@@ -11,7 +11,6 @@ from pathlib import Path
 import pandas as pd
 
 from app.utils.database import (
-    GICS_HIERARCHY_FILE,
     HEDGE_FUNDS_FILE,
     LATEST_SCHEDULE_FILINGS_FILE,
     MODELS_FILE,
@@ -26,10 +25,10 @@ from app.utils.database import (
     get_quarters_for_fund,
     load_excluded_hedge_funds,
     load_fund_holdings,
-    load_gics_hierarchy,
     load_hedge_funds,
     load_models,
     load_non_quarterly_data,
+    load_sector_hierarchy,
     load_stocks,
     restore_fund_to_database,
     save_stock,
@@ -75,14 +74,14 @@ class TestDatabase(unittest.TestCase):
             f.write("ID,Description,Client\nmodel-1,Google Model,Google\n")
 
         with (test_db_path / STOCKS_FILE).open("w", newline="") as f:
-            f.write("CUSIP,Ticker,Company\n123,TICKA,Company A\n456,TICKB,Company B\n")
+            f.write(
+                "CUSIP,Ticker,Company,Industry\n"
+                "123,TICKA,Company A,Software - Application\n"
+                "456,TICKB,Company B,Banks - Regional\n"
+            )
 
         with (test_db_path / LATEST_SCHEDULE_FILINGS_FILE).open("w", newline="") as f:
             f.write("Fund,Ticker,CUSIP,Date,Filing_Date\nFund A,TICKA,123,2025-01-01,2025-01-01\n")
-
-        (test_db_path / "GICS").mkdir(parents=True, exist_ok=True)
-        with (test_db_path / GICS_HIERARCHY_FILE).open("w", newline="") as f:
-            f.write("Sector,Industry\nTech,Software\n")
 
         # Patch the DB_FOLDER constant to use the test directory
         self.patcher = unittest.mock.patch("app.utils.database.DB_FOLDER", self.test_db_folder)
@@ -178,14 +177,6 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(len(df), 1)
         self.assertEqual(df.iloc[0]["Ticker"], "TICKA")
 
-    def test_load_gics_hierarchy(self):
-        """
-        Loads the GICS classification hierarchy from CSV.
-        """
-        df = load_gics_hierarchy()
-        self.assertEqual(len(df), 1)
-        self.assertEqual(df.iloc[0]["Sector"], "Tech")
-
     def test_save_stock_and_sort(self):
         """
         Saves a new stock to the database and verifies it appears after sort.
@@ -206,6 +197,73 @@ class TestDatabase(unittest.TestCase):
         self.assertIn("999", df.index)
         self.assertEqual(df.loc["999", "Ticker"], "TRIM")
         self.assertEqual(df.loc["999", "Company"], "Trimmed Company")
+
+    def test_load_sector_hierarchy(self):
+        """
+        Loads sector_hierarchy.csv into a DataFrame exposing Sector + Industry
+        columns. Returns an empty DataFrame when the file is missing rather
+        than raising, so callers can degrade gracefully.
+        """
+        hierarchy_path = Path(self.test_db_folder) / "sector_hierarchy.csv"
+        hierarchy_path.write_text(
+            '"Sector","Industry"\n"Technology","Software - Application"\n'
+            '"Technology","Semiconductors"\n"Financial Services","Banks - Regional"\n',
+            encoding="utf-8",
+        )
+
+        df = load_sector_hierarchy()
+
+        self.assertEqual(len(df), 3)
+        self.assertEqual(set(df.columns), {"Sector", "Industry"})
+        self.assertIn("Software - Application", df["Industry"].tolist())
+
+    def test_load_sector_hierarchy_returns_empty_when_missing(self):
+        """
+        Returns an empty DataFrame (not raises) when the file does not exist.
+        """
+        df = load_sector_hierarchy(filepath="/nonexistent/sector_hierarchy.csv")
+
+        self.assertTrue(df.empty)
+
+    def test_save_stock_persists_industry(self):
+        """
+        Persists the Yahoo Finance industry string alongside CUSIP/Ticker/Company.
+        The Sector is intentionally not stored — it is derivable via
+        database/sector_hierarchy.csv.
+        """
+        save_stock(
+            "037833100",
+            "AAPL",
+            "Apple Inc",
+            industry="Consumer Electronics",
+        )
+        df = load_stocks()
+        self.assertEqual(df.loc["037833100", "Industry"], "Consumer Electronics")
+
+    def test_save_stock_defaults_industry_to_empty(self):
+        """
+        Leaves Industry as an empty string when the caller does not provide it,
+        preserving backward compatibility with the original 3-argument signature.
+        """
+        save_stock("111", "AAA", "A Co")
+        df = load_stocks()
+        self.assertEqual(df.loc["111", "Industry"], "")
+
+    def test_load_stocks_backfills_missing_industry_column(self):
+        """
+        Loads a legacy CSV that only has CUSIP/Ticker/Company and silently exposes
+        an empty Industry column to the caller.
+        """
+        legacy_path = Path(self.test_db_folder) / "legacy_stocks.csv"
+        legacy_path.write_text(
+            '"CUSIP","Ticker","Company"\n"037833100","AAPL","Apple Inc"\n',
+            encoding="utf-8",
+        )
+
+        df = load_stocks(str(legacy_path))
+
+        self.assertEqual(df.loc["037833100", "Ticker"], "AAPL")
+        self.assertEqual(df.loc["037833100", "Industry"], "")
 
     def test_sort_hedge_funds_alphabetical(self):
         """
@@ -292,6 +350,51 @@ class TestDatabase(unittest.TestCase):
         df_stocks = load_stocks()
         self.assertEqual(df_stocks.loc["123", "Ticker"], "TICKNEW")
         self.assertEqual(df_stocks.loc["123", "Company"], "Company A")
+
+    def test_update_ticker_preserves_industry(self):
+        """
+        Renaming a ticker must NOT clear the Industry column — Industry stays
+        with the CUSIP regardless of ticker changes.
+        """
+        update_ticker("TICKA", "TICKNEW", new_company="New Name")
+
+        df_stocks = load_stocks()
+        self.assertEqual(df_stocks.loc["123", "Industry"], "Software - Application")
+        self.assertEqual(df_stocks.loc["456", "Industry"], "Banks - Regional")
+
+    def test_sort_stocks_preserves_industry(self):
+        """
+        sort_stocks reads, dedups, and rewrites stocks.csv — Industry must
+        survive the round-trip.
+        """
+        from app.utils.database import sort_stocks
+
+        sort_stocks()
+        df_stocks = load_stocks()
+        self.assertEqual(df_stocks.loc["123", "Industry"], "Software - Application")
+        self.assertEqual(df_stocks.loc["456", "Industry"], "Banks - Regional")
+
+    def test_save_stocks_round_trip_preserves_industry(self):
+        """
+        save_stocks(load_stocks()) must be idempotent on the Industry column.
+        """
+        from app.utils.database import save_stocks
+
+        df_before = load_stocks()
+        save_stocks(df_before)
+        df_after = load_stocks()
+        self.assertEqual(df_after.loc["123", "Industry"], df_before.loc["123", "Industry"])
+        self.assertEqual(df_after.loc["456", "Industry"], df_before.loc["456", "Industry"])
+
+    def test_find_cusips_for_ticker_does_not_break_on_industry_column(self):
+        """
+        find_cusips_for_ticker reads stocks.csv via csv.DictReader; the added
+        Industry column must not interfere with its CUSIP/Ticker/Company lookups.
+        """
+        results = find_cusips_for_ticker("TICKA")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["CUSIP"], "123")
+        self.assertEqual(results[0]["Company"], "Company A")
 
     def test_concurrent_save_stocks(self):
         """

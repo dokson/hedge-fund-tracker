@@ -127,7 +127,7 @@ Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `datab
 
 - **`app/scraper/`** — SEC EDGAR retrieval. `sec_scraper.py` fetches 13F-HR, 13D/G, Form 4 with tenacity retries + custom User-Agent. `xml_processor.py` parses 13F XML into DataFrames.
 - **`app/analysis/`** — `quarterly_report.py` (delta shares/values, NEW/CLOSE positions), `stocks.py` (multi-fund consensus), `non_quarterly.py` (13D/G + Form 4 integration), `performance_evaluator.py` (HBR).
-- **`app/stocks/`** — CUSIP→Ticker via fallback chain: yfinance → OpenFIGI → TradingView. Reverse ticker→CUSIP (Form 4 path) via FMP (requires `FMP_API_KEY`). Maintains `stocks.csv`. `PriceFetcher` uses a separate chain: yfinance → TradingView → Nasdaq (Nasdaq covers mutual funds others miss).
+- **`app/stocks/`** — CUSIP→Ticker via fallback chain: yfinance → OpenFIGI → TradingView. Reverse ticker→CUSIP (Form 4 path) via FMP (requires `FMP_API_KEY`). Industry classification via `app/stocks/classification.py::resolve_industry`: yfinance → same-Company match in stocks.csv → Groq LLM (free, picks from `sector_hierarchy.csv` vocabulary). Maintains `stocks.csv`. `PriceFetcher` uses a separate chain: yfinance → TradingView → Nasdaq (Nasdaq covers mutual funds others miss).
 - **`app/ai/`** — Multi-provider LLM. `agent.py` runs **two-phase analysis**: (1) AI picks metric weights for current market, (2) AI computes scores using those weights. Retries up to 7× on invalid response. Clients in `clients/`: GitHub Models, Google Gemini, Groq, HuggingFace, OpenRouter.
 
 ### Key frontend files
@@ -147,7 +147,13 @@ All in `database/`:
 - **`stocks.csv`** — CUSIP → Ticker → Company. Auto-sorted on exit.
 - **`non_quarterly.csv`** — recent 13D/G + Form 4 activity.
 - **`{YEAR}Q{N}/`** — per-fund 13F per quarter (one CSV per fund).
-- **`GICS/hierarchy.csv`** — 163 sub-industries, populated by `GICS/updater.py` (Wikipedia parser).
+- **`sector_hierarchy.csv`** — Yahoo Finance sector → industry mapping, derived empirically from `stocks.csv` after the classification backfill. The Sector for any stock is derived at read time by joining this file on the Industry column.
+
+## Frontend: Global Search & Company Logos
+
+- **`app/frontend/src/components/GlobalSearch.tsx`** — top-bar search across tickers, companies, fund names and managers. Substring scoring with prefix priority, grouped dropdown, keyboard nav (`⌘K`). Builds its index from `getStocks()` + `getHedgeFunds()` (no extra fetch).
+- **`app/frontend/src/components/CompanyLogo.tsx`** + **`companyLogoUrl.ts`** — renders logos via Cloudinary fetch URL pointing at Financial Modeling Prep's public symbol endpoint. The `cloud_name` is hardcoded in `config.ts` (it's public by design). Logos are cached at the CDN edge after first fetch; `scripts/warm_cloudinary_cache.py` pre-warms the full DB.
+- **Cloudinary security**: Strict transformations ON, with `dokson.github.io` whitelisted in *Allowed strict referral domains*. *Allowed fetch domains* restricted to `images.financialmodelingprep.com`. Source pivoting and arbitrary new transformations are blocked.
 - **`excluded_hedge_funds.csv`** — funds intentionally not tracked, with CIKs (re-add by moving rows back to `hedge_funds.csv`).
 
 ## Data updates / GH Actions automation

@@ -1,16 +1,16 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   runQuarterAnalysis,
   getQuarterFundList,
   formatValue,
-  formatPct,
   type StockQuarterAnalysis,
 } from "@/lib/dataService";
 import type { Quarter } from "@/lib/quarters";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
-import { TickerLink } from "@/components/EntityLinks";
+import { TickerLink, CompanyLink } from "@/components/EntityLinks";
+import { Delta } from "@/components/Delta";
 import {
   Select,
   SelectContent,
@@ -108,13 +108,14 @@ function AnalysisTable({
     format?: (v: number, row: StockQuarterAnalysis) => string;
     colorFn?: (v: number) => string;
     tooltip?: string;
+    /** Render as Delta cell (icon + value) instead of plain colored text. */
+    deltaMode?: "currency" | "percent";
   }[];
   defaultMinHolders?: number;
   defaultFilterInfinite?: boolean;
   defaultLimit?: number;
   disableFilters?: boolean;
 }) {
-  const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>(defaultSort);
   const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultDir);
   const [minHolders, setMinHolders] = useState(defaultMinHolders);
@@ -255,14 +256,28 @@ function AnalysisTable({
                     <td className="p-3">
                       <TickerLink ticker={s.ticker} />
                     </td>
-                    <td
-                      className="p-3 text-muted-foreground max-w-[200px] truncate cursor-pointer hover:text-foreground transition-colors"
-                      onClick={() => navigate(`/stock/${s.ticker}`)}
-                    >
-                      {s.company}
+                    <td className="p-3">
+                      <CompanyLink
+                        ticker={s.ticker}
+                        company={s.company}
+                        className="max-w-[180px] xl:max-w-[260px]"
+                        showStar
+                      />
                     </td>
                     {columns.map((col) => {
-                      const rawVal = s[col.key];
+                      const rawVal = s[col.key] as number;
+                      if (col.deltaMode && typeof rawVal === "number") {
+                        return (
+                          <td
+                            key={col.key}
+                            className={`p-3 text-${col.align || "right"} font-mono`}
+                          >
+                            <div className={col.align === "right" ? "flex justify-end" : ""}>
+                              <Delta value={rawVal} mode={col.deltaMode} />
+                            </div>
+                          </td>
+                        );
+                      }
                       const display = col.format ? col.format(rawVal, s) : String(rawVal);
                       const colorClass = col.colorFn ? col.colorFn(rawVal) : "";
                       return (
@@ -285,9 +300,17 @@ function AnalysisTable({
   );
 }
 
-const deltaColor = (v: number) =>
-  !isFinite(v) ? "delta-positive" : v > 0 ? "delta-positive" : v < 0 ? "delta-negative" : "";
 const netColor = (v: number) => (v > 0 ? "delta-positive" : v < 0 ? "delta-negative" : "");
+
+const VALID_TABS = [
+  "avgportfolio",
+  "consensus",
+  "new",
+  "bigbets",
+  "increasing",
+  "decreasing",
+] as const;
+const DEFAULT_TAB = "avgportfolio";
 
 export default function QuarterlyTrends() {
   const { quarters, latestQuarter } = useAvailableQuarters();
@@ -300,6 +323,23 @@ export default function QuarterlyTrends() {
   const [filterStarredFunds, setFilterStarredFunds] = useState(false);
   const anyStarredFilter = filterStarredStocks || filterStarredFunds;
   const hasAnyStarred = starredStocks.size > 0 || starredFunds.size > 0;
+
+  // URL sync: ?tab=<id> drives the active analysis tab so the view is
+  // shareable / back-forward navigable. Missing or unknown tab → default.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<string>(
+    urlTab && (VALID_TABS as readonly string[]).includes(urlTab) ? urlTab : DEFAULT_TAB,
+  );
+  // Canonical setState-in-effect: syncing state with an external system
+  // (the URL). The setter short-circuits when the value already matches.
+  /* eslint-disable @eslint-react/set-state-in-effect, react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const param = searchParams.get("tab");
+    const next = param && (VALID_TABS as readonly string[]).includes(param) ? param : DEFAULT_TAB;
+    setActiveTab((current) => (current === next ? current : next));
+  }, [searchParams]);
+  /* eslint-enable @eslint-react/set-state-in-effect, react-hooks/set-state-in-effect */
 
   const activeFundFilter = filterStarredFunds && starredFunds.size > 0 ? starredFunds : undefined;
 
@@ -331,12 +371,12 @@ export default function QuarterlyTrends() {
   }, [rawData, filterStarredStocks, starredStocks]);
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-5 max-w-screen-2xl">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <BarChart3 className="h-6 w-6" /> Quarterly Trends
+            <h1 className="page-title">
+              <BarChart3 className="page-title-icon" /> Quarterly Trends
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Cross-fund consensus signals — {data.length} stocks analyzed
@@ -369,7 +409,17 @@ export default function QuarterlyTrends() {
           </div>
         </div>
       ) : (
-        <Tabs defaultValue="avgportfolio" className="w-full">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            setActiveTab(value);
+            const next = new URLSearchParams(searchParams);
+            if (value === DEFAULT_TAB) next.delete("tab");
+            else next.set("tab", value);
+            setSearchParams(next, { replace: false });
+          }}
+          className="w-full"
+        >
           <TabsList className="bg-secondary border border-border h-auto flex-wrap">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -491,8 +541,7 @@ export default function QuarterlyTrends() {
                 {
                   key: "delta",
                   label: "Δ%",
-                  format: (v) => formatPct(v, true),
-                  colorFn: deltaColor,
+                  deltaMode: "percent",
                   tooltip: "Percentage change in aggregate shares held vs previous quarter.",
                 },
                 {
@@ -519,8 +568,7 @@ export default function QuarterlyTrends() {
                 {
                   key: "totalDeltaValue",
                   label: "Δ Value",
-                  format: (v) => formatValue(v),
-                  colorFn: netColor,
+                  deltaMode: "currency",
                   tooltip: "Net change in dollar value across all holders.",
                 },
               ]}
@@ -552,15 +600,13 @@ export default function QuarterlyTrends() {
                 {
                   key: "delta",
                   label: "Δ%",
-                  format: (v) => formatPct(v, true),
-                  colorFn: deltaColor,
+                  deltaMode: "percent",
                   tooltip: "Percentage change in aggregate shares held.",
                 },
                 {
                   key: "totalDeltaValue",
                   label: "Δ Value",
-                  format: (v) => formatValue(v),
-                  colorFn: netColor,
+                  deltaMode: "currency",
                   tooltip: "Net change in dollar value across all holders.",
                 },
                 {
@@ -600,15 +646,13 @@ export default function QuarterlyTrends() {
                 {
                   key: "delta",
                   label: "Δ%",
-                  format: (v) => formatPct(v, true),
-                  colorFn: deltaColor,
+                  deltaMode: "percent",
                   tooltip: "Percentage change in aggregate shares held.",
                 },
                 {
                   key: "totalDeltaValue",
                   label: "Δ Value",
-                  format: (v) => formatValue(v),
-                  colorFn: netColor,
+                  deltaMode: "currency",
                   tooltip: "Net change in dollar value across all holders.",
                 },
                 {
@@ -648,15 +692,13 @@ export default function QuarterlyTrends() {
                 {
                   key: "delta",
                   label: "Δ%",
-                  format: (v) => formatPct(v, true),
-                  colorFn: deltaColor,
+                  deltaMode: "percent",
                   tooltip: "Percentage change in aggregate shares held.",
                 },
                 {
                   key: "totalDeltaValue",
                   label: "Δ Value",
-                  format: (v) => formatValue(v),
-                  colorFn: netColor,
+                  deltaMode: "currency",
                   tooltip: "Net change in dollar value across all holders.",
                 },
                 {
@@ -690,15 +732,13 @@ export default function QuarterlyTrends() {
                 {
                   key: "delta",
                   label: "Δ%",
-                  format: (v) => formatPct(v, true),
-                  colorFn: deltaColor,
+                  deltaMode: "percent",
                   tooltip: "Percentage change in aggregate shares held.",
                 },
                 {
                   key: "totalDeltaValue",
                   label: "Δ Value",
-                  format: (v) => formatValue(v),
-                  colorFn: netColor,
+                  deltaMode: "currency",
                   tooltip: "Net change in dollar value across all holders.",
                 },
                 {
@@ -738,8 +778,7 @@ export default function QuarterlyTrends() {
                 {
                   key: "delta",
                   label: "Δ%",
-                  format: (v) => formatPct(v, true),
-                  colorFn: deltaColor,
+                  deltaMode: "percent",
                   tooltip: "Percentage change in aggregate shares held.",
                 },
               ]}

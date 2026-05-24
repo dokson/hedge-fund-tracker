@@ -14,7 +14,7 @@ class FMP:
 
     Used for reverse ticker → CUSIP resolution (Form 4 path in
     TickerResolver.assign_cusip) and to expose sector / industry / country
-    fields when needed (e.g. GICS-like classification).
+    fields when needed.
 
     Not a member of the CUSIP-resolution chain: the CUSIP search endpoint is
     gated behind a paid plan, so FMP does not implement get_ticker / get_company.

@@ -1,4 +1,4 @@
-from app.utils.database import DB_FOLDER, LATEST_SCHEDULE_FILINGS_FILE, get_all_quarters, load_quarterly_data, load_stocks
+from app.utils.database import DB_FOLDER, LATEST_SCHEDULE_FILINGS_FILE, get_all_quarters, load_quarterly_data, load_sector_hierarchy, load_stocks
 import pandas as pd
 import unittest
 
@@ -123,6 +123,67 @@ class TestStocksDatabase(unittest.TestCase):
             error_message = (
                 f"The stock.csv file is not sorted correctly by 'Ticker'.\n"
                 "Please run the database updater with option '0. Exit' to sort the file."
+            )
+            self.fail(error_message)
+
+
+    def test_industries_present_in_sector_hierarchy(self):
+        """
+        Every non-empty Industry in stocks.csv must appear exactly in
+        database/sector_hierarchy.csv. The Sector is derived via that mapping —
+        an industry missing from the hierarchy would silently lose its sector
+        and break the dashboard's sector roll-up.
+        """
+        stocks_df = load_stocks().reset_index()
+        hierarchy_df = load_sector_hierarchy()
+
+        allowed = set(hierarchy_df["Industry"])
+        populated = stocks_df[stocks_df["Industry"] != ""]
+        invalid = populated[~populated["Industry"].isin(allowed)]
+
+        if not invalid.empty:
+            unknown = sorted(invalid["Industry"].unique())
+            sample = invalid[["CUSIP", "Ticker", "Company", "Industry"]].head(20)
+            error_message = (
+                f"Found {len(invalid)} rows ({len(unknown)} distinct industries) whose "
+                "Industry value is missing from database/sector_hierarchy.csv:\n\n"
+                f"Unknown industries: {unknown}\n\n"
+                "Sample offending rows:\n"
+                f"{sample.to_string(index=False)}\n\n"
+                "Fix by either correcting the Industry in stocks.csv or by "
+                "adding the missing (Sector, Industry) pair to sector_hierarchy.csv."
+            )
+            self.fail(error_message)
+
+
+    def test_same_company_has_consistent_industry(self):
+        """
+        When multiple CUSIPs/tickers share the same Company name (e.g. common
+        stock + its warrant, or multiple share classes of the same issuer),
+        their Industry must agree. A warrant cannot be `Shell Companies` while
+        the underlying common stock is `Software - Application` — they describe
+        the same business.
+        """
+        stocks_df = load_stocks().reset_index()
+        populated = stocks_df[stocks_df["Industry"] != ""]
+        # For each Company, collect the distinct industries assigned to it.
+        industries_per_company = populated.groupby("Company")["Industry"].agg(
+            lambda s: sorted(set(s))
+        )
+        inconsistent = industries_per_company[industries_per_company.map(len) > 1]
+
+        if not inconsistent.empty:
+            sample_lines = []
+            for company, industries in inconsistent.head(15).items():
+                tickers = sorted(
+                    populated.loc[populated["Company"] == company, "Ticker"].tolist()
+                )
+                sample_lines.append(f"  {company} | tickers={tickers} | industries={industries}")
+
+            error_message = (
+                f"Found {len(inconsistent)} companies whose rows in stocks.csv disagree on Industry.\n"
+                "Each company name must map to a single Industry across all its CUSIPs.\n\n"
+                "Sample offending companies:\n" + "\n".join(sample_lines)
             )
             self.fail(error_message)
 

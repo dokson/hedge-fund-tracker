@@ -1,6 +1,7 @@
 import pandas as pd
 from pandas import Series
 
+from app.stocks.classification import resolve_industry
 from app.stocks.libraries import (
     FMP,
     FinanceLibrary,
@@ -84,11 +85,19 @@ class TickerResolver:
                         body = f"Could not find any company for the CUSIP: {cusip} / Ticker: '{ticker}'."
                         open_issue(subject, body)
 
+                    # Resolve the Industry through the chained fallback:
+                    # yfinance → same-Company in stocks.csv → Groq LLM. Empty on
+                    # full miss so the row is still saved; the AI backfill can
+                    # revisit it. Sector is not stored — derive it via
+                    # database/sector_hierarchy.csv.
+                    industry = resolve_industry(ticker, company_name)
+
                     # Update local database
                     # Note: We're acting on a copy of 'stocks' from load_stocks(), but save_stock updates the file.
                     stocks.loc[cusip, "Ticker"] = ticker
                     stocks.loc[cusip, "Company"] = company_name
-                    save_stock(cusip, ticker, company_name)
+                    stocks.loc[cusip, "Industry"] = industry
+                    save_stock(cusip, ticker, company_name, industry=industry)
                 else:
                     # Critical failure: No ticker found across all libraries
                     subject = f"Ticker not found for CUSIP '{cusip}'"
@@ -209,7 +218,12 @@ class TickerResolver:
                     open_issue(subject, body)
                     return None
 
-                save_stock(cusip, ticker, row["Company"])
+                save_stock(
+                    cusip,
+                    ticker,
+                    row["Company"],
+                    industry=resolve_industry(ticker, row["Company"]),
+                )
                 return cusip
 
             df.loc[missing_stocks, "CUSIP"] = df[missing_stocks].apply(fetch_and_save, axis=1)

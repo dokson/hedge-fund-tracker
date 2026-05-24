@@ -79,6 +79,37 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
         self.assertEqual(result.loc[0, "Company"], "Apple Inc")
         mock_save.assert_called_once()
 
+    @patch("app.stocks.ticker_resolver.resolve_industry")
+    @patch("app.stocks.ticker_resolver.save_stock")
+    @patch("app.stocks.ticker_resolver.YFinance.get_company")
+    @patch("app.stocks.ticker_resolver.YFinance.get_ticker")
+    @patch("app.stocks.ticker_resolver.load_stocks")
+    def test_resolve_ticker_passes_industry_to_save_stock(
+        self,
+        mock_load,
+        mock_get_ticker,
+        mock_get_company,
+        mock_save,
+        mock_resolve_industry,
+    ):
+        """
+        After CUSIP→ticker resolution, the chain must classify the resulting
+        ticker via resolve_industry and forward the result as the `industry`
+        kwarg to save_stock — otherwise stocks.csv ends up with empty Industry
+        for every newly added row.
+        """
+        mock_load.return_value = _empty_stocks()
+        mock_get_ticker.return_value = "AAPL"
+        mock_get_company.return_value = "Apple Inc"
+        mock_resolve_industry.return_value = "Consumer Electronics"
+        df = pd.DataFrame({"CUSIP": ["037833100"], "Company": ["Apple Inc"]})
+
+        TickerResolver.resolve_ticker(df)
+
+        mock_resolve_industry.assert_called_once_with("AAPL", "Apple Inc")
+        call_kwargs = mock_save.call_args.kwargs
+        self.assertEqual(call_kwargs["industry"], "Consumer Electronics")
+
     @patch("app.stocks.ticker_resolver.save_stock")
     @patch("app.stocks.ticker_resolver.OpenFIGI.get_company")
     @patch("app.stocks.ticker_resolver.OpenFIGI.get_ticker")

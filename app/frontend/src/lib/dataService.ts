@@ -19,7 +19,7 @@ export interface RawStock {
   CUSIP: string;
   Ticker: string;
   Company: string;
-  Sector?: string;
+  Industry?: string;
 }
 
 export interface RawNonQuarterly {
@@ -52,15 +52,10 @@ export interface RawModel {
   Client: string;
 }
 
-export interface RawGICSHierarchy {
-  "Sector Code": string;
+export interface RawSectorHierarchy {
   Sector: string;
-  "Industry Group Code": string;
-  "Industry Group": string;
-  "Industry Code": string;
   Industry: string;
-  "Sub-Industry Code": string;
-  "Sub-Industry": string;
+  Count: string;
 }
 
 // ---------- Parsed domain types ----------
@@ -79,6 +74,7 @@ export interface Stock {
   ticker: string;
   company: string;
   sector?: string;
+  industry?: string;
 }
 
 export interface NonQuarterlyFiling {
@@ -109,17 +105,6 @@ export interface AIModel {
   id: string;
   description: string;
   client: string;
-}
-
-export interface GICSEntry {
-  sectorCode: string;
-  sector: string;
-  industryGroupCode: string;
-  industryGroup: string;
-  industryCode: string;
-  industry: string;
-  subIndustryCode: string;
-  subIndustry: string;
 }
 
 // ---------- Analysis types ----------
@@ -388,12 +373,19 @@ export function clearCache(key?: string) {
 
 export async function getStocks(): Promise<Stock[]> {
   return cachedFetch("stocks", async () => {
-    const raw = await fetchCSV<RawStock>("/database/stocks.csv");
+    const [raw, hierarchy] = await Promise.all([
+      fetchCSV<RawStock>("/database/stocks.csv"),
+      getSectorHierarchy(),
+    ]);
+    // Derive the Sector from the Industry via sector_hierarchy.csv —
+    // stocks.csv intentionally stores only the Industry to avoid duplication.
+    const industryToSector = new Map(hierarchy.map((h) => [h.industry, h.sector]));
     return raw.map((r) => ({
       cusip: r.CUSIP,
       ticker: r.Ticker,
       company: r.Company,
-      sector: r.Sector || undefined,
+      industry: r.Industry || undefined,
+      sector: r.Industry ? industryToSector.get(r.Industry) : undefined,
     }));
   });
 }
@@ -426,18 +418,19 @@ export async function getModels(): Promise<AIModel[]> {
   });
 }
 
-export async function getGICSHierarchy(): Promise<GICSEntry[]> {
-  return cachedFetch("gics", async () => {
-    const raw = await fetchCSV<RawGICSHierarchy>("/database/GICS/hierarchy.csv");
+export interface SectorHierarchyEntry {
+  sector: string;
+  industry: string;
+  count: number;
+}
+
+export async function getSectorHierarchy(): Promise<SectorHierarchyEntry[]> {
+  return cachedFetch("sector_hierarchy", async () => {
+    const raw = await fetchCSV<RawSectorHierarchy>("/database/sector_hierarchy.csv");
     return raw.map((r) => ({
-      sectorCode: r["Sector Code"],
       sector: r.Sector,
-      industryGroupCode: r["Industry Group Code"],
-      industryGroup: r["Industry Group"],
-      industryCode: r["Industry Code"],
       industry: r.Industry,
-      subIndustryCode: r["Sub-Industry Code"],
-      subIndustry: r["Sub-Industry"],
+      count: parseInt(r.Count, 10) || 0,
     }));
   });
 }

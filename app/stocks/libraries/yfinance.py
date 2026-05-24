@@ -67,6 +67,40 @@ class YFinance(FinanceLibrary):
             return None
 
     @staticmethod
+    def get_classification(ticker: str) -> dict | None:
+        """
+        Returns {sector, industry} for a ticker using yfinance's info payload, or
+        None when the ticker is empty, both fields are absent, or yfinance raises.
+
+        Returns Yahoo Finance's sector and industry strings (~11 sectors, ~150
+        industries); their empirical hierarchy is captured in
+        database/sector_hierarchy.csv after the classification backfill.
+        """
+        if not ticker:
+            return None
+
+        try:
+            info = yf.Ticker(YFinance._sanitize_ticker(ticker)).info
+        except Exception:
+            logger.error(
+                "Failed to get classification for Ticker %s using YFinance",
+                log_safe(ticker),
+                exc_info=True,
+            )
+            return None
+
+        # ETFs do not expose sector/industry the way equities do — group them under
+        # a synthetic "ETF" bucket so they remain filterable in stocks.csv.
+        if info.get("quoteType") == "ETF":
+            return {"sector": "ETF", "industry": "ETF"}
+
+        sector = info.get("sector")
+        industry = info.get("industry")
+        if not sector and not industry:
+            return None
+        return {"sector": sector or None, "industry": industry or None}
+
+    @staticmethod
     def get_ticker(cusip: str, **kwargs) -> str | None:
         """
         Searches for a ticker for a given CUSIP by querying the Yahoo Finance search API.

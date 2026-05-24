@@ -12,7 +12,7 @@ interface SectorGroup {
   tickers: string[];
 }
 
-export default function GICSSectorHeatmap() {
+export default function SectorHeatmap() {
   const { latestQuarter } = useAvailableQuarters();
 
   const { data: stocks = [], isLoading: stocksLoading } = useQuery({
@@ -79,10 +79,10 @@ export default function GICSSectorHeatmap() {
       <div className="flex items-start gap-2.5 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
         <Info className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
         <div>
-          <strong className="text-foreground">GICS® sector heatmap is not yet active.</strong> It
-          will become available once the{" "}
-          <code className="text-xs bg-muted px-1 py-0.5 rounded">Sector</code> column is added to{" "}
-          <code className="text-xs bg-muted px-1 py-0.5 rounded">stocks.csv</code>.
+          <strong className="text-foreground">Sector heatmap is not yet active.</strong> It will
+          become available once the{" "}
+          <code className="text-xs bg-muted px-1 py-0.5 rounded">Sector</code> column is populated
+          in <code className="text-xs bg-muted px-1 py-0.5 rounded">stocks.csv</code>.
         </div>
       </div>
     );
@@ -90,7 +90,7 @@ export default function GICSSectorHeatmap() {
 
   return (
     <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-      <h3 className="section-title text-sm">Institutional Value by GICS® Sector</h3>
+      <h3 className="section-title text-sm">Institutional Value by Sector</h3>
       <HoldingsTreemap data={sectorHeatmapData} onClickTicker={() => {}} height={350} />
     </div>
   );

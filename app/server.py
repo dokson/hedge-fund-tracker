@@ -94,9 +94,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Content-Security-Policy-Report-Only"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "img-src 'self' data: https:; "
-            "font-src 'self' data:; "
+            "font-src 'self' data: https://fonts.gstatic.com; "
             "connect-src 'self'; "
             "frame-ancestors 'none'; "
             "base-uri 'self'"
@@ -127,7 +127,9 @@ async def health_check():
     """
     Health check endpoint for Docker and load balancers.
     """
-    return {"status": "healthy"}
+    from app.utils.version import get_version
+
+    return {"status": "healthy", "version": get_version()}
 
 
 # ── Input validation helpers ───────────────────────────────────────────────────
@@ -536,7 +538,28 @@ async def apply_ticker_changes_endpoint():
             company = YFinance.get_company("", ticker=new_symbol) or change.get("companyName", "")
             update_ticker(old_symbol, new_symbol, new_company=company)
             applied.append({"old": old_symbol, "new": new_symbol, "companyName": company})
-    return {"applied": applied}
+    if not applied:
+        message = "No applicable ticker changes found on NASDAQ."
+    else:
+        lines = [f"{a['old']} → {a['new']} ({a['companyName']})" for a in applied]
+        message = f"Applied {len(applied)} ticker change(s):\n" + "\n".join(lines)
+    return {"applied": applied, "message": message}
+
+
+@app.post("/api/funds-missing-quarters")
+async def funds_missing_quarters_endpoint():
+    """
+    Lists funds that are missing data for one or more available quarters.
+    """
+    from app.utils.database import get_funds_missing_quarters
+
+    missing = get_funds_missing_quarters()
+    if not missing:
+        message = "All tracked funds have complete quarter coverage."
+    else:
+        lines = [f"{fund}: missing {', '.join(quarters)}" for fund, quarters in missing.items()]
+        message = f"{len(missing)} fund(s) with gaps:\n" + "\n".join(lines)
+    return {"missing": missing, "message": message}
 
 
 # ── AI streaming endpoints ─────────────────────────────────────────────────

@@ -35,9 +35,21 @@ export default function CusipAutocomplete({
 
   const isValid = useMemo(() => allCusips.some((c) => c.cusip === value), [allCusips, value]);
 
+  // Stabilise the parent's callback identity via a ref. Without this, an inline
+  // arrow at the call site (e.g. `onValidChange={(v) => setFieldValid(...)}`)
+  // changes identity every render, the effect dep array sees it as new, fires
+  // again, triggers setState in the parent, re-renders us, ad infinitum —
+  // React doesn't flag it as "max update depth" because the dep technically
+  // changed each tick. Symptom: main thread saturated, no console error, the
+  // app appears frozen.
+  const onValidChangeRef = useRef(onValidChange);
   useEffect(() => {
-    onValidChange?.(isValid);
-  }, [isValid, onValidChange]);
+    onValidChangeRef.current = onValidChange;
+  });
+
+  useEffect(() => {
+    onValidChangeRef.current?.(isValid);
+  }, [isValid]);
 
   const suggestions = useMemo(() => {
     if (!value || value.length < 2) return [];
@@ -65,9 +77,7 @@ export default function CusipAutocomplete({
   const suggestionsKey = suggestions.map((s) => s.cusip).join("|");
   const [lastSuggestionsKey, setLastSuggestionsKey] = useState(suggestionsKey);
   if (lastSuggestionsKey !== suggestionsKey) {
-    // eslint-disable-next-line @eslint-react/set-state-in-effect -- render-time state adjustment, not in an effect
     setLastSuggestionsKey(suggestionsKey);
-    // eslint-disable-next-line @eslint-react/set-state-in-effect -- render-time state adjustment, not in an effect
     setHighlightIdx(-1);
   }
 

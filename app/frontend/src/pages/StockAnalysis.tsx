@@ -3,10 +3,11 @@ import { useParams } from "react-router-dom";
 import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
 import { useQuery } from "@tanstack/react-query";
-import { runStockAnalysis, formatValue, formatPct } from "@/lib/dataService";
+import { runStockAnalysis, formatValue, formatPct, getStocks } from "@/lib/dataService";
+import { getSectorStyle } from "@/lib/sectorStyle";
 import type { Quarter } from "@/lib/quarters";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
-import { FundLink } from "@/components/EntityLinks";
+import { FundCell } from "@/components/EntityLinks";
 import {
   Select,
   SelectContent,
@@ -17,7 +18,8 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { MeasuredChart } from "@/components/MeasuredChart";
 import { Button } from "@/components/ui/button";
-import { Brain, Loader2, CandlestickChart, Filter } from "lucide-react";
+import { Brain, Loader2, Filter } from "lucide-react";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import { StockPriceChart } from "@/components/StockPriceChart";
 import { useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
@@ -37,6 +39,15 @@ export default function StockAnalysis() {
     enabled: !!quarter,
     staleTime: 10 * 60 * 1000,
   });
+
+  // Sector + industry come from stocks.csv (joined with sector_hierarchy inside
+  // getStocks). Same in-memory cache as the rest of the app — no extra fetch.
+  const { data: stocks = [] } = useQuery({ queryKey: ["stocks"], queryFn: getStocks });
+  const meta = stocks.find((s) => s.ticker === ticker);
+  const sector = meta?.sector;
+  const industry = meta?.industry;
+  const sectorStyle = getSectorStyle(sector);
+  const SectorIcon = sectorStyle.icon;
 
   // Compute KPIs from holdings
   const company = holdings[0]?.company || ticker;
@@ -140,14 +151,47 @@ export default function StockAnalysis() {
   })();
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-5 max-w-screen-2xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <div className="flex items-center gap-3">
-            <CandlestickChart className="h-6 w-6" />
-            <h1 className="text-2xl font-bold font-mono tracking-tight">{ticker}</h1>
-            <span className="text-lg text-muted-foreground">{company}</span>
-            <StarButton active={isStarred(ticker)} onClick={() => toggleStar(ticker)} size={20} />
+        <div className="flex items-start gap-4">
+          <div className="rounded-lg border border-border bg-neutral-200 p-1.5 shadow-sm ring-1 ring-border/50 shrink-0">
+            <CompanyLogo ticker={ticker} size={44} className="rounded-md" />
+          </div>
+          <div className="flex flex-col gap-2 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold font-mono tracking-tight leading-none">{ticker}</h1>
+              <span className="text-lg font-medium text-foreground/95 leading-none tracking-tight">
+                {company}
+              </span>
+              <StarButton active={isStarred(ticker)} onClick={() => toggleStar(ticker)} size={20} />
+            </div>
+            {(sector || industry) && (
+              <div className="flex items-center gap-2 flex-wrap text-xs">
+                {sector && (
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border ${sectorStyle.border} ${sectorStyle.bg} ${sectorStyle.color} px-2.5 py-1 font-medium`}
+                    title={`Yahoo Finance sector: ${sector}`}
+                  >
+                    <SectorIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    {sector}
+                  </span>
+                )}
+                {industry && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/stocks?industry=${encodeURIComponent(industry)}`)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card hover:bg-muted/40 hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    title={`Browse all ${industry} stocks`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${sectorStyle.dot}`}
+                      aria-hidden="true"
+                    />
+                    {industry}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex gap-3">
@@ -165,7 +209,7 @@ export default function StockAnalysis() {
           </Select>
           <Button
             variant="outline"
-            size="sm"
+            className="h-10"
             onClick={() => navigate(`/ai-diligence?ticker=${ticker}`)}
           >
             <Brain className="h-4 w-4 mr-1" /> AI Due Diligence
@@ -458,7 +502,7 @@ export default function StockAnalysis() {
                           {i + 1}
                         </td>
                         <td className="p-3">
-                          <FundLink fundName={h.fund} />
+                          <FundCell fundName={h.fund} />
                         </td>
                         <td className="p-3 text-right font-mono">{h.portfolioPct.toFixed(2)}%</td>
                         <td className="p-3 text-right font-mono">{formatValue(h.value)}</td>

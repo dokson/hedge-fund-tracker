@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getModels } from "@/lib/dataService";
 import { AI_PROVIDERS, getConfiguredProviders } from "@/lib/aiClient";
@@ -67,15 +67,27 @@ export default function ModelSelector({
     ? value
     : availableModels[0]?.id || "";
 
+  // Stabilise parent callbacks via refs. Without this, an inline arrow at the
+  // call site (e.g. `onChange={(id) => setModel(id)}`) changes identity every
+  // render → effect re-fires → setState in parent → re-render → ad infinitum.
+  // React doesn't surface this as "max update depth" because the deps tech-
+  // nically changed each tick. Same mitigation already used in TickerAutocomplete.
+  const onChangeRef = useRef(onChange);
+  const onProviderChangeRef = useRef(onProviderChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onProviderChangeRef.current = onProviderChange;
+  });
+
   useEffect(() => {
     if (effectiveValue && effectiveValue !== value) {
-      onChange(effectiveValue);
+      onChangeRef.current(effectiveValue);
       const model = availableModels.find((m) => m.id === effectiveValue);
-      if (model && onProviderChange) {
-        onProviderChange(CLIENT_TO_PROVIDER_ID[model.client] ?? "");
+      if (model) {
+        onProviderChangeRef.current?.(CLIENT_TO_PROVIDER_ID[model.client] ?? "");
       }
     }
-  }, [effectiveValue, value, availableModels, onChange, onProviderChange]);
+  }, [effectiveValue, value, availableModels]);
 
   const handleChange = (modelId: string) => {
     onChange(modelId);

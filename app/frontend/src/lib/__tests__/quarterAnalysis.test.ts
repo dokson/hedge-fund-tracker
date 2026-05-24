@@ -15,12 +15,21 @@ const MOCK_FUND_B_CSV = `CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Va
 A123456,TSLA,Tesla Inc,500,200,"$1.25M","$500K",40.0,3.0
 B654321,AAPL,Apple Inc,3000,0,"$6M","$0",0.0,12.0`;
 
+const MOCK_SECTOR_HIERARCHY_CSV = `"Sector","Industry"
+"Technology","Consumer Electronics"
+`;
+
 function mockFetch(url: string, _init?: RequestInit): Promise<Response> {
   const urlStr = typeof url === "string" ? url : "";
 
   if (urlStr.includes("stocks.csv")) {
     return Promise.resolve(
       new Response(MOCK_STOCKS_CSV, { headers: { "Content-Type": "text/csv" } }),
+    );
+  }
+  if (urlStr.includes("sector_hierarchy.csv")) {
+    return Promise.resolve(
+      new Response(MOCK_SECTOR_HIERARCHY_CSV, { headers: { "Content-Type": "text/csv" } }),
     );
   }
   if (urlStr.includes("/api/database/quarters/")) {

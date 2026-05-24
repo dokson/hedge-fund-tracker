@@ -53,10 +53,10 @@ export default function AISettingsPage() {
   const [activeTab, setActiveTab] = useState<"keys" | "models">("keys");
 
   return (
-    <div className="space-y-5 max-w-4xl">
+    <div className="space-y-5 max-w-screen-2xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Cpu className="h-6 w-6" /> AI Settings
+        <h1 className="page-title">
+          <Cpu className="page-title-icon" /> AI Settings
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Manage API keys and AI models configuration.

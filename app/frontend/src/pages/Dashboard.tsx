@@ -1,13 +1,15 @@
 import { useState, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   getEnrichedNQFilings,
+  getStocks,
   parseValueString,
   clearCache,
   type EnrichedNQFiling,
 } from "@/lib/dataService";
-import { TickerLink, FundLink } from "@/components/EntityLinks";
+import { getSectorStyle } from "@/lib/sectorStyle";
+import { TickerLink, FundCell, CompanyLink } from "@/components/EntityLinks";
+import { Delta } from "@/components/Delta";
 import {
   Select,
   SelectContent,
@@ -23,7 +25,6 @@ import {
   ArrowDownRight,
   Plus,
   X,
-  Minus,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -35,6 +36,27 @@ import {
 } from "lucide-react";
 import { toInitCap } from "@/lib/utils";
 import { useStarred } from "@/hooks/useStarred";
+
+/**
+ * Inline sector pill for the Latest Filings table. Lives as a top-level
+ * component (not an IIFE inside the row) so React Compiler can optimise it.
+ */
+function SectorPill({ sector, industry }: { sector?: string; industry?: string }) {
+  if (!sector) {
+    return <span className="text-muted-foreground/50">—</span>;
+  }
+  const style = getSectorStyle(sector);
+  const Icon = style.icon;
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border ${style.border} ${style.bg} ${style.color} px-2 py-0.5 font-medium`}
+      title={industry ?? sector}
+    >
+      <Icon className="h-3 w-3" aria-hidden="true" />
+      {sector}
+    </span>
+  );
+}
 
 function formatDelta(f: EnrichedNQFiling): { text: string; className: string; sortValue: number } {
   if (f.deltaType === "CLOSED")
@@ -50,15 +72,6 @@ function formatDelta(f: EnrichedNQFiling): { text: string; className: string; so
   }
   return { text: "NEW", className: "text-teal-700 dark:text-teal-400", sortValue: Infinity };
 }
-
-const DELTA_ICON: Record<string, typeof ArrowUpRight | null> = {
-  NEW: Plus,
-  INCREASE: ArrowUpRight,
-  DECREASE: ArrowDownRight,
-  CLOSED: X,
-  "NO CHANGE": Minus,
-  UNKNOWN: null,
-};
 
 type SortField = "date" | "delta" | "value" | null;
 type SortDir = "asc" | "desc";
@@ -81,7 +94,6 @@ function SortIcon({
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [fundFilter, setFundFilter] = useState("all");
   const [typeFilters, setTypeFilters] = useState<Set<string>>(() => new Set());
@@ -102,8 +114,21 @@ export default function Dashboard() {
     },
   });
 
+  const { data: stocks = [] } = useQuery({ queryKey: ["stocks"], queryFn: getStocks });
+  const tickerMeta = useMemo(() => {
+    const map = new Map<string, { industry?: string; sector?: string }>();
+    for (const s of stocks) {
+      if (!map.has(s.ticker)) {
+        map.set(s.ticker, { industry: s.industry, sector: s.sector });
+      }
+    }
+    return map;
+  }, [stocks]);
+
   const fundNames = useMemo(() => {
-    const names = [...new Set(filings.map((f) => f.fund))];
+    // Defensive filter — a malformed row in non_quarterly.csv could yield
+    // undefined/"", and the rendered <SelectItem>.replace would crash.
+    const names = [...new Set(filings.map((f) => f.fund).filter(Boolean))];
     return names.sort();
   }, [filings]);
 
@@ -190,10 +215,10 @@ export default function Dashboard() {
   }, [filings]);
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-5 max-w-screen-2xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <FileText className="h-6 w-6" /> Latest Filings
+        <h1 className="page-title">
+          <FileText className="page-title-icon" /> Latest Filings
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Last 30 days 13D/G and Form 4 — latest filing per position, delta vs last 13F quarter
@@ -341,6 +366,10 @@ export default function Dashboard() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
+                  <th className="text-left p-3 font-medium">Ticker</th>
+                  <th className="text-left p-3 font-medium">Company</th>
+                  <th className="text-left p-3 font-medium">Sector</th>
+                  <th className="text-left p-3 font-medium">Fund</th>
                   <th
                     className="text-left p-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
                     onClick={() => toggleSort("date")}
@@ -349,9 +378,6 @@ export default function Dashboard() {
                       Date <SortIcon field="date" currentField={sortField} direction={sortDir} />
                     </span>
                   </th>
-                  <th className="text-left p-3 font-medium">Fund</th>
-                  <th className="text-left p-3 font-medium">Ticker</th>
-                  <th className="text-left p-3 font-medium">Company</th>
                   <th
                     className="text-right p-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
                     onClick={() => toggleSort("delta")}
@@ -359,6 +385,12 @@ export default function Dashboard() {
                     <span className="inline-flex items-center justify-end">
                       Delta <SortIcon field="delta" currentField={sortField} direction={sortDir} />
                     </span>
+                  </th>
+                  <th
+                    className="text-right p-3 font-medium"
+                    title="Position weight in the fund's last 13F portfolio"
+                  >
+                    Portfolio %
                   </th>
                   <th className="text-right p-3 font-medium">Avg Price</th>
                   <th
@@ -369,25 +401,17 @@ export default function Dashboard() {
                       Value <SortIcon field="value" currentField={sortField} direction={sortDir} />
                     </span>
                   </th>
-                  <th
-                    className="text-right p-3 font-medium"
-                    title="Position weight in the fund's last 13F portfolio"
-                  >
-                    Portfolio %
-                  </th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={9} className="p-8 text-center text-muted-foreground">
                       No filings match your filters.
                     </td>
                   </tr>
                 ) : (
                   filtered.map((f, i) => {
-                    const delta = formatDelta(f);
-                    const DeltaIcon = DELTA_ICON[f.deltaType];
                     const borderClass =
                       f.deltaType === "CLOSED" || f.deltaType === "DECREASE"
                         ? "border-l-2 border-l-negative"
@@ -400,54 +424,47 @@ export default function Dashboard() {
                         key={`${f.cusip}-${f.fund}-${f.date}-${f.deltaType}-${f.shares ?? i}`}
                         className={`data-table-row ${borderClass}`}
                       >
-                        <td className="p-3 text-muted-foreground whitespace-nowrap">{f.date}</td>
-                        <td className="p-3">
-                          <FundLink fundName={f.fund} className="text-sm" />
-                        </td>
                         <td className="p-3">
                           <TickerLink ticker={f.ticker} />
                         </td>
-                        <td className="p-3 max-w-[200px] truncate">
-                          <span
-                            role="link"
-                            tabIndex={0}
-                            className="ticker-link text-muted-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/stock/${f.ticker}`);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                navigate(`/stock/${f.ticker}`);
-                              }
-                            }}
-                          >
-                            {toInitCap(f.company)}
-                          </span>
+                        <td className="p-3">
+                          <CompanyLink
+                            ticker={f.ticker}
+                            company={toInitCap(f.company)}
+                            className="max-w-[180px] xl:max-w-[260px]"
+                            showStar
+                          />
                         </td>
+                        <td className="p-3 text-xs whitespace-nowrap">
+                          <SectorPill
+                            sector={tickerMeta.get(f.ticker)?.sector}
+                            industry={tickerMeta.get(f.ticker)?.industry}
+                          />
+                        </td>
+                        <td className="p-3">
+                          <FundCell fundName={f.fund} />
+                        </td>
+                        <td className="p-3 text-muted-foreground whitespace-nowrap">{f.date}</td>
                         <td className="p-3 text-right font-mono">
                           {f.deltaType === "NEW" ? (
                             <span className="badge-new">NEW</span>
                           ) : f.deltaType === "CLOSED" ? (
                             <span className="badge-closed">CLOSE</span>
+                          ) : f.deltaPct !== null ? (
+                            <Delta value={f.deltaPct} mode="percent" />
                           ) : (
-                            <span className={`inline-flex items-center gap-0.5 ${delta.className}`}>
-                              {DeltaIcon && <DeltaIcon className="h-3 w-3" />}
-                              {delta.text}
-                            </span>
+                            <span className="badge-nochange">NO CHANGE</span>
                           )}
                         </td>
-                        <td className="p-3 text-right font-mono">
-                          {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}
-                        </td>
-                        <td className="p-3 text-right font-mono">{f.value}</td>
                         <td className="p-3 text-right font-mono text-muted-foreground">
                           {f.quarterPortfolioPct !== null
                             ? `${f.quarterPortfolioPct.toFixed(2)}%`
                             : "—"}
                         </td>
+                        <td className="p-3 text-right font-mono">
+                          {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}
+                        </td>
+                        <td className="p-3 text-right font-mono">{f.value}</td>
                       </tr>
                     );
                   })
