@@ -52,6 +52,39 @@ class TestYFinance(unittest.TestCase):
         mock_yf_ticker.assert_called_with("MSFT")
 
     @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    @patch("app.stocks.libraries.yfinance.YFinance.get_ticker")
+    def test_get_company_returns_none_when_ticker_cannot_be_resolved(
+        self, mock_get_ticker, mock_yf_ticker
+    ):
+        """
+        Returns None (without invoking yf.Ticker) when no ticker is provided and
+        get_ticker cannot resolve the CUSIP. Previously this path crashed with
+        AttributeError: 'NoneType' object has no attribute 'upper' inside yfinance.
+        """
+        mock_get_ticker.return_value = None
+
+        company = YFinance.get_company("unknown_cusip")
+
+        self.assertIsNone(company)
+        mock_yf_ticker.assert_not_called()
+
+    @patch("app.stocks.libraries.yfinance.requests.get")
+    def test_get_ticker_returns_none_when_quote_symbol_is_empty(self, mock_get):
+        """
+        Returns None when the Yahoo search response includes a quote whose
+        'symbol' field is empty or missing — previously such quotes leaked an
+        empty string into stocks.csv.
+        """
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"quotes": [{"symbol": ""}]}
+        mock_response.raise_for_status = MagicMock()
+        mock_get.return_value = mock_response
+
+        ticker = YFinance.get_ticker("037833100")
+
+        self.assertIsNone(ticker)
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
     def test_get_current_price(self, mock_yf_ticker):
         """
         Tests the get_current_price method using mocks.

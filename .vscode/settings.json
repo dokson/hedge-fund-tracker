@@ -44,7 +44,12 @@
   },
 
   "eslint.workingDirectories": [{ "pattern": "app/frontend" }],
-  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
   "typescript.tsdk": "app/frontend/node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "prettier.requireConfig": true,
@@ -71,5 +76,6 @@
     "**/__reports__/**": true,
     "**/node_modules/**": true,
     "**/dist/**": true
-  }
+  },
+  "python-envs.defaultEnvManager": "ms-python.python:pipenv"
 }

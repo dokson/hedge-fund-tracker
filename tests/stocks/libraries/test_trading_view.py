@@ -200,5 +200,212 @@ class TestTradingViewGetAvgPrice(unittest.TestCase):
         mock_tv_class.assert_not_called()
 
 
+def _symbol_search_response(symbols):
+    """
+    Builds a mock requests.Response for the TradingView symbol_search endpoint.
+    """
+    resp = MagicMock()
+    resp.ok = True
+    resp.status_code = 200
+    resp.json.return_value = {"symbols": symbols}
+    return resp
+
+
+class TestTradingViewIdentifierLookup(unittest.TestCase):
+    @patch("app.stocks.libraries.trading_view.requests.get")
+    def test_get_ticker_returns_first_us_exchange_match(self, mock_get):
+        """
+        Converts CUSIP to ISIN, calls symbol_search, returns the ticker of the first US-listed match.
+        """
+        mock_get.return_value = _symbol_search_response(
+            [
+                {
+                    "symbol": "1AAPL",
+                    "description": "Apple Inc.",
+                    "exchange": "MIL",
+                    "type": "stock",
+                },
+                {
+                    "symbol": "AAPL",
+                    "description": "Apple Inc.",
+                    "exchange": "NASDAQ",
+                    "type": "stock",
+                },
+            ]
+        )
+
+        ticker = TradingView.get_ticker("037833100")
+
+        self.assertEqual(ticker, "AAPL")
+        params = mock_get.call_args.kwargs["params"]
+        self.assertEqual(params["text"], "US0378331005")
+
+    @patch("app.stocks.libraries.trading_view.requests.get")
+    def test_get_ticker_returns_none_when_only_non_us_listings(self, mock_get):
+        """
+        Returns None when the ISIN search yields only non-US listings — picking a
+        German/EU listing as if it were the US ticker would silently corrupt
+        stocks.csv (real-world incident: Chronoscale ISIN matched only GETTEX).
+        """
+        mock_get.return_value = _symbol_search_response(
+            [
+                {
+                    "symbol": "23E0",
+                    "description": "CHRONOSCALE",
+                    "exchange": "GETTEX",
+                    "type": "stock",
+                }
+            ]
+        )
+
+        self.assertIsNone(TradingView.get_ticker("282644400"))
+
+    @patch("app.stocks.libraries.trading_view.requests.get")
+    def test_get_ticker_falls_back_to_non_us_description_when_isin_has_no_us_match(self, mock_get):
+        """
+        When the ISIN search returns only non-US listings, retries the search using
+        the description of the first non-US match as the query — that description
+        carries the *current* company name (which beats a possibly-stale name from
+        the SEC 13F: e.g. Ekso Bionics was renamed to ChronoScale, but BlackRock's
+        13F still lists 'EKSO BIONICS HLDGS INC').
+        """
+        # First call (ISIN): only non-US listings carrying the CURRENT company name.
+        # Second call (description-based name search): NASDAQ match.
+        mock_get.side_effect = [
+            _symbol_search_response(
+                [{"symbol": "23E0", "description": "CHRONOSCALE CORPORATION", "exchange": "GETTEX"}]
+            ),
+            _symbol_search_response(
+                [
+                    {
+                        "symbol": "CHRN",
+                        "description": "ChronoScale Corporation",
+                        "exchange": "NASDAQ",
+                    },
+                    {"symbol": "0IFR", "description": "ChronoScale Corporation", "exchange": "LSE"},
+                ]
+            ),
+        ]
+
+        ticker = TradingView.get_ticker("282644400", company_name="EKSO BIONICS HLDGS INC")
+
+        self.assertEqual(ticker, "CHRN")
+        # The second call must query using the TV-provided description, NOT the
+        # stale 13F company_name, to handle company renames correctly.
+        second_call_params = mock_get.call_args_list[1].kwargs["params"]
+        self.assertEqual(second_call_params["text"], "CHRONOSCALE CORPORATION")
+
+    @patch("app.stocks.libraries.trading_view.requests.get")
+    def test_get_ticker_returns_none_when_no_us_listing_anywhere(self, mock_get):
+        """
+        Returns None when neither the ISIN search nor the description-based fallback
+        yields a US-listed match.
+        """
+        mock_get.side_effect = [
+            _symbol_search_response(
+                [{"symbol": "23E0", "description": "OBSCURE CO", "exchange": "GETTEX"}]
+            ),
+            _symbol_search_response(
+                [{"symbol": "OBSC", "description": "Obscure Co", "exchange": "LSE"}]
+            ),
+        ]
+
+        self.assertIsNone(TradingView.get_ticker("282644400"))
+        self.assertEqual(mock_get.call_count, 2)
+
+    @patch("app.stocks.libraries.trading_view.requests.get")
+    def test_strips_em_highlight_tags_from_results(self, mock_get):
+        """
+        TradingView wraps the matched substring with <em>...</em> tags in the
+        description (and sometimes the symbol). Those tags must be stripped before
+        the data lands in stocks.csv.
+        """
+        mock_get.return_value = _symbol_search_response(
+            [
+                {
+                    "symbol": "CHRN",
+                    "description": "<em>ChronoScale</em> <em>Corporation</em>",
+                    "exchange": "NASDAQ",
+                }
+            ]
+        )
+
+        self.assertEqual(TradingView.get_company("282644301"), "ChronoScale Corporation")
+        self.assertEqual(TradingView.get_ticker("282644301"), "CHRN")
+
+    @patch("app.stocks.libraries.trading_view.requests.get")
+    def test_get_ticker_skips_description_fallback_when_no_isin_results(self, mock_get):
+        """
+        When the ISIN search itself returns nothing, there is no description to fall
+        back on — returns None without a second HTTP call.
+        """
+        mock_get.return_value = _symbol_search_response([])
+
+        self.assertIsNone(TradingView.get_ticker("282644400"))
+        self.assertEqual(mock_get.call_count, 1)
+
+    @patch("app.stocks.libraries.trading_view.requests.get")
+    def test_get_ticker_returns_none_when_no_symbols(self, mock_get):
+        """
+        Returns None when the endpoint reports zero matches.
+        """
+        mock_get.return_value = _symbol_search_response([])
+        self.assertIsNone(TradingView.get_ticker("037833100"))
+
+    @patch("app.stocks.libraries.trading_view.requests.get")
+    def test_get_ticker_returns_none_on_invalid_cusip(self, mock_get):
+        """
+        Returns None when the CUSIP cannot be converted to an ISIN (skips the HTTP call).
+        """
+        self.assertIsNone(TradingView.get_ticker("BADCUSIP"))
+        mock_get.assert_not_called()
+
+    @patch("app.stocks.libraries.trading_view.requests.get")
+    def test_get_ticker_returns_none_on_http_error(self, mock_get):
+        """
+        Returns None when the endpoint replies with a non-OK status.
+        """
+        resp = MagicMock()
+        resp.ok = False
+        resp.status_code = 403
+        mock_get.return_value = resp
+
+        self.assertIsNone(TradingView.get_ticker("037833100"))
+
+    @patch("app.stocks.libraries.trading_view.requests.get")
+    def test_get_company_returns_formatted_description(self, mock_get):
+        """
+        Returns the description of the best match, run through format_string.
+        """
+        mock_get.return_value = _symbol_search_response(
+            [
+                {
+                    "symbol": "AAPL",
+                    "description": "APPLE INC",
+                    "exchange": "NASDAQ",
+                    "type": "stock",
+                }
+            ]
+        )
+
+        self.assertEqual(TradingView.get_company("037833100"), "Apple Inc")
+
+    @patch("app.stocks.libraries.trading_view.requests.get")
+    def test_sends_browser_headers(self, mock_get):
+        """
+        Sends Referer and Origin headers so TradingView does not reject the request with 403.
+        """
+        mock_get.return_value = _symbol_search_response(
+            [{"symbol": "AAPL", "description": "Apple Inc.", "exchange": "NASDAQ"}]
+        )
+
+        TradingView.get_ticker("037833100")
+
+        headers = mock_get.call_args.kwargs["headers"]
+        self.assertEqual(headers.get("Referer"), "https://www.tradingview.com/")
+        self.assertEqual(headers.get("Origin"), "https://www.tradingview.com")
+        self.assertIn("User-Agent", headers)
+
+
 if __name__ == "__main__":
     unittest.main()

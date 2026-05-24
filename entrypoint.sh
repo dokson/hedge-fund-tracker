@@ -17,11 +17,12 @@ fi
 if [ ! -f /app/.env ]; then
     echo "📝 Generating .env from environment variables..."
     env_file="/app/.env"
-    [ -n "$FINNHUB_API_KEY" ]    && echo "FINNHUB_API_KEY=$FINNHUB_API_KEY" >> "$env_file"
+    [ -n "$FMP_API_KEY" ]        && echo "FMP_API_KEY=$FMP_API_KEY" >> "$env_file"
     [ -n "$GITHUB_TOKEN" ]       && echo "GITHUB_TOKEN=$GITHUB_TOKEN" >> "$env_file"
     [ -n "$GOOGLE_API_KEY" ]     && echo "GOOGLE_API_KEY=$GOOGLE_API_KEY" >> "$env_file"
     [ -n "$GROQ_API_KEY" ]       && echo "GROQ_API_KEY=$GROQ_API_KEY" >> "$env_file"
     [ -n "$HF_TOKEN" ]           && echo "HF_TOKEN=$HF_TOKEN" >> "$env_file"
+    [ -n "$OPENFIGI_API_KEY" ]   && echo "OPENFIGI_API_KEY=$OPENFIGI_API_KEY" >> "$env_file"
     [ -n "$OPENROUTER_API_KEY" ] && echo "OPENROUTER_API_KEY=$OPENROUTER_API_KEY" >> "$env_file"
     echo "✅ .env file created."
 else

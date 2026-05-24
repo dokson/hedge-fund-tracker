@@ -1,12 +1,20 @@
 import logging
+import re
 from datetime import date
 
 import pandas as pd
+import requests
 from tvDatafeed import Interval as TvInterval
 from tvDatafeed import TvDatafeed
 
 from app.stocks.libraries.base_library import FinanceLibrary
+from app.stocks.utils.identifiers import cusip_to_isin, normalize_ticker
 from app.utils.logger import get_logger, log_safe
+from app.utils.strings import format_string
+
+# TradingView's symbol_search wraps matched substrings with <em>...</em> tags when
+# the query is a free-text name (highlight markup). Strip them before persisting.
+_EM_TAGS = re.compile(r"</?em>")
 
 logger = get_logger(__name__)
 
@@ -16,19 +24,136 @@ logging.getLogger("tvDatafeed").setLevel(logging.CRITICAL)
 
 class TradingView(FinanceLibrary):
     """
-    Client for searching stock information using the tvDatafeed library.
-    Acts as a fallback or alternative to YFinance.
+    Client for searching stock information using TradingView.
+
+    For CUSIP→ticker/company lookups, calls the public symbol_search endpoint with the
+    derived US ISIN. For price/history data, uses the tvDatafeed library.
     """
 
     EXCHANGES = ["NASDAQ", "NYSE", "AMEX", "ARCA", "BATS", "OTC", "TSX", "TSXV"]
+    US_EXCHANGES = {"NASDAQ", "NYSE", "AMEX", "ARCA", "BATS", "OTC", "NYSE Arca", "CBOE"}
+    SYMBOL_SEARCH_URL = "https://symbol-search.tradingview.com/symbol_search/"
+    SYMBOL_SEARCH_HEADERS = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+        ),
+        "Referer": "https://www.tradingview.com/",
+        "Origin": "https://www.tradingview.com",
+        "Accept": "application/json",
+    }
+    SYMBOL_SEARCH_TIMEOUT = 8
+
+    @staticmethod
+    def _search_by_text(query: str) -> list[dict]:
+        """
+        Calls the TradingView symbol_search endpoint with an arbitrary query string
+        (ISIN or company name) and returns the raw symbols list, or an empty list on
+        network/HTTP/JSON failure.
+        """
+        params = {"text": query, "hl": "1", "lang": "en", "domain": "production"}
+        try:
+            response = requests.get(
+                TradingView.SYMBOL_SEARCH_URL,
+                params=params,
+                headers=TradingView.SYMBOL_SEARCH_HEADERS,
+                timeout=TradingView.SYMBOL_SEARCH_TIMEOUT,
+            )
+        except requests.RequestException:
+            logger.warning("TradingView: network error during symbol_search", exc_info=True)
+            return []
+
+        if not response.ok:
+            logger.warning("TradingView: symbol_search HTTP %s", response.status_code)
+            return []
+
+        try:
+            payload = response.json()
+        except ValueError:
+            return []
+
+        symbols = payload.get("symbols") if isinstance(payload, dict) else payload
+        if not symbols:
+            return []
+        # Strip <em>...</em> highlight markup from symbol and description fields.
+        for entry in symbols:
+            for field in ("symbol", "description"):
+                value = entry.get(field)
+                if isinstance(value, str):
+                    entry[field] = _EM_TAGS.sub("", value)
+        return symbols
+
+    @staticmethod
+    def _first_us_match(symbols: list[dict]) -> dict | None:
+        """
+        Returns the first symbol listed on a recognised US exchange, or None.
+        """
+        for entry in symbols:
+            if entry.get("exchange") in TradingView.US_EXCHANGES:
+                return entry
+        return None
+
+    @staticmethod
+    def _symbol_search(cusip: str, company_name: str | None = None) -> dict | None:
+        """
+        Resolves a CUSIP to a US-listed TradingView symbol. Searches first by the
+        derived US ISIN; if that yields only non-US listings, retries the search
+        using the *description* of the first non-US match — that description carries
+        the current company name (which handles renames, e.g. Ekso Bionics → ChronoScale,
+        where the SEC 13F still lists the stale name).
+
+        Returns None when no US listing can be found. Accepting a non-US listing as
+        the canonical ticker would silently corrupt stocks.csv. The company_name
+        argument is accepted for API compatibility but currently unused — the TV
+        non-US description is a more reliable source of the current name than a
+        possibly-stale 13F filing.
+        """
+        del company_name  # tolerated for chain interface; intentionally not used
+        try:
+            isin = cusip_to_isin(cusip)
+        except ValueError:
+            return None
+
+        isin_results = TradingView._search_by_text(isin)
+        us_match = TradingView._first_us_match(isin_results)
+        if us_match:
+            return us_match
+
+        if not isin_results:
+            return None
+
+        description = isin_results[0].get("description")
+        if not description:
+            return None
+
+        name_results = TradingView._search_by_text(description)
+        return TradingView._first_us_match(name_results)
 
     @staticmethod
     def get_company(cusip: str, **kwargs) -> str | None:
-        return None
+        """
+        Returns the formatted company description for a given CUSIP, or None.
+        """
+        match = TradingView._symbol_search(cusip, company_name=kwargs.get("company_name"))
+        if not match:
+            return None
+        description = match.get("description")
+        if not description:
+            return None
+        return format_string(description)
 
     @staticmethod
     def get_ticker(cusip: str, **kwargs) -> str | None:
-        return None
+        """
+        Returns the ticker for a given CUSIP, or None if no match is found.
+        """
+        match = TradingView._symbol_search(cusip, company_name=kwargs.get("company_name"))
+        if not match:
+            return None
+        symbol = match.get("symbol")
+        if not symbol:
+            return None
+        return normalize_ticker(symbol) or None
 
     @staticmethod
     def get_current_price(ticker: str, **kwargs) -> float | None:

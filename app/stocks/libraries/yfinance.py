@@ -47,6 +47,10 @@ class YFinance(FinanceLibrary):
         ticker = kwargs.get("ticker")
         ticker = YFinance.get_ticker(cusip) if not ticker else YFinance._sanitize_ticker(ticker)
 
+        if not ticker:
+            logger.warning("YFinance: No ticker resolved for CUSIP %s.", log_safe(cusip))
+            return None
+
         try:
             stock_info = yf.Ticker(ticker).info
             company_name = stock_info.get("longName") or stock_info.get("shortName", "")
@@ -82,7 +86,9 @@ class YFinance(FinanceLibrary):
 
             quotes = data.get("quotes", [])
             for quote in quotes:
-                return quote["symbol"]
+                symbol = quote.get("symbol")
+                if symbol:
+                    return symbol
             logger.warning("YFinance: No ticker found for CUSIP %s.", log_safe(cusip))
             return None
         except (requests.RequestException, ValueError):

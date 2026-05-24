@@ -16,7 +16,6 @@
 [![FastAPI](https://img.shields.io/github/pipenv/locked/dependency-version/dokson/hedge-fund-tracker/fastapi?style=for-the-badge&logo=fastapi&logoColor=white&color=009688)](https://fastapi.tiangolo.com/)
 [![Pandas](https://img.shields.io/pypi/v/pandas?style=for-the-badge&logo=pandas&logoColor=white&label=Pandas&color=150458)](https://pandas.pydata.org/)
 [![Requests](https://img.shields.io/pypi/v/requests?style=for-the-badge&logo=data:image/png;base64,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&label=Requests&color=C21325)](https://requests.readthedocs.io/)
-[![Finnhub](https://img.shields.io/github/pipenv/locked/dependency-version/dokson/hedge-fund-tracker/finnhub-python?style=for-the-badge&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAACDElEQVR4nL2VO2uVQRCGn0miURRRKy+gkKiFhYKkFREMdtppLf4DOwtBxMZSW8tgIekEW1GwE0tB8BLRwoBGiY3mcvLInswXluPJyTneXli++XZn5/Lu7Cz8Y0Q/SmpUukaEf8W7OqQOd5kfTqcbInoZj4iVlHcDe4FF4ENE/OjUGTTydtTqIXVK/eQqltQZ9ba6p3EyqPH2BvW0+sX18V49PpCT5DzUcXU+DS2qKymv5FjI/3fqLnUkR/RLzYPK+Hpo1q51s9GLmiMZ4UJyXo9W5aCV2bxST6oT6paulCU1o1l+V/19vFYv1pn8wpl6FjiVJVnQAppSvASMF7X64lX/zdyFiJguTtoT6jHgOlBSXAKWgRFgOL+bgHngIXAn9bpVznLu+QwcBr6thqB3+6Tgpvoy5aayOlHOyoaqEl3BY+BclW4roxkCvqY8B7wB9ndQ1A1lfQK433YQEffUZ8BotdlM9XxFyRVge55JLwdlbdtaBupl4EYa2ZwKxdkUMAZMdhjY6OaW4GZrikpl7FtH8WNFWTnsftpCCfBRIzT9/kxVLaUSDgA7gFvA1mpjLyxl5k+z1DNMnVSfqy/U6eyiTb8ZFG/VsexpQw1FB4ETKZeodwIz1WFuVDEF34EnJeOImC0OyluxtlE9moZmI2Ku3xerQf2M/vZDxAbo1rLrDJrqaD/qf5LBf8VPE0GEPCOJBGYAAAAASUVORK5CYII=&label=Finnhub&color=58b045)](https://finnhub.io/)
 [![Google AI](https://img.shields.io/github/pipenv/locked/dependency-version/dokson/hedge-fund-tracker/google-genai?style=for-the-badge&logo=google&logoColor=white&color=4285F4)](https://github.com/googleapis/python-genai)
 [![OpenAI](https://img.shields.io/github/pipenv/locked/dependency-version/dokson/hedge-fund-tracker/openai?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNTguNzEyOCAxNTcuMjk2IiBmaWxsPSJ3aGl0ZSI+PHBhdGggZD0iTTYwLjg3MzQsNTcuMjU1NnYtMTQuOTQzMmMwLTEuMjU4Ni40NzIyLTIuMjAyOSwxLjU3MjgtMi44MzE0bDMwLjA0NDMtMTcuMzAyM2M0LjA4OTktMi4zNTkzLDguOTY2Mi0zLjQ1OTksMTMuOTk4OC0zLjQ1OTksMTguODc1OSwwLDMwLjgzMDcsMTQuNjI4OSwzMC44MzA3LDMwLjIwMDYsMCwxLjEwMDcsMCwyLjM1OTMtLjE1OCwzLjYxNzhsLTMxLjE0NDYtMTguMjQ2N2MtMS44ODcyLTEuMTAwNi0zLjc3NTQtMS4xMDA2LTUuNjYyOSwwbC0zOS40ODEyLDIyLjk2NTFaTTEzMS4wMjc2LDExNS40NTYxdi0zNS43MDc0YzAtMi4yMDI4LS45NDQ2LTMuNzc1Ni0yLjgzMTgtNC44NzYzbC0zOS40ODEtMjIuOTY1MSwxMi44OTgyLTcuMzkzNGMxLjEwMDctLjYyODUsMi4wNDUzLS42Mjg1LDMuMTQ1OCwwbDMwLjA0NDEsMTcuMzAyNGM4LjY1MjMsNS4wMzQxLDE0LjQ3MDgsMTUuNzI5NiwxNC40NzA4LDI2LjExMDcsMCwxMS45NTM5LTcuMDc2OSwyMi45NjUtMTguMjQ2MSwyNy41Mjd2LjAwMjFaTTUxLjU5Myw4My45OTY0bC0xMi44OTgyLTcuNTQ5N2MtMS4xMDA3LS42Mjg1LTEuNTcyOC0xLjU3MjgtMS41NzI4LTIuODMxNHYtMzQuNjA0OGMwLTE2LjgzMDMsMTIuODk4Mi0yOS41NzIyLDMwLjM1ODUtMjkuNTcyMiw2LjYwNywwLDEyLjc0MDMsMi4yMDI5LDE3LjkzMjQsNi4xMzQ5bC0zMC45ODcsMTcuOTMyNGMtMS44ODcxLDEuMTAwNy0yLjgzMTQsMi42NzM1LTIuODMxNCw0Ljg3NjR2NDUuNjE1OWwtLjAwMTQtLjAwMTVaTTc5LjM1NjIsMTAwLjA0MDNsLTE4LjQ4MjktMTAuMzgxMXYtMjIuMDIwOWwxOC40ODI5LTEwLjM4MTEsMTguNDgxMiwxMC4zODExdjIyLjAyMDlsLTE4LjQ4MTIsMTAuMzgxMVpNOTEuMjMxOSwxNDcuODU5MWMtNi42MDcsMC0xMi43NDAzLTIuMjAzMS0xNy45MzI0LTYuMTM0NGwzMC45ODY2LTE3LjkzMzNjMS44ODcyLTEuMTAwNSwyLjgzMTgtMi42NzI4LDIuODMxOC00Ljg3NTl2LTQ1LjYxNmwxMy4wNTY0LDcuNTQ5OGMxLjEwMDUuNjI4NSwxLjU3MjMsMS41NzI4LDEuNTcyMywyLjgzMTR2MzQuNjA1MWMwLDE2LjgyOTctMTMuMDU2NCwyOS41NzIzLTMwLjUxNDcsMjkuNTcyM3YuMDAxWk01My45NTIyLDExMi43ODIybC0zMC4wNDQzLTE3LjMwMjRjLTguNjUyLTUuMDM0My0xNC40NzEtMTUuNzI5Ni0xNC40NzEtMjYuMTEwNywwLTEyLjExMTksNy4yMzU2LTIyLjk2NTIsMTguNDAzLTI3LjUyNzJ2MzUuODYzNGMwLDIuMjAyOC45NDQzLDMuNzc1NiwyLjgzMTQsNC44NzYzbDM5LjMyNDgsMjIuODA2OC0xMi44OTgyLDcuMzkzOGMtMS4xMDA3LjYyODctMi4wNDUuNjI4Ny0zLjE0NTYsMFpNNTIuMjIyOSwxMzguNTc5MWMtMTcuNzc0NSwwLTMwLjgzMDYtMTMuMzcxMy0zMC44MzA2LTI5Ljg4NzEsMC0xLjI1ODUuMTU3OC0yLjUxNjkuMzE0My0zLjc3NTRsMzAuOTg3LDE3LjkzMjNjMS44ODcxLDEuMTAwNSwzLjc3NTcsMS4xMDA1LDUuNjYyOCwwbDM5LjQ4MTEtMjIuODA3djE0Ljk0MzVjMCwxLjI1ODUtLjQ3MjEsMi4yMDIxLTEuNTcyOCwyLjgzMDhsLTMwLjA0NDMsMTcuMzAyNWMtNC4wODk4LDIuMzU5LTguOTY2MiwzLjQ2MDUtMTMuOTk4OSwzLjQ2MDVoLjAwMTRaTTkxLjIzMTksMTU3LjI5NmMxOS4wMzI3LDAsMzQuOTE4OC0xMy41MjcyLDM4LjUzODMtMzEuNDU5NCwxNy42MTY0LTQuNTYyLDI4Ljk0MjUtMjEuMDc3OSwyOC45NDI1LTM3LjkwOCwwLTExLjAxMTItNC43MTktMjEuNzA2Ni0xMy4yMTMzLTI5LjQxNDMuNzg2Ny0zLjMwMzUsMS4yNTk1LTYuNjA3LDEuMjU5NS05LjkwOSwwLTIyLjQ5MjktMTguMjQ3MS0zOS4zMjQ3LTM5LjMyNTEtMzkuMzI0Ny00LjI0NjEsMC04LjMzNjMuNjI4NS0xMi40MjYyLDIuMDQ1LTcuMDc5Mi02LjkyMTMtMTYuODMxOC0xMS4zMjU0LTI3LjUyNzEtMTEuMzI1NC0xOS4wMzMxLDAtMzQuOTE5MSwxMy41MjY4LTM4LjUzODQsMzEuNDU5MUMxMS4zMjU1LDM2LjAyMTIsMCw1Mi41MzczLDAsNjkuMzY3NWMwLDExLjAxMTIsNC43MTg0LDIxLjcwNjUsMTMuMjEyNSwyOS40MTQyLS43ODY1LDMuMzAzNS0xLjI1ODYsNi42MDY3LTEuMjU4Niw5LjkwOTIsMCwyMi40OTIzLDE4LjI0NjYsMzkuMzI0MSwzOS4zMjQ4LDM5LjMyNDEsNC4yNDYyLDAsOC4zMzYyLS42Mjc3LDEyLjQyNi0yLjA0NDEsNy4wNzc2LDYuOTIxLDE2LjgzMDIsMTEuMzI1MSwyNy41MjcxLDExLjMyNTFaIi8+PC9zdmc+&color=white)](https://github.com/openai/openai-python)
 
@@ -39,7 +38,9 @@ A comprehensive **Python tool** for tracking **hedge fund portfolios** through *
 ## ⫶☰ Table of Contents
 
 - [📊 Hedge Fund Tracker](#-hedge-fund-tracker)
+  - [⫶☰ Table of Contents](#-table-of-contents)
   - [🚀 Quick Start](#-quick-start)
+    - [🐳 Or use Docker (no Python/Node required)](#-or-use-docker-no-pythonnode-required)
   - [✨ Key Features](#-key-features)
   - [📦 Installation](#-installation)
     - [Prerequisites](#prerequisites)
@@ -48,15 +49,16 @@ A comprehensive **Python tool** for tracking **hedge fund portfolios** through *
     - [GICS Classification](#gics-classification)
     - [API Configuration](#api-configuration)
   - [📁 Project Structure](#-project-structure)
-  - [👨🏻‍💻 How This Tool Tracks Hedge Funds](#%E2%80%8D-how-this-tool-tracks-hedge-funds)
+  - [👨🏻‍💻 How This Tool Tracks Hedge Funds](#-how-this-tool-tracks-hedge-funds)
   - [🏢 Hedge Funds Selection](#-hedge-funds-selection)
     - [Selection Methodology](#selection-methodology)
     - [List Management](#list-management)
       - [Notable Exclusions](#notable-exclusions)
       - [Adding Custom Funds](#adding-custom-funds)
+        - [**Columns for Custom Funds:**](#columns-for-custom-funds)
   - [🧠 AI Models Selection](#-ai-models-selection)
     - [Adding Custom AI Models](#adding-custom-ai-models)
-  - [⚠️ Limitations & Considerations](#%EF%B8%8F-limitations--considerations)
+  - [⚠️ Limitations \& Considerations](#️-limitations--considerations)
     - [A Truly Up-to-Date View](#a-truly-up-to-date-view)
   - [🐳 Docker Deployment](#-docker-deployment)
     - [What Docker Provides](#what-docker-provides)
@@ -65,11 +67,11 @@ A comprehensive **Python tool** for tracking **hedge fund portfolios** through *
     - [What's Available in GitHub Pages Mode](#whats-available-in-github-pages-mode)
     - [How to Deploy](#how-to-deploy)
     - [Local Development](#local-development)
-  - [⚙️ Automation with GitHub Actions](#%EF%B8%8F-automation-with-github-actions)
+  - [⚙️ Automation with GitHub Actions](#️-automation-with-github-actions)
     - [How It Works](#how-it-works)
     - [How to Enable It](#how-to-enable-it)
-  - [🗃️ Technical Stack](#%EF%B8%8F-technical-stack)
-  - [🤝🏼 Contributing & Support](#-contributing--support)
+  - [🗃️ Technical Stack](#️-technical-stack)
+  - [🤝🏼 Contributing \& Support](#-contributing--support)
     - [💬 Loved it? Help it grow](#-loved-it-help-it-grow)
     - [✍🏻 Feedback](#-feedback)
   - [📚 References](#-references)
@@ -111,7 +113,7 @@ The app will be available at `http://localhost:8000`.
 | **📊 Visual Analytics** | Interactive charts (Recharts) to track institutional holdings, sectoral trends, and quarterly portfolio evolutions. |
 | **🆚 Comparative Analysis** | Combines quarterly (13F) and non-quarterly (13D/G, Form 4) filings for an up-to-date view. |
 | **📋 Comprehensive Reports** | High-fidelity analysis pages for both investment funds (portfolios) and specific stocks (tickers). |
-| **🔍 Smart Ticker Resolution** | Multi-fallback system (yfinance, Finnhub, FinanceDatabase) to resolve CUSIPs into actionable stock symbols. |
+| **🔍 Smart Ticker Resolution** | Multi-fallback system (yfinance → OpenFIGI → TradingView) resolves CUSIPs into actionable stock symbols, with company-rename handling via TradingView's name-search fallback. Form 4 reverse lookups (ticker → CUSIP) go through Financial Modeling Prep. |
 | **🤖 AI Financial Analyst** | Leverages top-tier LLMs to calculate "Promise Scores" and perform deep due diligence on high-conviction opportunities. |
 | **⚙️ Automated Data Pipeline** | Scheduled GitHub Actions to fetch, process, and commit the latest SEC filings directly to your repository. |
 | **🌐 GitHub Pages Demo** | Static deployment with bundled data — all analysis features work without a backend. |
@@ -202,14 +204,23 @@ The tool can utilize API keys for enhanced functionality, but all are optional:
 
 | Service | Purpose | Get Free API Key |
 | :--- | :--- | :--- |
-| **[![Finnhub](https://github.com/user-attachments/assets/94465a7f-75e0-4a21-827c-511540c80cb3)](https://finnhub.io/) [Finnhub](https://finnhub.io/)** | [CUSIP](https://en.wikipedia.org/wiki/CUSIP) to [stock ticker](https://en.wikipedia.org/wiki/Ticker_symbol) conversion | [Finnhub Keys](https://finnhub.io/dashboard) |
+| **[OpenFIGI](https://www.openfigi.com/)** | [CUSIP](https://en.wikipedia.org/wiki/CUSIP) → [stock ticker](https://en.wikipedia.org/wiki/Ticker_symbol) (Bloomberg's free identifier mapping). Works **without a key** at 25 req/min; a key raises the limit to 250 req/min. | [OpenFIGI Keys](https://www.openfigi.com/api) |
+| **[Financial Modeling Prep](https://site.financialmodelingprep.com/)** | Reverse ticker → CUSIP lookup for Form 4 filings (free tier 250 req/day). **Key required** — without it the reverse lookup is skipped and unresolved tickers open a GitHub issue. | [FMP Keys](https://site.financialmodelingprep.com/developer/docs) |
 | **[![GitHub Models](https://github.com/user-attachments/assets/3e8ca2f8-1bb0-4ec3-9374-d6106499adde)](https://github.com/marketplace/models) [GitHub Models](https://github.com/marketplace/models)** | Access to top-tier models (e.g., [xAI Grok-3](https://x.ai/news/grok-3), [OpenAI GPT-5](https://openai.com/en-US/gpt-5/), etc...) | [GitHub Tokens](https://github.com/settings/personal-access-tokens/new?description=Used+to+call+GitHub+Models+APIs+to+easily+run+LLMs%3A+https%3A%2F%2Fdocs.github.com%2Fgithub-models%2Fquickstart%23step-2-make-an-api-call&name=GitHub+Models+token&user_models=read) |
 | **[![Google AI Studio](https://github.com/user-attachments/assets/3b351d8e-d7f6-4337-9c2f-d2af77f30711)](https://aistudio.google.com/) [Google AI Studio](https://aistudio.google.com/)** | Access to [Google Gemini](https://gemini.google.com/) models | [AI Studio Keys](https://aistudio.google.com/app/apikey) |
 | **[![Groq AI](https://github.com/user-attachments/assets/c56394b5-79f8-4c25-a24a-2e2a8bde829c)](https://console.groq.com/) [Groq AI](https://console.groq.com/)** | Access to various LLMs (e.g., OpenAI [gpt-oss](https://github.com/openai/gpt-oss), Meta [Llama](https://www.llama.com/), etc...) | [Groq Keys](https://console.groq.com/keys) |
 | **[![Hugging Face](https://github.com/user-attachments/assets/b4f22e8b-6c6e-4e28-91ca-e2bc9b89837f)](https://huggingface.co/) [Hugging Face](https://huggingface.co/)** | Access to open weights models (e.g., [DeepSeek R1](https://huggingface.co/deepseek-ai/DeepSeek-R1), [Kimi-Linear-48B](https://huggingface.co/moonshotai/Kimi-Linear-48B-A3B-Instruct), etc...) | [HF Tokens](https://huggingface.co/settings/tokens) |
 | **[![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3)](https://openrouter.ai/) [OpenRouter](https://openrouter.ai/)** | Access to various LLMs (e.g., [Claude 4.5 Opus](https://www.anthropic.com/news/claude-4-5-opus), [GLM 4.5 Air](https://chatglm.cn/), etc...) | [OpenRouter Keys](https://openrouter.ai/settings/keys) |
 
-> **💡 Note:** Ticker resolution primarily uses [yfinance](https://github.com/ranaroussi/yfinance), which is free and requires no API key. If that fails, the system falls back to [Finnhub](https://finnhub.io/) (if an API key is provided), with the final fallback being [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/).
+> **💡 Note — Ticker resolution:**
+>
+> **Forward path (CUSIP → ticker)** runs the chain in this order, **no API key required** for any step:
+>
+> 1. **[yfinance](https://github.com/ranaroussi/yfinance)** — free, no key, covers the majority of US-listed equities.
+> 2. **[OpenFIGI](https://www.openfigi.com/)** — Bloomberg's free identifier-mapping endpoint. Works without `OPENFIGI_API_KEY` at 25 req/min; with a key the limit is raised to 250 req/min.
+> 3. **[TradingView](https://www.tradingview.com/)** — public symbol-search endpoint, queried by ISIN (US-listings only). When ISIN returns only non-US listings (typical for recently-renamed issuers), it retries by company name using the description TradingView itself reports — which carries the **current** name even if the SEC filing still lists the old one (e.g. *Ekso Bionics → ChronoScale*).
+>
+> **Reverse path (ticker → CUSIP)** for Form 4 filings goes through [Financial Modeling Prep](https://site.financialmodelingprep.com/). The free `FMP_API_KEY` is **required** (250 req/day); without it, unresolved tickers open a GitHub issue and the CUSIP stays null until the next 13F cycle exposes it.
 >
 > **💡 Note:** You don't need to use all the APIs. For the generative AI models ([Google AI Studio](https://aistudio.google.com/), [GitHub Models](https://github.com/marketplace/models), [Groq AI](https://console.groq.com/), [Hugging Face](https://huggingface.co/models), and [OpenRouter](https://openrouter.ai/)), you only need the API keys for the services you plan to use.
 > For instance, if you want to experiment with models like [OpenAI](https://openai.com/) [GPT-4o mini](https://platform.openai.com/docs/models/gpt-4o-mini), you just need a [GitHub Token](https://github.com/settings/tokens). Experimenting with different models is encouraged, as the quality of AI-generated analysis, both for identifying promising stocks and for conducting due diligence, can vary. However, top-performing stocks are typically identified consistently across all tested models. **All APIs used in this project are currently free (with GitHub Models providing a generous free tier for developers).**
@@ -511,7 +522,7 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 1. **Fork the Repository**: Create your own [fork of this project](https://github.com/dokson/hedge-fund-tracker/fork) on GitHub.
 2. **Enable Actions**: GitHub Actions are typically enabled by default on forked repositories. You can verify this under the _Actions_ tab of your fork.
-3. **Configure Secrets**: For the workflow to resolve tickers and create issues, you need to add your API keys as repository secrets. In your forked repository, you must add your `FINNHUB_API_KEY` as a repository secret. Go to `Settings` > `Secrets and variables` > `Actions` in your forked repository to add it.
+3. **Configure Secrets (optional)**: Workflows run with the built-in `GITHUB_TOKEN` and require no extra setup. If you want a higher OpenFIGI rate limit during ticker resolution (250 req/min vs 25), add `OPENFIGI_API_KEY` as a repository secret under `Settings` > `Secrets and variables` > `Actions`.
 
 ## 🗃️ Technical Stack
 
@@ -524,7 +535,7 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 | **Data Viz & State** | [Recharts](https://recharts.github.io/), [TanStack Query v5](https://tanstack.com/query/latest) |
 | **Web Scraping** | [Requests](https://2.python-requests.org/en/master/), [Beautiful Soup 4](https://pypi.org/project/beautifulsoup4/), [lxml](https://lxml.de/) |
 | **Reliability** | [Tenacity](https://github.com/jd/tenacity), [Python-Dotenv](https://github.com/theskumar/python-dotenv) |
-| **Stocks Data** | [yfinance](https://github.com/ranaroussi/yfinance), [Finnhub-Stock-API](https://github.com/Finnhub-Stock-API/finnhub-python), [FinanceDatabase](https://github.com/JerBouma/FinanceDatabase/), [Nasdaq API](https://www.nasdaq.com/) |
+| **Stocks Data** | [yfinance](https://github.com/ranaroussi/yfinance), [OpenFIGI](https://www.openfigi.com/), [TradingView](https://www.tradingview.com/), [Financial Modeling Prep](https://site.financialmodelingprep.com/), [Nasdaq API](https://www.nasdaq.com/) |
 | **Gen AI** | [python-toon](https://github.com/xaviviro/python-toon), [Google AI SDK](https://googleapis.github.io/python-genai/), [OpenAI SDK](https://github.com/openai/openai-python) |
 | **Code Quality (Python)** | [Ruff](https://docs.astral.sh/ruff/) (lint + format), [mypy](https://mypy.readthedocs.io/) (type-check), [pre-commit](https://pre-commit.com/) |
 | **Code Quality (Frontend)** | [ESLint 10](https://eslint.org/) (with [@eslint-react](https://eslint-react.xyz/), [jsx-a11y](https://github.com/jsx-eslint/eslint-plugin-jsx-a11y), [react-hooks](https://github.com/facebook/react/tree/main/packages/eslint-plugin-react-hooks)), [Prettier](https://prettier.io/), [TypeScript strict](https://www.typescriptlang.org/) |
@@ -572,4 +583,4 @@ See the [LICENSE](LICENSE) file for the full terms.
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/image?repos=dokson/hedge-fund-tracker&type=date&legend=top-left)](https://www.star-history.com/?repos=dokson%2Fhedge-fund-tracker&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=dokson/hedge-fund-tracker)](https://www.star-history.com/?repos=dokson/hedge-fund-tracker)

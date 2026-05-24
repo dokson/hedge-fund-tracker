@@ -1,7 +1,13 @@
 import pandas as pd
 from pandas import Series
 
-from app.stocks.libraries import FinanceDatabase, FinanceLibrary, Finnhub, TradingView, YFinance
+from app.stocks.libraries import (
+    FMP,
+    FinanceLibrary,
+    OpenFIGI,
+    TradingView,
+    YFinance,
+)
 from app.stocks.libraries.nasdaq import Nasdaq
 from app.utils.database import load_stocks, save_stock, save_stocks
 from app.utils.github import open_issue
@@ -20,7 +26,7 @@ class TickerResolver:
         """
         Returns an ordered (based on priority) list of FinanceLibrary classes.
         """
-        return [YFinance, Finnhub, FinanceDatabase, TradingView]
+        return [YFinance, OpenFIGI, TradingView]
 
     @staticmethod
     def resolve_ticker(df: pd.DataFrame) -> pd.DataFrame:
@@ -159,8 +165,11 @@ class TickerResolver:
         Assigns a CUSIP to each Ticker in the DataFrame.
 
         It first uses a mapping from the local stocks database for known tickers.
-        For any new tickers, it queries FinanceDatabase to find the CUSIP and updates the local database.
-        This is primarily needed for Form 4 filings that don't expose CUSIP information.
+        For any new tickers, it queries FMP (Financial Modeling Prep) for a fresh
+        CUSIP. If FMP misses (no API key or no match), the CUSIP is left unset
+        and a GitHub issue is opened so the gap is visible — stocks.csv only ever
+        stores real CUSIPs. This path is primarily needed for Form 4 filings that
+        don't expose CUSIP.
         """
         stocks = load_stocks().copy()
 
@@ -179,19 +188,29 @@ class TickerResolver:
         missing_stocks = df["CUSIP"].isnull() & df["Ticker"].notna()
 
         if missing_stocks.any():
-            # 3. For new tickers, fetch the CUSIP and save it
+
             def fetch_and_save(row):
-                # Currently assigning CUSIP relies specifically on FinanceDatabase logic
+                """
+                Resolves a CUSIP for a new ticker via FMP and persists it. When FMP
+                cannot resolve the ticker, opens a GitHub issue and leaves the CUSIP
+                unset — no synthetic placeholders are written, so stocks.csv only
+                ever contains real CUSIPs.
+                """
+                ticker = row["Ticker"]
                 try:
-                    cusip = FinanceDatabase.get_cusip(row["Ticker"])
-                    if cusip:
-                        save_stock(cusip, row["Ticker"], row["Company"])
-                    return cusip
+                    cusip = FMP.get_cusip(ticker)
                 except Exception:
-                    logger.error(
-                        "Failed to fetch CUSIP for %s", log_safe(row["Ticker"]), exc_info=True
-                    )
+                    logger.error("Failed to fetch CUSIP for %s", log_safe(ticker), exc_info=True)
                     return None
+
+                if not cusip:
+                    subject = f"No CUSIP found for ticker '{ticker}'"
+                    body = f"FMP could not resolve the CUSIP for ticker: {ticker}."
+                    open_issue(subject, body)
+                    return None
+
+                save_stock(cusip, ticker, row["Company"])
+                return cusip
 
             df.loc[missing_stocks, "CUSIP"] = df[missing_stocks].apply(fetch_and_save, axis=1)
 

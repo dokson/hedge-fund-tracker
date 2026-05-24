@@ -14,8 +14,6 @@ cryptography = "~=48.0"
 fastapi = "~=0.136"
 fastapi-users = {extras = ["sqlalchemy"], version = "~=15.0"}
 fastapi-users-db-sqlalchemy = "~=7.0"
-financedatabase = "~=2.3"
-finnhub-python = "~=2.4"
 google-genai = "~=2.6"
 httptools = {version = "==0.7.1", markers = "sys_platform != 'win32'"}
 lxml = "~=6.1"
@@ -34,6 +32,7 @@ uvicorn = "~=0.47"
 uvloop = {version = "==0.22.1", markers = "sys_platform != 'win32'"}
 watchfiles = "~=1.2"
 websockets = "~=16.0"
+yfinance = "~=1.4"
 
 [dev-packages]
 mypy = "~=2.1"

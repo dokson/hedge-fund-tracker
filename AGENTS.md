@@ -127,7 +127,7 @@ Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `datab
 
 - **`app/scraper/`** — SEC EDGAR retrieval. `sec_scraper.py` fetches 13F-HR, 13D/G, Form 4 with tenacity retries + custom User-Agent. `xml_processor.py` parses 13F XML into DataFrames.
 - **`app/analysis/`** — `quarterly_report.py` (delta shares/values, NEW/CLOSE positions), `stocks.py` (multi-fund consensus), `non_quarterly.py` (13D/G + Form 4 integration), `performance_evaluator.py` (HBR).
-- **`app/stocks/`** — CUSIP→Ticker via fallback chain: yfinance → Finnhub → FinanceDatabase → TradingView. Maintains `stocks.csv`. `PriceFetcher` uses a separate chain: yfinance → TradingView → Nasdaq (Nasdaq covers mutual funds others miss).
+- **`app/stocks/`** — CUSIP→Ticker via fallback chain: yfinance → OpenFIGI → TradingView. Reverse ticker→CUSIP (Form 4 path) via FMP (requires `FMP_API_KEY`). Maintains `stocks.csv`. `PriceFetcher` uses a separate chain: yfinance → TradingView → Nasdaq (Nasdaq covers mutual funds others miss).
 - **`app/ai/`** — Multi-provider LLM. `agent.py` runs **two-phase analysis**: (1) AI picks metric weights for current market, (2) AI computes scores using those weights. Retries up to 7× on invalid response. Clients in `clients/`: GitHub Models, Google Gemini, Groq, HuggingFace, OpenRouter.
 
 ### Key frontend files
@@ -244,12 +244,13 @@ Copy `.env.example` → `.env`. All keys optional:
 
 | Var | What it enables |
 |---|---|
-| `FINNHUB_API_KEY` | Better CUSIP → ticker resolution |
 | `GITHUB_TOKEN` | GitHub Models provider (free tier) — recommended minimum |
 | `GOOGLE_API_KEY` | Google Gemini |
 | `GROQ_API_KEY` | Groq (free) |
 | `HF_TOKEN` | HuggingFace Inference API |
 | `OPENROUTER_API_KEY` | OpenRouter aggregator |
+| `OPENFIGI_API_KEY` | OpenFIGI CUSIP→ticker resolution (raises rate limit from 25 to 250 req/min) |
+| `FMP_API_KEY` | Financial Modeling Prep ticker→CUSIP reverse lookup for Form 4 (free tier 250 req/day). Without it, new Form 4 tickers get a GitHub issue and the CUSIP stays null until the next 13F cycle. |
 
 App degrades gracefully when keys are missing — providers without keys are simply skipped in the model picker.
 

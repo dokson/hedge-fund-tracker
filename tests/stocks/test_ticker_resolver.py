@@ -25,21 +25,21 @@ def _cached_stocks(cusip, ticker, company):
 
 
 class TestTickerResolverGetLibraries(unittest.TestCase):
-    def test_get_libraries_returns_four_libraries(self):
+    def test_get_libraries_returns_three_libraries(self):
         """
-        Returns exactly four libraries in the resolution fallback chain.
+        Returns exactly three libraries in the resolution fallback chain.
         """
         libraries = TickerResolver.get_libraries()
 
-        self.assertEqual(len(libraries), 4)
+        self.assertEqual(len(libraries), 3)
 
     def test_get_libraries_priority_order(self):
         """
-        Returns libraries in priority order: YFinance → Finnhub → FinanceDatabase → TradingView.
+        Returns libraries in priority order: YFinance → OpenFIGI → TradingView.
         """
         libraries = TickerResolver.get_libraries()
 
-        expected_order = ["YFinance", "Finnhub", "FinanceDatabase", "TradingView"]
+        expected_order = ["YFinance", "OpenFIGI", "TradingView"]
         for position, name in enumerate(expected_order):
             with self.subTest(position=position, expected=name):
                 self.assertEqual(libraries[position].__name__, name)
@@ -80,20 +80,20 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
         mock_save.assert_called_once()
 
     @patch("app.stocks.ticker_resolver.save_stock")
-    @patch("app.stocks.ticker_resolver.Finnhub.get_company")
-    @patch("app.stocks.ticker_resolver.Finnhub.get_ticker")
+    @patch("app.stocks.ticker_resolver.OpenFIGI.get_company")
+    @patch("app.stocks.ticker_resolver.OpenFIGI.get_ticker")
     @patch("app.stocks.ticker_resolver.YFinance.get_ticker")
     @patch("app.stocks.ticker_resolver.load_stocks")
     def test_falls_back_to_second_library_when_first_returns_none(
-        self, mock_load, mock_yf_ticker, mock_fh_ticker, mock_fh_company, mock_save
+        self, mock_load, mock_yf_ticker, mock_of_ticker, mock_of_company, mock_save
     ):
         """
-        Falls back to Finnhub when YFinance cannot resolve the CUSIP.
+        Falls back to OpenFIGI when YFinance cannot resolve the CUSIP.
         """
         mock_load.return_value = _empty_stocks()
         mock_yf_ticker.return_value = None
-        mock_fh_ticker.return_value = "AAPL"
-        mock_fh_company.return_value = "Apple Inc"
+        mock_of_ticker.return_value = "AAPL"
+        mock_of_company.return_value = "Apple Inc"
         df = pd.DataFrame({"CUSIP": ["037833100"], "Company": ["Apple Inc"]})
 
         result = TickerResolver.resolve_ticker(df)
@@ -103,20 +103,18 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
 
     @patch("app.stocks.ticker_resolver.open_issue")
     @patch("app.stocks.ticker_resolver.TradingView.get_ticker")
-    @patch("app.stocks.ticker_resolver.FinanceDatabase.get_ticker")
-    @patch("app.stocks.ticker_resolver.Finnhub.get_ticker")
+    @patch("app.stocks.ticker_resolver.OpenFIGI.get_ticker")
     @patch("app.stocks.ticker_resolver.YFinance.get_ticker")
     @patch("app.stocks.ticker_resolver.load_stocks")
     def test_opens_github_issue_when_no_library_resolves_ticker(
-        self, mock_load, mock_yf, mock_fh, mock_fd, mock_tv, mock_issue
+        self, mock_load, mock_yf, mock_of, mock_tv, mock_issue
     ):
         """
         Opens a GitHub issue when all libraries fail to resolve the CUSIP to a ticker.
         """
         mock_load.return_value = _empty_stocks()
         mock_yf.return_value = None
-        mock_fh.return_value = None
-        mock_fd.return_value = None
+        mock_of.return_value = None
         mock_tv.return_value = None
         df = pd.DataFrame({"CUSIP": ["999999999"], "Company": ["Unknown Corp"]})
 
@@ -129,8 +127,7 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
     @patch("app.stocks.ticker_resolver.open_issue")
     @patch("app.stocks.ticker_resolver.save_stock")
     @patch("app.stocks.ticker_resolver.TradingView.get_company")
-    @patch("app.stocks.ticker_resolver.FinanceDatabase.get_company")
-    @patch("app.stocks.ticker_resolver.Finnhub.get_company")
+    @patch("app.stocks.ticker_resolver.OpenFIGI.get_company")
     @patch("app.stocks.ticker_resolver.YFinance.get_company")
     @patch("app.stocks.ticker_resolver.YFinance.get_ticker")
     @patch("app.stocks.ticker_resolver.load_stocks")
@@ -139,8 +136,7 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
         mock_load,
         mock_ticker,
         mock_yf_co,
-        mock_fh_co,
-        mock_fd_co,
+        mock_of_co,
         mock_tv_co,
         mock_save,
         mock_issue,
@@ -152,8 +148,7 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
         mock_load.return_value = _empty_stocks()
         mock_ticker.return_value = "AAPL"
         mock_yf_co.return_value = None
-        mock_fh_co.return_value = None
-        mock_fd_co.return_value = None
+        mock_of_co.return_value = None
         mock_tv_co.return_value = None
         df = pd.DataFrame({"CUSIP": ["037833100"], "Company": [""]})
 
@@ -202,8 +197,7 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
     @patch("app.stocks.ticker_resolver.open_issue")
     @patch("app.stocks.ticker_resolver.save_stock")
     @patch("app.stocks.ticker_resolver.TradingView.get_company")
-    @patch("app.stocks.ticker_resolver.FinanceDatabase.get_company")
-    @patch("app.stocks.ticker_resolver.Finnhub.get_company")
+    @patch("app.stocks.ticker_resolver.OpenFIGI.get_company")
     @patch("app.stocks.ticker_resolver.YFinance.get_company")
     @patch("app.stocks.ticker_resolver.YFinance.get_ticker")
     @patch("app.stocks.ticker_resolver.load_stocks")
@@ -212,8 +206,7 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
         mock_load,
         mock_ticker,
         mock_yf_co,
-        mock_fh_co,
-        mock_fd_co,
+        mock_of_co,
         mock_tv_co,
         mock_save,
         mock_issue,
@@ -225,8 +218,7 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
         mock_load.return_value = _empty_stocks()
         mock_ticker.return_value = "AAPL"
         mock_yf_co.return_value = None
-        mock_fh_co.return_value = None
-        mock_fd_co.return_value = None
+        mock_of_co.return_value = None
         mock_tv_co.return_value = None
         df = pd.DataFrame({"CUSIP": ["037833100"], "Company": ["Apple Inc"]})
 
@@ -250,11 +242,11 @@ class TestTickerResolverAssignCUSIP(unittest.TestCase):
         self.assertEqual(result.loc[0, "CUSIP"], "037833100")
 
     @patch("app.stocks.ticker_resolver.save_stock")
-    @patch("app.stocks.ticker_resolver.FinanceDatabase.get_cusip")
+    @patch("app.stocks.ticker_resolver.FMP.get_cusip")
     @patch("app.stocks.ticker_resolver.load_stocks")
     def test_fetches_and_saves_cusip_for_new_ticker(self, mock_load, mock_get_cusip, mock_save):
         """
-        Queries FinanceDatabase and saves the result for tickers not found in the local database.
+        Queries FMP and saves the result for tickers not found in the local database.
         """
         mock_load.return_value = _empty_stocks()
         mock_get_cusip.return_value = "037833100"
@@ -265,11 +257,33 @@ class TestTickerResolverAssignCUSIP(unittest.TestCase):
         self.assertEqual(result.loc[0, "CUSIP"], "037833100")
         mock_save.assert_called_once()
 
-    @patch("app.stocks.ticker_resolver.FinanceDatabase.get_cusip")
+    @patch("app.stocks.ticker_resolver.open_issue")
+    @patch("app.stocks.ticker_resolver.save_stock")
+    @patch("app.stocks.ticker_resolver.FMP.get_cusip")
+    @patch("app.stocks.ticker_resolver.load_stocks")
+    def test_opens_issue_and_leaves_cusip_null_when_fmp_misses(
+        self, mock_load, mock_get_cusip, mock_save, mock_issue
+    ):
+        """
+        Opens a GitHub issue and leaves the CUSIP as NaN when FMP cannot resolve the
+        ticker. No synthetic placeholder is written so stocks.csv only ever contains
+        real CUSIPs.
+        """
+        mock_load.return_value = _empty_stocks()
+        mock_get_cusip.return_value = None
+        df = pd.DataFrame({"Ticker": ["NEWX"], "Company": ["New Co"]})
+
+        result = TickerResolver.assign_cusip(df)
+
+        self.assertTrue(pd.isna(result.loc[0, "CUSIP"]))
+        mock_save.assert_not_called()
+        mock_issue.assert_called_once()
+
+    @patch("app.stocks.ticker_resolver.FMP.get_cusip")
     @patch("app.stocks.ticker_resolver.load_stocks")
     def test_leaves_cusip_null_when_fetch_raises(self, mock_load, mock_get_cusip):
         """
-        Leaves the CUSIP as NaN when FinanceDatabase raises an exception for the ticker.
+        Leaves the CUSIP as NaN when FMP raises an exception for the ticker.
         """
         mock_load.return_value = _empty_stocks()
         mock_get_cusip.side_effect = Exception("API error")
@@ -280,7 +294,7 @@ class TestTickerResolverAssignCUSIP(unittest.TestCase):
         self.assertTrue(pd.isna(result.loc[0, "CUSIP"]))
 
     @patch("app.stocks.ticker_resolver.save_stock")
-    @patch("app.stocks.ticker_resolver.FinanceDatabase.get_cusip")
+    @patch("app.stocks.ticker_resolver.FMP.get_cusip")
     @patch("app.stocks.ticker_resolver.load_stocks")
     def test_handles_mixed_cached_and_new_tickers(self, mock_load, mock_get_cusip, mock_save):
         """

@@ -64,7 +64,8 @@ jobs:
         env:
           GITHUB_ACTIONS: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
 
       - name: Get filings date
         id: date
