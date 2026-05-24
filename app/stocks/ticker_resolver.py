@@ -190,8 +190,11 @@ class TickerResolver:
             .to_dict()
         )
 
-        # 1. Map existing tickers to CUSIPs
-        df["CUSIP"] = df["Ticker"].map(ticker_to_cusip_map)
+        # 1. Map existing tickers to CUSIPs. Force object dtype so subsequent
+        # .loc assignments of strings or None don't fight pandas ≥2.2's strict
+        # block manager (which would otherwise upcast all-NaN columns to
+        # float64 and refuse string assignments).
+        df["CUSIP"] = df["Ticker"].map(ticker_to_cusip_map).astype(object)
 
         # 2. Identify rows with stocks that are not in database
         missing_stocks = df["CUSIP"].isnull() & df["Ticker"].notna()

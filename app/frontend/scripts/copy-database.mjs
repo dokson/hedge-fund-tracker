@@ -35,12 +35,16 @@ if (!existsSync(distDir)) {
 if (!existsSync(targetDir)) mkdirSync(targetDir, { recursive: true });
 
 // --- Static CSV files ---
-const staticFiles = [
+// Every CSV file the frontend reads at runtime (via fetchCSV in dataService)
+// must appear here, otherwise the GH Pages static build 404s on it. Kept in
+// sync with dataService fetch call-sites — see copy-database.test.ts.
+export const staticFiles = [
   "hedge_funds.csv",
   "excluded_hedge_funds.csv",
   "stocks.csv",
   "non_quarterly.csv",
   "models.csv",
+  "sector_hierarchy.csv",
 ];
 
 for (const file of staticFiles) {
@@ -49,15 +53,6 @@ for (const file of staticFiles) {
     cpSync(src, resolve(targetDir, file));
     console.log(`  ${file}`);
   }
-}
-
-// --- GICS hierarchy ---
-const gicsSrc = resolve(sourceDir, "GICS");
-if (existsSync(gicsSrc)) {
-  const gicsDest = resolve(targetDir, "GICS");
-  mkdirSync(gicsDest, { recursive: true });
-  cpSync(resolve(gicsSrc, "hierarchy.csv"), resolve(gicsDest, "hierarchy.csv"));
-  console.log(`  GICS/hierarchy.csv`);
 }
 
 // --- Quarterly data directories (e.g., 2025Q1, 2025Q2, ...) ---
