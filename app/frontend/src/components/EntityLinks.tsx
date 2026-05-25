@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getHedgeFunds } from "@/lib/dataService";
 import { CompanyLogo } from "@/components/CompanyLogo";
-import { buildFaviconUrl } from "@/components/faviconUrl";
+import { FundLogo } from "@/components/FundLogo";
 import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
 
@@ -133,21 +133,10 @@ export function FundCell({ fundName, className = "" }: { fundName: string; class
   // Tables use the short canonical name (CSV `Fund` column) to keep cells
   // narrow. The full legal denomination is preserved in the tooltip.
   const display = formatFundName(fundName);
-  const favicon = buildFaviconUrl(fund?.url, 16);
 
   return (
     <div className={`flex items-center gap-2.5 min-w-0 ${className}`}>
-      {favicon && (
-        <img
-          src={favicon}
-          alt=""
-          width={16}
-          height={16}
-          loading="lazy"
-          className="rounded-sm shrink-0 mt-0.5"
-          style={{ width: 16, height: 16 }}
-        />
-      )}
+      <FundLogo fundName={fundName} url={fund?.url} size={16} className="rounded-sm mt-0.5" />
       <div className="flex flex-col min-w-0 leading-tight">
         <span
           role="link"

@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-import { buildFaviconUrl } from "@/components/faviconUrl";
+import { buildCuratedFaviconUrl, buildFaviconUrl } from "@/components/faviconUrl";
 
 interface FundLogoProps {
   /** Short canonical fund name (CSV `Fund` column) — used for the fallback avatar. */
   fundName: string;
-  /** Fund website URL — passed to buildFaviconUrl. Falls back if missing/unparseable. */
+  /** Fund website URL — passed to the favicon URL builders. Falls back if missing/unparseable. */
   url?: string | null;
   size?: number;
   className?: string;
@@ -18,19 +18,27 @@ function fundHue(name: string): number {
 }
 
 /**
- * Renders the favicon of a hedge fund's website (proxied through the same
- * Cloudinary pipeline used for company logos in GH Pages mode, direct to
- * Google S2 in dev). On 404 / error / missing URL, falls back to a colored
- * initial-letter avatar — keeps the visual slot filled and the fund
- * recognisable even without a website.
+ * Renders the favicon of a hedge fund's website. Tries the curated
+ * Cloudinary-stored asset first, falls back to icon.horse (also via
+ * Cloudinary in GH Pages mode), and finally to a colored initial-letter
+ * avatar when both fail.
  */
 export function FundLogo({ fundName, url, size = 32, className = "" }: FundLogoProps) {
-  const [failed, setFailed] = useState(false);
-  const src = buildFaviconUrl(url, size);
+  const candidates = useMemo(() => {
+    const list: string[] = [];
+    const curated = buildCuratedFaviconUrl(url);
+    if (curated) list.push(curated);
+    const generic = buildFaviconUrl(url, size);
+    if (generic) list.push(generic);
+    return list;
+  }, [url, size]);
 
-  if (!src || failed) {
+  const [index, setIndex] = useState(0);
+  const src = candidates[index];
+
+  if (!src) {
     const hue = fundHue(fundName);
-    const initials = fundName.slice(0, Math.min(2, fundName.length)).toUpperCase();
+    const initials = fundName.slice(0, 1).toUpperCase();
     return (
       <div
         role="img"
@@ -42,7 +50,7 @@ export function FundLogo({ fundName, url, size = 32, className = "" }: FundLogoP
           flexShrink: 0,
           background: `hsl(${hue} 55% 32%)`,
           color: "white",
-          fontSize: Math.round(size * 0.42),
+          fontSize: Math.round(size * 0.55),
           letterSpacing: "-0.02em",
         }}
       >
@@ -57,7 +65,7 @@ export function FundLogo({ fundName, url, size = 32, className = "" }: FundLogoP
       alt={fundName}
       width={size}
       height={size}
-      onError={() => setFailed(true)}
+      onError={() => setIndex((i) => i + 1)}
       className={`rounded object-contain ${className}`}
       style={{ width: size, height: size, flexShrink: 0 }}
       loading="lazy"

@@ -1,34 +1,40 @@
 import { CLOUDINARY_CLOUD_NAME, IS_GH_PAGES_MODE } from "@/lib/config";
 
-const GOOGLE_FAVICON_BASE = "https://www.google.com/s2/favicons";
+const ICON_HORSE_BASE = "https://icon.horse/icon";
+const CLOUDINARY_FUND_FAVICON_FOLDER = "funds/favicons";
 
-/**
- * Builds the URL for a fund website's favicon. Google's S2 service is used as
- * the source — it never 404s, returning a generic globe icon for unknown
- * domains. In GH Pages mode we proxy through Cloudinary's fetch CDN for edge
- * caching + retina sizing, mirroring the company-logo pipeline. In local dev
- * we hit Google directly because Cloudinary's strict-referrer policy would
- * otherwise 401 from localhost.
- *
- * Returns null if the input URL is missing or unparseable, so callers can
- * decide whether to render anything at all.
- */
-export function buildFaviconUrl(url: string | undefined | null, size: number): string | null {
+function hostOf(url: string | undefined | null): string | null {
   if (!url) return null;
-  let host: string;
   try {
-    host = new URL(url).hostname.replace(/^www\./, "");
+    return new URL(url).hostname.replace(/^www\./, "") || null;
   } catch {
     return null;
   }
+}
+
+/**
+ * URL of the curated Cloudinary-stored favicon for this fund's host, if we
+ * uploaded one. Callers should use this as the primary <img src> and fall
+ * back via onError when the asset is missing (404).
+ */
+export function buildCuratedFaviconUrl(url: string | undefined | null): string | null {
+  const host = hostOf(url);
   if (!host) return null;
-  // Google s2 rounds non-bucket sz values DOWN. Request 2× retina so
-  // Cloudinary's dpr_auto has headroom on 2x displays without upscaling.
-  const retina = size * 2;
-  const S2_BUCKETS = [16, 32, 64, 128, 256] as const;
-  const sourceSize = S2_BUCKETS.find((b) => b >= retina * 2) ?? 256;
-  const source = `${GOOGLE_FAVICON_BASE}?domain=${encodeURIComponent(host)}&sz=${sourceSize}`;
+  return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${CLOUDINARY_FUND_FAVICON_FOLDER}/${encodeURIComponent(host)}.png`;
+}
+
+/**
+ * Generic fallback: icon.horse for the fund's host, proxied through
+ * Cloudinary's fetch CDN in GH Pages mode (in dev we hit icon.horse
+ * directly because Cloudinary's strict referrer policy 401s from
+ * localhost). Returns null when the URL is missing or unparseable.
+ */
+export function buildFaviconUrl(url: string | undefined | null, size: number): string | null {
+  const host = hostOf(url);
+  if (!host) return null;
+  const source = `${ICON_HORSE_BASE}/${encodeURIComponent(host)}`;
   if (!IS_GH_PAGES_MODE) return source;
-  const transforms = `w_${retina},h_${retina},c_fit,f_auto,q_auto,dpr_auto`;
+  const retina = size * 2;
+  const transforms = `w_${retina},h_${retina},c_fit,f_auto,q_auto`;
   return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/fetch/${transforms}/${encodeURIComponent(source)}`;
 }

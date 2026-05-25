@@ -179,8 +179,8 @@ function FundGrid() {
                         <FundLogo
                           fundName={fund.fund}
                           url={fund.url}
-                          size={20}
-                          className="rounded-sm"
+                          size={28}
+                          className="rounded-md"
                         />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -239,8 +239,8 @@ function FundGrid() {
                           <FundLogo
                             fundName={fund.fund}
                             url={fund.url}
-                            size={20}
-                            className="rounded-sm"
+                            size={28}
+                            className="rounded-md"
                           />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -298,8 +298,8 @@ function FundGrid() {
                           <FundLogo
                             fundName={fund.fund}
                             url={fund.url}
-                            size={20}
-                            className="rounded-sm"
+                            size={28}
+                            className="rounded-md"
                           />
                         </div>
                         <div className="flex-1 min-w-0">
