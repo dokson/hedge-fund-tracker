@@ -11,7 +11,7 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 
 // @ts-expect-error — .mjs has no .d.ts; import works at runtime.
-import { staticFiles } from "./copy-database.mjs";
+import { staticFiles } from "./copy-database-files.mjs";
 
 describe("copy-database staticFiles", () => {
   it("includes every top-level /database/*.csv path that dataService fetches", () => {

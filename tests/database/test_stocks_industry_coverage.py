@@ -1,10 +1,10 @@
 """
 Ensures every row in database/stocks.csv carries a non-empty Industry value.
 
-After the GICS → Yahoo Finance Classification migration the Industry column
-became the single source of truth that feeds the Sector pill (joined via
-sector_hierarchy.csv) and the industry filter on /stocks. A row without an
-Industry would render as "—" everywhere and break the sector heatmap.
+The Industry column is the single source of truth that feeds the Sector pill
+(joined via sector_hierarchy.csv) and the industry filter on /stocks. A row
+without an Industry would render as "—" everywhere and break the sector
+heatmap.
 """
 
 import csv

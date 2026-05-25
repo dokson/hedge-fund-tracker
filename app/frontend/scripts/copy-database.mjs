@@ -20,6 +20,8 @@ import {
 } from "fs";
 import { resolve, join } from "path";
 
+import { staticFiles } from "./copy-database-files.mjs";
+
 // import.meta.dirname = app/frontend/scripts/
 // repo root = app/frontend/scripts/../../..  (up 3 levels: scripts → frontend → app → repo root)
 const repoRoot = resolve(import.meta.dirname, "../../..");
@@ -35,18 +37,8 @@ if (!existsSync(distDir)) {
 if (!existsSync(targetDir)) mkdirSync(targetDir, { recursive: true });
 
 // --- Static CSV files ---
-// Every CSV file the frontend reads at runtime (via fetchCSV in dataService)
-// must appear here, otherwise the GH Pages static build 404s on it. Kept in
-// sync with dataService fetch call-sites — see copy-database.test.ts.
-export const staticFiles = [
-  "hedge_funds.csv",
-  "excluded_hedge_funds.csv",
-  "stocks.csv",
-  "non_quarterly.csv",
-  "models.csv",
-  "sector_hierarchy.csv",
-];
-
+// staticFiles lives in copy-database-files.mjs (a side-effect-free module)
+// so tests can import it without triggering the build pipeline below.
 for (const file of staticFiles) {
   const src = resolve(sourceDir, file);
   if (existsSync(src)) {
