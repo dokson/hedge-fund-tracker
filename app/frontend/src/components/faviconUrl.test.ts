@@ -24,9 +24,14 @@ describe("buildFaviconUrl", () => {
     expect(url).not.toContain("www.example.com");
   });
 
-  it("requests a retina-sized favicon (2x the rendered size)", () => {
+  it("requests a source large enough for retina + dpr_auto headroom", () => {
     const url = buildFaviconUrl("https://example.com/", 16);
-    expect(url).toContain("sz=32");
+    expect(url).toContain("sz=64");
+  });
+
+  it("snaps non-bucket sizes up to the next valid Google s2 bucket", () => {
+    const url = buildFaviconUrl("https://example.com/", 20);
+    expect(url).toContain("sz=128");
   });
 
   it("URI-encodes the domain", () => {
