@@ -15,7 +15,7 @@ fastapi = "~=0.136"
 fastapi-users = {extras = ["sqlalchemy"], version = "~=15.0"}
 fastapi-users-db-sqlalchemy = "~=7.0"
 google-genai = "~=2.6"
-httptools = {version = "==0.7.1", markers = "sys_platform != 'win32'"}
+httptools = {version = "==0.8.0", markers = "sys_platform != 'win32'"}
 lxml = "~=6.1"
 openai = "~=2.38"
 pandas = "~=3.0"
@@ -28,7 +28,7 @@ slowapi = "~=0.1"
 sqlalchemy = "~=2.0"
 tabulate = "~=0.10"
 tradingview-datafeed = "~=2.1"
-uvicorn = "~=0.47"
+uvicorn = "~=0.48"
 uvloop = {version = "==0.22.1", markers = "sys_platform != 'win32'"}
 watchfiles = "~=1.2"
 websockets = "~=16.0"
