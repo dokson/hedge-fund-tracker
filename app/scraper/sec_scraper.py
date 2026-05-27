@@ -109,18 +109,36 @@ FILING_SPECS: dict[str, dict[str, Any]] = {
         f"Retrying request for '{rs.args[0]}' in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
     ),
 )
-def _get_request(url):
+def _get_request(url: str) -> requests.Response | None:
     """
     Sends a GET request to the specified URL via the shared Session.
 
     Rate-limited via a process-wide token bucket so parallel workers stay
     within SEC EDGAR's fair-access policy. Retries on failure via tenacity.
+
+    Transient network errors (timeouts, connection resets, 5xx) are logged
+    as warnings without a traceback since tenacity will retry them. Other
+    RequestExceptions log a full traceback for diagnosis.
     """
     _rate_limiter.acquire()
     try:
         response = _session.get(url, timeout=15)
         response.raise_for_status()
         return response
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+        logger.warning(
+            "Transient network error for %s: %s",
+            log_safe(url, max_len=200),
+            log_safe(exc.__class__.__name__),
+        )
+        return None
+    except requests.exceptions.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else None
+        if status is not None and (status >= 500 or status == 429):
+            logger.warning("Transient HTTP %s for %s", status, log_safe(url, max_len=200))
+            return None
+        logger.error("Request failed for %s", log_safe(url, max_len=200), exc_info=True)
+        return None
     except requests.exceptions.RequestException:
         logger.error("Request failed for %s", log_safe(url, max_len=200), exc_info=True)
         return None
