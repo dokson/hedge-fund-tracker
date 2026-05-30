@@ -206,6 +206,15 @@ class TestStrings(unittest.TestCase):
         self.assertEqual(format_string("GE HealthCare"), "GE HealthCare")
         self.assertEqual(format_string(""), "")
         self.assertEqual(format_string(None), None)
+        # Leading/trailing whitespace is always stripped, regardless of case.
+        self.assertEqual(
+            format_string("ACME ENERGY INC COMMON STOCK  "), "Acme Energy Inc Common Stock"
+        )
+        self.assertEqual(format_string("  Mixed Case Co  "), "Mixed Case Co")
+        # Internal runs of whitespace collapse to a single space.
+        self.assertEqual(format_string("ETSY   INC"), "Etsy Inc")
+        # A whitespace-only string normalises to empty, not None.
+        self.assertEqual(format_string("   "), "")
 
     def test_add_days_to_yyyymmdd(self):
         """

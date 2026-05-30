@@ -66,22 +66,34 @@ def format_percentage(value: float, show_sign: bool = False, decimal_places: int
 
 def format_string(string: str | None) -> str | None:
     """
-    Formats a string to title case only if it is entirely in uppercase.
+    Normalises whitespace and title-cases all-uppercase company names.
 
-    - If the string consists only of uppercase letters and whitespace,
-      it is converted to title case (e.g., "ETSY INC" -> "Etsy Inc").
-    - If the string contains any lowercase letters or is already in a mixed case,
-      it is returned unchanged (e.g., "GE HealthCare" -> "GE HealthCare").
+    Company names arrive from heterogeneous sources (OpenFIGI, TradingView)
+    that pad them with leading/trailing or internal whitespace — OpenFIGI in
+    particular returns names like "ACME ENERGY INC COMMON STOCK  " with
+    trailing spaces. Those spaces survive a bare ``.title()`` (``str.isupper``
+    ignores whitespace) and then leak into stocks.csv, breaking exact-name
+    matching and search. So whitespace is always stripped and collapsed first,
+    mirroring the 13F path in ``xml_processor`` (``.str.strip().str.replace``).
+
+    - Leading/trailing whitespace is stripped and internal runs collapse to a
+      single space, regardless of case.
+    - If the (normalised) string is entirely uppercase, it is title-cased
+      (e.g., "ETSY INC" -> "Etsy Inc"); mixed-case strings keep their casing
+      (e.g., "GE HealthCare" -> "GE HealthCare").
 
     Args:
-        input_string (str): The string to process.
+        string (str | None): The string to process.
 
     Returns:
-        str: The formatted string or the original string.
+        str | None: The normalised string, or None if the input was None.
     """
-    if string and string.isupper():
-        return string.title()
-    return string
+    if string is None:
+        return None
+    normalised = " ".join(string.split())
+    if normalised.isupper():
+        return normalised.title()
+    return normalised
 
 
 def format_value(value: int | float) -> str:
