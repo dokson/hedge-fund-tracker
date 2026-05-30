@@ -3,10 +3,12 @@ import {
   parseValueString,
   formatValue,
   formatPct,
+  aggregateHoldingsByTicker,
   generateAddFundCSV,
   generateRestoreFundCSVs,
   type HedgeFund,
   type ExcludedHedgeFund,
+  type QuarterlyHolding,
 } from "../dataService";
 
 const mkFund = (cik: string, fund: string): HedgeFund => ({
@@ -121,6 +123,79 @@ describe("formatPct", () => {
 
   it("should not add sign when showSign is false", () => {
     expect(formatPct(12.5, false)).toBe("12.5%");
+  });
+});
+
+describe("aggregateHoldingsByTicker", () => {
+  const mkHolding = (over: Partial<QuarterlyHolding>): QuarterlyHolding => ({
+    cusip: "X",
+    ticker: "X",
+    company: "X",
+    shares: 0,
+    deltaShares: 0,
+    value: "0",
+    deltaValue: "0",
+    delta: "NO CHANGE",
+    portfolioPct: 0,
+    ...over,
+  });
+
+  it("merges multiple CUSIPs of the same ticker into a single row", () => {
+    // Real case: Cyrus holds EchoStar (SATS) under both a common-stock CUSIP
+    // and a debt CUSIP. The fund view must show one consolidated SATS line.
+    const result = aggregateHoldingsByTicker([
+      mkHolding({
+        cusip: "278768106",
+        ticker: "SATS",
+        company: "Echostar Corp",
+        shares: 576571,
+        deltaShares: 0,
+        value: "67.5M",
+        deltaValue: "0",
+        delta: "NO CHANGE",
+        portfolioPct: 34.4,
+      }),
+      mkHolding({
+        cusip: "278768AB2",
+        ticker: "SATS",
+        company: "Echostar Corp",
+        shares: 12932027,
+        deltaShares: -11600000,
+        value: "46.19M",
+        deltaValue: "-41.44M",
+        delta: "-47.3%",
+        portfolioPct: 23.5,
+      }),
+    ]);
+
+    expect(result).toHaveLength(1);
+    const sats = result[0];
+    expect(sats.ticker).toBe("SATS");
+    expect(sats.shares).toBe(13508598);
+    expect(sats.deltaShares).toBe(-11600000);
+    expect(sats.value).toBe("113.69M");
+    expect(sats.deltaValue).toBe("-41.44M");
+    expect(sats.portfolioPct).toBeCloseTo(57.9);
+    expect(sats.delta).toBe("-46.2%");
+  });
+
+  it("returns single-CUSIP holdings unchanged", () => {
+    const gtx = mkHolding({
+      cusip: "366505105",
+      ticker: "GTX",
+      company: "Garrett Motion Inc",
+      shares: 2159866,
+      deltaShares: -4692131,
+      value: "39.24M",
+      deltaValue: "-85.26M",
+      delta: "-68.5%",
+      portfolioPct: 20,
+    });
+    expect(aggregateHoldingsByTicker([gtx])).toEqual([gtx]);
+  });
+
+  it("drops the synthetic Total row", () => {
+    expect(aggregateHoldingsByTicker([mkHolding({ cusip: "Total", ticker: "" })])).toHaveLength(0);
   });
 });
 

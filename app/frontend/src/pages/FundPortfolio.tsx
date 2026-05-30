@@ -8,6 +8,7 @@ import {
   getFundQuarterlyHoldings,
   getFundAvailableQuarters,
   parseValueString,
+  aggregateHoldingsByTicker,
 } from "@/lib/dataService";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TickerLink, CompanyLink, formatFundName } from "@/components/EntityLinks";
@@ -468,13 +469,16 @@ function FundDetail({ fundName }: { fundName: string }) {
   } = useQuery({
     queryKey: ["fundHoldings", selectedQuarter, fundName],
     queryFn: () => getFundQuarterlyHoldings(selectedQuarter!, fundName),
+    // Collapse multiple CUSIPs of the same ticker (e.g. common stock + a
+    // 13F-reportable note) into a single row, matching the stock page, the
+    // consensus view and the CLI fund analysis.
     select: (data) =>
-      data
-        .filter((h) => h.cusip !== "Total")
-        .map((h) => ({
+      aggregateHoldingsByTicker(
+        data.map((h) => ({
           ...h,
           company: tickerNameMap.get(h.ticker) || h.company,
         })),
+      ),
     enabled: !!selectedQuarter,
   });
 

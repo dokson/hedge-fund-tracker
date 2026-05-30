@@ -215,6 +215,75 @@ export function formatPct(n: number, showSign = false): string {
   return `${sign}${n.toFixed(1)}%`;
 }
 
+/**
+ * Formats a number as a compact, no-dollar magnitude string (e.g. "113.69M",
+ * "518.8K"), trimming trailing zeros. Mirrors the Python `format_value` style
+ * used when writing the per-quarter CSVs, so aggregated rows render identically
+ * to the source data.
+ */
+function formatValueShort(n: number): string {
+  const trim = (x: number) => parseFloat(x.toFixed(2)).toString();
+  const abs = Math.abs(n);
+  if (abs >= 1e12) return `${trim(n / 1e12)}T`;
+  if (abs >= 1e9) return `${trim(n / 1e9)}B`;
+  if (abs >= 1e6) return `${trim(n / 1e6)}M`;
+  if (abs >= 1e3) return `${trim(n / 1e3)}K`;
+  return trim(n);
+}
+
+/**
+ * Aggregates per-CUSIP holdings into one row per ticker.
+ *
+ * A fund can report the same ticker under several CUSIPs (e.g. common stock
+ * plus a 13F-reportable convertible note, or multiple share classes). The
+ * per-ticker views — stock page, multi-fund consensus, and the CLI fund
+ * analysis — all collapse these into a single line; this helper gives the
+ * fund-portfolio view the same behaviour. Shares, deltas, values and portfolio
+ * percentages are summed, and the Δ label is recomputed from the aggregated
+ * shares. Tickers backed by a single CUSIP are returned unchanged so their
+ * original formatting is preserved exactly. The synthetic "Total" row is
+ * dropped.
+ */
+export function aggregateHoldingsByTicker(holdings: QuarterlyHolding[]): QuarterlyHolding[] {
+  const groups = new Map<
+    string,
+    { base: QuarterlyHolding; value: number; deltaValue: number; count: number }
+  >();
+
+  for (const h of holdings) {
+    if (h.cusip === "Total") continue;
+    const value = parseValueString(h.value);
+    const deltaValue = parseValueString(h.deltaValue);
+    const existing = groups.get(h.ticker);
+    if (existing) {
+      existing.base.shares += h.shares;
+      existing.base.deltaShares += h.deltaShares;
+      existing.base.portfolioPct += h.portfolioPct;
+      existing.value += value;
+      existing.deltaValue += deltaValue;
+      existing.count += 1;
+    } else {
+      groups.set(h.ticker, { base: { ...h }, value, deltaValue, count: 1 });
+    }
+  }
+
+  return [...groups.values()].map(({ base, value, deltaValue, count }) => {
+    if (count === 1) return base;
+    const prevShares = base.shares - base.deltaShares;
+    let delta: string;
+    if (base.shares === 0) delta = "CLOSE";
+    else if (base.deltaShares === 0) delta = "NO CHANGE";
+    else if (base.shares === base.deltaShares) delta = "NEW";
+    else delta = formatPct(prevShares > 0 ? (base.deltaShares / prevShares) * 100 : 0, true);
+    return {
+      ...base,
+      value: formatValueShort(value),
+      deltaValue: formatValueShort(deltaValue),
+      delta,
+    };
+  });
+}
+
 // ---------- Public API: basic data ----------
 
 function rawToFund(r: RawHedgeFund): HedgeFund {
