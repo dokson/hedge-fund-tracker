@@ -5,6 +5,7 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { FundLogo } from "@/components/FundLogo";
 import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
+import { stockPath, fundPath } from "@/lib/routes";
 
 /** Convert CSV-filename fund name (with underscores) to display name */
 // eslint-disable-next-line react-refresh/only-export-components
@@ -61,13 +62,13 @@ export function CompanyLink({
       className={`company-link ${className}`}
       onClick={(e) => {
         e.stopPropagation();
-        navigate(`/stock/${ticker}`);
+        navigate(stockPath(ticker));
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           e.stopPropagation();
-          navigate(`/stock/${ticker}`);
+          navigate(stockPath(ticker));
         }
       }}
     >
@@ -105,13 +106,13 @@ export function TickerLink({
       className={`ticker-pill ${className}`}
       onClick={(e) => {
         e.stopPropagation();
-        navigate(`/stock/${ticker}`);
+        navigate(stockPath(ticker));
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           e.stopPropagation();
-          navigate(`/stock/${ticker}`);
+          navigate(stockPath(ticker));
         }
       }}
     >
@@ -145,13 +146,13 @@ export function FundCell({ fundName, className = "" }: { fundName: string; class
           className="font-semibold text-foreground hover:text-primary focus-visible:text-primary focus-visible:outline-none transition-colors cursor-pointer truncate"
           onClick={(e) => {
             e.stopPropagation();
-            navigate(`/funds/${encodeURIComponent(fundName)}`);
+            navigate(fundPath(fundName));
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               e.stopPropagation();
-              navigate(`/funds/${encodeURIComponent(fundName)}`);
+              navigate(fundPath(fundName));
             }
           }}
         >
@@ -183,13 +184,13 @@ export function FundLink({
       className={`fund-link ${className}`}
       onClick={(e) => {
         e.stopPropagation();
-        navigate(`/funds/${encodeURIComponent(fundName)}`);
+        navigate(fundPath(fundName));
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           e.stopPropagation();
-          navigate(`/funds/${encodeURIComponent(fundName)}`);
+          navigate(fundPath(fundName));
         }
       }}
     >

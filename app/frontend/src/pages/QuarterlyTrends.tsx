@@ -27,20 +27,17 @@ import {
   TrendingUp,
   TrendingDown,
   Handshake,
-  Sparkles,
+  UserPlus,
   Banknote,
   PieChart,
   BarChart3,
   Info,
-  Star,
   Filter,
-  Users,
-  Building2,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useStarred } from "@/hooks/useStarred";
-import { Badge } from "@/components/ui/badge";
+import { StarredFilterToggle } from "@/components/StarredFilterToggle";
 
 type SortKey = keyof StockQuarterAnalysis;
 
@@ -150,6 +147,11 @@ function AnalysisTable({
     return disableFilters ? arr : arr.slice(0, limit);
   }, [filtered, sortKey, sortDir, limit, disableFilters]);
 
+  // On mobile the Δ% column is promoted to the card headline (next to the
+  // ticker), so it's excluded from the metric grid below.
+  const deltaColumn = columns.find((c) => c.key === "delta");
+  const metricColumns = columns.filter((c) => c.key !== "delta");
+
   return (
     <div className="space-y-3">
       {/* Filter controls */}
@@ -215,7 +217,58 @@ function AnalysisTable({
         </span>
       </div>
 
-      <div className="surface overflow-hidden">
+      {/* Mobile: card list (the dynamic multi-metric table can't fit a phone) */}
+      <div className="md:hidden space-y-3">
+        {sorted.length === 0 ? (
+          <div className="surface p-8 text-center text-muted-foreground">No data available.</div>
+        ) : (
+          sorted.map((s, index) => {
+            const deltaVal = deltaColumn ? (s[deltaColumn.key] as number) : null;
+            return (
+              <div key={s.ticker} className="surface p-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono text-xs text-muted-foreground shrink-0">
+                      #{index + 1}
+                    </span>
+                    <TickerLink ticker={s.ticker} />
+                  </div>
+                  {deltaColumn && typeof deltaVal === "number" && (
+                    <span className="shrink-0 font-mono">
+                      <Delta value={deltaVal} mode={deltaColumn.deltaMode ?? "percent"} />
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2">
+                  <CompanyLink ticker={s.ticker} company={s.company} showStar />
+                </div>
+                <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-3 gap-x-2 gap-y-3">
+                  {metricColumns.map((col) => {
+                    const rawVal = s[col.key] as number;
+                    return (
+                      <div key={col.key} className="min-w-0">
+                        <div className="metric-label truncate">{col.label}</div>
+                        <div className="mt-0.5 font-mono text-sm">
+                          {col.deltaMode && typeof rawVal === "number" ? (
+                            <Delta value={rawVal} mode={col.deltaMode} />
+                          ) : (
+                            <span className={col.colorFn ? col.colorFn(rawVal) : "text-foreground"}>
+                              {col.format ? col.format(rawVal, s) : String(rawVal)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop: full analysis table */}
+      <div className="surface overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -322,7 +375,6 @@ export default function QuarterlyTrends() {
   const [filterStarredStocks, setFilterStarredStocks] = useState(false);
   const [filterStarredFunds, setFilterStarredFunds] = useState(false);
   const anyStarredFilter = filterStarredStocks || filterStarredFunds;
-  const hasAnyStarred = starredStocks.size > 0 || starredFunds.size > 0;
 
   // URL sync: ?tab=<id> drives the active analysis tab so the view is
   // shareable / back-forward navigable. Missing or unknown tab → default.
@@ -373,7 +425,7 @@ export default function QuarterlyTrends() {
   return (
     <div className="space-y-6 max-w-screen-2xl">
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <span className="eyebrow">Quarter over quarter</span>
             <h1 className="page-title mt-1.5">
@@ -421,11 +473,14 @@ export default function QuarterlyTrends() {
           }}
           className="w-full"
         >
-          <TabsList className="bg-secondary border border-border h-auto flex-wrap">
+          <TabsList className="h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
-                  <TabsTrigger value="avgportfolio" className="gap-1.5">
+                  <TabsTrigger
+                    value="avgportfolio"
+                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
+                  >
                     <PieChart className="h-3.5 w-3.5" /> Avg Portfolio
                   </TabsTrigger>
                 </span>
@@ -437,7 +492,10 @@ export default function QuarterlyTrends() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
-                  <TabsTrigger value="consensus" className="gap-1.5">
+                  <TabsTrigger
+                    value="consensus"
+                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
+                  >
                     <Handshake className="h-3.5 w-3.5" /> Consensus Buys
                   </TabsTrigger>
                 </span>
@@ -449,8 +507,11 @@ export default function QuarterlyTrends() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
-                  <TabsTrigger value="new" className="gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5" /> New Consensus
+                  <TabsTrigger
+                    value="new"
+                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" /> New Consensus
                   </TabsTrigger>
                 </span>
               </TooltipTrigger>
@@ -461,7 +522,10 @@ export default function QuarterlyTrends() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
-                  <TabsTrigger value="bigbets" className="gap-1.5">
+                  <TabsTrigger
+                    value="bigbets"
+                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
+                  >
                     <Banknote className="h-3.5 w-3.5" /> Big Bets
                   </TabsTrigger>
                 </span>
@@ -473,7 +537,10 @@ export default function QuarterlyTrends() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
-                  <TabsTrigger value="increasing" className="gap-1.5">
+                  <TabsTrigger
+                    value="increasing"
+                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
+                  >
                     <TrendingUp className="h-3.5 w-3.5" /> Increasing Positions
                   </TabsTrigger>
                 </span>
@@ -485,7 +552,10 @@ export default function QuarterlyTrends() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
-                  <TabsTrigger value="decreasing" className="gap-1.5">
+                  <TabsTrigger
+                    value="decreasing"
+                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
+                  >
                     <TrendingDown className="h-3.5 w-3.5" /> Decreasing Positions
                   </TabsTrigger>
                 </span>
@@ -497,41 +567,15 @@ export default function QuarterlyTrends() {
           </TabsList>
 
           {/* Starred filters */}
-          {hasAnyStarred && (
-            <div className="flex flex-wrap items-center gap-3 mt-4">
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Star className="h-3 w-3" fill="currentColor" /> Consider Starred only:
-              </span>
-              <button
-                onClick={() => starredFunds.size > 0 && setFilterStarredFunds((v) => !v)}
-                disabled={starredFunds.size === 0}
-                className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors ${
-                  filterStarredFunds
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
-                } disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                <Users className="h-3 w-3" /> Funds
-                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 leading-none">
-                  {starredFunds.size}
-                </Badge>
-              </button>
-              <button
-                onClick={() => starredStocks.size > 0 && setFilterStarredStocks((v) => !v)}
-                disabled={starredStocks.size === 0}
-                className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors ${
-                  filterStarredStocks
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
-                } disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                <Building2 className="h-3 w-3" /> Stocks
-                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 leading-none">
-                  {starredStocks.size}
-                </Badge>
-              </button>
-            </div>
-          )}
+          <StarredFilterToggle
+            className="mt-4"
+            fundsCount={starredFunds.size}
+            stocksCount={starredStocks.size}
+            filterFunds={filterStarredFunds}
+            filterStocks={filterStarredStocks}
+            onToggleFunds={() => setFilterStarredFunds((v) => !v)}
+            onToggleStocks={() => setFilterStarredStocks((v) => !v)}
+          />
 
           <TabsContent value="consensus" className="mt-4">
             <AnalysisTable

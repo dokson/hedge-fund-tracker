@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
+import { stockPath } from "@/lib/routes";
 import { useQuery } from "@tanstack/react-query";
 import { runStockAnalysis, getStocks } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
@@ -188,7 +189,7 @@ export default function AIDueDiligence() {
 
       {/* Controls */}
       <div className="flex gap-3 items-end flex-wrap">
-        <div className="space-y-1">
+        <div className="space-y-1 w-full sm:w-auto">
           <span className="block text-[10px] text-muted-foreground uppercase tracking-wider">
             Ticker
           </span>
@@ -197,10 +198,10 @@ export default function AIDueDiligence() {
             onChange={setInputTicker}
             onSubmit={runDiligence}
             placeholder="Enter ticker…"
-            className="w-32 bg-card border-border"
+            className="w-full sm:w-32 bg-card border-border"
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 w-full sm:w-auto">
           <span className="block text-[10px] text-muted-foreground uppercase tracking-wider">
             Model
           </span>
@@ -208,11 +209,12 @@ export default function AIDueDiligence() {
             value={selectedModel}
             onChange={setSelectedModel}
             onProviderChange={setSelectedProviderId}
-            className="w-56"
+            className="w-full sm:w-56"
             disabled={isReadOnly}
           />
         </div>
         <Button
+          className="w-full sm:w-auto"
           onClick={runDiligence}
           disabled={loading || !inputTicker || !isValidTicker || isReadOnly}
         >
@@ -256,7 +258,7 @@ export default function AIDueDiligence() {
                 </div>
                 <div className="min-w-0">
                   <Link
-                    to={`/stock/${displayReport.ticker}`}
+                    to={stockPath(displayReport.ticker)}
                     className="font-mono font-black tracking-tight text-5xl md:text-6xl leading-none hover:text-primary transition-colors block"
                     title={`View ${displayReport.ticker} analysis`}
                   >
@@ -288,7 +290,7 @@ export default function AIDueDiligence() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-6 pt-1 border-t border-border">
+            <div className="flex flex-wrap gap-x-6 gap-y-3 pt-1 border-t border-border">
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">
                   Current Price

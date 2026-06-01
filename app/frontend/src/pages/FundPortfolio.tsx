@@ -8,13 +8,16 @@ import {
   getFundQuarterlyHoldings,
   getFundAvailableQuarters,
   parseValueString,
+  formatValue,
   aggregateHoldingsByTicker,
+  type QuarterlyHolding,
 } from "@/lib/dataService";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TickerLink, CompanyLink, formatFundName } from "@/components/EntityLinks";
 import { FundLogo } from "@/components/FundLogo";
 import { Delta } from "@/components/Delta";
-import { toInitCap } from "@/lib/utils";
+import { toInitCap, matchesQuery } from "@/lib/utils";
+import { fundPath, stockPath, ROUTES } from "@/lib/routes";
 import {
   Select,
   SelectContent,
@@ -68,7 +71,7 @@ function FundGrid() {
             const holdings = await getFundQuarterlyHoldings(latest, fund.fund);
             const total = holdings
               .filter((h) => h.cusip !== "Total")
-              .reduce((sum, h) => sum + parseValue(h.value), 0);
+              .reduce((sum, h) => sum + parseValueString(h.value), 0);
             aumMap.set(fund.fund, total);
           } catch {
             /* skip */
@@ -89,13 +92,7 @@ function FundGrid() {
   const filtered = useMemo(() => {
     let list = funds;
     if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (f) =>
-          f.fund.toLowerCase().includes(q) ||
-          f.manager.toLowerCase().includes(q) ||
-          f.denomination.toLowerCase().includes(q),
-      );
+      list = list.filter((f) => matchesQuery(search, f.fund, f.manager, f.denomination));
     }
     if (tab === "byvalue") {
       list = [...list].sort(
@@ -137,7 +134,7 @@ function FundGrid() {
               <DollarSign className="h-3.5 w-3.5" /> AUM
             </TabsTrigger>
           </TabsList>
-          <div className="relative w-72">
+          <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search fund or manager…"
@@ -168,11 +165,11 @@ function FundGrid() {
                     role="button"
                     tabIndex={0}
                     className="kpi-card cursor-pointer"
-                    onClick={() => navigate(`/funds/${encodeURIComponent(fund.fund)}`)}
+                    onClick={() => navigate(fundPath(fund.fund))}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        navigate(`/funds/${encodeURIComponent(fund.fund)}`);
+                        navigate(fundPath(fund.fund));
                       }
                     }}
                   >
@@ -228,11 +225,11 @@ function FundGrid() {
                       role="button"
                       tabIndex={0}
                       className="kpi-card cursor-pointer"
-                      onClick={() => navigate(`/funds/${encodeURIComponent(fund.fund)}`)}
+                      onClick={() => navigate(fundPath(fund.fund))}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          navigate(`/funds/${encodeURIComponent(fund.fund)}`);
+                          navigate(fundPath(fund.fund));
                         }
                       }}
                     >
@@ -287,11 +284,11 @@ function FundGrid() {
                       role="button"
                       tabIndex={0}
                       className="kpi-card cursor-pointer"
-                      onClick={() => navigate(`/funds/${encodeURIComponent(fund.fund)}`)}
+                      onClick={() => navigate(fundPath(fund.fund))}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          navigate(`/funds/${encodeURIComponent(fund.fund)}`);
+                          navigate(fundPath(fund.fund));
                         }
                       }}
                     >
@@ -350,28 +347,6 @@ function FundGrid() {
 
 // ────────────────────────── Helpers ──────────────────────────
 
-function parseValue(v: string): number {
-  if (!v || v === "N/A") return 0;
-  const cleaned = v.replace(/[,$]/g, "");
-  const match = cleaned.match(/^(-?[\d.]+)([BMK])?$/i);
-  if (!match) return parseFloat(cleaned) || 0;
-  const num = parseFloat(match[1]);
-  const suffix = (match[2] || "").toUpperCase();
-  if (suffix === "B") return num * 1_000_000_000;
-  if (suffix === "M") return num * 1_000_000;
-  if (suffix === "K") return num * 1_000;
-  return num;
-}
-
-function formatValue(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-  if (abs >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (abs >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-  if (abs >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
-  return `$${n.toFixed(0)}`;
-}
-
 type SortKey = "portfolioPct" | "value" | "shares" | "deltaShares" | "delta";
 type SortDir = "asc" | "desc";
 
@@ -423,6 +398,50 @@ function HoldingDeltaCell({
     <div className="flex flex-col items-end gap-0.5">
       <Delta value={deltaPct} mode="percent" />
       {deltaValue}
+    </div>
+  );
+}
+
+/**
+ * Mobile card for a single holding row. The desktop holdings table is hidden
+ * below `md` and replaced by a stack of these: ticker + portfolio weight on the
+ * headline, company beneath, value and Δ as a two-up footer.
+ */
+function HoldingCard({ h, rank }: { h: QuarterlyHolding; rank: number }) {
+  const isNew = h.delta === "NEW";
+  const isClosed = h.delta === "CLOSE";
+  const deltaParsed = isNew || isClosed ? 0 : parseFloat(h.delta) || 0;
+  return (
+    <div className="surface p-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-mono text-xs text-muted-foreground shrink-0">#{rank}</span>
+          <TickerLink ticker={h.ticker} />
+        </div>
+        <span className="font-mono text-sm font-semibold shrink-0">
+          {h.portfolioPct.toFixed(1)}%
+        </span>
+      </div>
+      <div className="mt-2">
+        <CompanyLink ticker={h.ticker} company={toInitCap(h.company)} showStar />
+      </div>
+      <div className="mt-3 pt-3 border-t border-border/60 flex items-end justify-between gap-3">
+        <div>
+          <div className="metric-label">Value</div>
+          <div className="font-mono text-sm text-foreground mt-0.5">{h.value}</div>
+        </div>
+        <div className="text-right">
+          <div className="metric-label">Δ</div>
+          <div className="font-mono mt-0.5">
+            <HoldingDeltaCell
+              isNew={isNew}
+              isClosed={isClosed}
+              deltaPct={deltaParsed}
+              deltaValueRaw={h.deltaValue}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -521,8 +540,8 @@ function FundDetail({ fundName }: { fundName: string }) {
           vb = b.portfolioPct;
           break;
         case "value":
-          va = parseValue(a.value);
-          vb = parseValue(b.value);
+          va = parseValueString(a.value);
+          vb = parseValueString(b.value);
           break;
         case "shares":
           va = a.shares;
@@ -546,7 +565,7 @@ function FundDetail({ fundName }: { fundName: string }) {
   }, [holdings, sortKey, sortDir, positionFilter, activeSector, tickerSectorMap]);
 
   const totalValue = useMemo(
-    () => holdings.reduce((s, h) => s + parseValue(h.value), 0),
+    () => holdings.reduce((s, h) => s + parseValueString(h.value), 0),
     [holdings],
   );
 
@@ -638,7 +657,7 @@ function FundDetail({ fundName }: { fundName: string }) {
     return (
       <div className="space-y-6 max-w-screen-2xl">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/funds")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(ROUTES.funds)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="rounded-lg border border-border bg-neutral-200 p-2 shadow-sm ring-1 ring-border/50 shrink-0">
@@ -664,7 +683,7 @@ function FundDetail({ fundName }: { fundName: string }) {
     <div className="space-y-6 max-w-screen-2xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/funds")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(ROUTES.funds)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="rounded-lg border border-border bg-neutral-200 p-2 shadow-sm ring-1 ring-border/50 shrink-0">
@@ -684,9 +703,9 @@ function FundDetail({ fundName }: { fundName: string }) {
             )}
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 w-full sm:w-auto">
           <Select value={selectedQuarter || ""} onValueChange={setQuarter}>
-            <SelectTrigger className="w-36 bg-card border-border">
+            <SelectTrigger className="flex-1 sm:flex-none sm:w-36 bg-card border-border">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -699,7 +718,7 @@ function FundDetail({ fundName }: { fundName: string }) {
           </Select>
           {fundSectors.length > 1 && (
             <Select value={activeSector} onValueChange={setSectorFilter}>
-              <SelectTrigger className="w-44 bg-card border-border">
+              <SelectTrigger className="flex-1 sm:flex-none sm:w-44 bg-card border-border">
                 <SelectValue placeholder="All sectors" />
               </SelectTrigger>
               <SelectContent>
@@ -727,7 +746,7 @@ function FundDetail({ fundName }: { fundName: string }) {
             <div className="surface flex flex-col gap-1 p-3">
               <p className="metric-label">Positions</p>
               <p className="font-mono text-lg font-bold leading-tight">
-                {holdings.filter((h) => parseValue(h.value) > 0).length}
+                {holdings.filter((h) => parseValueString(h.value) > 0).length}
               </p>
             </div>
             {(
@@ -789,81 +808,129 @@ function FundDetail({ fundName }: { fundName: string }) {
               No data available for {fundName} in {quarterLabel}. Try a different quarter.
             </div>
           ) : (
-            <div className="surface overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
-                      <th className="text-left p-3 font-medium">#</th>
-                      <th className="text-left p-3 font-medium">Ticker</th>
-                      <th className="text-left p-3 font-medium">Company</th>
-                      <th className="text-right p-3 font-medium">Value</th>
-                      <th
-                        className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
-                        onClick={() => toggleSort("delta")}
+            <>
+              {/* Mobile: sort chips + card list */}
+              <div className="md:hidden space-y-3">
+                <div className="flex items-center gap-2 overflow-x-auto">
+                  <span className="text-xs text-muted-foreground shrink-0">Sort</span>
+                  {(
+                    [
+                      ["portfolioPct", "Port %"],
+                      ["delta", "Δ"],
+                    ] as const
+                  ).map(([key, label]) => {
+                    const active = sortKey === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => toggleSort(key)}
+                        aria-pressed={active}
+                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors shrink-0 ${
+                          active
+                            ? "border-primary/50 bg-primary/10 text-primary"
+                            : "border-border bg-card text-muted-foreground"
+                        }`}
                       >
-                        Δ{sortIndicator("delta")}
-                      </th>
-                      <th
-                        className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
-                        onClick={() => toggleSort("portfolioPct")}
-                      >
-                        Port %{sortIndicator("portfolioPct")}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(showAll ? sorted : sorted.slice(0, TOP_N)).map((h, i) => {
-                      const isNew = h.delta === "NEW";
-                      const isClosed = h.delta === "CLOSE";
-                      const deltaParsed = isNew || isClosed ? 0 : parseFloat(h.delta) || 0;
-                      return (
-                        <tr key={`${h.cusip}-${h.ticker}-${h.delta}`} className="data-table-row">
-                          <td className="p-3 text-muted-foreground font-mono">{i + 1}</td>
-                          <td className="p-3">
-                            <TickerLink ticker={h.ticker} />
-                          </td>
-                          <td className="p-3">
-                            <CompanyLink
-                              ticker={h.ticker}
-                              company={toInitCap(h.company)}
-                              className="max-w-[180px] xl:max-w-[260px]"
-                              showStar
-                            />
-                          </td>
-                          <td className="p-3 text-right font-mono">{h.value}</td>
-                          <td className="p-3 text-right font-mono">
-                            <HoldingDeltaCell
-                              isNew={isNew}
-                              isClosed={isClosed}
-                              deltaPct={deltaParsed}
-                              deltaValueRaw={h.deltaValue}
-                            />
-                          </td>
-                          <td className="p-3 text-right font-mono">{h.portfolioPct.toFixed(1)}%</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  {!showAll && sorted.length > TOP_N && (
-                    <tfoot>
-                      <tr>
-                        <td colSpan={6} className="p-3 text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs text-muted-foreground hover:text-foreground"
-                            onClick={() => setShowAll(true)}
-                          >
-                            Showing top {TOP_N} of {sorted.length} positions — Show all
-                          </Button>
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
+                        {label}
+                        {active && (sortDir === "desc" ? " ↓" : " ↑")}
+                      </button>
+                    );
+                  })}
+                </div>
+                {(showAll ? sorted : sorted.slice(0, TOP_N)).map((h, i) => (
+                  <HoldingCard key={`${h.cusip}-${h.ticker}-${h.delta}`} h={h} rank={i + 1} />
+                ))}
+                {!showAll && sorted.length > TOP_N && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowAll(true)}
+                  >
+                    Showing top {TOP_N} of {sorted.length} positions — Show all
+                  </Button>
+                )}
               </div>
-            </div>
+
+              {/* Desktop: full holdings table */}
+              <div className="surface overflow-hidden hidden md:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
+                        <th className="text-left p-3 font-medium">#</th>
+                        <th className="text-left p-3 font-medium">Ticker</th>
+                        <th className="text-left p-3 font-medium">Company</th>
+                        <th className="text-right p-3 font-medium">Value</th>
+                        <th
+                          className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
+                          onClick={() => toggleSort("delta")}
+                        >
+                          Δ{sortIndicator("delta")}
+                        </th>
+                        <th
+                          className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
+                          onClick={() => toggleSort("portfolioPct")}
+                        >
+                          Port %{sortIndicator("portfolioPct")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(showAll ? sorted : sorted.slice(0, TOP_N)).map((h, i) => {
+                        const isNew = h.delta === "NEW";
+                        const isClosed = h.delta === "CLOSE";
+                        const deltaParsed = isNew || isClosed ? 0 : parseFloat(h.delta) || 0;
+                        return (
+                          <tr key={`${h.cusip}-${h.ticker}-${h.delta}`} className="data-table-row">
+                            <td className="p-3 text-muted-foreground font-mono">{i + 1}</td>
+                            <td className="p-3">
+                              <TickerLink ticker={h.ticker} />
+                            </td>
+                            <td className="p-3">
+                              <CompanyLink
+                                ticker={h.ticker}
+                                company={toInitCap(h.company)}
+                                className="max-w-[180px] xl:max-w-[260px]"
+                                showStar
+                              />
+                            </td>
+                            <td className="p-3 text-right font-mono">{h.value}</td>
+                            <td className="p-3 text-right font-mono">
+                              <HoldingDeltaCell
+                                isNew={isNew}
+                                isClosed={isClosed}
+                                deltaPct={deltaParsed}
+                                deltaValueRaw={h.deltaValue}
+                              />
+                            </td>
+                            <td className="p-3 text-right font-mono">
+                              {h.portfolioPct.toFixed(1)}%
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    {!showAll && sorted.length > TOP_N && (
+                      <tfoot>
+                        <tr>
+                          <td colSpan={6} className="p-3 text-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                              onClick={() => setShowAll(true)}
+                            >
+                              Showing top {TOP_N} of {sorted.length} positions — Show all
+                            </Button>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
 
@@ -873,7 +940,7 @@ function FundDetail({ fundName }: { fundName: string }) {
             <h3 className="section-title mb-3 text-sm">Holdings Map</h3>
             <HoldingsTreemap
               data={treemapData}
-              onClickTicker={(t) => navigate(`/stock/${t}`)}
+              onClickTicker={(t) => navigate(stockPath(t))}
               displayMode="pct"
             />
           </div>

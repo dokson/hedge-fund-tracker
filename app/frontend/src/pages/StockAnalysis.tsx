@@ -3,7 +3,14 @@ import { useParams } from "react-router-dom";
 import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
 import { useQuery } from "@tanstack/react-query";
-import { runStockAnalysis, formatValue, formatPct, getStocks } from "@/lib/dataService";
+import {
+  runStockAnalysis,
+  formatValue,
+  formatPct,
+  getStocks,
+  type FundTickerHolding,
+} from "@/lib/dataService";
+import { stocksByIndustry, aiDiligenceFor } from "@/lib/routes";
 import { getSectorStyle } from "@/lib/sectorStyle";
 import type { Quarter } from "@/lib/quarters";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
@@ -23,6 +30,57 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { StockPriceChart } from "@/components/StockPriceChart";
 import { useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
+
+/**
+ * Mobile card for one holder row. Below `md` the six-column holders table is
+ * replaced by these: rank + fund on the headline with the portfolio weight, a
+ * three-up footer for Value / Δ% / Δ Value.
+ */
+function StockHolderCard({ h, rank }: { h: FundTickerHolding; rank: number }) {
+  const deltaNum =
+    h.delta === "NEW" ? Infinity : h.delta === "CLOSE" ? -100 : parseFloat(h.delta) || 0;
+  return (
+    <div className="surface p-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-mono text-xs text-muted-foreground shrink-0">#{rank}</span>
+          <FundCell fundName={h.fund} />
+        </div>
+        <span className="font-mono text-sm font-semibold shrink-0">
+          {h.portfolioPct.toFixed(2)}%
+        </span>
+      </div>
+      <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-3 gap-2 text-center">
+        <div>
+          <div className="metric-label">Value</div>
+          <div className="font-mono text-sm text-foreground mt-0.5">{formatValue(h.value)}</div>
+        </div>
+        <div>
+          <div className="metric-label">Δ%</div>
+          <div className="font-mono text-sm mt-0.5">
+            {h.isNew ? (
+              <span className="badge-new">NEW</span>
+            ) : h.isClosed ? (
+              <span className="badge-closed">CLOSE</span>
+            ) : deltaNum === 0 ? (
+              <span className="badge-nochange">—</span>
+            ) : (
+              <span className={deltaNum > 0 ? "delta-positive" : "delta-negative"}>{h.delta}</span>
+            )}
+          </div>
+        </div>
+        <div>
+          <div className="metric-label">Δ Value</div>
+          <div
+            className={`font-mono text-sm mt-0.5 ${h.deltaValue > 0 ? "delta-positive" : h.deltaValue < 0 ? "delta-negative" : "text-muted-foreground"}`}
+          >
+            {formatValue(h.deltaValue)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function StockAnalysis() {
   const { ticker = "NVDA" } = useParams();
@@ -179,7 +237,7 @@ export default function StockAnalysis() {
                 {industry && (
                   <button
                     type="button"
-                    onClick={() => navigate(`/stocks?industry=${encodeURIComponent(industry)}`)}
+                    onClick={() => navigate(stocksByIndustry(industry))}
                     className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card hover:bg-muted/40 hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                     title={`Browse all ${industry} stocks`}
                   >
@@ -194,9 +252,9 @@ export default function StockAnalysis() {
             )}
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 w-full sm:w-auto">
           <Select value={quarter ?? ""} onValueChange={(v) => setSelectedQuarter(v as Quarter)}>
-            <SelectTrigger className="w-36 bg-card border-border">
+            <SelectTrigger className="flex-1 sm:flex-none sm:w-36 bg-card border-border">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -209,8 +267,8 @@ export default function StockAnalysis() {
           </Select>
           <Button
             variant="outline"
-            className="h-10"
-            onClick={() => navigate(`/ai-diligence?ticker=${ticker}`)}
+            className="h-10 flex-1 sm:flex-none whitespace-nowrap"
+            onClick={() => navigate(aiDiligenceFor(ticker))}
           >
             <Brain className="h-4 w-4 mr-1" /> AI Due Diligence
           </Button>
@@ -456,8 +514,21 @@ export default function StockAnalysis() {
             </div>
           </div>
 
-          {/* Fund Holdings Table */}
-          <div className="surface overflow-hidden">
+          {/* Fund Holdings */}
+          <div>
+            <h3 className="section-title text-sm md:hidden mb-3">
+              Holders by Shares ({holdings.length} funds)
+            </h3>
+            {/* Mobile: card list */}
+            <div className="md:hidden space-y-3">
+              {sortedHoldings.map((h, i) => (
+                <StockHolderCard key={`${h.fund}-${h.delta}-${h.value}`} h={h} rank={i + 1} />
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop: full holders table */}
+          <div className="surface overflow-hidden hidden md:block">
             <div className="p-4 border-b border-border">
               <h3 className="section-title text-sm">Holders by Shares ({holdings.length} funds)</h3>
             </div>

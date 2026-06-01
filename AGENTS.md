@@ -24,6 +24,7 @@ A `PreToolUse` hook in `.claude/settings.json` (script: `.claude/scripts/enforce
 
 ```bash
 # First-time setup
+# Requires Python 3.13 (see Pipfile)
 pipenv install
 cp .env.example .env                        # all keys optional; app degrades gracefully
 cd app/frontend && npm install --legacy-peer-deps && cd ../..
@@ -34,9 +35,9 @@ pipenv run app-cli                          # legacy terminal menu (6 analysis o
 pipenv run update                           # database management CLI
 
 # Tests
-pipenv run python -m unittest discover                                   # all (Python)
+pipenv run test                                                          # all (Python); alias for unittest discover
 pipenv run python -m unittest tests.stocks.test_price_fetcher            # single file
-cd app/frontend && npm test                                              # frontend (vitest)
+pipenv run test-frontend                                                 # frontend (vitest); or: cd app/frontend && npm test
 
 # Lint & format
 pipenv run lint            # ruff check (Python)
@@ -109,12 +110,19 @@ React 19 + TypeScript + Vite, served by FastAPI (`app/server.py`). `pipenv run a
 
 **AI provider routing**: every AI request includes `model_id` + `provider_id`. Backend uses `provider_id` to pick the exact client class. `database/models.csv` is the single source of truth — no hardcoded model lists in TS or Python.
 
+### Shell, routing & branding
+
+- **Layout** (`DashboardLayout.tsx` + `AppSidebar.tsx`): a full-height left sidebar (brand/logo at top, then nav, then footer) beside a content column with its own top-navbar (global search + theme toggle). The **logo is the sidebar toggle** (no hamburger): clicking it collapses the rail to an icon-only strip and back; state persists across reloads via SidebarProvider's `sidebar:state` cookie (read by `readSidebarOpen()`). On phones the sidebar becomes a `<Sheet>` drawer (`MobileSidebar`) and the logo opens it.
+- **Routes are centralised** in `src/lib/routes.ts` — `ROUTES` constants + builders (`stockPath`, `fundPath`, `stocksByIndustry`, `aiDiligenceFor`). **Never hardcode path strings**; a slug change happens in one place. Home `/` is the marketing **`Landing`** page (rendered inside the shell, so the sidebar persists); Latest Filings lives at **`/latest`**.
+- **Logo assets** are theme-aware and live in `public/`: `logo-dark.png` (transparent cyan-bull mark for the dark theme/header), `logo-light.png` (the same mark on a dark badge tile for the light theme), plus `favicon-16/32.png`, `apple-touch-icon.png`, `logo.png`. The header/sidebar swap them via Tailwind `dark:`/`light:` classes. Raster assets are regenerated with ImageMagick (`magick`); there is no SVG source.
+- **Mobile tables → cards**: wide data tables are unusable on phones, so below `md` each becomes a stacked card list. The pattern is a `hidden md:block` table next to a `md:hidden` card list (Dashboard, StockBrowser, FundPortfolio, QuarterlyTrends, StockAnalysis, AIRanking, FundsConfig).
+- **Shared search**: in-page search boxes filter through `matchesQuery()` (`src/lib/utils.ts`) — case-insensitive, null-safe, empty-query-matches-all. The "Consider Starred only" filter row is the shared `StarredFilterToggle` component. (The top-bar `GlobalSearch` is separate — it does ranked scoring, not a boolean filter.)
+
 ### GitHub Pages
 
 Static build via `npm run build:gh-pages`:
-- **Hidden pages** in GH Pages: `/database`, `/ai-settings`
+- **Hidden pages** in GH Pages (route unreachable + sidebar entry removed): `/funds-config`, `/ai-settings`, `/database`
 - **Disabled pages**: `/ai-ranking`, `/ai-diligence` show `FeatureNotAvailable`
-- **Read-only pages**: `/funds-config` (data visible, write actions hidden)
 - CSV bundled into `dist/database/` via `scripts/copy-database.mjs`
 - SPA routing: `public/404.html` redirects to `index.html` with path encoded as query
 - Config: `app/frontend/src/lib/config.ts` (`IS_GH_PAGES_MODE`, `BASE_PATH`, `DATABASE_URL`, `API_BASE`)
@@ -133,10 +141,11 @@ Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `datab
 ### Key frontend files
 
 - `src/lib/dataService.ts` — all CSV reads via HTTP; single source for analysis logic
+- `src/lib/routes.ts` — single source of truth for route paths (`ROUTES` + `stockPath`/`fundPath`/… builders)
 - `src/lib/aiClient.ts` — SSE calls to `/api/ai/*`
 - `src/components/ModelSelector.tsx` — reads `models.csv` via `getModels()`; `CLIENT_TO_PROVIDER_ID` maps CSV `Client` column to provider IDs
 - `src/components/TerminalOutput.tsx` — macOS-style streaming terminal
-- `src/pages/` — AIRanking, AIDueDiligence, FundsConfig, AISettings, DatabaseOperations
+- `src/pages/` — Landing (home `/`), Dashboard (Latest Filings, `/latest`), QuarterlyTrends, FundPortfolio, StockBrowser, StockAnalysis, AIRanking, AIDueDiligence, FundsConfig, AISettings, DatabasePage
 
 ### Database (CSV files)
 
@@ -170,7 +179,7 @@ Three workflows touch the repo:
 
 ## Branch hygiene
 
-- **Don't push directly to `master`.** Open a PR even for tiny changes — CI runs lint and tests.
+- **Solo maintainer pushes directly to `master`** — CI (lint + tests) still runs on every push. **External contributors must open a PR**; see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the full flow.
 - **`automated/filings-fetch` is bot-owned.** Don't commit hand changes there; they get overwritten.
 - **Feature branches**: short imperative name (`feat/portfolio-tracker`, `fix/sse-leak`).
 - **Before pushing**: `pre-commit run --all-files` should pass clean.

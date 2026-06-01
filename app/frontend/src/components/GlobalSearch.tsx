@@ -7,8 +7,17 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { FundLogo } from "@/components/FundLogo";
 import { MAX_PER_GROUP, type SearchHit, score } from "@/components/globalSearchUtils";
 import { getHedgeFunds, getStocks } from "@/lib/dataService";
+import { stockPath, fundPath } from "@/lib/routes";
 
-export default function GlobalSearch() {
+export default function GlobalSearch({
+  focusOnMount = false,
+  onNavigate,
+}: {
+  /** Focus the input on mount — used when the search lives inside a mobile sheet. */
+  focusOnMount?: boolean;
+  /** Fired after navigating to a hit — lets a wrapping mobile sheet close itself. */
+  onNavigate?: () => void;
+} = {}) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -125,6 +134,12 @@ export default function GlobalSearch() {
     return [...grouped.tickers, ...grouped.companies, ...grouped.funds, ...grouped.managers];
   }, [grouped]);
 
+  // Autofocus when mounted inside the mobile search sheet so the keyboard
+  // opens immediately without a second tap.
+  useEffect(() => {
+    if (focusOnMount) inputRef.current?.focus();
+  }, [focusOnMount]);
+
   // Cmd+K / Ctrl+K to focus the input
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -150,12 +165,13 @@ export default function GlobalSearch() {
 
   const navigateToHit = (hit: SearchHit) => {
     if (hit.kind === "ticker" || hit.kind === "company") {
-      navigate(`/stock/${encodeURIComponent(hit.ticker)}`);
+      navigate(stockPath(hit.ticker));
     } else {
-      navigate(`/funds/${encodeURIComponent(hit.fund)}`);
+      navigate(fundPath(hit.fund));
     }
     setOpen(false);
     setQuery("");
+    onNavigate?.();
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -213,7 +229,7 @@ export default function GlobalSearch() {
           placeholder="Search ticker, CUSIP, company, fund, CIK or manager…"
           className="w-full h-9 pl-9 pr-12 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         />
-        <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+        <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
           ⌘K
         </kbd>
       </div>

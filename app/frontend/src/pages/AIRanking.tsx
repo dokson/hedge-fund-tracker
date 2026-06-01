@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
 import { formatValue } from "@/lib/dataService";
+import { stockPath, aiDiligenceFor } from "@/lib/routes";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useAIRun } from "@/hooks/useAIRun";
 import { runPromiseScoreStream } from "@/lib/aiClient";
@@ -112,6 +113,85 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
+/**
+ * Mobile card for one ranked stock. The 12-column table can't fit a phone, so
+ * below `md` each result becomes a card: rank + ticker with the hero Promise
+ * score on the headline, the secondary scores + stats in a labelled grid, and
+ * the two navigation actions inline (no nested expand row).
+ */
+function RankCard({ s, onNavigate }: { s: RankedStock; onNavigate: (path: string) => void }) {
+  return (
+    <div className="surface p-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-mono text-xs text-muted-foreground shrink-0">#{s.rank}</span>
+          <TickerLink ticker={s.ticker} />
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="metric-label">Promise</span>
+          <ScoreBadge score={s.promiseScore} />
+        </div>
+      </div>
+      <div className="mt-2">
+        <CompanyLink ticker={s.ticker} company={s.company} showStar />
+      </div>
+      <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-3 gap-x-2 gap-y-3 text-center">
+        <div>
+          <div className="metric-label">Growth</div>
+          <div className="mt-1">
+            <ScoreBadge score={s.growthScore} />
+          </div>
+        </div>
+        <div>
+          <div className="metric-label">Momentum</div>
+          <div className="mt-1">
+            <ScoreBadge score={s.momentumScore} />
+          </div>
+        </div>
+        <div>
+          <div className="metric-label">Low Vol</div>
+          <div className="mt-1">
+            <ScoreBadge score={s.lowVolatilityScore} />
+          </div>
+        </div>
+        <div>
+          <div className="metric-label">Risk</div>
+          <div className="mt-1">
+            <ScoreBadge score={s.riskScore} />
+          </div>
+        </div>
+        <div>
+          <div className="metric-label">Holders</div>
+          <div className="mt-1 font-mono text-sm">{s.holderCount}</div>
+        </div>
+        <div>
+          <div className="metric-label">Net Buyers</div>
+          <div
+            className={`mt-1 font-mono text-sm ${s.netBuyers >= 0 ? "delta-positive" : "delta-negative"}`}
+          >
+            {s.netBuyers >= 0 ? "+" : ""}
+            {s.netBuyers}
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="metric-label">Total Value</div>
+          <div className="mt-0.5 font-mono text-sm">{formatValue(s.totalValue)}</div>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => onNavigate(stockPath(s.ticker))}>
+            Analysis
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onNavigate(aiDiligenceFor(s.ticker))}>
+            <Brain className="h-3 w-3 mr-1" /> Diligence
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AIRanking() {
   const navigate = useNavigate();
   const { latestQuarter: quarter } = useAvailableQuarters();
@@ -189,7 +269,7 @@ export default function AIRanking() {
         <div>
           <span className="eyebrow">AI ranking</span>
           <h1 className="page-title mt-1.5">
-            <Search className="h-6 w-6" /> Most Promising Stocks
+            <Search className="page-title-icon" /> Most Promising Stocks
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5">
             AI-powered discovery of the most promising stocks based on latest institutional data
@@ -199,7 +279,7 @@ export default function AIRanking() {
 
       {/* Controls */}
       <div className="flex gap-3 items-end flex-wrap">
-        <div className="space-y-1">
+        <div className="space-y-1 w-full sm:w-auto">
           <span className="block text-[10px] text-muted-foreground uppercase tracking-wider">
             Model
           </span>
@@ -207,11 +287,11 @@ export default function AIRanking() {
             value={selectedModel}
             onChange={setSelectedModel}
             onProviderChange={setSelectedProviderId}
-            className="w-56"
+            className="w-full sm:w-56"
             disabled={isReadOnly}
           />
         </div>
-        <Button onClick={runAnalysis} disabled={loading || isReadOnly}>
+        <Button className="w-full sm:w-auto" onClick={runAnalysis} disabled={loading || isReadOnly}>
           <Brain className="h-4 w-4 mr-1" /> {hasResults ? "Re-run" : "Run"}
         </Button>
       </div>
@@ -275,168 +355,180 @@ export default function AIRanking() {
       )}
 
       {hasResults && !loading && (
-        <div className="surface overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
-                <th className="text-left p-3 font-medium w-12">#</th>
-                <th className="text-left p-3 font-medium">Ticker</th>
-                <th className="text-left p-3 font-medium">Company</th>
-                <ColumnHeader
-                  label="Promise"
-                  align="center"
-                  tooltip="Aggregate AI score (1–100) combining institutional metrics (holders, net buyers, conviction, flows) using AI-selected weights for the current market regime. Higher = stronger institutional thesis."
-                />
-                <ColumnHeader
-                  label="Growth"
-                  align="center"
-                  tooltip="Contrarian upside potential (1–100), derived from price change since the filing date. HIGHER = price has dropped (more upside potential left). 100 = price down ≥40%; 55–65 = roughly flat; ≤10 = stock has run up ≥40% (less upside left)."
-                />
-                <ColumnHeader
-                  label="Momentum"
-                  align="center"
-                  tooltip="Strength of the stock's recent price trend and market enthusiasm (1–100). 90+ = explosive uptrend; 50–69 = moderate; <30 = strong downtrend or selling pressure."
-                />
-                <ColumnHeader
-                  label="Low Vol"
-                  align="center"
-                  tooltip="Price stability score (1–100). Higher = more stable price action and lower historical volatility. 90+ = very low beta, minimal drawdowns; <30 = high-beta, speculative price action."
-                />
-                <ColumnHeader
-                  label="Risk"
-                  align="center"
-                  tooltip="Potential for permanent capital loss or extreme downside (1–100). Higher = more risk. 90+ = speculative/distressed; <30 = blue-chip, predictable cash flows."
-                />
-                <ColumnHeader
-                  label="Holders"
-                  align="right"
-                  tooltip="Number of tracked institutions currently holding this stock. Measures consensus and breadth of institutional ownership."
-                />
-                <ColumnHeader
-                  label="Net Buyers"
-                  align="right"
-                  tooltip="Buyer_Count minus Seller_Count among tracked institutions this quarter. Positive = net institutional accumulation; negative = net distribution."
-                />
-                <ColumnHeader
-                  label="Value"
-                  align="right"
-                  tooltip="Aggregate dollar value of this stock held across all tracked institutions at quarter-end."
-                />
-                <th className="p-3 w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayResults.map((s) => (
-                <Fragment key={s.ticker}>
-                  <tr
-                    key={s.ticker}
-                    className="data-table-row cursor-pointer"
-                    onClick={() => setExpandedRow(expandedRow === s.ticker ? null : s.ticker)}
-                  >
-                    <td className="p-3 font-mono text-muted-foreground">{s.rank}</td>
-                    <td className="p-3">
-                      <TickerLink ticker={s.ticker} />
-                    </td>
-                    <td className="p-3">
-                      <CompanyLink
-                        ticker={s.ticker}
-                        company={s.company}
-                        className="max-w-[180px] xl:max-w-[260px]"
-                        showStar
-                      />
-                    </td>
-                    <td className="p-3 text-center">
-                      <ScoreBadge score={s.promiseScore} />
-                    </td>
-                    <td className="p-3 text-center">
-                      <ScoreBadge score={s.growthScore} />
-                    </td>
-                    <td className="p-3 text-center">
-                      <ScoreBadge score={s.momentumScore} />
-                    </td>
-                    <td className="p-3 text-center">
-                      <ScoreBadge score={s.lowVolatilityScore} />
-                    </td>
-                    <td className="p-3 text-center">
-                      <ScoreBadge score={s.riskScore} />
-                    </td>
-                    <td className="p-3 text-right font-mono">{s.holderCount}</td>
-                    <td
-                      className={`p-3 text-right font-mono ${
-                        s.netBuyers >= 0 ? "delta-positive" : "delta-negative"
-                      }`}
+        <>
+          {/* Mobile: card list */}
+          <div className="md:hidden space-y-3">
+            {displayResults.map((s) => (
+              <RankCard key={s.ticker} s={s} onNavigate={navigate} />
+            ))}
+          </div>
+
+          {/* Desktop: full ranking table */}
+          <div className="surface overflow-hidden hidden md:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
+                  <th className="text-left p-3 font-medium w-12">#</th>
+                  <th className="text-left p-3 font-medium">Ticker</th>
+                  <th className="text-left p-3 font-medium">Company</th>
+                  <ColumnHeader
+                    label="Promise"
+                    align="center"
+                    tooltip="Aggregate AI score (1–100) combining institutional metrics (holders, net buyers, conviction, flows) using AI-selected weights for the current market regime. Higher = stronger institutional thesis."
+                  />
+                  <ColumnHeader
+                    label="Growth"
+                    align="center"
+                    tooltip="Contrarian upside potential (1–100), derived from price change since the filing date. HIGHER = price has dropped (more upside potential left). 100 = price down ≥40%; 55–65 = roughly flat; ≤10 = stock has run up ≥40% (less upside left)."
+                  />
+                  <ColumnHeader
+                    label="Momentum"
+                    align="center"
+                    tooltip="Strength of the stock's recent price trend and market enthusiasm (1–100). 90+ = explosive uptrend; 50–69 = moderate; <30 = strong downtrend or selling pressure."
+                  />
+                  <ColumnHeader
+                    label="Low Vol"
+                    align="center"
+                    tooltip="Price stability score (1–100). Higher = more stable price action and lower historical volatility. 90+ = very low beta, minimal drawdowns; <30 = high-beta, speculative price action."
+                  />
+                  <ColumnHeader
+                    label="Risk"
+                    align="center"
+                    tooltip="Potential for permanent capital loss or extreme downside (1–100). Higher = more risk. 90+ = speculative/distressed; <30 = blue-chip, predictable cash flows."
+                  />
+                  <ColumnHeader
+                    label="Holders"
+                    align="right"
+                    tooltip="Number of tracked institutions currently holding this stock. Measures consensus and breadth of institutional ownership."
+                  />
+                  <ColumnHeader
+                    label="Net Buyers"
+                    align="right"
+                    tooltip="Buyer_Count minus Seller_Count among tracked institutions this quarter. Positive = net institutional accumulation; negative = net distribution."
+                  />
+                  <ColumnHeader
+                    label="Value"
+                    align="right"
+                    tooltip="Aggregate dollar value of this stock held across all tracked institutions at quarter-end."
+                  />
+                  <th className="p-3 w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayResults.map((s) => (
+                  <Fragment key={s.ticker}>
+                    <tr
+                      key={s.ticker}
+                      className="data-table-row cursor-pointer"
+                      onClick={() => setExpandedRow(expandedRow === s.ticker ? null : s.ticker)}
                     >
-                      {s.netBuyers >= 0 ? "+" : ""}
-                      {s.netBuyers}
-                    </td>
-                    <td className="p-3 text-right font-mono">{formatValue(s.totalValue)}</td>
-                    <td className="p-3">
-                      {expandedRow === s.ticker ? (
-                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </td>
-                  </tr>
-                  {expandedRow === s.ticker && (
-                    <tr key={`${s.ticker}-detail`}>
+                      <td className="p-3 font-mono text-muted-foreground">{s.rank}</td>
+                      <td className="p-3">
+                        <TickerLink ticker={s.ticker} />
+                      </td>
+                      <td className="p-3">
+                        <CompanyLink
+                          ticker={s.ticker}
+                          company={s.company}
+                          className="max-w-[180px] xl:max-w-[260px]"
+                          showStar
+                        />
+                      </td>
+                      <td className="p-3 text-center">
+                        <ScoreBadge score={s.promiseScore} />
+                      </td>
+                      <td className="p-3 text-center">
+                        <ScoreBadge score={s.growthScore} />
+                      </td>
+                      <td className="p-3 text-center">
+                        <ScoreBadge score={s.momentumScore} />
+                      </td>
+                      <td className="p-3 text-center">
+                        <ScoreBadge score={s.lowVolatilityScore} />
+                      </td>
+                      <td className="p-3 text-center">
+                        <ScoreBadge score={s.riskScore} />
+                      </td>
+                      <td className="p-3 text-right font-mono">{s.holderCount}</td>
                       <td
-                        colSpan={12}
-                        className="px-6 py-4 bg-muted/30 text-sm text-muted-foreground border-b border-border"
+                        className={`p-3 text-right font-mono ${
+                          s.netBuyers >= 0 ? "delta-positive" : "delta-negative"
+                        }`}
                       >
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                          <div>
-                            <p className="text-xs uppercase tracking-wider mb-1">High Conviction</p>
-                            <p className="font-mono font-bold">{s.highConvictionCount}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-wider mb-1">Total Value</p>
-                            <p className="font-mono font-bold">{formatValue(s.totalValue)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-wider mb-1">Holders</p>
-                            <p className="font-mono font-bold">{s.holderCount}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-wider mb-1">Net Buyers</p>
-                            <p
-                              className={`font-mono font-bold ${s.netBuyers >= 0 ? "delta-positive" : "delta-negative"}`}
-                            >
-                              {s.netBuyers >= 0 ? "+" : ""}
-                              {s.netBuyers}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-3 flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/stock/${s.ticker}`);
-                            }}
-                          >
-                            View Stock Analysis
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/ai-diligence?ticker=${s.ticker}`);
-                            }}
-                          >
-                            <Brain className="h-3 w-3 mr-1" /> AI Due Diligence
-                          </Button>
-                        </div>
+                        {s.netBuyers >= 0 ? "+" : ""}
+                        {s.netBuyers}
+                      </td>
+                      <td className="p-3 text-right font-mono">{formatValue(s.totalValue)}</td>
+                      <td className="p-3">
+                        {expandedRow === s.ticker ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
                       </td>
                     </tr>
-                  )}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    {expandedRow === s.ticker && (
+                      <tr key={`${s.ticker}-detail`}>
+                        <td
+                          colSpan={12}
+                          className="px-6 py-4 bg-muted/30 text-sm text-muted-foreground border-b border-border"
+                        >
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                              <p className="text-xs uppercase tracking-wider mb-1">
+                                High Conviction
+                              </p>
+                              <p className="font-mono font-bold">{s.highConvictionCount}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-wider mb-1">Total Value</p>
+                              <p className="font-mono font-bold">{formatValue(s.totalValue)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-wider mb-1">Holders</p>
+                              <p className="font-mono font-bold">{s.holderCount}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-wider mb-1">Net Buyers</p>
+                              <p
+                                className={`font-mono font-bold ${s.netBuyers >= 0 ? "delta-positive" : "delta-negative"}`}
+                              >
+                                {s.netBuyers >= 0 ? "+" : ""}
+                                {s.netBuyers}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(stockPath(s.ticker));
+                              }}
+                            >
+                              View Stock Analysis
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(aiDiligenceFor(s.ticker));
+                              }}
+                            >
+                              <Brain className="h-3 w-3 mr-1" /> AI Due Diligence
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {!hasResults && !loading && (

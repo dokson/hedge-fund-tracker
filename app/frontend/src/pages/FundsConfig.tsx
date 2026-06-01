@@ -15,6 +15,8 @@ import {
   type ExcludedHedgeFund,
 } from "@/lib/dataService";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
+import { matchesQuery } from "@/lib/utils";
+import { fundPath } from "@/lib/routes";
 import {
   Settings2,
   Users,
@@ -106,6 +108,153 @@ const ColumnHeader = ({ label, tooltip }: { label: string; tooltip: string }) =>
   </th>
 );
 
+type FundRow = {
+  fund: string;
+  manager: string;
+  denomination: string;
+  cik: string;
+  ciks: string;
+  url: string;
+};
+
+const EDIT_FIELDS = [
+  ["fund", "Fund"],
+  ["manager", "Manager"],
+  ["denomination", "Denomination"],
+  ["cik", "CIK"],
+  ["ciks", "CIKs"],
+  ["url", "Website"],
+] as const;
+
+/**
+ * Mobile card for one funds-config row, shared by the Active and Excluded tabs.
+ * The 8-column admin table can't fit a phone, so below `md` each fund collapses
+ * to a card. Inline editing reuses the same draft state, stacked vertically.
+ */
+function FundConfigCard({
+  f,
+  rank,
+  mode,
+  readOnly,
+  isEditing,
+  draft,
+  setDraft,
+  isDraftValid,
+  onStartEdit,
+  onSave,
+  onCancel,
+  onSecondary,
+  onOpen,
+}: {
+  f: FundRow;
+  rank: number;
+  mode: "active" | "excluded";
+  readOnly: boolean;
+  isEditing: boolean;
+  draft: Record<string, string>;
+  setDraft: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  isDraftValid: boolean;
+  onStartEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onSecondary: () => void;
+  onOpen?: () => void;
+}) {
+  if (isEditing) {
+    return (
+      <div className="surface p-3.5 space-y-2.5">
+        {EDIT_FIELDS.map(([field, label]) => (
+          <div key={field} className="space-y-1">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {label}
+            </Label>
+            <InlineInput
+              value={f[field]}
+              field={field}
+              draft={draft}
+              setDraft={setDraft}
+              className={field === "cik" || field === "ciks" ? "font-mono w-full" : "w-full"}
+            />
+          </div>
+        ))}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button size="sm" onClick={onSave} disabled={!isDraftValid}>
+            <Check className="h-3.5 w-3.5 mr-1" /> Save
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="surface p-3.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={onOpen}
+              className="font-semibold fund-link text-left truncate max-w-full block"
+            >
+              {f.fund}
+            </button>
+          ) : (
+            <p className="font-semibold truncate">{f.fund}</p>
+          )}
+          <p className="text-xs text-muted-foreground truncate">{f.manager}</p>
+        </div>
+        <span className="font-mono text-[10px] text-muted-foreground shrink-0">#{rank}</span>
+      </div>
+      {f.denomination && (
+        <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{f.denomination}</p>
+      )}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        <CikLink cik={f.cik} />
+        {f.url && (
+          <a
+            href={f.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline inline-flex items-center gap-1 min-w-0 max-w-[200px] truncate"
+          >
+            {f.url.replace(/^https?:\/\/(www\.)?/, "")}
+            <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+          </a>
+        )}
+      </div>
+      {!readOnly && (
+        <div className="mt-3 flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1" onClick={onStartEdit}>
+            <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+          </Button>
+          {mode === "active" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={onSecondary}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 text-primary hover:text-primary hover:bg-primary/10"
+              onClick={onSecondary}
+            >
+              <Undo2 className="h-3.5 w-3.5 mr-1" /> Restore
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FundsConfig() {
   const navigate = useNavigate();
   const [fundSearch, setFundSearch] = useState("");
@@ -139,30 +288,21 @@ export default function FundsConfig() {
     queryFn: getExcludedHedgeFunds,
   });
 
-  const filteredFunds = useMemo(() => {
-    if (!fundSearch) return funds;
-    const q = fundSearch.toLowerCase();
-    return funds.filter(
-      (f) =>
-        f.fund.toLowerCase().includes(q) ||
-        f.manager.toLowerCase().includes(q) ||
-        f.denomination.toLowerCase().includes(q) ||
-        f.cik.includes(q) ||
-        f.url.toLowerCase().includes(q),
-    );
-  }, [funds, fundSearch]);
+  const filteredFunds = useMemo(
+    () =>
+      funds.filter((f) =>
+        matchesQuery(fundSearch, f.fund, f.manager, f.denomination, f.cik, f.url),
+      ),
+    [funds, fundSearch],
+  );
 
-  const filteredExcluded = useMemo(() => {
-    if (!excludedSearch) return excludedFunds;
-    const q = excludedSearch.toLowerCase();
-    return excludedFunds.filter(
-      (f) =>
-        f.fund.toLowerCase().includes(q) ||
-        f.manager.toLowerCase().includes(q) ||
-        f.cik.includes(q) ||
-        f.url.toLowerCase().includes(q),
-    );
-  }, [excludedFunds, excludedSearch]);
+  const filteredExcluded = useMemo(
+    () =>
+      excludedFunds.filter((f) =>
+        matchesQuery(excludedSearch, f.fund, f.manager, f.denomination, f.cik, f.url),
+      ),
+    [excludedFunds, excludedSearch],
+  );
 
   const invalidateAll = () => {
     clearCache("hedge_funds");
@@ -408,8 +548,8 @@ export default function FundsConfig() {
       {activeTab === "active" ? (
         /* ── Active Funds ── */
         <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-0 sm:max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search fund, manager, CIK…"
@@ -444,203 +584,231 @@ export default function FundsConfig() {
               <Loader2 className="h-4 w-4 animate-spin" /> Loading…
             </div>
           ) : (
-            <div className="surface overflow-hidden">
-              <div className="overflow-auto max-h-[60vh]">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-card z-10">
-                    <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
-                      <th className="text-right p-3 font-medium w-12">#</th>
-                      <ColumnHeader
-                        label="Fund"
-                        tooltip="Short name used to generate quarterly file names."
-                      />
-                      <ColumnHeader
-                        label="Manager"
-                        tooltip="Portfolio manager as listed in official fund filings."
-                      />
-                      <ColumnHeader
-                        label="Denomination"
-                        tooltip="Full legal name as it appears in SEC filings. Used to identify positions in non-quarterly filings that may contain multiple institutional entities."
-                      />
-                      <ColumnHeader
-                        label="CIK"
-                        tooltip="Central Index Key — unique SEC identifier for filing entities."
-                      />
-                      <ColumnHeader
-                        label="CIKs"
-                        tooltip="Comma-separated list of additional CIKs associated with this fund (e.g. for related filing entities)."
-                      />
-                      <ColumnHeader
-                        label="Website"
-                        tooltip="Official fund website. Optional, must start with https://."
-                      />
-                      {!IS_GH_PAGES_MODE && <th className="text-right p-3 font-medium w-24"></th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredFunds.map((f, idx) => {
-                      const isEditing = editingCik === f.cik;
-                      return (
-                        <tr key={f.cik} className="data-table-row group">
-                          <td className="p-3 text-right text-muted-foreground font-mono text-xs">
-                            {idx + 1}
-                          </td>
-                          {isEditing ? (
-                            <>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.fund}
-                                  field="fund"
-                                  draft={editDraft}
-                                  setDraft={setEditDraft}
-                                />
-                              </td>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.manager}
-                                  field="manager"
-                                  draft={editDraft}
-                                  setDraft={setEditDraft}
-                                />
-                              </td>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.denomination}
-                                  field="denomination"
-                                  draft={editDraft}
-                                  setDraft={setEditDraft}
-                                />
-                              </td>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.cik}
-                                  field="cik"
-                                  draft={editDraft}
-                                  setDraft={setEditDraft}
-                                  className="font-mono"
-                                />
-                              </td>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.ciks}
-                                  field="ciks"
-                                  draft={editDraft}
-                                  setDraft={setEditDraft}
-                                  className="font-mono"
-                                />
-                              </td>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.url}
-                                  field="url"
-                                  draft={editDraft}
-                                  setDraft={setEditDraft}
-                                />
-                              </td>
-                              <td className="p-2 text-right whitespace-nowrap">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-positive hover:text-positive hover:bg-positive/10"
-                                  onClick={saveEdit}
-                                  title="Save"
-                                  disabled={!isEditDraftValid()}
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                  onClick={cancelEdit}
-                                  title="Cancel"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </Button>
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td
-                                className="p-3 font-medium fund-link cursor-pointer"
-                                onClick={() => navigate(`/funds/${encodeURIComponent(f.fund)}`)}
-                              >
-                                {f.fund}
-                              </td>
-                              <td
-                                className="p-3 text-muted-foreground fund-link cursor-pointer"
-                                onClick={() => navigate(`/funds/${encodeURIComponent(f.fund)}`)}
-                              >
-                                {f.manager}
-                              </td>
-                              <td
-                                className="p-3 text-muted-foreground text-xs max-w-[250px] truncate fund-link cursor-pointer"
-                                onClick={() => navigate(`/funds/${encodeURIComponent(f.fund)}`)}
-                              >
-                                {f.denomination}
-                              </td>
-                              <td className="p-3">
-                                <CikLink cik={f.cik} />
-                              </td>
-                              <td className="p-3 font-mono text-xs text-muted-foreground max-w-[150px] truncate">
-                                {f.ciks || "—"}
-                              </td>
-                              <td className="p-3">
-                                {f.url ? (
-                                  <a
-                                    href={f.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-primary hover:underline inline-flex items-center gap-1 max-w-[180px] truncate"
-                                  >
-                                    {f.url.replace(/^https?:\/\/(www\.)?/, "")}{" "}
-                                    <ExternalLink className="h-2.5 w-2.5 shrink-0" />
-                                  </a>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">—</span>
-                                )}
-                              </td>
-                              {!IS_GH_PAGES_MODE && (
-                                <td className="p-3 text-right whitespace-nowrap">
+            <>
+              {/* Mobile: card list */}
+              <div className="md:hidden space-y-3">
+                {filteredFunds.map((f, idx) => (
+                  <FundConfigCard
+                    key={f.cik}
+                    f={f}
+                    rank={idx + 1}
+                    mode="active"
+                    readOnly={IS_GH_PAGES_MODE}
+                    isEditing={editingCik === f.cik}
+                    draft={editDraft}
+                    setDraft={setEditDraft}
+                    isDraftValid={isEditDraftValid()}
+                    onStartEdit={() => startEdit(f)}
+                    onSave={saveEdit}
+                    onCancel={cancelEdit}
+                    onSecondary={() => {
+                      setFundToDelete(f);
+                      setDeleteDialogOpen(true);
+                    }}
+                    onOpen={() => navigate(fundPath(f.fund))}
+                  />
+                ))}
+              </div>
+
+              {/* Desktop: full table */}
+              <div className="surface overflow-hidden hidden md:block">
+                <div className="overflow-auto max-h-[60vh]">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-card z-10">
+                      <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
+                        <th className="text-right p-3 font-medium w-12">#</th>
+                        <ColumnHeader
+                          label="Fund"
+                          tooltip="Short name used to generate quarterly file names."
+                        />
+                        <ColumnHeader
+                          label="Manager"
+                          tooltip="Portfolio manager as listed in official fund filings."
+                        />
+                        <ColumnHeader
+                          label="Denomination"
+                          tooltip="Full legal name as it appears in SEC filings. Used to identify positions in non-quarterly filings that may contain multiple institutional entities."
+                        />
+                        <ColumnHeader
+                          label="CIK"
+                          tooltip="Central Index Key — unique SEC identifier for filing entities."
+                        />
+                        <ColumnHeader
+                          label="CIKs"
+                          tooltip="Comma-separated list of additional CIKs associated with this fund (e.g. for related filing entities)."
+                        />
+                        <ColumnHeader
+                          label="Website"
+                          tooltip="Official fund website. Optional, must start with https://."
+                        />
+                        {!IS_GH_PAGES_MODE && <th className="text-right p-3 font-medium w-24"></th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredFunds.map((f, idx) => {
+                        const isEditing = editingCik === f.cik;
+                        return (
+                          <tr key={f.cik} className="data-table-row group">
+                            <td className="p-3 text-right text-muted-foreground font-mono text-xs">
+                              {idx + 1}
+                            </td>
+                            {isEditing ? (
+                              <>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.fund}
+                                    field="fund"
+                                    draft={editDraft}
+                                    setDraft={setEditDraft}
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.manager}
+                                    field="manager"
+                                    draft={editDraft}
+                                    setDraft={setEditDraft}
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.denomination}
+                                    field="denomination"
+                                    draft={editDraft}
+                                    setDraft={setEditDraft}
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.cik}
+                                    field="cik"
+                                    draft={editDraft}
+                                    setDraft={setEditDraft}
+                                    className="font-mono"
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.ciks}
+                                    field="ciks"
+                                    draft={editDraft}
+                                    setDraft={setEditDraft}
+                                    className="font-mono"
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.url}
+                                    field="url"
+                                    draft={editDraft}
+                                    setDraft={setEditDraft}
+                                  />
+                                </td>
+                                <td className="p-2 text-right whitespace-nowrap">
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                                    onClick={() => startEdit(f)}
-                                    title="Edit fund"
+                                    className="h-7 w-7 text-positive hover:text-positive hover:bg-positive/10"
+                                    onClick={saveEdit}
+                                    title="Save"
+                                    disabled={!isEditDraftValid()}
                                   >
-                                    <Pencil className="h-3.5 w-3.5" />
+                                    <Check className="h-3.5 w-3.5" />
                                   </Button>
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => {
-                                      setFundToDelete(f);
-                                      setDeleteDialogOpen(true);
-                                    }}
-                                    title="Delete fund"
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    onClick={cancelEdit}
+                                    title="Cancel"
                                   >
-                                    <Trash2 className="h-3.5 w-3.5" />
+                                    <X className="h-3.5 w-3.5" />
                                   </Button>
                                 </td>
-                              )}
-                            </>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                              </>
+                            ) : (
+                              <>
+                                <td
+                                  className="p-3 font-medium fund-link cursor-pointer"
+                                  onClick={() => navigate(fundPath(f.fund))}
+                                >
+                                  {f.fund}
+                                </td>
+                                <td
+                                  className="p-3 text-muted-foreground fund-link cursor-pointer"
+                                  onClick={() => navigate(fundPath(f.fund))}
+                                >
+                                  {f.manager}
+                                </td>
+                                <td
+                                  className="p-3 text-muted-foreground text-xs max-w-[250px] truncate fund-link cursor-pointer"
+                                  onClick={() => navigate(fundPath(f.fund))}
+                                >
+                                  {f.denomination}
+                                </td>
+                                <td className="p-3">
+                                  <CikLink cik={f.cik} />
+                                </td>
+                                <td className="p-3 font-mono text-xs text-muted-foreground max-w-[150px] truncate">
+                                  {f.ciks || "—"}
+                                </td>
+                                <td className="p-3">
+                                  {f.url ? (
+                                    <a
+                                      href={f.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-primary hover:underline inline-flex items-center gap-1 max-w-[180px] truncate"
+                                    >
+                                      {f.url.replace(/^https?:\/\/(www\.)?/, "")}{" "}
+                                      <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                                    </a>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </td>
+                                {!IS_GH_PAGES_MODE && (
+                                  <td className="p-3 text-right whitespace-nowrap">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                                      onClick={() => startEdit(f)}
+                                      title="Edit fund"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      onClick={() => {
+                                        setFundToDelete(f);
+                                        setDeleteDialogOpen(true);
+                                      }}
+                                      title="Delete fund"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </td>
+                                )}
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       ) : activeTab === "excluded" ? (
         /* ── Excluded Funds ── */
         <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-0 sm:max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search excluded fund, manager, URL…"
@@ -670,183 +838,210 @@ export default function FundsConfig() {
               No excluded funds found.
             </div>
           ) : (
-            <div className="surface overflow-hidden">
-              <div className="overflow-auto max-h-[60vh]">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-card z-10">
-                    <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
-                      <th className="text-right p-3 font-medium w-12">#</th>
-                      <ColumnHeader
-                        label="Fund"
-                        tooltip="Short name used to generate quarterly file names."
-                      />
-                      <ColumnHeader
-                        label="Manager"
-                        tooltip="Portfolio manager as listed in official fund filings."
-                      />
-                      <ColumnHeader
-                        label="Denomination"
-                        tooltip="Full legal name as it appears in SEC filings. Used to identify positions in non-quarterly filings that may contain multiple institutional entities."
-                      />
-                      <ColumnHeader
-                        label="CIK"
-                        tooltip="Central Index Key — unique SEC identifier for filing entities."
-                      />
-                      <ColumnHeader
-                        label="CIKs"
-                        tooltip="Comma-separated list of additional CIKs associated with this fund."
-                      />
-                      <ColumnHeader
-                        label="Website"
-                        tooltip="Official website URL of the excluded fund. Must start with https://."
-                      />
-                      {!IS_GH_PAGES_MODE && <th className="text-right p-3 font-medium w-24"></th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredExcluded.map((f, idx) => {
-                      const isEditing = editingExcludedCik === f.cik;
-                      return (
-                        <tr key={f.cik} className="data-table-row group">
-                          <td className="p-3 text-right text-muted-foreground font-mono text-xs">
-                            {idx + 1}
-                          </td>
-                          {isEditing ? (
-                            <>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.fund}
-                                  field="fund"
-                                  draft={editExcludedDraft}
-                                  setDraft={setEditExcludedDraft}
-                                />
-                              </td>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.manager}
-                                  field="manager"
-                                  draft={editExcludedDraft}
-                                  setDraft={setEditExcludedDraft}
-                                />
-                              </td>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.denomination}
-                                  field="denomination"
-                                  draft={editExcludedDraft}
-                                  setDraft={setEditExcludedDraft}
-                                />
-                              </td>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.cik}
-                                  field="cik"
-                                  draft={editExcludedDraft}
-                                  setDraft={setEditExcludedDraft}
-                                  className="font-mono"
-                                />
-                              </td>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.ciks}
-                                  field="ciks"
-                                  draft={editExcludedDraft}
-                                  setDraft={setEditExcludedDraft}
-                                  className="font-mono"
-                                />
-                              </td>
-                              <td className="p-2">
-                                <InlineInput
-                                  value={f.url}
-                                  field="url"
-                                  draft={editExcludedDraft}
-                                  setDraft={setEditExcludedDraft}
-                                />
-                              </td>
-                              <td className="p-2 text-right whitespace-nowrap">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-positive hover:text-positive hover:bg-positive/10"
-                                  onClick={saveExcludedEdit}
-                                  title="Save"
-                                  disabled={!isExcludedDraftValid()}
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                  onClick={cancelExcludedEdit}
-                                  title="Cancel"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </Button>
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="p-3 font-medium">{f.fund}</td>
-                              <td className="p-3 text-muted-foreground">{f.manager}</td>
-                              <td className="p-3 text-muted-foreground text-xs max-w-[200px] truncate">
-                                {f.denomination}
-                              </td>
-                              <td className="p-3">
-                                <CikLink cik={f.cik} />
-                              </td>
-                              <td className="p-3 font-mono text-xs text-muted-foreground max-w-[150px] truncate">
-                                {f.ciks || "—"}
-                              </td>
-                              <td className="p-3">
-                                {f.url ? (
-                                  <a
-                                    href={f.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-primary hover:underline inline-flex items-center gap-1 max-w-[180px] truncate"
-                                  >
-                                    {f.url.replace(/^https?:\/\/(www\.)?/, "")}{" "}
-                                    <ExternalLink className="h-2.5 w-2.5 shrink-0" />
-                                  </a>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">—</span>
-                                )}
-                              </td>
-                              {!IS_GH_PAGES_MODE && (
-                                <td className="p-3 text-right whitespace-nowrap">
+            <>
+              {/* Mobile: card list */}
+              <div className="md:hidden space-y-3">
+                {filteredExcluded.map((f, idx) => (
+                  <FundConfigCard
+                    key={f.cik}
+                    f={f}
+                    rank={idx + 1}
+                    mode="excluded"
+                    readOnly={IS_GH_PAGES_MODE}
+                    isEditing={editingExcludedCik === f.cik}
+                    draft={editExcludedDraft}
+                    setDraft={setEditExcludedDraft}
+                    isDraftValid={isExcludedDraftValid()}
+                    onStartEdit={() => startExcludedEdit(f)}
+                    onSave={saveExcludedEdit}
+                    onCancel={cancelExcludedEdit}
+                    onSecondary={() => {
+                      setFundToRestore(f);
+                      setRestoreDialogOpen(true);
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Desktop: full table */}
+              <div className="surface overflow-hidden hidden md:block">
+                <div className="overflow-auto max-h-[60vh]">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-card z-10">
+                      <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
+                        <th className="text-right p-3 font-medium w-12">#</th>
+                        <ColumnHeader
+                          label="Fund"
+                          tooltip="Short name used to generate quarterly file names."
+                        />
+                        <ColumnHeader
+                          label="Manager"
+                          tooltip="Portfolio manager as listed in official fund filings."
+                        />
+                        <ColumnHeader
+                          label="Denomination"
+                          tooltip="Full legal name as it appears in SEC filings. Used to identify positions in non-quarterly filings that may contain multiple institutional entities."
+                        />
+                        <ColumnHeader
+                          label="CIK"
+                          tooltip="Central Index Key — unique SEC identifier for filing entities."
+                        />
+                        <ColumnHeader
+                          label="CIKs"
+                          tooltip="Comma-separated list of additional CIKs associated with this fund."
+                        />
+                        <ColumnHeader
+                          label="Website"
+                          tooltip="Official website URL of the excluded fund. Must start with https://."
+                        />
+                        {!IS_GH_PAGES_MODE && <th className="text-right p-3 font-medium w-24"></th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredExcluded.map((f, idx) => {
+                        const isEditing = editingExcludedCik === f.cik;
+                        return (
+                          <tr key={f.cik} className="data-table-row group">
+                            <td className="p-3 text-right text-muted-foreground font-mono text-xs">
+                              {idx + 1}
+                            </td>
+                            {isEditing ? (
+                              <>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.fund}
+                                    field="fund"
+                                    draft={editExcludedDraft}
+                                    setDraft={setEditExcludedDraft}
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.manager}
+                                    field="manager"
+                                    draft={editExcludedDraft}
+                                    setDraft={setEditExcludedDraft}
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.denomination}
+                                    field="denomination"
+                                    draft={editExcludedDraft}
+                                    setDraft={setEditExcludedDraft}
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.cik}
+                                    field="cik"
+                                    draft={editExcludedDraft}
+                                    setDraft={setEditExcludedDraft}
+                                    className="font-mono"
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.ciks}
+                                    field="ciks"
+                                    draft={editExcludedDraft}
+                                    setDraft={setEditExcludedDraft}
+                                    className="font-mono"
+                                  />
+                                </td>
+                                <td className="p-2">
+                                  <InlineInput
+                                    value={f.url}
+                                    field="url"
+                                    draft={editExcludedDraft}
+                                    setDraft={setEditExcludedDraft}
+                                  />
+                                </td>
+                                <td className="p-2 text-right whitespace-nowrap">
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                                    onClick={() => startExcludedEdit(f)}
-                                    title="Edit fund"
+                                    className="h-7 w-7 text-positive hover:text-positive hover:bg-positive/10"
+                                    onClick={saveExcludedEdit}
+                                    title="Save"
+                                    disabled={!isExcludedDraftValid()}
                                   >
-                                    <Pencil className="h-3.5 w-3.5" />
+                                    <Check className="h-3.5 w-3.5" />
                                   </Button>
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary hover:bg-primary/10"
-                                    onClick={() => {
-                                      setFundToRestore(f);
-                                      setRestoreDialogOpen(true);
-                                    }}
-                                    title="Restore fund"
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    onClick={cancelExcludedEdit}
+                                    title="Cancel"
                                   >
-                                    <Undo2 className="h-3.5 w-3.5" />
+                                    <X className="h-3.5 w-3.5" />
                                   </Button>
                                 </td>
-                              )}
-                            </>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                              </>
+                            ) : (
+                              <>
+                                <td className="p-3 font-medium">{f.fund}</td>
+                                <td className="p-3 text-muted-foreground">{f.manager}</td>
+                                <td className="p-3 text-muted-foreground text-xs max-w-[200px] truncate">
+                                  {f.denomination}
+                                </td>
+                                <td className="p-3">
+                                  <CikLink cik={f.cik} />
+                                </td>
+                                <td className="p-3 font-mono text-xs text-muted-foreground max-w-[150px] truncate">
+                                  {f.ciks || "—"}
+                                </td>
+                                <td className="p-3">
+                                  {f.url ? (
+                                    <a
+                                      href={f.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-primary hover:underline inline-flex items-center gap-1 max-w-[180px] truncate"
+                                    >
+                                      {f.url.replace(/^https?:\/\/(www\.)?/, "")}{" "}
+                                      <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                                    </a>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </td>
+                                {!IS_GH_PAGES_MODE && (
+                                  <td className="p-3 text-right whitespace-nowrap">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                                      onClick={() => startExcludedEdit(f)}
+                                      title="Edit fund"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary hover:bg-primary/10"
+                                      onClick={() => {
+                                        setFundToRestore(f);
+                                        setRestoreDialogOpen(true);
+                                      }}
+                                      title="Restore fund"
+                                    >
+                                      <Undo2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </td>
+                                )}
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       ) : null}

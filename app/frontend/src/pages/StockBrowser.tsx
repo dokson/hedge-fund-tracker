@@ -7,6 +7,7 @@ import {
   fetchQuarterAnalysis,
   formatValue,
   type Stock,
+  type StockQuarterAnalysis,
 } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { Input } from "@/components/ui/input";
@@ -30,9 +31,91 @@ import { useStarred } from "@/hooks/useStarred";
 import { StarButton } from "@/components/StarButton";
 import { TickerLink } from "@/components/EntityLinks";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { matchesQuery } from "@/lib/utils";
+import { stockPath } from "@/lib/routes";
 
 const ALPHABET = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const VALID_TABS = ["starred", "byvalue", "sectors", "alphabetical"] as const;
+
+/**
+ * Mobile card for one "By Value" row. The seven-column table can't fit a phone,
+ * so below `md` each ranked stock collapses to a card: rank + ticker + star on
+ * top, company beneath, a three-up stats footer, and the relative-size bar.
+ */
+function ValueStockCard({
+  stock,
+  rank,
+  maxValue,
+  starred,
+  onToggleStar,
+  onOpen,
+}: {
+  stock: StockQuarterAnalysis;
+  rank: number;
+  maxValue: number;
+  starred: boolean;
+  onToggleStar: () => void;
+  onOpen: () => void;
+}) {
+  const barPct = (stock.totalValue / maxValue) * 100;
+  const isPositiveDelta = stock.totalDeltaValue >= 0;
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="surface p-3.5 cursor-pointer"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-mono text-xs text-muted-foreground shrink-0">#{rank}</span>
+          <TickerLink ticker={stock.ticker} />
+        </div>
+        <StarButton active={starred} onClick={onToggleStar} size={16} />
+      </div>
+      <div className="company-link cursor-default mt-2 text-sm" title={stock.company}>
+        {stock.company}
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div>
+          <div className="metric-label">Value</div>
+          <div className="font-mono text-sm text-foreground mt-0.5">
+            {formatValue(stock.totalValue)}
+          </div>
+        </div>
+        <div>
+          <div className="metric-label">Δ Value</div>
+          <div
+            className={`font-mono text-sm mt-0.5 inline-flex items-center justify-center gap-1 ${isPositiveDelta ? "delta-positive" : "delta-negative"}`}
+          >
+            {isPositiveDelta ? (
+              <TrendingUp className="h-3 w-3" />
+            ) : (
+              <TrendingDown className="h-3 w-3" />
+            )}
+            {formatValue(Math.abs(stock.totalDeltaValue))}
+          </div>
+        </div>
+        <div>
+          <div className="metric-label">Funds</div>
+          <div className="font-mono text-sm text-muted-foreground mt-0.5">{stock.holderCount}</div>
+        </div>
+      </div>
+      <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-full rounded-full bg-primary/60 transition-all"
+          style={{ width: `${barPct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function StockBrowser() {
   const navigate = useNavigate();
@@ -159,10 +242,7 @@ export default function StockBrowser() {
       }
     }
     if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (s) => s.ticker.toLowerCase().includes(q) || s.company.toLowerCase().includes(q),
-      );
+      list = list.filter((s) => matchesQuery(search, s.ticker, s.company));
     }
     return list.sort((a, b) => a.ticker.localeCompare(b.ticker));
   }, [uniqueStocks, search, activeLetter, topTickersByValue]);
@@ -232,10 +312,7 @@ export default function StockBrowser() {
       return valueSortDir === "desc" ? vb - va : va - vb;
     });
     if (valueSearch) {
-      const q = valueSearch.toLowerCase();
-      list = list.filter(
-        (s) => s.ticker.toLowerCase().includes(q) || s.company.toLowerCase().includes(q),
-      );
+      list = list.filter((s) => matchesQuery(valueSearch, s.ticker, s.company));
     }
     return list;
   }, [quarterData, valueSearch, valueSortKey, valueSortDir, industryFilter, tickerIndustry]);
@@ -333,11 +410,11 @@ export default function StockBrowser() {
                   role="button"
                   tabIndex={0}
                   className="kpi-card cursor-pointer py-2.5 px-3"
-                  onClick={() => navigate(`/stock/${stock.ticker}`)}
+                  onClick={() => navigate(stockPath(stock.ticker))}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      navigate(`/stock/${stock.ticker}`);
+                      navigate(stockPath(stock.ticker));
                     }
                   }}
                 >
@@ -362,7 +439,7 @@ export default function StockBrowser() {
         {/* ── Alphabetical tab ── */}
         <TabsContent value="alphabetical" className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-            <div className="relative w-72">
+            <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search ticker or company…"
@@ -399,7 +476,7 @@ export default function StockBrowser() {
             )}
           </div>
 
-          <div className="grid grid-cols-[repeat(28,1fr)] gap-0.5">
+          <div className="grid grid-cols-9 sm:grid-cols-[repeat(28,1fr)] gap-1 sm:gap-0.5">
             <button
               onClick={() => setActiveLetter(null)}
               className={`py-1.5 text-xs font-mono rounded transition-colors ${
@@ -453,11 +530,11 @@ export default function StockBrowser() {
                           containIntrinsicSize: "auto 56px",
                         }}
                         className="kpi-card cursor-pointer py-2.5 px-3"
-                        onClick={() => navigate(`/stock/${stock.ticker}`)}
+                        onClick={() => navigate(stockPath(stock.ticker))}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            navigate(`/stock/${stock.ticker}`);
+                            navigate(stockPath(stock.ticker));
                           }
                         }}
                       >
@@ -514,13 +591,13 @@ export default function StockBrowser() {
                   <h3 className="section-title mb-3 text-sm">Top 20 by Institutional Value</h3>
                   <HoldingsTreemap
                     data={heatmapData}
-                    onClickTicker={(t) => navigate(`/stock/${t}`)}
+                    onClickTicker={(t) => navigate(stockPath(t))}
                     height={300}
                   />
                 </div>
               )}
               <div className="flex flex-col sm:flex-row gap-4 items-start justify-between">
-                <div className="relative w-72">
+                <div className="relative w-full sm:w-72">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search ticker or company…"
@@ -568,101 +645,121 @@ export default function StockBrowser() {
               ) : valueRanked.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">No data available.</p>
               ) : (
-                <div className="surface overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider">
-                          <th className="text-left p-3 font-medium w-12">#</th>
-                          <th className="text-left p-3 font-medium w-20">Ticker</th>
-                          <th className="text-left p-3 font-medium">Company</th>
-                          <th
-                            className="text-right p-3 font-medium cursor-pointer hover:text-foreground whitespace-nowrap"
-                            onClick={() => toggleValueSort("totalValue")}
-                          >
-                            Total Value{valueSortIndicator("totalValue")}
-                          </th>
-                          <th
-                            className="text-right p-3 font-medium cursor-pointer hover:text-foreground whitespace-nowrap"
-                            onClick={() => toggleValueSort("totalDeltaValue")}
-                          >
-                            Δ Value{valueSortIndicator("totalDeltaValue")}
-                          </th>
-                          <th
-                            className="text-right p-3 font-medium cursor-pointer hover:text-foreground whitespace-nowrap"
-                            onClick={() => toggleValueSort("holderCount")}
-                          >
-                            Funds{valueSortIndicator("holderCount")}
-                          </th>
-                          <th className="p-3 font-medium w-32">Relative Size</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(valueSearch ? valueRanked : valueRanked.slice(0, valueReveal)).map(
-                          (stock, i) => {
-                            const barPct = (stock.totalValue / maxValue) * 100;
-                            const isPositiveDelta = stock.totalDeltaValue >= 0;
-                            return (
-                              <tr
-                                key={stock.ticker}
-                                className="data-table-row cursor-pointer"
-                                onClick={() => navigate(`/stock/${stock.ticker}`)}
-                              >
-                                <td className="p-3 font-mono text-xs text-muted-foreground">
-                                  {i + 1}
-                                </td>
-                                <td className="p-3">
-                                  <TickerLink ticker={stock.ticker} />
-                                </td>
-                                <td className="p-3">
-                                  <span className="inline-flex items-center gap-2 align-middle">
-                                    <StarButton
-                                      active={isStarred(stock.ticker)}
-                                      onClick={() => toggleStar(stock.ticker)}
-                                      size={14}
-                                    />
-                                    <span
-                                      className="company-link cursor-default max-w-[180px] xl:max-w-[260px]"
-                                      title={stock.company}
-                                    >
-                                      {stock.company}
-                                    </span>
-                                  </span>
-                                </td>
-                                <td className="p-3 text-right font-mono font-medium">
-                                  {formatValue(stock.totalValue)}
-                                </td>
-                                <td
-                                  className={`p-3 text-right font-mono text-xs ${isPositiveDelta ? "delta-positive" : "delta-negative"}`}
-                                >
-                                  <span className="inline-flex items-center gap-1 justify-end">
-                                    {isPositiveDelta ? (
-                                      <TrendingUp className="h-3 w-3" />
-                                    ) : (
-                                      <TrendingDown className="h-3 w-3" />
-                                    )}
-                                    {formatValue(Math.abs(stock.totalDeltaValue))}
-                                  </span>
-                                </td>
-                                <td className="p-3 text-right font-mono text-xs text-muted-foreground">
-                                  {stock.holderCount}
-                                </td>
-                                <td className="p-3">
-                                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                                    <div
-                                      className="h-full rounded-full bg-primary/60 transition-all"
-                                      style={{ width: `${barPct}%` }}
-                                    />
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          },
-                        )}
-                      </tbody>
-                    </table>
+                <>
+                  {/* Mobile: card list */}
+                  <div className="md:hidden space-y-3">
+                    {(valueSearch ? valueRanked : valueRanked.slice(0, valueReveal)).map(
+                      (stock, i) => (
+                        <ValueStockCard
+                          key={stock.ticker}
+                          stock={stock}
+                          rank={i + 1}
+                          maxValue={maxValue}
+                          starred={isStarred(stock.ticker)}
+                          onToggleStar={() => toggleStar(stock.ticker)}
+                          onOpen={() => navigate(stockPath(stock.ticker))}
+                        />
+                      ),
+                    )}
                   </div>
-                </div>
+
+                  {/* Desktop: full data table */}
+                  <div className="surface overflow-hidden hidden md:block">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider">
+                            <th className="text-left p-3 font-medium w-12">#</th>
+                            <th className="text-left p-3 font-medium w-20">Ticker</th>
+                            <th className="text-left p-3 font-medium">Company</th>
+                            <th
+                              className="text-right p-3 font-medium cursor-pointer hover:text-foreground whitespace-nowrap"
+                              onClick={() => toggleValueSort("totalValue")}
+                            >
+                              Total Value{valueSortIndicator("totalValue")}
+                            </th>
+                            <th
+                              className="text-right p-3 font-medium cursor-pointer hover:text-foreground whitespace-nowrap"
+                              onClick={() => toggleValueSort("totalDeltaValue")}
+                            >
+                              Δ Value{valueSortIndicator("totalDeltaValue")}
+                            </th>
+                            <th
+                              className="text-right p-3 font-medium cursor-pointer hover:text-foreground whitespace-nowrap"
+                              onClick={() => toggleValueSort("holderCount")}
+                            >
+                              Funds{valueSortIndicator("holderCount")}
+                            </th>
+                            <th className="p-3 font-medium w-32">Relative Size</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(valueSearch ? valueRanked : valueRanked.slice(0, valueReveal)).map(
+                            (stock, i) => {
+                              const barPct = (stock.totalValue / maxValue) * 100;
+                              const isPositiveDelta = stock.totalDeltaValue >= 0;
+                              return (
+                                <tr
+                                  key={stock.ticker}
+                                  className="data-table-row cursor-pointer"
+                                  onClick={() => navigate(stockPath(stock.ticker))}
+                                >
+                                  <td className="p-3 font-mono text-xs text-muted-foreground">
+                                    {i + 1}
+                                  </td>
+                                  <td className="p-3">
+                                    <TickerLink ticker={stock.ticker} />
+                                  </td>
+                                  <td className="p-3">
+                                    <span className="inline-flex items-center gap-2 align-middle">
+                                      <StarButton
+                                        active={isStarred(stock.ticker)}
+                                        onClick={() => toggleStar(stock.ticker)}
+                                        size={14}
+                                      />
+                                      <span
+                                        className="company-link cursor-default max-w-[180px] xl:max-w-[260px]"
+                                        title={stock.company}
+                                      >
+                                        {stock.company}
+                                      </span>
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-right font-mono font-medium">
+                                    {formatValue(stock.totalValue)}
+                                  </td>
+                                  <td
+                                    className={`p-3 text-right font-mono text-xs ${isPositiveDelta ? "delta-positive" : "delta-negative"}`}
+                                  >
+                                    <span className="inline-flex items-center gap-1 justify-end">
+                                      {isPositiveDelta ? (
+                                        <TrendingUp className="h-3 w-3" />
+                                      ) : (
+                                        <TrendingDown className="h-3 w-3" />
+                                      )}
+                                      {formatValue(Math.abs(stock.totalDeltaValue))}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-right font-mono text-xs text-muted-foreground">
+                                    {stock.holderCount}
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                      <div
+                                        className="h-full rounded-full bg-primary/60 transition-all"
+                                        style={{ width: `${barPct}%` }}
+                                      />
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            },
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
               )}
             </>
           )}

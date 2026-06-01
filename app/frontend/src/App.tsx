@@ -7,7 +7,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import Dashboard from "@/pages/Dashboard";
+import Landing from "@/pages/Landing";
 import { IS_GH_PAGES_MODE, BASE_PATH } from "@/lib/config";
+import { ROUTES } from "@/lib/routes";
 
 // Route-level code splitting: each page ships as its own chunk and loads on navigation.
 const QuarterlyTrends = lazy(() => import("@/pages/QuarterlyTrends"));
@@ -38,26 +40,27 @@ const App = () => (
         <DashboardLayout>
           <Suspense fallback={<RouteFallback />}>
             <Routes>
+              {/* Home / landing — inside the shell so the sidebar persists */}
+              <Route path={ROUTES.home} element={<Landing />} />
+
               {/* Core analysis routes — always available */}
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/quarterly" element={<QuarterlyTrends />} />
-              <Route path="/funds" element={<FundPortfolio />} />
-              <Route path="/funds/:fundId" element={<FundPortfolio />} />
-              <Route path="/stocks" element={<StockBrowser />} />
-              <Route path="/stock/:ticker" element={<StockAnalysis />} />
+              <Route path={ROUTES.latest} element={<Dashboard />} />
+              <Route path={ROUTES.quarterly} element={<QuarterlyTrends />} />
+              <Route path={ROUTES.funds} element={<FundPortfolio />} />
+              <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
+              <Route path={ROUTES.stocks} element={<StockBrowser />} />
+              <Route path={`${ROUTES.stock}/:ticker`} element={<StockAnalysis />} />
 
-              {/* Funds Config — read-only in GH Pages mode */}
-              <Route path="/funds-config" element={<FundsConfig />} />
-
-              {/* AI & Database routes — available but disabled in GH Pages mode */}
-              <Route path="/ai-ranking" element={<AIRanking />} />
-              <Route path="/ai-diligence" element={<AIDueDiligence />} />
+              {/* AI routes — available but disabled in GH Pages mode */}
+              <Route path={ROUTES.aiRanking} element={<AIRanking />} />
+              <Route path={ROUTES.aiDiligence} element={<AIDueDiligence />} />
 
               {/* Restricted routes — completely unreachable in GH Pages mode for security */}
               {!IS_GH_PAGES_MODE && (
                 <>
-                  <Route path="/ai-settings" element={<AISettings />} />
-                  <Route path="/database" element={<DatabasePage />} />
+                  <Route path={ROUTES.fundsConfig} element={<FundsConfig />} />
+                  <Route path={ROUTES.aiSettings} element={<AISettings />} />
+                  <Route path={ROUTES.database} element={<DatabasePage />} />
                 </>
               )}
 

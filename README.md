@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="app/frontend/public/logo-dark.png">
+    <img src="app/frontend/public/logo-light.png" alt="Hedge Fund Tracker" width="160">
+  </picture>
+</p>
+
 # 📊 Hedge Fund Tracker
 
 [![repo views](https://komarev.com/ghpvc/?username=dokson&repo=hedge-fund-tracker&label=views&color=orange&style=for-the-badge)](https://github.com/dokson/hedge-fund-tracker)
@@ -235,7 +242,7 @@ hedge-fund-tracker/
 │       └── ⚙️ python-tests.yml     # GitHub Actions: Unit tests
 ├── 📁 app/                          # Main application logic
 │   ├── 📁 frontend/                 # React + Vite web UI
-│   │   ├── 📁 public/               # Static assets (404.html, logo.png)
+│   │   ├── 📁 public/               # Static assets (404.html, logo + favicons)
 │   │   ├── 📁 scripts/              # copy-database.mjs (bundles CSVs for GH Pages)
 │   │   ├── 📁 src/
 │   │   │   ├── 📁 components/       # Shared UI components (ModelSelector, TerminalOutput, FeatureNotAvailable, etc.)
