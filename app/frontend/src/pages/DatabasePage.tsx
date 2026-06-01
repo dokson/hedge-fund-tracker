@@ -4,12 +4,13 @@ import { IS_GH_PAGES_MODE } from "@/lib/config";
 
 export default function DatabasePage() {
   return (
-    <div className="space-y-5 max-w-screen-2xl">
+    <div className="space-y-6 max-w-screen-2xl">
       <div>
-        <h1 className="page-title">
+        <span className="eyebrow">Maintenance</span>
+        <h1 className="page-title mt-1.5">
           <Database className="page-title-icon" /> Update Operations
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground mt-1.5">
           Invoke local Python commands from{" "}
           <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">
             database/updater.py

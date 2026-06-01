@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 function formatTreemapValue(n: number): string {
   const abs = Math.abs(n);
@@ -37,6 +38,83 @@ function getDeltaColor(deltaPct: number, delta: string): string {
   if (deltaPct > -5) return "hsl(0, 50%, 35%)";
   if (deltaPct > -20) return "hsl(0, 60%, 40%)";
   return "hsl(0, 70%, 45%)";
+}
+
+interface TooltipState {
+  item: TreemapItem;
+  x: number;
+  y: number;
+}
+
+// Portaled so the treemap's overflow-hidden never clips it.
+function TreemapTooltip({
+  tip,
+  displayMode,
+}: {
+  tip: TooltipState | null;
+  displayMode: "value" | "pct";
+}) {
+  if (!tip) return null;
+
+  const { item, x, y } = tip;
+  const isNew = item.delta === "NEW";
+  const up = item.deltaPct > 0 || isNew;
+  const down = item.deltaPct < 0;
+  const accent = getDeltaColor(item.deltaPct, item.delta);
+
+  // Flip by cursor quadrant so the panel never spills off-screen.
+  const OFFSET = 18;
+  const flipX = x > window.innerWidth * 0.6;
+  const flipY = y > window.innerHeight * 0.55;
+  const left = flipX ? x - OFFSET : x + OFFSET;
+  const top = flipY ? y - OFFSET : y + OFFSET;
+  const translate = `translate(${flipX ? "-100%" : "0"}, ${flipY ? "-100%" : "0"})`;
+
+  const noChange = !isNew && item.deltaPct === 0;
+  const deltaLabel = isNew
+    ? "NEW"
+    : noChange
+      ? "NO CHANGE"
+      : `${item.deltaPct > 0 ? "+" : ""}${item.deltaPct.toFixed(1)}%`;
+  const deltaTone = isNew
+    ? "text-[hsl(var(--positive))]"
+    : down
+      ? "text-[hsl(var(--negative))]"
+      : up
+        ? "text-[hsl(var(--positive))]"
+        : "text-muted-foreground";
+
+  return createPortal(
+    <div
+      className="pointer-events-none fixed z-[60] animate-in fade-in-0 zoom-in-95 duration-150"
+      style={{ left, top, transform: translate }}
+    >
+      <div className="flex overflow-hidden rounded-lg border border-border/80 bg-card/85 shadow-xl shadow-black/40 backdrop-blur-md">
+        <span aria-hidden className="w-1 shrink-0" style={{ backgroundColor: accent }} />
+        <div className="px-3 py-2">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-sm font-bold tracking-tight text-card-foreground">
+              {item.name}
+            </span>
+            <span
+              className={`ml-auto inline-flex items-center gap-0.5 font-mono text-[11px] font-semibold tabular-nums ${deltaTone}`}
+            >
+              {!isNew && (up ? "▲" : down ? "▼" : "")} {deltaLabel}
+            </span>
+          </div>
+          {item.company && item.company !== item.name && (
+            <div className="mt-0.5 max-w-[14rem] truncate text-[11px] text-muted-foreground">
+              {item.company}
+            </div>
+          )}
+          <div className="mt-1.5 font-mono text-base font-semibold tabular-nums text-card-foreground">
+            {displayMode === "pct" ? formatTreemapPct(item.value) : formatTreemapValue(item.value)}
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
 }
 
 // Simple squarified treemap layout
@@ -143,9 +221,25 @@ export function HoldingsTreemap({
   displayMode = "value",
 }: Props) {
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null);
+  const [tip, setTip] = useState<TooltipState | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerPx, setContainerPx] = useState(0);
 
   const containerWidth = 100; // percentage-based
   const containerHeight = propHeight ?? 500; // px
+
+  // Real px width: the same width % is far narrower in the side-by-side Sector
+  // Map than the wide Holdings Map, so font sizing needs actual pixels.
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setContainerPx(el.clientWidth);
+    const ro = new ResizeObserver((entries) => {
+      setContainerPx(entries[0].contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const rects = useMemo(
     () => squarify(data, containerWidth, containerHeight),
@@ -153,47 +247,72 @@ export function HoldingsTreemap({
   );
 
   return (
-    <div className="relative w-full rounded overflow-hidden" style={{ height: containerHeight }}>
-      {rects.map(({ item, x, y, w, h }) => {
-        const isHovered = hoveredTicker === item.name;
-        const bgColor = getDeltaColor(item.deltaPct, item.delta);
-        const isSmall = w < 12 || h < 28;
+    <>
+      <div
+        ref={containerRef}
+        className="relative w-full rounded overflow-hidden"
+        style={{ height: containerHeight }}
+      >
+        {rects.map(({ item, x, y, w, h }) => {
+          const isHovered = hoveredTicker === item.name;
+          const bgColor = getDeltaColor(item.deltaPct, item.delta);
+          const isSmall = w < 12 || h < 28;
+          const showValue = !isSmall && h > 36;
 
-        return (
-          <button
-            type="button"
-            key={item.name}
-            className="absolute cursor-pointer transition-opacity duration-150 flex flex-col items-center justify-center overflow-hidden"
-            style={{
-              left: `${x}%`,
-              top: y,
-              width: `${w}%`,
-              height: h,
-              backgroundColor: bgColor,
-              opacity: isHovered ? 1 : hoveredTicker ? 0.7 : 0.9,
-              border: "1px solid hsl(var(--background) / 0.3)",
-            }}
-            onClick={() => onClickTicker(item.name)}
-            onMouseEnter={() => setHoveredTicker(item.name)}
-            onMouseLeave={() => setHoveredTicker(null)}
-            title={`${item.name} — ${item.company}\n${displayMode === "pct" ? formatTreemapPct(item.value) : formatTreemapValue(item.value)}\nΔ ${item.deltaPct > 0 ? "+" : ""}${item.deltaPct.toFixed(1)}%`}
-          >
-            <span
-              className="font-mono font-bold text-white drop-shadow-sm leading-tight truncate px-0.5"
-              style={{ fontSize: Math.max(7, Math.min(14, isSmall ? 8 : w * 0.8)) }}
+          // Bound font by cell px width (≈0.6em/char mono) and height; fall back
+          // to the width-% heuristic until the container is measured.
+          const cellPx = (w / 100) * containerPx;
+          const fontSize = containerPx
+            ? Math.max(
+                6,
+                Math.min(
+                  14,
+                  (cellPx - 4) / Math.max(item.name.length, 1) / 0.6,
+                  showValue ? h * 0.45 : h * 0.7,
+                ),
+              )
+            : Math.max(7, Math.min(14, isSmall ? 8 : w * 0.8));
+
+          return (
+            <button
+              type="button"
+              key={item.name}
+              className="absolute cursor-pointer transition-opacity duration-150 flex flex-col items-center justify-center overflow-hidden"
+              style={{
+                left: `${x}%`,
+                top: y,
+                width: `${w}%`,
+                height: h,
+                backgroundColor: bgColor,
+                opacity: isHovered ? 1 : hoveredTicker ? 0.7 : 0.9,
+                border: "1px solid hsl(var(--background) / 0.3)",
+              }}
+              onClick={() => onClickTicker(item.name)}
+              onMouseEnter={() => setHoveredTicker(item.name)}
+              onMouseMove={(e) => setTip({ item, x: e.clientX, y: e.clientY })}
+              onMouseLeave={() => {
+                setHoveredTicker(null);
+                setTip(null);
+              }}
             >
-              {item.name}
-            </span>
-            {!isSmall && h > 36 && (
-              <span className="text-white/70 text-[9px] leading-tight mt-0.5">
-                {displayMode === "pct"
-                  ? formatTreemapPct(item.value)
-                  : formatTreemapValue(item.value)}
+              <span
+                className="font-mono font-bold text-white drop-shadow-sm leading-tight truncate px-0.5 max-w-full"
+                style={{ fontSize }}
+              >
+                {item.name}
               </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
+              {showValue && (
+                <span className="text-white/70 text-[9px] leading-tight mt-0.5">
+                  {displayMode === "pct"
+                    ? formatTreemapPct(item.value)
+                    : formatTreemapValue(item.value)}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <TreemapTooltip tip={tip} displayMode={displayMode} />
+    </>
   );
 }

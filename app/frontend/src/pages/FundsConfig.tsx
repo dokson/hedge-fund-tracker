@@ -355,12 +355,13 @@ export default function FundsConfig() {
   };
 
   return (
-    <div className="space-y-5 max-w-screen-2xl">
+    <div className="space-y-6 max-w-screen-2xl">
       <div>
-        <h1 className="page-title">
+        <span className="eyebrow">Curated list</span>
+        <h1 className="page-title mt-1.5">
           <Settings2 className="page-title-icon" /> Hedge Funds Configuration
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground mt-1.5">
           {IS_GH_PAGES_MODE
             ? "View the monitored hedge funds. This is a read-only view of the bundled data."
             : "Manage the monitored hedge funds. Click the edit icon to modify a fund inline."}
@@ -443,7 +444,7 @@ export default function FundsConfig() {
               <Loader2 className="h-4 w-4 animate-spin" /> Loading…
             </div>
           ) : (
-            <div className="rounded-lg border border-border bg-card overflow-hidden">
+            <div className="surface overflow-hidden">
               <div className="overflow-auto max-h-[60vh]">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-card z-10">
@@ -540,7 +541,7 @@ export default function FundsConfig() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-500/10"
+                                  className="h-7 w-7 text-positive hover:text-positive hover:bg-positive/10"
                                   onClick={saveEdit}
                                   title="Save"
                                   disabled={!isEditDraftValid()}
@@ -669,7 +670,7 @@ export default function FundsConfig() {
               No excluded funds found.
             </div>
           ) : (
-            <div className="rounded-lg border border-border bg-card overflow-hidden">
+            <div className="surface overflow-hidden">
               <div className="overflow-auto max-h-[60vh]">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-card z-10">
@@ -766,7 +767,7 @@ export default function FundsConfig() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-500/10"
+                                  className="h-7 w-7 text-positive hover:text-positive hover:bg-positive/10"
                                   onClick={saveExcludedEdit}
                                   title="Save"
                                   disabled={!isExcludedDraftValid()}

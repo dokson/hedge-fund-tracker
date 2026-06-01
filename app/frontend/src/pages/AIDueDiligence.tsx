@@ -75,7 +75,7 @@ function PriceTargetDelta({
   const current = parseUsd(currentPrice);
   if (!isFinite(target) || !isFinite(current) || current === 0) return null;
   const pct = ((target - current) / current) * 100;
-  const cls = pct >= 0 ? "text-green-500" : "text-red-500";
+  const cls = pct >= 0 ? "text-positive" : "text-negative";
   return (
     <span
       className={`text-base md:text-lg font-semibold tabular-nums ${cls}`}
@@ -173,13 +173,16 @@ export default function AIDueDiligence() {
   const isSample = isReadOnly && !report;
 
   return (
-    <div className="space-y-5 max-w-screen-2xl">
+    <div className="space-y-6 max-w-screen-2xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-title">
+          <span className="eyebrow">AI analysis</span>
+          <h1 className="page-title mt-1.5">
             <ClipboardCheck className="h-6 w-6" /> Stock Due Diligence
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Comprehensive AI-generated analysis</p>
+          <p className="text-sm text-muted-foreground mt-1.5">
+            Comprehensive AI-generated analysis
+          </p>
         </div>
       </div>
 
@@ -244,7 +247,7 @@ export default function AIDueDiligence() {
 
       {displayReport && !loading && (
         <div className="animate-slide-up space-y-5">
-          <div className="rounded-lg border border-border bg-card p-6 space-y-5">
+          <div className="surface p-6 space-y-5">
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div className="flex items-stretch gap-4 min-w-0">
                 <div className="w-1 rounded-full bg-primary/70 shrink-0" aria-hidden="true" />
@@ -305,8 +308,8 @@ export default function AIDueDiligence() {
                 <p
                   className={`font-mono font-bold flex items-center gap-1 ${
                     displayReport.price_delta_percentage?.startsWith("+")
-                      ? "text-green-500"
-                      : "text-red-500"
+                      ? "text-positive"
+                      : "text-negative"
                   }`}
                 >
                   {displayReport.price_delta_percentage?.startsWith("+") ? "📈" : "📉"}
@@ -333,10 +336,7 @@ export default function AIDueDiligence() {
             ]}
             className="space-y-3"
           >
-            <AccordionItem
-              value="business"
-              className="rounded-lg border border-border bg-card px-5"
-            >
+            <AccordionItem value="business" className="surface px-5">
               <AccordionTrigger className="text-sm font-semibold">
                 Business Summary
               </AccordionTrigger>
@@ -345,10 +345,7 @@ export default function AIDueDiligence() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem
-              value="financial"
-              className="rounded-lg border border-border bg-card px-5"
-            >
+            <AccordionItem value="financial" className="surface px-5">
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Financial Health
@@ -362,10 +359,7 @@ export default function AIDueDiligence() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem
-              value="valuation"
-              className="rounded-lg border border-border bg-card px-5"
-            >
+            <AccordionItem value="valuation" className="surface px-5">
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Valuation
@@ -377,10 +371,7 @@ export default function AIDueDiligence() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem
-              value="growth-risk"
-              className="rounded-lg border border-border bg-card px-5"
-            >
+            <AccordionItem value="growth-risk" className="surface px-5">
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Growth vs. Risks
@@ -394,10 +385,7 @@ export default function AIDueDiligence() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem
-              value="institutional"
-              className="rounded-lg border border-border bg-card px-5"
-            >
+            <AccordionItem value="institutional" className="surface px-5">
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Institutional Sentiment
@@ -411,7 +399,7 @@ export default function AIDueDiligence() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="thesis" className="rounded-lg border border-border bg-card px-5">
+            <AccordionItem value="thesis" className="surface px-5">
               <AccordionTrigger className="text-sm font-semibold">
                 <div className="flex items-center gap-2">
                   Investment Thesis

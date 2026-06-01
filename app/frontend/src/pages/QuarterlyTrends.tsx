@@ -215,7 +215,7 @@ function AnalysisTable({
         </span>
       </div>
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="surface overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -371,14 +371,15 @@ export default function QuarterlyTrends() {
   }, [rawData, filterStarredStocks, starredStocks]);
 
   return (
-    <div className="space-y-5 max-w-screen-2xl">
+    <div className="space-y-6 max-w-screen-2xl">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="page-title">
+            <span className="eyebrow">Quarter over quarter</span>
+            <h1 className="page-title mt-1.5">
               <BarChart3 className="page-title-icon" /> Quarterly Trends
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1.5">
               Cross-fund consensus signals — {data.length} stocks analyzed
               {(filterStarredStocks || filterStarredFunds) && (
                 <span className="ml-1 text-primary">(filtered)</span>
@@ -401,7 +402,7 @@ export default function QuarterlyTrends() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-lg border border-border bg-card p-8">
+        <div className="surface p-8">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">{progress.msg}</p>

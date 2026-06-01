@@ -175,13 +175,11 @@ export function AppSidebar() {
               </span>
               <p className="text-[10px] font-medium tracking-wide text-sidebar-foreground/50">
                 Data as of{" "}
-                <span className="font-mono text-sidebar-foreground/75">{dataAsOfLabel}</span>
+                <span className="font-semibold text-sidebar-foreground/75">{dataAsOfLabel}</span>
               </p>
             </div>
           )}
-          <p className="text-[9px] font-mono tracking-wider text-sidebar-foreground/30">
-            v{APP_VERSION}
-          </p>
+          <p className="text-[9px] tracking-wider text-sidebar-foreground/30">v{APP_VERSION}</p>
         </div>
       </SidebarFooter>
     </Sidebar>

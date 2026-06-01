@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Loader2, Search } from "lucide-react";
 import { getSectorHierarchy } from "@/lib/dataService";
 import { Input } from "@/components/ui/input";
 import { getSectorStyle } from "@/lib/sectorStyle";
+import { getIndustryIcon } from "@/lib/industryIcon";
 
 interface Props {
   onSelectIndustry?: (industry: string) => void;
@@ -56,7 +57,7 @@ export default function YFinanceClassificationTreeVisual({ onSelectIndustry }: P
   const isExpanded = (sector: string) => expanded.has(sector) || query.trim().length > 0;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+    <div className="surface p-5 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h3 className="section-title text-sm">Yahoo Finance Classification</h3>
         <div className="relative w-64">
@@ -96,23 +97,41 @@ export default function YFinanceClassificationTreeVisual({ onSelectIndustry }: P
                 <span className="ml-auto text-xs text-muted-foreground">{industries.length}</span>
               </button>
               {open && (
-                <ul className="px-3 pb-2 pl-10 text-xs space-y-1">
-                  {industries.map((industry) => (
-                    <li key={industry}>
-                      {onSelectIndustry ? (
+                <div className="border-t border-border/50 bg-background/30 p-2.5">
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {industries.map((industry) => {
+                      const IndustryIcon = getIndustryIcon(industry) ?? Icon;
+                      const inner = (
+                        <>
+                          <IndustryIcon
+                            className={`h-3.5 w-3.5 shrink-0 ${style.color} opacity-80`}
+                            aria-hidden
+                          />
+                          <span className="truncate">{industry}</span>
+                        </>
+                      );
+                      return onSelectIndustry ? (
                         <button
+                          key={industry}
                           type="button"
                           onClick={() => onSelectIndustry(industry)}
-                          className="text-muted-foreground hover:text-primary hover:underline focus-visible:text-primary focus-visible:underline focus-visible:outline-none transition-colors text-left cursor-pointer"
+                          title={industry}
+                          className="flex items-center gap-2 rounded-md border border-transparent bg-muted/20 px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:border-border hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          {industry}
+                          {inner}
                         </button>
                       ) : (
-                        <span className="text-muted-foreground">{industry}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                        <div
+                          key={industry}
+                          title={industry}
+                          className="flex items-center gap-2 rounded-md bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground"
+                        >
+                          {inner}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
           );

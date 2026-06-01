@@ -265,12 +265,13 @@ export default function StockBrowser() {
   }, [quarterData]);
 
   return (
-    <div className="space-y-5 max-w-screen-2xl">
+    <div className="space-y-6 max-w-screen-2xl">
       <div>
-        <h1 className="page-title">
+        <span className="eyebrow">Tracked universe</span>
+        <h1 className="page-title mt-1.5">
           <CandlestickChart className="page-title-icon" /> Stocks
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground mt-1.5">
           Browse {uniqueStocks.length.toLocaleString()} tracked securities
         </p>
       </div>
@@ -317,7 +318,7 @@ export default function StockBrowser() {
         {/* ── Starred tab ── */}
         <TabsContent value="starred" className="space-y-4">
           {starredStocks.length === 0 ? (
-            <div className="rounded-lg border border-border bg-card p-12 text-center">
+            <div className="surface p-12 text-center">
               <Star className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
               <p className="text-muted-foreground">No starred stocks yet.</p>
               <p className="text-xs text-muted-foreground/60 mt-1">
@@ -509,7 +510,7 @@ export default function StockBrowser() {
                 </div>
               )}
               {!quarterLoading && heatmapData.length > 0 && !industryFilter && (
-                <div className="rounded-lg border border-border bg-card p-5">
+                <div className="surface p-5">
                   <h3 className="section-title mb-3 text-sm">Top 20 by Institutional Value</h3>
                   <HoldingsTreemap
                     data={heatmapData}
@@ -567,7 +568,7 @@ export default function StockBrowser() {
               ) : valueRanked.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">No data available.</p>
               ) : (
-                <div className="rounded-lg border border-border bg-card overflow-hidden">
+                <div className="surface overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>

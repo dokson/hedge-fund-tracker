@@ -12,7 +12,7 @@ export default function FeatureNotAvailable({ feature }: { feature: string }) {
         <p className="text-muted-foreground">
           Questa funzione richiede un backend AI locale e non è disponibile nella versione web.
         </p>
-        <div className="rounded-lg border border-border bg-card p-4 text-left text-sm space-y-2">
+        <div className="surface p-4 text-left text-sm space-y-2">
           <p className="font-semibold">Per utilizzare le funzioni AI:</p>
           <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
             <li>Clona il repository</li>

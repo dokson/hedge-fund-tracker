@@ -20,6 +20,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
+        display: ["Inter Tight", "Inter", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "Fira Code", "monospace"],
       },
       colors: {
@@ -64,6 +65,7 @@ export default {
           DEFAULT: "hsl(var(--negative))",
           foreground: "hsl(var(--negative-foreground))",
         },
+        closed: "hsl(var(--closed))",
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",

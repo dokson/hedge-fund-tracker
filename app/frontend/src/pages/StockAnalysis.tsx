@@ -101,8 +101,8 @@ export default function StockAnalysis() {
   );
 
   const valueFlowData = [
-    { label: "Value Bought", value: totalValueBought, fill: "hsl(142, 55%, 35%)" },
-    { label: "Value Sold", value: totalValueSold, fill: "hsl(0, 65%, 45%)" },
+    { label: "Value Bought", value: totalValueBought, fill: "hsl(var(--positive))" },
+    { label: "Value Sold", value: totalValueSold, fill: "hsl(var(--negative))" },
   ];
 
   // Sort columns
@@ -218,7 +218,7 @@ export default function StockAnalysis() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-lg border border-border bg-card p-8">
+        <div className="surface p-8">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">{progress.msg}</p>
@@ -226,7 +226,7 @@ export default function StockAnalysis() {
           </div>
         </div>
       ) : holdings.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">
+        <div className="surface p-8 text-center text-muted-foreground">
           No fund holds {ticker} in {quarter?.replace("Q", " Q") ?? "this quarter"}. Try a different
           quarter.
         </div>
@@ -235,11 +235,11 @@ export default function StockAnalysis() {
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="kpi-card">
-              <p className="text-xs text-muted-foreground">Total Held</p>
+              <p className="metric-label">Total Held</p>
               <p className="text-xl font-bold font-mono mt-1">{formatValue(totalValue)}</p>
             </div>
             <div className="kpi-card">
-              <p className="text-xs text-muted-foreground">Δ Value</p>
+              <p className="metric-label">Δ Value</p>
               <p
                 className={`text-xl font-bold font-mono mt-1 ${totalDeltaValue > 0 ? "delta-positive" : totalDeltaValue < 0 ? "delta-negative" : ""}`}
               >
@@ -247,7 +247,7 @@ export default function StockAnalysis() {
               </p>
             </div>
             <div className="kpi-card">
-              <p className="text-xs text-muted-foreground">Δ %</p>
+              <p className="metric-label">Δ %</p>
               <p
                 className={`text-xl font-bold font-mono mt-1 ${deltaPct > 0 ? "delta-positive" : deltaPct < 0 ? "delta-negative" : ""}`}
               >
@@ -255,7 +255,7 @@ export default function StockAnalysis() {
               </p>
             </div>
             <div className="kpi-card">
-              <p className="text-xs text-muted-foreground">Avg Ptf % / Max Ptf %</p>
+              <p className="metric-label">Avg Ptf % / Max Ptf %</p>
               <p className="text-xl font-bold font-mono mt-1">
                 {avgPtfPct.toFixed(2)}% / {maxPtfPct.toFixed(1)}%
               </p>
@@ -264,7 +264,7 @@ export default function StockAnalysis() {
 
           <div className="grid grid-cols-2 lg:grid-cols-7 gap-4 items-stretch">
             <div className="kpi-card">
-              <p className="text-xs text-muted-foreground">Holders</p>
+              <p className="metric-label">Holders</p>
               <p className="text-xl font-bold font-mono mt-1">{holderCount}</p>
             </div>
             <button
@@ -272,7 +272,7 @@ export default function StockAnalysis() {
               className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "buyers" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
               onClick={() => setHoldingFilter((f) => (f === "buyers" ? "all" : "buyers"))}
             >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <p className="metric-label flex items-center gap-1">
                 Buyers <Filter className="h-3 w-3" />
               </p>
               <p className="text-xl font-bold font-mono mt-1 delta-positive">{buyerCount}</p>
@@ -282,7 +282,7 @@ export default function StockAnalysis() {
               className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "new" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
               onClick={() => setHoldingFilter((f) => (f === "new" ? "all" : "new"))}
             >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <p className="metric-label flex items-center gap-1">
                 New <Filter className="h-3 w-3" />
               </p>
               <p className="text-xl font-bold font-mono mt-1 delta-positive">{newHolderCount}</p>
@@ -292,7 +292,7 @@ export default function StockAnalysis() {
               className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "sellers" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
               onClick={() => setHoldingFilter((f) => (f === "sellers" ? "all" : "sellers"))}
             >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <p className="metric-label flex items-center gap-1">
                 Sellers <Filter className="h-3 w-3" />
               </p>
               <p className="text-xl font-bold font-mono mt-1 delta-negative">{sellerCount}</p>
@@ -302,13 +302,13 @@ export default function StockAnalysis() {
               className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "closed" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
               onClick={() => setHoldingFilter((f) => (f === "closed" ? "all" : "closed"))}
             >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <p className="metric-label flex items-center gap-1">
                 Sold Out <Filter className="h-3 w-3" />
               </p>
               <p className="text-xl font-bold font-mono mt-1 delta-negative">{closeCount}</p>
             </button>
             <div className="kpi-card">
-              <p className="text-xs text-muted-foreground">Net Buyers</p>
+              <p className="metric-label">Net Buyers</p>
               <p
                 className={`text-xl font-bold font-mono mt-1 ${netBuyers > 0 ? "delta-positive" : netBuyers < 0 ? "delta-negative" : ""}`}
               >
@@ -317,7 +317,7 @@ export default function StockAnalysis() {
               </p>
             </div>
             <div className="kpi-card">
-              <p className="text-xs text-muted-foreground">B/S Ratio</p>
+              <p className="metric-label">B/S Ratio</p>
               <p className="text-xl font-bold font-mono mt-1">
                 {isFinite(bsRatio) ? bsRatio.toFixed(1) + "x" : "∞"}
               </p>
@@ -330,7 +330,7 @@ export default function StockAnalysis() {
           {/* Charts row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Sentiment Chart */}
-            <div className="rounded-lg border border-border bg-card p-5">
+            <div className="surface p-5">
               <h3 className="section-title mb-4 text-sm">Buyers vs Sellers</h3>
               <div className="h-[80px]">
                 <MeasuredChart>
@@ -384,28 +384,28 @@ export default function StockAnalysis() {
                         name="Buyers"
                         stackId="a"
                         barSize={24}
-                        fill="hsl(142, 55%, 35%)"
+                        fill="hsl(var(--positive))"
                         radius={0}
                       />
                       <Bar
                         dataKey="new"
                         name="New"
                         stackId="a"
-                        fill="hsl(142, 40%, 24%)"
+                        fill="hsl(var(--positive) / 0.55)"
                         radius={[0, 6, 6, 0]}
                       />
                       <Bar
                         dataKey="sellers"
                         name="Sellers"
                         stackId="a"
-                        fill="hsl(0, 65%, 45%)"
+                        fill="hsl(var(--negative))"
                         radius={0}
                       />
                       <Bar
                         dataKey="closed"
                         name="Closed"
                         stackId="a"
-                        fill="hsl(0, 45%, 28%)"
+                        fill="hsl(var(--negative) / 0.55)"
                         radius={[0, 6, 6, 0]}
                       />
                     </BarChart>
@@ -415,7 +415,7 @@ export default function StockAnalysis() {
             </div>
 
             {/* Value Bought vs Value Sold */}
-            <div className="rounded-lg border border-border bg-card p-5">
+            <div className="surface p-5">
               <h3 className="section-title mb-4 text-sm">Value Bought vs Value Sold</h3>
               <div className="h-[80px]">
                 <MeasuredChart>
@@ -457,7 +457,7 @@ export default function StockAnalysis() {
           </div>
 
           {/* Fund Holdings Table */}
-          <div className="rounded-lg border border-border bg-card overflow-hidden">
+          <div className="surface overflow-hidden">
             <div className="p-4 border-b border-border">
               <h3 className="section-title text-sm">Holders by Shares ({holdings.length} funds)</h3>
             </div>

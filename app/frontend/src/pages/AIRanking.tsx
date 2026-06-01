@@ -184,13 +184,14 @@ export default function AIRanking() {
   const isSample = isReadOnly && (results?.length ?? 0) === 0;
 
   return (
-    <div className="space-y-5 max-w-screen-2xl">
+    <div className="space-y-6 max-w-screen-2xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-title">
+          <span className="eyebrow">AI ranking</span>
+          <h1 className="page-title mt-1.5">
             <Search className="h-6 w-6" /> Most Promising Stocks
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1.5">
             AI-powered discovery of the most promising stocks based on latest institutional data
           </p>
         </div>
@@ -244,7 +245,7 @@ export default function AIRanking() {
       )}
 
       {weights && !loading && (
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="surface p-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs text-muted-foreground uppercase tracking-wider">
               AI-Selected Promise Score Weights
@@ -274,7 +275,7 @@ export default function AIRanking() {
       )}
 
       {hasResults && !loading && (
-        <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="surface overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">

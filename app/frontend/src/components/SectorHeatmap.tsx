@@ -89,7 +89,7 @@ export default function SectorHeatmap() {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+    <div className="surface p-5 space-y-3">
       <h3 className="section-title text-sm">Institutional Value by Sector</h3>
       <HoldingsTreemap data={sectorHeatmapData} onClickTicker={() => {}} height={350} />
     </div>

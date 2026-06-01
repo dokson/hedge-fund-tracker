@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { Loader2, TrendingUp, TrendingDown, Activity, BarChart3 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
 type RangeKey = "YTD" | "1Y" | "3Y" | "5Y" | "MAX";
 type ChartMode = "area" | "candles";
@@ -211,7 +212,7 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
 
   if (!API_BASE && !staticData) {
     return (
-      <div className="rounded-lg border border-border bg-card p-5">
+      <div className="surface p-5">
         <h3 className="section-title text-sm">Price History</h3>
         <p className="mt-2 text-xs text-muted-foreground">
           Live price history requires the local Python backend (yfinance). It is not available on
@@ -309,7 +310,7 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5">
+    <div className="surface p-5">
       <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
         <div>
           <h3 className="section-title text-sm">Price History</h3>
@@ -335,51 +336,30 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
           )}
         </div>
         <div className="flex items-center gap-2">
-          <div
-            className="inline-flex rounded-md border border-border overflow-hidden text-xs"
-            role="tablist"
+          <SegmentedControl
+            size="sm"
             aria-label="Chart type"
-          >
-            <button
-              onClick={() => setMode("candles")}
-              title="Candlestick chart"
-              aria-pressed={mode === "candles"}
-              className={`px-2.5 py-1.5 inline-flex items-center gap-1 transition-colors ${
-                mode === "candles"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
-            >
-              <BarChart3 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => setMode("area")}
-              title="Area chart"
-              aria-pressed={mode === "area"}
-              className={`px-2.5 py-1.5 inline-flex items-center gap-1 transition-colors ${
-                mode === "area"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
-            >
-              <Activity className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
-            {RANGES.map((r) => (
-              <button
-                key={r.key}
-                onClick={() => setRange(r.key)}
-                className={`px-3 py-1.5 font-mono transition-colors ${
-                  range === r.key
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                }`}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
+            value={mode}
+            onValueChange={(v) => setMode(v)}
+            options={[
+              {
+                value: "candles",
+                label: <BarChart3 className="h-3.5 w-3.5" />,
+                title: "Candlestick chart",
+              },
+              { value: "area", label: <Activity className="h-3.5 w-3.5" />, title: "Area chart" },
+            ]}
+          />
+          <SegmentedControl
+            size="sm"
+            aria-label="Time range"
+            value={range}
+            onValueChange={(v) => setRange(v)}
+            options={RANGES.map((r) => ({
+              value: r.key,
+              label: <span className="font-mono">{r.label}</span>,
+            }))}
+          />
         </div>
       </div>
 

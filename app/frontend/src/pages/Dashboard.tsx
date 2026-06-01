@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Loader2,
   ArrowUpRight,
@@ -29,10 +30,10 @@ import {
   ArrowUp,
   ArrowDown,
   FileText,
-  Check,
   Star,
   Users,
   Building2,
+  type LucideIcon,
 } from "lucide-react";
 import { toInitCap } from "@/lib/utils";
 import { useStarred } from "@/hooks/useStarred";
@@ -58,11 +59,48 @@ function SectorPill({ sector, industry }: { sector?: string; industry?: string }
   );
 }
 
+const FILING_TYPES = ["NEW", "INCREASE", "DECREASE", "CLOSED"] as const;
+type FilingType = (typeof FILING_TYPES)[number];
+
+const STAT_META: Record<
+  FilingType,
+  { label: string; icon: LucideIcon; bg: string; text: string; active: string }
+> = {
+  NEW: {
+    label: "New",
+    icon: Plus,
+    bg: "bg-primary",
+    text: "text-primary",
+    active: "ring-primary/40 border-primary/50 bg-primary/[0.06]",
+  },
+  INCREASE: {
+    label: "Increased",
+    icon: ArrowUpRight,
+    bg: "bg-positive",
+    text: "text-positive",
+    active: "ring-positive/40 border-positive/50 bg-positive/[0.06]",
+  },
+  DECREASE: {
+    label: "Decreased",
+    icon: ArrowDownRight,
+    bg: "bg-negative",
+    text: "text-negative",
+    active: "ring-negative/40 border-negative/50 bg-negative/[0.06]",
+  },
+  CLOSED: {
+    label: "Closed",
+    icon: X,
+    bg: "bg-closed",
+    text: "text-closed",
+    active: "ring-closed/40 border-closed/50 bg-closed/[0.06]",
+  },
+};
+
 function formatDelta(f: EnrichedNQFiling): { text: string; className: string; sortValue: number } {
   if (f.deltaType === "CLOSED")
-    return { text: "CLOSE", className: "text-rose-700 dark:text-rose-400", sortValue: -Infinity };
+    return { text: "CLOSE", className: "text-closed", sortValue: -Infinity };
   if (f.deltaType === "NEW")
-    return { text: "NEW", className: "text-teal-700 dark:text-teal-400", sortValue: Infinity };
+    return { text: "NEW", className: "text-positive", sortValue: Infinity };
   if (f.deltaType === "NO CHANGE")
     return { text: "+0%", className: "text-muted-foreground", sortValue: 0 };
   if (f.deltaPct !== null) {
@@ -70,7 +108,7 @@ function formatDelta(f: EnrichedNQFiling): { text: string; className: string; so
     const cls = f.deltaPct > 0 ? "text-positive" : "text-negative";
     return { text: `${sign}${f.deltaPct.toFixed(1)}%`, className: cls, sortValue: f.deltaPct };
   }
-  return { text: "NEW", className: "text-teal-700 dark:text-teal-400", sortValue: Infinity };
+  return { text: "NEW", className: "text-positive", sortValue: Infinity };
 }
 
 type SortField = "date" | "delta" | "value" | null;
@@ -214,57 +252,27 @@ export default function Dashboard() {
     return c;
   }, [filings]);
 
+  const totalCount = FILING_TYPES.reduce((s, t) => s + counts[t], 0);
+
   return (
-    <div className="space-y-5 max-w-screen-2xl">
+    <div className="space-y-6 max-w-screen-2xl">
       <div>
-        <h1 className="page-title">
+        <span className="eyebrow">Recent activity</span>
+        <h1 className="page-title mt-1.5">
           <FileText className="page-title-icon" /> Latest Filings
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">
           Last 30 days 13D/G and Form 4 — latest filing per position, delta vs last 13F quarter
         </p>
       </div>
 
       {!isLoading && filings.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {(["NEW", "INCREASE", "DECREASE", "CLOSED"] as const).map((type) => {
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {FILING_TYPES.map((type) => {
             const isActive = typeFilters.has(type);
-            const colorClasses = {
-              NEW: {
-                active:
-                  "bg-[hsl(217,91%,60%)]/15 text-[hsl(217,91%,60%)] border-[hsl(217,91%,60%)] ring-2 ring-[hsl(217,91%,60%)]/30 ring-offset-1 ring-offset-background",
-                inactive:
-                  "bg-transparent text-muted-foreground border-border hover:border-[hsl(217,91%,60%)]/40 hover:text-[hsl(217,91%,60%)]",
-              },
-              INCREASE: {
-                active:
-                  "bg-positive/15 text-positive border-positive ring-2 ring-positive/30 ring-offset-1 ring-offset-background",
-                inactive:
-                  "bg-transparent text-muted-foreground border-border hover:border-positive/40 hover:text-positive",
-              },
-              DECREASE: {
-                active:
-                  "bg-negative/15 text-negative border-negative ring-2 ring-negative/30 ring-offset-1 ring-offset-background",
-                inactive:
-                  "bg-transparent text-muted-foreground border-border hover:border-negative/40 hover:text-negative",
-              },
-              CLOSED: {
-                active:
-                  "bg-[hsl(0,62%,45%)]/15 text-[hsl(0,62%,45%)] border-[hsl(0,62%,45%)] ring-2 ring-[hsl(0,62%,45%)]/30 ring-offset-1 ring-offset-background",
-                inactive:
-                  "bg-transparent text-muted-foreground border-border hover:border-[hsl(0,62%,45%)]/40 hover:text-[hsl(0,62%,45%)]",
-              },
-            }[type];
-            const icon = { NEW: Plus, INCREASE: ArrowUpRight, DECREASE: ArrowDownRight, CLOSED: X }[
-              type
-            ];
-            const Icon = icon;
-            const label = {
-              NEW: "New",
-              INCREASE: "Increased",
-              DECREASE: "Decreased",
-              CLOSED: "Closed",
-            }[type];
+            const { label, icon: Icon, bg, text, active } = STAT_META[type];
+            const count = counts[type];
+            const share = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
             const toggle = () =>
               setTypeFilters((prev) => {
                 const next = new Set(prev);
@@ -276,13 +284,32 @@ export default function Dashboard() {
               <button
                 key={type}
                 onClick={toggle}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border transition-all cursor-pointer select-none ${
-                  isActive ? colorClasses.active : colorClasses.inactive
+                aria-pressed={isActive}
+                className={`surface flex flex-col gap-3 p-4 text-left transition-colors ${
+                  isActive ? `ring-2 ${active}` : "hover:border-border"
                 }`}
               >
-                <Icon className="h-3 w-3" />
-                {counts[type]} {label}
-                {isActive && <Check className="h-3 w-3 ml-0.5" />}
+                <div className="flex items-center justify-between">
+                  <span className="metric-label flex items-center gap-1.5">
+                    <span className={`h-1.5 w-1.5 rounded-full ${bg}`} />
+                    {label}
+                  </span>
+                  <Icon className="h-3.5 w-3.5 text-muted-foreground/60" />
+                </div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className={`metric-value ${count > 0 ? text : "text-muted-foreground/40"}`}>
+                    {count}
+                  </span>
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {share}%
+                  </span>
+                </div>
+                <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={`h-full rounded-full ${count > 0 ? bg : "bg-transparent"}`}
+                    style={{ width: `${share}%` }}
+                  />
+                </div>
               </button>
             );
           })}
@@ -345,18 +372,17 @@ export default function Dashboard() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={daysBack} onValueChange={setDaysBackPick}>
-          <SelectTrigger className="w-36 bg-card border-border">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="9999">All</SelectItem>
-          </SelectContent>
-        </Select>
+        <SegmentedControl
+          value={daysBack}
+          onValueChange={setDaysBackPick}
+          options={[
+            { value: "30", label: "Last 30 days" },
+            { value: "9999", label: "All" },
+          ]}
+        />
       </div>
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="surface overflow-hidden">
         {isLoading ? (
           <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
             <Loader2 className="h-5 w-5 animate-spin" /> Loading and enriching filings…

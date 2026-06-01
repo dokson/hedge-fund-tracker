@@ -108,12 +108,13 @@ function FundGrid() {
   }, [funds, search, tab, fundAumMap]);
 
   return (
-    <div className="space-y-5 max-w-screen-2xl">
+    <div className="space-y-6 max-w-screen-2xl">
       <div>
-        <h1 className="page-title">
+        <span className="eyebrow">Tracked funds</span>
+        <h1 className="page-title mt-1.5">
           <Wallet className="page-title-icon" /> Hedge Fund Portfolios
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground mt-1.5">
           Browse {funds.length} tracked institutional investors
         </p>
       </div>
@@ -150,7 +151,7 @@ function FundGrid() {
         {/* Starred tab */}
         <TabsContent value="starred">
           {starredFunds.length === 0 ? (
-            <div className="rounded-lg border border-border bg-card p-12 text-center mt-4">
+            <div className="surface p-12 text-center mt-4">
               <Star className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
               <p className="text-muted-foreground">No starred funds yet.</p>
               <p className="text-xs text-muted-foreground/60 mt-1">
@@ -432,7 +433,10 @@ function FundDetail({ fundName }: { fundName: string }) {
   const [sortKey, setSortKey] = useState<SortKey>("portfolioPct");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [showAll, setShowAll] = useState(false);
-  const [positionFilter, setPositionFilter] = useState<"all" | "new" | "closed">("all");
+  const [positionFilter, setPositionFilter] = useState<
+    "all" | "new" | "closed" | "increased" | "decreased"
+  >("all");
+  const [sectorFilter, setSectorFilter] = useState<string>("all");
   const TOP_N = 50;
   const { isStarred, toggle: toggleStar } = useStarred("fund");
 
@@ -461,6 +465,10 @@ function FundDetail({ fundName }: { fundName: string }) {
     () => new Map(stocksMaster.map((s) => [s.ticker, s.company])),
     [stocksMaster],
   );
+  const tickerSectorMap = useMemo(
+    () => new Map(stocksMaster.map((s) => [s.ticker, s.sector ?? "Unclassified"])),
+    [stocksMaster],
+  );
 
   const {
     data: holdings = [],
@@ -482,10 +490,29 @@ function FundDetail({ fundName }: { fundName: string }) {
     enabled: !!selectedQuarter,
   });
 
+  const fundSectors = useMemo(() => {
+    const set = new Set<string>();
+    for (const h of holdings) {
+      if (h.delta === "CLOSE" || h.portfolioPct <= 0) continue;
+      set.add(tickerSectorMap.get(h.ticker) ?? "Unclassified");
+    }
+    return [...set].sort();
+  }, [holdings, tickerSectorMap]);
+
+  // Guard against a sector that no longer exists in the selected quarter.
+  const activeSector =
+    sectorFilter !== "all" && fundSectors.includes(sectorFilter) ? sectorFilter : "all";
+
   const sorted = useMemo(() => {
     let arr = [...holdings];
     if (positionFilter === "new") arr = arr.filter((h) => h.delta === "NEW");
     else if (positionFilter === "closed") arr = arr.filter((h) => h.delta === "CLOSE");
+    else if (positionFilter === "increased")
+      arr = arr.filter((h) => h.delta !== "NEW" && h.delta !== "CLOSE" && h.deltaShares > 0);
+    else if (positionFilter === "decreased")
+      arr = arr.filter((h) => h.delta !== "CLOSE" && h.deltaShares < 0);
+    if (activeSector !== "all")
+      arr = arr.filter((h) => (tickerSectorMap.get(h.ticker) ?? "Unclassified") === activeSector);
     arr.sort((a, b) => {
       let va: number, vb: number;
       switch (sortKey) {
@@ -516,7 +543,7 @@ function FundDetail({ fundName }: { fundName: string }) {
       return sortDir === "desc" ? vb - va : va - vb;
     });
     return arr;
-  }, [holdings, sortKey, sortDir, positionFilter]);
+  }, [holdings, sortKey, sortDir, positionFilter, activeSector, tickerSectorMap]);
 
   const totalValue = useMemo(
     () => holdings.reduce((s, h) => s + parseValue(h.value), 0),
@@ -530,6 +557,15 @@ function FundDetail({ fundName }: { fundName: string }) {
     [holdings],
   );
 
+  const increasedPositions = useMemo(
+    () =>
+      holdings.filter((h) => h.delta !== "NEW" && h.delta !== "CLOSE" && h.deltaShares > 0).length,
+    [holdings],
+  );
+  const decreasedPositions = useMemo(
+    () => holdings.filter((h) => h.delta !== "CLOSE" && h.deltaShares < 0).length,
+    [holdings],
+  );
   const treemapData = useMemo(() => {
     const byPct = [...holdings]
       .filter((h) => h.delta !== "CLOSE")
@@ -552,10 +588,6 @@ function FundDetail({ fundName }: { fundName: string }) {
   // getStocks). Δ is a value-weighted average across the holdings in each
   // sector so the colour reflects net institutional behaviour at the sector
   // level, not just the largest single position.
-  const tickerSectorMap = useMemo(
-    () => new Map(stocksMaster.map((s) => [s.ticker, s.sector ?? "Unclassified"])),
-    [stocksMaster],
-  );
   const sectorTreemapData = useMemo(() => {
     const buckets = new Map<string, { value: number; weightedDelta: number }>();
     for (const h of holdings) {
@@ -604,7 +636,7 @@ function FundDetail({ fundName }: { fundName: string }) {
 
   if (availableQuarters.length === 0) {
     return (
-      <div className="space-y-5 max-w-screen-2xl">
+      <div className="space-y-6 max-w-screen-2xl">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/funds")}>
             <ArrowLeft className="h-4 w-4" />
@@ -621,7 +653,7 @@ function FundDetail({ fundName }: { fundName: string }) {
             />
           </h1>
         </div>
-        <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">
+        <div className="surface p-8 text-center text-muted-foreground">
           No quarterly data available for this fund.
         </div>
       </div>
@@ -629,7 +661,7 @@ function FundDetail({ fundName }: { fundName: string }) {
   }
 
   return (
-    <div className="space-y-5 max-w-screen-2xl">
+    <div className="space-y-6 max-w-screen-2xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/funds")}>
@@ -665,44 +697,87 @@ function FundDetail({ fundName }: { fundName: string }) {
               ))}
             </SelectContent>
           </Select>
+          {fundSectors.length > 1 && (
+            <Select value={activeSector} onValueChange={setSectorFilter}>
+              <SelectTrigger className="w-44 bg-card border-border">
+                <SelectValue placeholder="All sectors" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All sectors</SelectItem>
+                {fundSectors.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Left: KPIs + Table */}
         <div className="lg:col-span-3 space-y-5">
-          {/* Summary KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="kpi-card">
-              <p className="text-xs text-muted-foreground">AUM</p>
-              <p className="text-xl font-bold font-mono mt-1">{formatValue(totalValue)}</p>
+          {/* Summary KPIs — 6 compact cells: 2 static + 4 toggle filters */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="surface flex flex-col gap-1 p-3">
+              <p className="metric-label">AUM</p>
+              <p className="font-mono text-lg font-bold leading-tight">{formatValue(totalValue)}</p>
             </div>
-            <div className="kpi-card">
-              <p className="text-xs text-muted-foreground">Positions</p>
-              <p className="text-xl font-bold font-mono mt-1">
+            <div className="surface flex flex-col gap-1 p-3">
+              <p className="metric-label">Positions</p>
+              <p className="font-mono text-lg font-bold leading-tight">
                 {holdings.filter((h) => parseValue(h.value) > 0).length}
               </p>
             </div>
-            <button
-              type="button"
-              className={`kpi-card cursor-pointer transition-colors text-left w-full ${positionFilter === "new" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setPositionFilter((f) => (f === "new" ? "all" : "new"))}
-            >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                New Positions <Filter className="h-3 w-3" />
-              </p>
-              <p className="text-xl font-bold font-mono mt-1 delta-positive">{newPositions}</p>
-            </button>
-            <button
-              type="button"
-              className={`kpi-card cursor-pointer transition-colors text-left w-full ${positionFilter === "closed" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setPositionFilter((f) => (f === "closed" ? "all" : "closed"))}
-            >
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                Closed Positions <Filter className="h-3 w-3" />
-              </p>
-              <p className="text-xl font-bold font-mono mt-1 delta-negative">{closedPositions}</p>
-            </button>
+            {(
+              [
+                {
+                  key: "new",
+                  label: "New",
+                  count: newPositions,
+                  num: "text-primary",
+                  ring: "ring-primary/50",
+                },
+                {
+                  key: "closed",
+                  label: "Closed",
+                  count: closedPositions,
+                  num: "text-closed",
+                  ring: "ring-closed/50",
+                },
+                {
+                  key: "increased",
+                  label: "Increased",
+                  count: increasedPositions,
+                  num: "text-positive",
+                  ring: "ring-positive/50",
+                },
+                {
+                  key: "decreased",
+                  label: "Decreased",
+                  count: decreasedPositions,
+                  num: "text-negative",
+                  ring: "ring-negative/50",
+                },
+              ] as const
+            ).map((f) => {
+              const active = positionFilter === f.key;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setPositionFilter((cur) => (cur === f.key ? "all" : f.key))}
+                  className={`surface flex flex-col gap-1 p-3 text-left transition-colors ${active ? `ring-1 ${f.ring}` : "hover:border-border"}`}
+                >
+                  <p className="metric-label flex items-center gap-1">
+                    {f.label} <Filter className="h-2.5 w-2.5 opacity-50" />
+                  </p>
+                  <p className={`font-mono text-lg font-bold leading-tight ${f.num}`}>{f.count}</p>
+                </button>
+              );
+            })}
           </div>
 
           {isLoading ? (
@@ -710,11 +785,11 @@ function FundDetail({ fundName }: { fundName: string }) {
               <Loader2 className="h-5 w-5 animate-spin" /> Loading holdings for {quarterLabel}…
             </div>
           ) : isError ? (
-            <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">
+            <div className="surface p-8 text-center text-muted-foreground">
               No data available for {fundName} in {quarterLabel}. Try a different quarter.
             </div>
           ) : (
-            <div className="rounded-lg border border-border bg-card overflow-hidden">
+            <div className="surface overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -794,7 +869,7 @@ function FundDetail({ fundName }: { fundName: string }) {
 
         {/* Right: Holdings Map + Sector Map side-by-side (stack on narrow viewports) */}
         <div className="lg:col-span-2 lg:sticky lg:top-4 lg:self-start grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="rounded-lg border border-border bg-card p-5">
+          <div className="surface p-5">
             <h3 className="section-title mb-3 text-sm">Holdings Map</h3>
             <HoldingsTreemap
               data={treemapData}
@@ -803,11 +878,13 @@ function FundDetail({ fundName }: { fundName: string }) {
             />
           </div>
           {sectorTreemapData.length > 0 && (
-            <div className="rounded-lg border border-border bg-card p-5">
+            <div className="surface p-5">
               <h3 className="section-title mb-3 text-sm">Sector Map</h3>
               <HoldingsTreemap
                 data={sectorTreemapData}
-                onClickTicker={() => navigate("/stocks?tab=sectors")}
+                onClickTicker={(sector) =>
+                  setSectorFilter((cur) => (cur === sector ? "all" : sector))
+                }
                 displayMode="pct"
               />
             </div>

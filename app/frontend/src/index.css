@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Inter+Tight:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 
 @import "tailwindcss";
 @config "../tailwind.config.ts";
@@ -33,7 +33,7 @@
     --input: 220 10% 72%;
     --ring: 217 85% 48%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 10% 40%;
@@ -49,15 +49,16 @@
     --positive-foreground: 0 0% 100%;
     --negative: 0 72% 42%; /* #ba1b1b → 6.3:1 on white */
     --negative-foreground: 0 0% 100%;
+    --closed: 0 75% 30%; /* deep blood red — distinct from --negative */
     --warning: 32 95% 32%; /* #a05607 → 5.8:1 on white */
     --warning-foreground: 0 0% 100%;
     --info: 217 85% 42%; /* #1259c6 → 5.9:1 on white */
 
-    --chart-1: 217 85% 48%;
-    --chart-2: 142 71% 35%;
-    --chart-3: 0 80% 50%;
-    --chart-4: 38 92% 45%;
-    --chart-5: 280 60% 50%;
+    --chart-1: 217 75% 50%;
+    --chart-2: 156 52% 38%;
+    --chart-3: 0 68% 52%;
+    --chart-4: 38 80% 46%;
+    --chart-5: 265 48% 56%;
 
     --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(217 85% 48%) 0%, hsl(230 75% 45%) 100%);
@@ -107,20 +108,21 @@
     --positive-foreground: 0 0% 100%;
     --negative: 0 84% 60%;
     --negative-foreground: 0 0% 100%;
+    --closed: 0 72% 47%; /* deep blood red — distinct from --negative */
     --warning: 45 93% 47%;
     --warning-foreground: 0 0% 0%;
     --info: 217 91% 60%;
 
-    --chart-1: 217 91% 60%;
-    --chart-2: 142 71% 45%;
-    --chart-3: 0 84% 60%;
-    --chart-4: 45 93% 47%;
-    --chart-5: 280 65% 60%;
+    --chart-1: 217 78% 62%;
+    --chart-2: 156 48% 50%;
+    --chart-3: 0 70% 62%;
+    --chart-4: 38 82% 58%;
+    --chart-5: 265 50% 66%;
 
     --gradient-card: linear-gradient(135deg, hsl(220 18% 10%) 0%, hsl(220 20% 8%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(230 80% 55%) 100%);
-    --shadow-card: 0 4px 24px -4px hsl(0 0% 0% / 0.4);
-    --shadow-glow: 0 0 20px -5px hsl(217 91% 60% / 0.3);
+    --shadow-card: 0 1px 2px hsl(0 0% 0% / 0.3), 0 8px 24px -12px hsl(0 0% 0% / 0.5);
+    --shadow-glow: 0 0 0 1px hsl(217 91% 60% / 0.18);
   }
 }
 
@@ -132,6 +134,11 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* tabular-nums so figures keep column/row alignment everywhere mono is used. */
+  .font-mono {
+    font-variant-numeric: tabular-nums;
   }
 
   /* Centralised interactive cursor: every enabled <button> across the app
@@ -160,14 +167,27 @@
 }
 
 @layer components {
+  .surface {
+    @apply rounded-lg border border-border/70 bg-card;
+    box-shadow: var(--shadow-card);
+  }
+
   .kpi-card {
-    @apply rounded-lg border border-border p-5 transition-all duration-200 flex flex-col justify-center;
-    background: var(--gradient-card);
+    @apply rounded-lg border border-border/70 bg-card p-5 transition-colors duration-200 flex flex-col justify-center;
     box-shadow: var(--shadow-card);
   }
   .kpi-card:hover {
-    box-shadow: var(--shadow-glow);
-    border-color: hsl(var(--primary) / 0.3);
+    border-color: hsl(var(--border));
+  }
+
+  .metric-label {
+    @apply text-[11px] font-medium uppercase tracking-wider text-muted-foreground;
+  }
+  .metric-value {
+    @apply font-mono text-2xl font-semibold tabular-nums tracking-tight text-foreground;
+  }
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground;
   }
 
   .data-table-row {
@@ -216,13 +236,13 @@
   }
 
   .section-title {
-    @apply text-lg font-semibold tracking-tight text-foreground;
+    @apply font-display text-lg font-semibold tracking-tight text-foreground;
   }
 
   /* Page-level H1 used across all top-level routes. Scales down on small
      screens so the header doesn't dominate the viewport on mobile. */
   .page-title {
-    @apply text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2;
+    @apply font-display text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2;
   }
   .page-title-icon {
     @apply h-5 w-5 sm:h-6 sm:w-6;

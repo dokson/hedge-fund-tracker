@@ -53,12 +53,13 @@ export default function AISettingsPage() {
   const [activeTab, setActiveTab] = useState<"keys" | "models">("keys");
 
   return (
-    <div className="space-y-5 max-w-screen-2xl">
+    <div className="space-y-6 max-w-screen-2xl">
       <div>
-        <h1 className="page-title">
+        <span className="eyebrow">Configuration</span>
+        <h1 className="page-title mt-1.5">
           <Cpu className="page-title-icon" /> AI Settings
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground mt-1.5">
           Manage API keys and AI models configuration.
         </p>
       </div>
@@ -213,13 +214,13 @@ function APIKeysTab() {
       )}
 
       {/* Provider status overview */}
-      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+      <div className="surface p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Configured Providers</h2>
           <Badge
             variant="outline"
             className={
-              configuredCount > 0 ? "text-green-600 border-green-600/30" : "text-muted-foreground"
+              configuredCount > 0 ? "text-positive border-positive/30" : "text-muted-foreground"
             }
           >
             {configuredCount} / {AI_PROVIDERS.length} available
@@ -232,7 +233,7 @@ function APIKeysTab() {
             return (
               <div key={provider.id} className="flex items-center gap-2 text-sm">
                 {hasKey ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-positive shrink-0" />
                 ) : (
                   <XCircle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
                 )}
@@ -304,14 +305,11 @@ function APIKeysTab() {
           const draft = drafts[provider.id] || "";
 
           return (
-            <div
-              key={provider.id}
-              className="rounded-lg border border-border bg-card p-4 space-y-3"
-            >
+            <div key={provider.id} className="surface p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {hasKey ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <CheckCircle2 className="h-4 w-4 text-positive" />
                   ) : (
                     <XCircle className="h-4 w-4 text-muted-foreground" />
                   )}
@@ -540,7 +538,7 @@ function ModelsTab() {
       ) : (
         <div className="space-y-4">
           {[...modelsByClient.entries()].map(([client, clientModels]) => (
-            <div key={client} className="rounded-lg border border-border bg-card overflow-hidden">
+            <div key={client} className="surface overflow-hidden">
               <div className="px-4 py-2.5 border-b border-border bg-muted/30 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">{displayName(client)}</h3>
                 <Badge className={`text-[10px] border-0 ${providerColor[client] || ""}`}>
