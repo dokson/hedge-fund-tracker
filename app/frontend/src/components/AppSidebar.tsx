@@ -274,14 +274,9 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
         className="shrink-0 grid place-items-center rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-1 hover:bg-sidebar-accent hover:border-sidebar-foreground/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <img
-          src={`${BASE_PATH}/logo-dark.png`}
+          src={`${BASE_PATH}/logo.png`}
           alt="Hedge Fund Tracker"
-          className="h-11 w-11 rounded-lg hidden dark:block"
-        />
-        <img
-          src={`${BASE_PATH}/logo-light.png`}
-          alt="Hedge Fund Tracker"
-          className="h-11 w-11 rounded-lg block dark:hidden"
+          className="h-11 w-11 rounded-lg"
         />
       </button>
       {!collapsed && (
@@ -330,14 +325,9 @@ export function MobileSidebar() {
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <div className="flex items-center gap-2.5 px-4 h-14 border-b border-sidebar-border/60 shrink-0">
           <img
-            src={`${BASE_PATH}/logo-dark.png`}
+            src={`${BASE_PATH}/logo.png`}
             alt="Hedge Fund Tracker"
-            className="h-10 w-10 rounded-lg shrink-0 hidden dark:block"
-          />
-          <img
-            src={`${BASE_PATH}/logo-light.png`}
-            alt="Hedge Fund Tracker"
-            className="h-10 w-10 rounded-lg shrink-0 block dark:hidden"
+            className="h-10 w-10 rounded-lg shrink-0"
           />
           <span className="font-bold tracking-tight text-foreground truncate">
             Hedge Fund Tracker

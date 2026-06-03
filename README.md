@@ -1,9 +1,4 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="app/frontend/public/logo-dark.png">
-    <img src="app/frontend/public/logo-light.png" alt="Hedge Fund Tracker" width="160">
-  </picture>
-</p>
+![Hedge Fund Tracker](app/frontend/public/readme-logo.png)
 
 # 📊 Hedge Fund Tracker
 

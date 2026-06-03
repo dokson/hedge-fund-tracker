@@ -34,14 +34,9 @@ function HeaderLogo() {
       className="shrink-0 grid place-items-center rounded-xl border border-border bg-card p-1 hover:bg-accent/30 hover:border-foreground/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <img
-        src={`${BASE_PATH}/logo-dark.png`}
+        src={`${BASE_PATH}/logo.png`}
         alt="Hedge Fund Tracker"
-        className="h-12 w-12 rounded-lg hidden dark:block"
-      />
-      <img
-        src={`${BASE_PATH}/logo-light.png`}
-        alt="Hedge Fund Tracker"
-        className="h-12 w-12 rounded-lg block dark:hidden"
+        className="h-12 w-12 rounded-lg"
       />
     </button>
   );

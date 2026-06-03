@@ -13,20 +13,7 @@ import {
 import { Link } from "react-router-dom";
 
 function Logo({ className = "" }: { className?: string }) {
-  return (
-    <>
-      <img
-        src={`${BASE_PATH}/logo-dark.png`}
-        alt="Hedge Fund Tracker"
-        className={`hidden dark:block ${className}`}
-      />
-      <img
-        src={`${BASE_PATH}/logo-light.png`}
-        alt="Hedge Fund Tracker"
-        className={`block dark:hidden ${className}`}
-      />
-    </>
-  );
+  return <img src={`${BASE_PATH}/logo.png`} alt="Hedge Fund Tracker" className={className} />;
 }
 
 // Ordered fastest → slowest. `days` drives a shared-scale bar so the eye reads
