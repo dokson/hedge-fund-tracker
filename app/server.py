@@ -376,7 +376,7 @@ def _df_to_json_safe_records(df: "pd.DataFrame") -> list[dict[str, object]]:
     import numpy as np
 
     cleaned = df.replace([np.inf, -np.inf], np.nan).astype(object)
-    return cleaned.where(cleaned.notna(), None).to_dict(orient="records")  # type: ignore[arg-type,return-value]
+    return cleaned.where(cleaned.notna(), None).to_dict(orient="records")  # type: ignore[return-value]
 
 
 @app.post("/api/ai/promise-score")
