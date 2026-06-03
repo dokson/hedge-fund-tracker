@@ -80,9 +80,11 @@ def run_view_nq_filings():
     # Ensure numeric types and calculate the percentage change
     subset_df["Avg_Price"] = pd.to_numeric(subset_df["Avg_Price"], errors="coerce")
     subset_df["Current_Price"] = subset_df["Ticker"].map(
-        lambda t: stock_info.get(t, {}).get("price") or PriceFetcher.get_current_price(t)
+        lambda t: stock_info.get(str(t), {}).get("price") or PriceFetcher.get_current_price(str(t))
     )
-    subset_df["Sector"] = subset_df["Ticker"].map(lambda t: stock_info.get(t, {}).get("sector"))
+    subset_df["Sector"] = subset_df["Ticker"].map(
+        lambda t: stock_info.get(str(t), {}).get("sector")
+    )
     subset_df["Price_Var%"] = (
         (subset_df["Current_Price"] - subset_df["Avg_Price"]) / subset_df["Avg_Price"]
     ) * 100
