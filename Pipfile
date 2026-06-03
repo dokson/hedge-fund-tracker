@@ -17,7 +17,7 @@ fastapi-users-db-sqlalchemy = "~=7.0"
 google-genai = "~=2.7"
 httptools = {version = "==0.8.0", markers = "sys_platform != 'win32'"}
 lxml = "~=6.1"
-openai = "~=2.38"
+openai = "~=2.40"
 pandas = "~=3.0"
 psutil = "~=7.2"
 python-dotenv = "~=1.2"
