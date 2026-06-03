@@ -27,12 +27,11 @@ repos:
         args: [--check]
         stages: [pre-push]
 
-  # mypy + pyright run in CI (lint.yml) and locally via `pipenv run typecheck`
-  # / `pipenv run pyright`. Not in pre-commit:
-  # - mirrors-mypy's isolated venv version-drifts vs pipenv's;
-  # - a local pyright hook would need pipenv on the inner Python, which
-  #   isn't reliably resolvable inside pre-commit's `language: system` env
-  #   on Windows. CI is the source of truth.
+  # mypy + pyright: NOT in pre-commit (per-commit is too slow and mirrors-mypy
+  # version-drifts vs pipenv's locked stubs). They run on PUSH instead, via the
+  # local hook at the bottom of this file (scripts/run_typechecks.py), which
+  # resolves pipenv robustly and runs them against the project venv — the same
+  # versions CI uses. CI (lint.yml) remains the source of truth.
 
   # Frontend: format with Prettier
   - repo: https://github.com/pre-commit/mirrors-prettier
@@ -96,10 +95,17 @@ repos:
 
   # Pre-push: run the same checks CI runs, so we never push a broken build.
   # Skip with `git push --no-verify` if you really need to (don't).
-  # NOTE: Python checks are at the top of this file with stages: [pre-push].
-  # Here we add only the frontend check, which needs npm (always in PATH).
+  # NOTE: ruff (check + format) for Python is at the top of this file with
+  # stages: [pre-push]. Here we add the checks that need a runtime on PATH:
+  # pyright + mypy (via pipenv) and the frontend check (via npm).
   - repo: local
     hooks:
+      - id: typecheck
+        name: pyright + mypy (pre-push)
+        entry: python scripts/run_typechecks.py
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
       - id: frontend-check
         name: frontend lint + type-check + format check (pre-push)
         entry: npm run --prefix app/frontend check
