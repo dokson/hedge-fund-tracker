@@ -58,8 +58,14 @@ async def put_database_file(filepath: str, request: Request) -> dict[str, bool]:
         HTTPException: 400 on unsafe path, oversized body, or non-UTF-8 content.
     """
     file_path = _safe_db_path(filepath)
-    body = await request.body()
 
+    # Reject oversized uploads via Content-Length *before* buffering the body into
+    # memory; the post-read check is the fallback for missing/chunked length headers.
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large")
+
+    body = await request.body()
     if len(body) > _MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File too large")
     try:

@@ -33,6 +33,34 @@ from app.api.starred import router as starred_router
 from app.auth import include_routers_for_auth
 
 
+def _validate_deployment_secrets() -> None:
+    """
+    In a hardened deployment (secure cookies → HTTPS → real deploy), refuse to
+    start with the dev-default token-signing secrets: they would let anyone forge
+    verification / password-reset tokens. No effect in local/dev (COOKIE_SECURE
+    unset), so the local single-user tool keeps working with the defaults.
+    """
+    from app.auth.backend import COOKIE_SECURE
+    from app.auth.manager import RESET_PASSWORD_TOKEN_SECRET, VERIFICATION_TOKEN_SECRET
+
+    if not COOKIE_SECURE:
+        return
+
+    weak = [
+        name
+        for name, value in (
+            ("RESET_PASSWORD_TOKEN_SECRET", RESET_PASSWORD_TOKEN_SECRET),
+            ("VERIFICATION_TOKEN_SECRET", VERIFICATION_TOKEN_SECRET),
+        )
+        if value.startswith("dev-only")
+    ]
+    if weak:
+        raise RuntimeError(
+            "COOKIE_SECURE is set (production posture) but dev-default signing secrets "
+            f"are still in use: {weak}. Set them via environment variables before deploying."
+        )
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     """
@@ -45,6 +73,8 @@ async def _lifespan(app: FastAPI):
     # Touch the KEK loader; raises EncryptionConfigError if MASTER_KEY is unset
     # or malformed. Fails the worker boot, surfaces the misconfig in `docker logs`.
     _kek()
+    # Refuse dev-default signing secrets in a production posture (token forgery).
+    _validate_deployment_secrets()
     yield
     # Shutdown: dispose the connection pool so pooled sockets close gracefully
     # instead of relying on process exit.

@@ -1,4 +1,5 @@
 import atexit
+import os
 import re
 from contextlib import contextmanager
 from typing import Any
@@ -15,7 +16,8 @@ logger = get_logger(__name__)
 
 # SEC EDGAR requires a custom User-Agent that identifies the application and provides a contact email.
 # See: https://www.sec.gov/os/developer-support-policy
-USER_AGENT = "Hedge Fund Tracker dok.son@msn.com"
+# Override the contact via SEC_USER_AGENT (e.g. when forking/deploying under a different contact).
+USER_AGENT = os.environ.get("SEC_USER_AGENT", "Hedge Fund Tracker dok.son@msn.com")
 SEC_HOST = "www.sec.gov"
 SEC_URL = "https://" + SEC_HOST
 

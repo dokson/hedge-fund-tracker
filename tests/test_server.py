@@ -266,6 +266,49 @@ class TestLifespanDisposesEngine(unittest.IsolatedAsyncioTestCase):
         fake_engine.dispose.assert_awaited_once()
 
 
+class TestValidateDeploymentSecrets(unittest.TestCase):
+    """
+    Startup guard that refuses dev-default signing secrets in a production
+    (secure-cookie) posture, while staying silent for the local tool.
+    """
+
+    def test_no_raise_in_local_posture(self):
+        """COOKIE_SECURE unset (local) → dev defaults are tolerated."""
+        from unittest.mock import patch
+
+        from app.server import _validate_deployment_secrets
+
+        with patch("app.auth.backend.COOKIE_SECURE", False):
+            _validate_deployment_secrets()  # must not raise
+
+    def test_raises_on_dev_secret_in_production(self):
+        """COOKIE_SECURE set + a dev-default secret → refuse to start."""
+        from unittest.mock import patch
+
+        from app.server import _validate_deployment_secrets
+
+        with (
+            patch("app.auth.backend.COOKIE_SECURE", True),
+            patch("app.auth.manager.RESET_PASSWORD_TOKEN_SECRET", "dev-only-change-in-production"),
+            patch("app.auth.manager.VERIFICATION_TOKEN_SECRET", "a-real-strong-secret"),
+            self.assertRaises(RuntimeError),
+        ):
+            _validate_deployment_secrets()
+
+    def test_no_raise_with_strong_secrets_in_production(self):
+        """COOKIE_SECURE set + non-default secrets → start normally."""
+        from unittest.mock import patch
+
+        from app.server import _validate_deployment_secrets
+
+        with (
+            patch("app.auth.backend.COOKIE_SECURE", True),
+            patch("app.auth.manager.RESET_PASSWORD_TOKEN_SECRET", "strong-reset-secret"),
+            patch("app.auth.manager.VERIFICATION_TOKEN_SECRET", "strong-verify-secret"),
+        ):
+            _validate_deployment_secrets()  # must not raise
+
+
 # Make `queue` available to the SSE isolation test without polluting module top
 import queue  # noqa: E402
 
