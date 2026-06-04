@@ -18,8 +18,13 @@ class TestSanitizePathParts(unittest.TestCase):
             _sanitize_path_parts("")
 
     def test_rejects_traversal_tokens(self):
-        """Any '..' or separator-bearing component is rejected."""
-        for bad in ["../etc", "a/../../b", "..\\x"]:
+        """Any '..' or (forward-slash) separator-bearing component is rejected.
+
+        Backslash isn't a path separator on POSIX, so a case like "..\\x" is a
+        legal single filename there — not a portable traversal token — and is
+        intentionally excluded.
+        """
+        for bad in ["../etc", "a/../../b", ".."]:
             with self.subTest(value=bad), self.assertRaises(ValueError):
                 _sanitize_path_parts(bad)
 

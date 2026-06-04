@@ -126,12 +126,14 @@ def get_most_recent_quarter(ticker: str) -> str | None:
     """
     for quarter in get_all_quarters()[:2]:
         for file_path in get_all_quarter_files(quarter):
-            # Read Tickers in chunks for memory efficiency on large files
-            for chunk in pd.read_csv(
+            # Read Tickers in chunks for memory efficiency on large files.
+            # `with` closes the reader's file handle even on the early return.
+            with pd.read_csv(
                 file_path, usecols=["Ticker"], dtype={"Ticker": str}, chunksize=10000
-            ):
-                if ticker in chunk["Ticker"].values:
-                    return quarter
+            ) as reader:
+                for chunk in reader:
+                    if ticker in chunk["Ticker"].values:
+                        return quarter
 
     # Check non-quarterly data for IPOs or recent additions
     non_quarterly = load_non_quarterly_data()
