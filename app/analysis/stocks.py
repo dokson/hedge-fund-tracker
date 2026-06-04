@@ -14,7 +14,7 @@ from app.utils.pd import get_numeric_series, get_percentage_number_series
 from app.utils.strings import format_percentage
 
 
-def aggregate_quarter_by_fund(df_quarter) -> pd.DataFrame:
+def aggregate_quarter_by_fund(df_quarter: pd.DataFrame) -> pd.DataFrame:
     """
     Aggregates quarter fund holdings at the Ticker level.
 
@@ -95,7 +95,7 @@ def aggregate_quarter_by_fund(df_quarter) -> pd.DataFrame:
     return df_fund_quarter
 
 
-def get_quarter_data(quarter=get_last_quarter()) -> pd.DataFrame:
+def get_quarter_data(quarter: str | None = None) -> pd.DataFrame:
     """
     Loads and prepares quarterly data for analysis.
 
@@ -104,11 +104,15 @@ def get_quarter_data(quarter=get_last_quarter()) -> pd.DataFrame:
     - If a fund has not yet filed for the current quarter but has non-quarterly data, it pulls its most recent previous 13F as a baseline.
 
     Args:
-        quarter (str, optional): The quarter to load, in 'YYYYQN' format. Defaults to the last available quarter.
+        quarter (str, optional): The quarter to load, in 'YYYYQN' format. Defaults
+            to the last available quarter, resolved at call time (not import time,
+            so a long-running process picks up newly added quarters).
 
     Returns:
         pd.DataFrame: A DataFrame containing the prepared quarterly data.
     """
+    if quarter is None:
+        quarter = get_last_quarter()
     df_quarter = load_quarterly_data(quarter)
 
     # Identify funds that have filed this quarter
@@ -242,7 +246,7 @@ def _calculate_derived_metrics(df_analysis: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def quarter_analysis(quarter) -> pd.DataFrame:
+def quarter_analysis(quarter: str) -> pd.DataFrame:
     """
     Analyzes stock data for a given quarter to find the most popular, bought, and sold stocks.
 
@@ -260,7 +264,7 @@ def quarter_analysis(quarter) -> pd.DataFrame:
     return _calculate_derived_metrics(df_analysis)
 
 
-def stock_analysis(ticker, quarter):
+def stock_analysis(ticker: str, quarter: str) -> pd.DataFrame:
     """
     Analyzes a single stock for a given quarter, returning a list of funds that hold it.
 
@@ -277,7 +281,7 @@ def stock_analysis(ticker, quarter):
     return aggregate_quarter_by_fund(df_quarter[df_quarter["Ticker"] == ticker])
 
 
-def fund_analysis(fund, quarter) -> pd.DataFrame:
+def fund_analysis(fund: str, quarter: str) -> pd.DataFrame:
     """
     Analyzes a single fund for a given quarter, returning its holdings.
 

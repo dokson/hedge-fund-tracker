@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
+from app.patterns import QUARTER_CAPTURE_RE
+
 VALUE_FORMAT_MAP = [
     (1_000_000_000_000, "T"),
     (1_000_000_000, "B"),
@@ -222,9 +224,9 @@ def get_numeric(formatted_value: str) -> float:
     if suffix in units:
         number_part = formatted_value[:-1]
         multiplier = units[suffix]
-        return int(float(number_part) * multiplier)
+        return float(number_part) * multiplier
 
-    return int(float(formatted_value))
+    return float(formatted_value)
 
 
 def get_percentage_number(formatted_percentage: str) -> float:
@@ -276,9 +278,7 @@ def parse_quarter(quarter_str: str) -> tuple[int, int]:
     Returns:
         tuple: (year, quarter) as integers.
     """
-    import re
-
-    match = re.match(r"(\d{4})Q([1-4])", quarter_str)
+    match = QUARTER_CAPTURE_RE.match(quarter_str)
     if not match:
         raise ValueError(f"Invalid quarter format: {quarter_str}")
     return int(match.group(1)), int(match.group(2))

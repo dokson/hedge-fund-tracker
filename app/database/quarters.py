@@ -7,12 +7,12 @@ honoured at call time.
 """
 
 import csv
-import re
 from pathlib import Path
 
 import pandas as pd
 
 import app.database as _db
+from app.patterns import QUARTER_RE
 from app.utils.logger import get_logger, log_safe
 from app.utils.strings import get_quarter
 
@@ -49,7 +49,7 @@ def get_all_quarters() -> list[str]:
         [
             path.name
             for path in _db._get_db_root().iterdir()
-            if path.is_dir() and re.match(r"^\d{4}Q[1-4]$", path.name)
+            if path.is_dir() and QUARTER_RE.match(path.name)
         ],
         reverse=True,
     )
@@ -264,10 +264,18 @@ def load_quarterly_data(quarter: str) -> pd.DataFrame:
     all_fund_data = []
 
     for file_path in get_all_quarter_files(quarter):
-        fund_df = pd.read_csv(file_path)
+        try:
+            fund_df = pd.read_csv(file_path)
+        except (OSError, pd.errors.ParserError, pd.errors.EmptyDataError):
+            # One malformed/locked fund file shouldn't abort the whole quarter.
+            logger.error("while reading quarterly file '%s'", file_path, exc_info=True)
+            continue
         fund_df["Fund"] = Path(file_path).stem.replace("_", " ")
         all_fund_data.append(fund_df[fund_df["CUSIP"] != "Total"])
 
+    if not all_fund_data:
+        # No (readable) fund files for this quarter — pd.concat([]) would raise.
+        return pd.DataFrame()
     return pd.concat(all_fund_data, ignore_index=True)
 
 

@@ -52,6 +52,21 @@ class TestDatabaseFileServing(unittest.TestCase):
         self.assertEqual(resp.status_code, 404)
 
 
+class TestDatabaseFileUpload(unittest.TestCase):
+    """PUT /database/{filepath} input guards (validated before any write)."""
+
+    def test_non_utf8_body_returns_400(self):
+        """A non-UTF-8 body is rejected with 400 before touching disk."""
+        resp = client.put("/database/x.csv", content=b"\xff\xfe\xfa")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_oversized_body_returns_413(self):
+        """A body over the size cap is rejected with 413."""
+        with patch("app.api.data._MAX_UPLOAD_BYTES", 4):
+            resp = client.put("/database/x.csv", content=b"toolong")
+        self.assertEqual(resp.status_code, 413)
+
+
 class TestStockHistoryEndpoint(unittest.TestCase):
     """/api/stocks/{ticker}/history validation + delegation."""
 

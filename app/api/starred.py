@@ -25,6 +25,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app.auth.dependencies import current_active_verified_user
 from app.db.models import StarredItem, StarredItemType, User
 from app.db.session import AsyncSessionLocal
+from app.patterns import FUND_NAME_RE, QUARTER_RE, TICKER_RE
 
 router = APIRouter(prefix="/api/me/starred", tags=["me", "favorites"])
 
@@ -33,9 +34,9 @@ router = APIRouter(prefix="/api/me/starred", tags=["me", "favorites"])
 # defence-in-depth — React already escapes on render, but we'd rather not rely
 # on a single layer of mitigation if a future template/email renderer drops it.
 _VALIDATORS: Final[dict[StarredItemType, re.Pattern[str]]] = {
-    StarredItemType.STOCK: re.compile(r"^[A-Z0-9.\-]{1,10}$"),
-    StarredItemType.QUARTER: re.compile(r"^\d{4}Q[1-4]$"),
-    StarredItemType.FUND: re.compile(r"^[^<>\"'`&\\]{1,200}$"),
+    StarredItemType.STOCK: TICKER_RE,
+    StarredItemType.QUARTER: QUARTER_RE,
+    StarredItemType.FUND: FUND_NAME_RE,
 }
 
 

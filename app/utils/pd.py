@@ -12,7 +12,9 @@ def coalesce(*series: pd.Series | int | float | str) -> pd.Series:
     or scalars (used as fillna defaults). Equivalent to SQL's COALESCE.
     """
     result = series[0]
-    assert isinstance(result, pd.Series), "first coalesce argument must be a Series"
+    if not isinstance(result, pd.Series):
+        # assert would be stripped under `python -O`; raise so the contract holds.
+        raise TypeError("first coalesce argument must be a Series")
     for s in series[1:]:
         result = result.fillna(s)
     return result

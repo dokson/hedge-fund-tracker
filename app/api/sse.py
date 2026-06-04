@@ -100,7 +100,7 @@ def _make_sse_stream(target_fn: Callable[[], object]) -> StreamingResponse:
     threading.Thread(target=_run_sse_target, args=(target_fn, log_q), daemon=True).start()
 
     async def generate():
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         while True:
             item = await loop.run_in_executor(None, log_q.get)
             kind, payload = item

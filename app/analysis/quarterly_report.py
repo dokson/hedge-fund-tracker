@@ -5,7 +5,7 @@ from app.utils.pd import coalesce, format_value_series
 from app.utils.strings import format_percentage, format_value
 
 
-def generate_comparison(df_recent, df_previous):
+def generate_comparison(df_recent: pd.DataFrame, df_previous: pd.DataFrame | None) -> pd.DataFrame:
     """
     Generates a comparison report between the two DataFrames, calculating percentage change and indicating new positions.
     """

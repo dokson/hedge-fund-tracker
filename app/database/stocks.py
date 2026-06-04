@@ -8,7 +8,9 @@ monkeypatching in tests).
 
 import csv
 import os
+import tempfile
 import time
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager, suppress
 from pathlib import Path
@@ -19,6 +21,44 @@ import app.database as _db
 from app.utils.logger import get_logger, log_safe
 
 logger = get_logger(__name__)
+
+
+def _atomic_write_rows(
+    path: Path,
+    fieldnames: Sequence[str],
+    rows: list[dict],
+    *,
+    quote_all: bool = True,
+) -> None:
+    """
+    Write CSV rows to ``path`` atomically.
+
+    Writes to a temp file in the same directory, then ``os.replace()`` swaps it
+    in — so a crash mid-write can never truncate or corrupt the target file.
+
+    Args:
+        path: Destination CSV path.
+        fieldnames: DictWriter header order.
+        rows: The records to write.
+        quote_all: Quote every field (default, matching stocks.csv / non_quarterly.csv);
+            pass False for files written elsewhere with pandas defaults (quarterly funds).
+    """
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+            # Pass the csv constant directly (a typed variable widens to int and
+            # trips the stub's _QuotingType check).
+            if quote_all:
+                writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            else:
+                writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
+            writer.writeheader()
+            writer.writerows(rows)
+        os.replace(tmp, path)
+    except BaseException:
+        with suppress(OSError):
+            os.unlink(tmp)
+        raise
 
 __all__ = [
     "clean_stocks",
@@ -333,27 +373,25 @@ def update_stocks_csv(old_ticker: str, new_ticker: str, new_company: str | None 
         logger.error("%s not found", _db.STOCKS_FILE)
         return 0
 
-    # Read all rows
     rows = []
     updated_count = 0
 
-    with stocks_path.open(encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames or []
+    # Read and write under one lock: reading outside the lock and writing inside
+    # it would be a TOCTOU race — a concurrent writer's changes get clobbered.
+    with stocks_lock():
+        with stocks_path.open(encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            fieldnames = reader.fieldnames or []
 
-        for row in reader:
-            if row["Ticker"] == old_ticker:
-                row["Ticker"] = new_ticker
-                if new_company:
-                    row["Company"] = new_company
-                updated_count += 1
-            rows.append(row)
+            for row in reader:
+                if row["Ticker"] == old_ticker:
+                    row["Ticker"] = new_ticker
+                    if new_company:
+                        row["Company"] = new_company
+                    updated_count += 1
+                rows.append(row)
 
-    # Write back
-    with stocks_lock(), stocks_path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-        writer.writeheader()
-        writer.writerows(rows)
+        _atomic_write_rows(stocks_path, fieldnames, rows)
 
     return updated_count
 
@@ -395,11 +433,9 @@ def update_quarterly_filings(cusips: list[str], new_ticker: str) -> None:
                         rows.append(row)
 
                 if file_updated:
-                    with Path(csv_file).open("w", encoding="utf-8", newline="") as f:
-                        writer = csv.DictWriter(f, fieldnames=fieldnames)
-                        writer.writeheader()
-                        writer.writerows(rows)
-
+                    # quote_all=False: quarterly fund CSVs are written by
+                    # save_comparison with pandas' default (minimal) quoting.
+                    _atomic_write_rows(Path(csv_file), fieldnames, rows, quote_all=False)
                     logger.success("Updated %s/%s", quarter, csv_file.name)
 
             except Exception:
@@ -433,10 +469,7 @@ def update_non_quarterly_filings(cusips: list[str], new_ticker: str) -> int:
                     updated_count += 1
                 rows.append(row)
 
-        with nq_path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-            writer.writeheader()
-            writer.writerows(rows)
+        _atomic_write_rows(nq_path, fieldnames, rows)
 
         if updated_count > 0:
             logger.success(
@@ -470,45 +503,43 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str, new_company: str | None
         logger.error("%s not found", _db.STOCKS_FILE)
         return
 
-    # Update stocks.csv
+    # Update stocks.csv — read, check, and write under one lock (avoids the
+    # TOCTOU race where a concurrent writer's changes are clobbered).
     rows = []
     found = False
     old_ticker = None
     company = None
 
-    with stocks_path.open(encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames or []
+    with stocks_lock():
+        with stocks_path.open(encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            fieldnames = reader.fieldnames or []
 
-        for row in reader:
-            if row["CUSIP"] == cusip:
-                old_ticker = row["Ticker"]
-                company = row["Company"]
-                row["Ticker"] = new_ticker
-                if new_company:
-                    row["Company"] = new_company
-                found = True
-            rows.append(row)
+            for row in reader:
+                if row["CUSIP"] == cusip:
+                    old_ticker = row["Ticker"]
+                    company = row["Company"]
+                    row["Ticker"] = new_ticker
+                    if new_company:
+                        row["Company"] = new_company
+                    found = True
+                rows.append(row)
 
-    if not found:
-        logger.error("CUSIP '%s' not found in %s", log_safe(cusip), _db.STOCKS_FILE)
-        return
+        if not found:
+            logger.error("CUSIP '%s' not found in %s", log_safe(cusip), _db.STOCKS_FILE)
+            return
 
-    logger.info(
-        "  - CUSIP: %s, Company: %s, Old Ticker: %s -> New Ticker: %s",
-        log_safe(cusip),
-        log_safe(company),
-        log_safe(old_ticker),
-        log_safe(new_ticker),
-    )
+        logger.info(
+            "  - CUSIP: %s, Company: %s, Old Ticker: %s -> New Ticker: %s",
+            log_safe(cusip),
+            log_safe(company),
+            log_safe(old_ticker),
+            log_safe(new_ticker),
+        )
+        _atomic_write_rows(stocks_path, fieldnames, rows)
 
-    # Write back stocks.csv
-    with stocks_lock(), stocks_path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-        writer.writeheader()
-        writer.writerows(rows)
-
-    # Update quarterly filings and non-quarterly filings
+    # Update quarterly filings and non-quarterly filings (other files; the
+    # stocks lock is released first since these don't touch stocks.csv).
     update_quarterly_filings([cusip], new_ticker)
     update_non_quarterly_filings([cusip], new_ticker)
 

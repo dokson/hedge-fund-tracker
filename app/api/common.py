@@ -8,12 +8,13 @@ import cycle back to ``app.server`` (which includes those routers).
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+
+from app.patterns import CUSIP_RE, QUARTER_RE, TICKER_RE
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -23,16 +24,12 @@ if TYPE_CHECKING:
 # request.state. Created here and registered on the app in app.server.
 limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 
-_QUARTER_RE = re.compile(r"^\d{4}Q[1-4]$")
-_TICKER_RE = re.compile(r"^[A-Z0-9.\-]{1,10}$")
-_CUSIP_RE = re.compile(r"^[A-Z0-9]{9}$")
-
 
 def _require_quarter(quarter: str | None) -> str:
     """
     Validate a quarter string is YYYYQ[1-4]; raise 422 otherwise.
     """
-    if not quarter or not _QUARTER_RE.match(quarter):
+    if not quarter or not QUARTER_RE.match(quarter):
         raise HTTPException(status_code=422, detail="quarter must be in YYYYQ[1-4] format")
     return quarter
 
@@ -41,7 +38,7 @@ def _require_ticker(ticker: str | None) -> str:
     """
     Validate and normalise a ticker to upper-case; raise 422 otherwise.
     """
-    if not ticker or not _TICKER_RE.match(ticker.upper()):
+    if not ticker or not TICKER_RE.match(ticker.upper()):
         raise HTTPException(status_code=422, detail="Invalid ticker format")
     return ticker.upper()
 
@@ -50,7 +47,7 @@ def _require_cusip(cusip: str | None) -> str:
     """
     Validate and normalise a 9-char CUSIP to upper-case; raise 422 otherwise.
     """
-    if not cusip or not _CUSIP_RE.match(cusip.upper()):
+    if not cusip or not CUSIP_RE.match(cusip.upper()):
         raise HTTPException(status_code=422, detail="CUSIP must be 9 alphanumeric characters")
     return cusip.upper()
 

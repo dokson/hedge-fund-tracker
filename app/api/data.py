@@ -12,10 +12,14 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.concurrency import run_in_threadpool
 
-from app.api.common import _QUARTER_RE, _df_to_json_safe_records, _require_quarter
+from app.api.common import _df_to_json_safe_records, _require_quarter
 from app.api.paths import DATABASE_DIR, _safe_db_path
+from app.patterns import QUARTER_RE
 
 router = APIRouter(tags=["data"])
+
+# Upper bound for a single database-file upload (the largest CSVs are well under this).
+_MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
 
 @router.get("/database/{filepath:path}")
@@ -51,14 +55,21 @@ async def put_database_file(filepath: str, request: Request) -> dict[str, bool]:
         ``{"ok": True}`` on success.
 
     Raises:
-        HTTPException: 400 on unsafe path.
+        HTTPException: 400 on unsafe path, oversized body, or non-UTF-8 content.
     """
     file_path = _safe_db_path(filepath)
     body = await request.body()
 
+    if len(body) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large")
+    try:
+        text = body.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Body must be valid UTF-8") from exc
+
     def _write() -> None:
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(body.decode("utf-8"), encoding="utf-8")
+        file_path.write_text(text, encoding="utf-8")
 
     await run_in_threadpool(_write)
     return {"ok": True}
@@ -69,9 +80,7 @@ def list_quarters() -> list[str]:
     """List all available quarter folders (YYYYQ[1-4]), sorted chronologically."""
     if not DATABASE_DIR.exists():
         return []
-    return sorted(
-        d.name for d in DATABASE_DIR.iterdir() if d.is_dir() and _QUARTER_RE.match(d.name)
-    )
+    return sorted(d.name for d in DATABASE_DIR.iterdir() if d.is_dir() and QUARTER_RE.match(d.name))
 
 
 @router.get("/api/database/quarters/latest")
@@ -84,7 +93,7 @@ def latest_quarter() -> dict[str, str | None]:
     if not DATABASE_DIR.exists():
         return {"quarter": None}
     quarters = sorted(
-        d.name for d in DATABASE_DIR.iterdir() if d.is_dir() and _QUARTER_RE.match(d.name)
+        d.name for d in DATABASE_DIR.iterdir() if d.is_dir() and QUARTER_RE.match(d.name)
     )
     return {"quarter": quarters[-1] if quarters else None}
 

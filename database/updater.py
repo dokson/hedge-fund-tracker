@@ -37,9 +37,12 @@ from app.utils.strings import get_previous_quarter_end_date
 
 APP_NAME = "HEDGE FUND TRACKER - DATABASE UPDATER"
 MIN_REFERENCE_DATE = "2025-03-31"
+# Hard ceiling on the back-search through a fund's filing history, so a fund
+# that never matches the target quarter can't loop indefinitely hammering EDGAR.
+MAX_SEARCH_OFFSET = 20
 
 
-def exit():
+def exit_app():
     """
     0. Exits the application (after maintenance operations).
 
@@ -115,6 +118,8 @@ def process_fund(fund_info, offset=0, skip_old=False):
                 break
 
             offset += 1
+            if offset > MAX_SEARCH_OFFSET:
+                break
             filings = fetch_latest_two_13f_filings(cik, offset)
             if not filings:
                 break
@@ -442,7 +447,7 @@ def print_missing_quarters_report():
 
 if __name__ == "__main__":
     actions = {
-        '0': exit,
+        '0': exit_app,
         '1': run_all_funds_report,
         '2': run_fetch_nq_filings,
         '3': run_fund_report,

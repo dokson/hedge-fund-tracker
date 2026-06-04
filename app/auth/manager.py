@@ -9,7 +9,8 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Coroutine
+from typing import Any
 
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, UUIDIDMixin  # pyright: ignore[reportMissingImports]
@@ -19,6 +20,33 @@ from app.auth import api_keys as api_keys_svc
 from app.auth.email import send_password_reset_email, send_verification_email
 from app.db.models import User
 from app.db.session import AsyncSessionLocal
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+# Retain strong references to in-flight background tasks. Without this the event
+# loop only keeps a weak reference, so a fire-and-forget task can be garbage-
+# collected mid-execution ("Task was destroyed but it is pending").
+_background_tasks: set[asyncio.Task] = set()
+
+
+def _fire_and_forget(coro: Coroutine[Any, Any, Any], *, what: str) -> None:
+    """
+    Schedule a coroutine without awaiting it — keeps the HTTP response time
+    constant (defeats account-enumeration timing side-channels) — while
+    retaining a reference so it isn't GC'd and logging any exception it raises
+    instead of silently swallowing it.
+    """
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+
+    def _on_done(t: asyncio.Task) -> None:
+        _background_tasks.discard(t)
+        if not t.cancelled() and t.exception() is not None:
+            logger.error("Background task '%s' failed", what, exc_info=t.exception())
+
+    task.add_done_callback(_on_done)
+
 
 # Secrets used by fastapi-users to sign verification + reset tokens.
 # Different per purpose so a leaked verification token can't be replayed as a
@@ -75,7 +103,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):  # type: ignor
         constant whether the SMTP/Resend call takes 50 ms or 5 s — a timing
         side-channel could otherwise be used for account enumeration.
         """
-        asyncio.create_task(send_verification_email(user.email, token))
+        _fire_and_forget(send_verification_email(user.email, token), what="verification email")
 
     async def on_after_verify(self, user: User, request: Request | None = None) -> None:
         """
@@ -101,7 +129,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):  # type: ignor
         looks the same to an attacker regardless of whether the email exists,
         making account enumeration via timing impractical.
         """
-        asyncio.create_task(send_password_reset_email(user.email, token))
+        _fire_and_forget(send_password_reset_email(user.email, token), what="password reset email")
 
     async def on_after_reset_password(self, user: User, request: Request | None = None) -> None:
         """

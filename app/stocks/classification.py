@@ -123,7 +123,7 @@ def resolve_industry(ticker: str, company: str) -> str:
         classification = YFinance.get_classification(ticker) or {}
     except Exception:
         classification = {}
-    industry = classification.get("industry") if isinstance(classification, dict) else None
+    industry = classification.get("industry")
     if industry:
         return industry
 

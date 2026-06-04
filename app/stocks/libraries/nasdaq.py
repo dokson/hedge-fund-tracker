@@ -3,6 +3,9 @@ from datetime import date, timedelta
 import requests
 
 from app.stocks.libraries.base_library import FinanceLibrary
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class Nasdaq(FinanceLibrary):
@@ -30,6 +33,9 @@ class Nasdaq(FinanceLibrary):
                 return []
             return data.get("symbolChangeHistoryTable", {}).get("rows", [])
         except Exception:
+            # Don't fail the caller (admin endpoint / CLI) on a NASDAQ hiccup, but
+            # don't swallow it silently either — surface it for diagnosis.
+            logger.warning("Failed to fetch NASDAQ symbol changes", exc_info=True)
             return []
 
     @staticmethod

@@ -190,7 +190,7 @@ class AnalystAgent:
 
             autonomous_scores[ticker] = {
                 "Industry": industry or "N/A",
-                "Growth_Score": growth_score if growth_score else "N/A",
+                "Growth_Score": growth_score if growth_score is not None else "N/A",
                 "Current_Price": f"${current_price:,.2f}" if current_price else "N/A",
                 "Filing_Price": f"${filing_price:,.2f}" if filing_price else "N/A",
                 "Pct_Change": f"{pct_change:+.2f}%" if pct_change is not None else "N/A",

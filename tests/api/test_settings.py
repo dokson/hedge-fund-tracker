@@ -47,6 +47,27 @@ class TestEnvEndpoints(unittest.TestCase):
         self.assertIn("A=1", written)
         self.assertIn("B=2", written)
 
+    def test_put_env_rejects_non_object(self):
+        """A non-object JSON body is rejected with 422 and writes nothing."""
+        with patch("app.api.settings.ENV_FILE", self.env):
+            resp = client.put("/api/settings/env", json=["A=1"])
+        self.assertEqual(resp.status_code, 422)
+        self.assertFalse(self.env.exists())
+
+    def test_put_env_rejects_invalid_key(self):
+        """A key that isn't a valid env var name is rejected with 422."""
+        with patch("app.api.settings.ENV_FILE", self.env):
+            resp = client.put("/api/settings/env", json={"bad key!": "x"})
+        self.assertEqual(resp.status_code, 422)
+        self.assertFalse(self.env.exists())
+
+    def test_put_env_rejects_newline_in_value(self):
+        """A value containing a newline (env-injection) is rejected with 422."""
+        with patch("app.api.settings.ENV_FILE", self.env):
+            resp = client.put("/api/settings/env", json={"A": "1\nINJECTED=2"})
+        self.assertEqual(resp.status_code, 422)
+        self.assertFalse(self.env.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

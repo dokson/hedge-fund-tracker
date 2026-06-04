@@ -6,6 +6,27 @@ from app.scraper.xml_processor import xml_to_dataframe_13f
 
 
 class TestXmlProcessor(unittest.TestCase):
+    def test_xml_to_dataframe_13f_empty_filing_does_not_crash(self):
+        """
+        A filing whose only rows are zeroed-out (filtered to nothing) must return
+        an empty DataFrame instead of crashing on the median-price heuristic.
+        """
+        xml_content = """
+        <informationtable>
+            <infotable>
+                <nameofissuer>Placeholder Co</nameofissuer>
+                <cusip>000000000</cusip>
+                <value>0</value>
+                <shrsorprnamt><sshprnamt>0</sshprnamt></shrsorprnamt>
+            </infotable>
+        </informationtable>
+        """
+
+        df = xml_to_dataframe_13f(xml_content)
+
+        self.assertIsInstance(df, pd.DataFrame)
+        self.assertTrue(df.empty)
+
     def test_xml_to_dataframe_13f_full_dollars_no_scaling(self):
         """
         Tests that values are NOT scaled if the implied share price is realistic (Full Dollars).
