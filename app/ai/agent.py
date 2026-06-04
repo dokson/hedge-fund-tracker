@@ -137,6 +137,61 @@ class AnalystAgent:
         logger.success("Successfully parsed AI scores for %d tickers", len(parsed_data))
         return parsed_data
 
+    def _compute_autonomous_scores(self, tickers: list[str]) -> dict:
+        """
+        Compute the non-LLM half of the scored list: fetch programmatic data
+        (YFinance industry/price) and derive the growth score per ticker.
+        """
+        logger.progress(
+            "Fetching programmatic data for %d tickers from YFinance...", len(tickers), emoji="🔍"
+        )
+        stocks_info = YFinance.get_stocks_info(tickers)
+
+        autonomous_scores = {}
+        for ticker in tickers:
+            info = stocks_info.get(ticker, {})
+            current_price = info.get("price")
+            industry = info.get("sector")
+            filing_price: float | None = None
+            pct_change: float | None = None
+            growth_score: float | None = None
+
+            if current_price:
+                filing_price = PriceFetcher.get_avg_price(
+                    ticker, date.fromisoformat(self.filing_date)
+                )
+                if filing_price:
+                    pct_change = ((float(current_price) - filing_price) / filing_price) * 100
+                    growth_score = PerformanceEvaluator.calculate_growth_score(pct_change)
+
+            autonomous_scores[ticker] = {
+                "Industry": industry or "N/A",
+                "Growth_Score": growth_score if growth_score is not None else "N/A",
+                "Current_Price": f"${current_price:,.2f}" if current_price else "N/A",
+                "Filing_Price": f"${filing_price:,.2f}" if filing_price else "N/A",
+                "Pct_Change": f"{pct_change:+.2f}%" if pct_change is not None else "N/A",
+            }
+        return autonomous_scores
+
+    def _build_stocks_context(
+        self, tickers: list[str], suggestions_df: pd.DataFrame, autonomous_scores: dict
+    ) -> list[dict]:
+        """
+        Assemble the per-ticker context list handed to the LLM scorer.
+        """
+        return [
+            {
+                "ticker": ticker,
+                "company": suggestions_df[suggestions_df["Ticker"] == ticker]["Company"].iloc[0],
+                "industry": autonomous_scores[ticker]["Industry"],
+                "filing_date": self.filing_date,
+                "filing_price": autonomous_scores[ticker]["Filing_Price"],
+                "current_price": autonomous_scores[ticker]["Current_Price"],
+                "price_change_since_filing": autonomous_scores[ticker]["Pct_Change"],
+            }
+            for ticker in tickers
+        ]
+
     def generate_scored_list(self, top_n: int) -> pd.DataFrame:
         """
         Generates a scored and ranked list of the most promising stocks based on a heuristic model
@@ -151,108 +206,51 @@ class AnalystAgent:
             )
             return pd.DataFrame()
 
-        # Calculate Promise scores
         df = self._calculate_promise_scores(self.analysis_df, promise_weights)
-
-        # Get top N stocks
         suggestions_df = df.sort_values(by="Promise_Score", ascending=False).head(top_n)
 
-        # Get top N tickers
         tickers = suggestions_df["Ticker"].tolist()
         if not tickers:
             return suggestions_df
 
-        # 1. Get industry and current price programmatically from YFinance
-        logger.progress(
-            "Fetching programmatic data for %d tickers from YFinance...", len(tickers), emoji="🔍"
+        suggestions_df = suggestions_df.copy()
+        autonomous_scores = self._compute_autonomous_scores(tickers)
+
+        # Seed columns from the programmatic (autonomous) data. The LLM scores
+        # overwrite Industry/Risk/Momentum/Volatility below when available; if the
+        # AI step fails these seeded defaults remain (Growth is always autonomous).
+        suggestions_df["Industry"] = suggestions_df["Ticker"].map(
+            lambda t: autonomous_scores.get(t, {}).get("Industry", "N/A")
         )
-        stocks_info = YFinance.get_stocks_info(tickers)
+        suggestions_df["Growth_Score"] = suggestions_df["Ticker"].map(
+            lambda t: autonomous_scores.get(t, {}).get("Growth_Score", 0)
+        )
+        suggestions_df["Risk_Score"] = 0
+        suggestions_df["Momentum_Score"] = 0
+        suggestions_df["Low_Volatility_Score"] = 0
 
-        # 2. Calculate Growth scores autonomously
-        autonomous_scores = {}
-        for ticker in tickers:
-            info = stocks_info.get(ticker, {})
-            current_price = info.get("price")
-            industry = info.get("sector")
-            filing_price: float | None = None
-            pct_change: float | None = None
-            growth_score: float | None = None
-
-            if current_price:
-                # Get historical price
-                filing_price = PriceFetcher.get_avg_price(
-                    ticker, date.fromisoformat(self.filing_date)
-                )
-
-                if filing_price:
-                    pct_change = ((float(current_price) - filing_price) / filing_price) * 100
-                    growth_score = PerformanceEvaluator.calculate_growth_score(pct_change)
-
-            autonomous_scores[ticker] = {
-                "Industry": industry or "N/A",
-                "Growth_Score": growth_score if growth_score is not None else "N/A",
-                "Current_Price": f"${current_price:,.2f}" if current_price else "N/A",
-                "Filing_Price": f"${filing_price:,.2f}" if filing_price else "N/A",
-                "Pct_Change": f"{pct_change:+.2f}%" if pct_change is not None else "N/A",
-            }
-
-        # 3. Get LLM scores (Momentum, Volatility, Risk)
-        stocks_context = []
-        for ticker in tickers:
-            stocks_context.append(
-                {
-                    "ticker": ticker,
-                    "company": suggestions_df[suggestions_df["Ticker"] == ticker]["Company"].iloc[
-                        0
-                    ],
-                    "industry": autonomous_scores[ticker]["Industry"],
-                    "filing_date": self.filing_date,
-                    "filing_price": autonomous_scores[ticker]["Filing_Price"],
-                    "current_price": autonomous_scores[ticker]["Current_Price"],
-                    "price_change_since_filing": autonomous_scores[ticker]["Pct_Change"],
-                }
-            )
-
+        stocks_context = self._build_stocks_context(tickers, suggestions_df, autonomous_scores)
         try:
             ai_scores_data = self._get_ai_scores(stocks_context)
-
-            # 4. Combine and update dataframe
-            suggestions_df = suggestions_df.copy()
-            suggestions_df["Industry"] = suggestions_df["Ticker"].map(
-                lambda t: (
-                    ai_scores_data.get(t, {}).get("industry")
-                    or autonomous_scores.get(t, {}).get("Industry", "N/A")
-                )
-            )
-            suggestions_df["Growth_Score"] = suggestions_df["Ticker"].map(
-                lambda t: autonomous_scores.get(t, {}).get("Growth_Score", 0)
-            )
-            suggestions_df["Risk_Score"] = suggestions_df["Ticker"].map(
-                lambda t: ai_scores_data.get(t, {}).get("risk_score", 0)
-            )
-            suggestions_df["Momentum_Score"] = suggestions_df["Ticker"].map(
-                lambda t: ai_scores_data.get(t, {}).get("momentum_score", 0)
-            )
-            suggestions_df["Low_Volatility_Score"] = suggestions_df["Ticker"].map(
-                lambda t: ai_scores_data.get(t, {}).get("low_volatility_score", 0)
-            )
-
         except RetryError:
-            logger.error(
-                "Failed to get valid AI scores after multiple attempts",
-                exc_info=True,
-            )
-            # Set defaults if AI fails
-            suggestions_df["Industry"] = suggestions_df["Ticker"].map(
-                lambda t: autonomous_scores.get(t, {}).get("Industry", "N/A")
-            )
-            suggestions_df["Growth_Score"] = suggestions_df["Ticker"].map(
-                lambda t: autonomous_scores.get(t, {}).get("Growth_Score", 0)
-            )
-            suggestions_df["Risk_Score"] = 0
-            suggestions_df["Momentum_Score"] = 0
-            suggestions_df["Low_Volatility_Score"] = 0
+            logger.error("Failed to get valid AI scores after multiple attempts", exc_info=True)
+            return suggestions_df
 
+        suggestions_df["Industry"] = suggestions_df["Ticker"].map(
+            lambda t: (
+                ai_scores_data.get(t, {}).get("industry")
+                or autonomous_scores.get(t, {}).get("Industry", "N/A")
+            )
+        )
+        suggestions_df["Risk_Score"] = suggestions_df["Ticker"].map(
+            lambda t: ai_scores_data.get(t, {}).get("risk_score", 0)
+        )
+        suggestions_df["Momentum_Score"] = suggestions_df["Ticker"].map(
+            lambda t: ai_scores_data.get(t, {}).get("momentum_score", 0)
+        )
+        suggestions_df["Low_Volatility_Score"] = suggestions_df["Ticker"].map(
+            lambda t: ai_scores_data.get(t, {}).get("low_volatility_score", 0)
+        )
         return suggestions_df
 
     @retry(
@@ -274,6 +272,34 @@ class AnalystAgent:
             dict: A dictionary containing the AI's analysis, or an empty dict if an error occurs.
         """
         assert self.ai_client is not None, "AnalystAgent requires an AIClient"
+
+        stock_data = self._build_due_diligence_context(ticker)
+        if stock_data is None:
+            return {}
+
+        stock_context_toon = encode(stock_data)
+        logger.progress(
+            f"Sending request to AI ({self.ai_client.get_model_name()}) for due diligence on {ticker}..."
+        )
+        prompt = stock_due_diligence_prompt(stock_context_toon)
+        response_text = self.ai_client.generate_content(prompt)
+        parsed_data = ResponseParser().extract_and_decode_toon(response_text)
+
+        if not parsed_data:
+            raise InvalidAIResponseError("AI returned an empty or invalid TOON structure")
+
+        parsed_data["current_price"] = stock_data["current_price"]
+        parsed_data["filing_date_price"] = stock_data["filing_date_price"]
+        parsed_data["price_delta_percentage"] = stock_data["price_delta_percentage"]
+
+        return parsed_data
+
+    def _build_due_diligence_context(self, ticker: str) -> dict | None:
+        """
+        Gather the institutional + price context for one ticker, formatted for
+        the LLM. Returns None (caller aborts) when the ticker has no filing data
+        for the quarter or no current price can be fetched.
+        """
         logger.progress(
             "Gathering institutional data for %s for quarter %s...", log_safe(ticker), self.quarter
         )
@@ -283,14 +309,14 @@ class AnalystAgent:
             logger.error(
                 "No data found for ticker %s in quarter %s.", log_safe(ticker), self.quarter
             )
-            return {}
+            return None
 
         current_price = PriceFetcher.get_current_price(ticker)
         if current_price is None:
             logger.error(
                 "Could not fetch current price for %s. Aborting due diligence.", log_safe(ticker)
             )
-            return {}
+            return None
         logger.money("Current price for %s: $%s", log_safe(ticker), f"{current_price:,.2f}")
 
         filing_date_price = PriceFetcher.get_avg_price(ticker, date.fromisoformat(self.filing_date))
@@ -323,7 +349,7 @@ class AnalystAgent:
             else None
         )
 
-        stock_data = {
+        return {
             "ticker": ticker,
             "company": stock_df["Company"].iloc[0],
             "filing_date": self.filing_date,
@@ -352,20 +378,3 @@ class AnalystAgent:
                 else "0.00%",
             },
         }
-        stock_context_toon = encode(stock_data)
-
-        logger.progress(
-            f"Sending request to AI ({self.ai_client.get_model_name()}) for due diligence on {ticker}..."
-        )
-        prompt = stock_due_diligence_prompt(stock_context_toon)
-        response_text = self.ai_client.generate_content(prompt)
-        parsed_data = ResponseParser().extract_and_decode_toon(response_text)
-
-        if not parsed_data:
-            raise InvalidAIResponseError("AI returned an empty or invalid TOON structure")
-
-        parsed_data["current_price"] = stock_data["current_price"]
-        parsed_data["filing_date_price"] = stock_data["filing_date_price"]
-        parsed_data["price_delta_percentage"] = stock_data["price_delta_percentage"]
-
-        return parsed_data

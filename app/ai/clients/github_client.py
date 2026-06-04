@@ -1,28 +1,13 @@
-from app.ai.clients.base_openai_client import OpenAIClient
+from app.ai.clients.base_openai_client import OpenAIClient, OpenAIProviderConfig
 
 
 class GitHubClient(OpenAIClient):
     """
-    GitHub Models client implementation using the Azure AI Inference API.
+    GitHub Models client (Azure AI Inference, OpenAI-compatible). Requires GITHUB_TOKEN.
     """
 
     DEFAULT_MODEL = "xai/grok-3-mini"
-
-    def __init__(self, model: str = DEFAULT_MODEL):
-        """
-        Initializes the GitHub Models client.
-        Requires GITHUB_TOKEN to be set in the environment.
-        """
-        super().__init__(model)
-
-    def get_base_url(self) -> str:
-        """
-        Returns the base URL for the GitHub Models API.
-        """
-        return "https://models.github.ai/inference"
-
-    def get_api_key_env_var(self) -> str:
-        """
-        Returns the name of the environment variable for the GitHub token.
-        """
-        return "GITHUB_TOKEN"
+    CONFIG = OpenAIProviderConfig(
+        base_url="https://models.github.ai/inference",
+        api_key_env="GITHUB_TOKEN",
+    )

@@ -23,6 +23,8 @@ from app.api.sse import _make_sse_stream
 from app.db.session import AsyncSessionLocal
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from fastapi.responses import StreamingResponse
 
     from app.ai.clients.base_client import AIClient
@@ -48,7 +50,7 @@ def _build_ai_client(
         OpenRouterClient,
     )
 
-    client_map = {
+    client_map: dict[str, Callable[..., AIClient]] = {
         "github": GitHubClient,
         "google": GoogleAIClient,
         "groq": GroqClient,

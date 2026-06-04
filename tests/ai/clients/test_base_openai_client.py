@@ -3,34 +3,20 @@ from unittest.mock import MagicMock, patch
 
 from tenacity import RetryError
 
-from app.ai.clients.base_openai_client import OpenAIClient
+from app.ai.clients.base_openai_client import OpenAIClient, OpenAIProviderConfig
 
 
 class ConcreteOpenAIClient(OpenAIClient):
     """
-    Minimal concrete subclass used to test OpenAIClient abstract behavior
-    without depending on any real provider credentials.
+    Minimal concrete subclass used to test OpenAIClient behaviour without
+    depending on any real provider credentials.
     """
 
     DEFAULT_MODEL = "test-model-v1"
-
-    def __init__(self, model=DEFAULT_MODEL):
-        """
-        Delegates initialization to OpenAIClient with test provider settings.
-        """
-        super().__init__(model)
-
-    def get_base_url(self) -> str:
-        """
-        Returns the test provider base URL.
-        """
-        return "https://api.test-provider.com/v1"
-
-    def get_api_key_env_var(self) -> str:
-        """
-        Returns the test env var name for the API key.
-        """
-        return "TEST_API_KEY"
+    CONFIG = OpenAIProviderConfig(
+        base_url="https://api.test-provider.com/v1",
+        api_key_env="TEST_API_KEY",
+    )
 
 
 class TestOpenAIClientInit(unittest.TestCase):

@@ -1,5 +1,6 @@
 import os
-from abc import abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass, field
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -11,77 +12,80 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _identity(model: str) -> str:
+    """Default model-name transform: return the model id unchanged."""
+    return model
+
+
+@dataclass(frozen=True)
+class OpenAIProviderConfig:
+    """
+    Declarative configuration for an OpenAI-compatible provider.
+
+    Providers are pure data (base URL, key env var, headers, model-name display
+    transform); all behaviour lives in OpenAIClient. This replaces the previous
+    per-provider method-override subclasses (config over inheritance).
+    """
+
+    base_url: str
+    api_key_env: str
+    headers: dict[str, str] = field(default_factory=dict)
+    extra_body: dict = field(default_factory=dict)
+    # Maps the raw model id to its display name (e.g. strip a ":free" suffix).
+    model_name_transform: Callable[[str], str] = _identity
+
+
 class OpenAIClient(AIClient):
     """
-    Abstract base class for AI clients that are compatible with the OpenAI API.
-    Subclasses must implement `get_base_url` and `get_api_key_env_var`.
+    Client for any OpenAI-compatible provider. Configure a provider by
+    subclassing and setting ``CONFIG`` (+ ``DEFAULT_MODEL``) — no method
+    overrides needed.
 
-    BYOK transition: instantiate with an explicit `api_key=...` from the
-    user's stored credentials. The env-var fallback below is DEPRECATED and
-    will be removed once every call site supplies an explicit key (target:
-    end of Phase 2).
+    BYOK transition: instantiate with an explicit ``api_key`` from the user's
+    stored credentials. The env-var fallback is DEPRECATED and will be removed
+    once every call site supplies an explicit key (target: end of Phase 2).
     """
 
-    def __init__(self, model: str, api_key: str | None = None):
-        """
-        Initializes the OpenAI-compatible client.
+    CONFIG: OpenAIProviderConfig
 
+    def __init__(self, model: str | None = None, api_key: str | None = None):
+        """
         Args:
-            model: model identifier (e.g. 'gpt-5').
+            model: model identifier; defaults to the provider's DEFAULT_MODEL.
             api_key: explicit API key. When None, falls back to the legacy
                 env-var lookup with a deprecation notice.
         """
+        model = model or self.DEFAULT_MODEL
+        if model is None:
+            raise ValueError(f"{type(self).__name__} has no model and no DEFAULT_MODEL")
+
         if api_key is None:
             load_dotenv()
-            api_key = os.getenv(self.get_api_key_env_var())
+            api_key = os.getenv(self.CONFIG.api_key_env)
             if not api_key:
                 logger.warning(
                     "Environment variable %s not set. Client may not work.",
-                    self.get_api_key_env_var(),
+                    self.CONFIG.api_key_env,
                 )
             else:
                 logger.deprecated(
                     "%s initialised from env var %s. Pass `api_key=` from the user's BYOK store instead.",
                     self.__class__.__name__,
-                    self.get_api_key_env_var(),
+                    self.CONFIG.api_key_env,
                 )
 
         self.client = OpenAI(
-            base_url=self.get_base_url(), api_key=api_key, default_headers=self.get_headers()
+            base_url=self.CONFIG.base_url,
+            api_key=api_key,
+            default_headers=dict(self.CONFIG.headers),
         )
         self.model = model
 
-    @abstractmethod
-    def get_base_url(self) -> str:
-        """
-        Returns the base URL for the API.
-        """
-        pass
-
-    @abstractmethod
-    def get_api_key_env_var(self) -> str:
-        """
-        Returns the name of the environment variable for the API key.
-        """
-        pass
-
-    def get_headers(self) -> dict:
-        """
-        Returns optional default headers for the client.
-        """
-        return {}
-
-    def get_extra_body(self) -> dict:
-        """
-        Returns optional extra body parameters for the API call.
-        """
-        return {}
-
     def get_model_name(self) -> str:
         """
-        Get the current model name.
+        Get the current model name (after the provider's display transform).
         """
-        return self.model
+        return self.CONFIG.model_name_transform(self.model)
 
     @retry(
         wait=wait_exponential(multiplier=2, min=1, max=8),
@@ -96,7 +100,7 @@ class OpenAIClient(AIClient):
         Accepts optional keyword arguments for the completion call.
         """
         try:
-            extra_body = self.get_extra_body()
+            extra_body = dict(self.CONFIG.extra_body)
             if "extra_body" in kwargs:
                 extra_body.update(kwargs.pop("extra_body"))
 
