@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "640e09ea62be5ce88009f272bf11e5f8e3a6f4a62bf6e5a2522dca7d25e3bc11"
+            "sha256": "b0a24c3f5800fa8625c3f2a795d75a6e4288e74d77ab595502fb7d26bbffdb41"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -637,12 +637,12 @@
         },
         "google-genai": {
             "hashes": [
-                "sha256:21cac381e09a869151706aba797b6a4f96cfe92c484e13204d092caee7ff11cb",
-                "sha256:3c6f32f5ced9877ededd1b384b5e5b7f09c20046ec3390b662b16d8cd1882ac5"
+                "sha256:37a9b3cb127d763e7f4ca47452ae3562c87728773bd1b149f7b559c239da2bc1",
+                "sha256:4da0a223a100f4b37f609a68b835e3326ab0fa313314dc0fd9d34e76ee293844"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==2.7.0"
+            "version": "==2.8.0"
         },
         "greenlet": {
             "hashes": [
@@ -1295,12 +1295,12 @@
         },
         "openai": {
             "hashes": [
-                "sha256:2b205637ff214477f9ce9ab035e9f494db0e3fa8f1e599008953735fbf6ff1ff",
-                "sha256:9a756f91f274a24ad6026cbcb2042fd356c8d4a10e8f347b08d34465e585f7a2"
+                "sha256:20cc7952e8501c7e5773dd2ef7be437bae9cb549044902e1041a83a54516e375",
+                "sha256:db5c362acd6604b84f076abbefa66826ea4b46ecba2954ed866e6a149a1352c0"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==2.40.0"
+            "version": "==2.41.0"
         },
         "packaging": {
             "hashes": [
@@ -1853,12 +1853,12 @@
         },
         "uvicorn": {
             "hashes": [
-                "sha256:48097851328b87ec36117d3d575234519eb58c2b22d79666e9bbc6c49a761dad",
-                "sha256:a5504207195d08c2511bf9125ede5ac4a4b71725d519e758d01dcf0bc2d31c37"
+                "sha256:ba3d14c3ee7e41c6c654c46c9eb489d33213cdd30aa1696eab1374337c13f68f",
+                "sha256:ebf4271aa580d9de97f93192d4595176df6e91f9aae919ca73e4fc07df1e66a3"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==0.48.0"
+            "version": "==0.49.0"
         },
         "uvloop": {
             "hashes": [
