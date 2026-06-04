@@ -745,6 +745,10 @@ def run_server(host: str | None = None, port: int | None = None):
 if __name__ == "__main__":
     import sys
 
+    from app.utils.interrupt import install_keyboardinterrupt_filter
+
+    install_keyboardinterrupt_filter()
+
     if "--cli" in sys.argv:
         run_cli()
     else:
