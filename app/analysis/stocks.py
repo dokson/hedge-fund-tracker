@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from app.analysis.non_quarterly import update_quarter_with_nq_filings
-from app.utils.database import (
+from app.database import (
     get_last_quarter,
     get_last_quarter_for_fund,
     load_fund_data,

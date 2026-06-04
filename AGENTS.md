@@ -72,7 +72,7 @@ Available levels and their auto-prefix:
 
 The `emoji="..."` kwarg works on every method and **overrides the default prefix** — use it for occasional one-off markers (`logger.info("Rebuilding", emoji="🔄")`).
 
-**Don't use `print()` outside `app/main.py` and `app/utils/console.py`.** Those two are CLI/UI rendering and are intentionally exempt; everything else goes through the logger so the SSE pipeline in `app/server.py` (`_ContextAwareStdout`) can route each log line to the right per-request queue. The logger's stdout handler resolves `sys.stdout` lazily on every emit, which is what keeps SSE working — don't rebind the handler's stream.
+**Don't use `print()` outside `app/main.py` and `app/utils/console.py`.** Those two are CLI/UI rendering and are intentionally exempt; everything else goes through the logger so the SSE pipeline in `app/api/sse.py` (`_ContextAwareStdout`) can route each log line to the right per-request queue. The logger's stdout handler resolves `sys.stdout` lazily on every emit, which is what keeps SSE working — don't rebind the handler's stream.
 
 ## Footguns
 
@@ -80,7 +80,7 @@ These are real incidents — read before changing code in these areas.
 
 - **Stale frontend dist served silently.** The dev server auto-rebuilds when `frontend/src/` mtimes are newer than `dist/index.html`. If you bypass `pipenv run app` and serve dist directly, edits to `.tsx` or `src/data/*.json` are invisible. Trust the auto-rebuild or run `pipenv run build-frontend` explicitly.
 
-- **SSE stdout capture is per-request.** `app/server.py` installs a `_ContextAwareStdout` wrapper at module import that consults a `ContextVar` on every `write()`. Concurrent SSE streams are isolated via `contextvars` — no global lock. Don't reintroduce `sys.stdout = ...` redirections, and don't bind a logger handler to a fixed stream (the project logger resolves `sys.stdout` lazily on every emit — see "Logging conventions"). Both patterns break isolation.
+- **SSE stdout capture is per-request.** `app/api/sse.py` installs a `_ContextAwareStdout` wrapper at module import (so it must stay on the boot path — `app/server.py` imports it) that consults a `ContextVar` on every `write()`. Concurrent SSE streams are isolated via `contextvars` — no global lock. Don't reintroduce `sys.stdout = ...` redirections, and don't bind a logger handler to a fixed stream (the project logger resolves `sys.stdout` lazily on every emit — see "Logging conventions"). Both patterns break isolation.
 
 - **Wrong `Denomination` breaks non-quarterly merging.** 13D/G and Form 4 filings match by *legal name string*, not CIK. The `Denomination` column in `hedge_funds.csv` must be exact. Mismatch = silent gap in non-quarterly view.
 
@@ -137,6 +137,8 @@ Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `datab
 - **`app/analysis/`** — `quarterly_report.py` (delta shares/values, NEW/CLOSE positions), `stocks.py` (multi-fund consensus), `non_quarterly.py` (13D/G + Form 4 integration), `performance_evaluator.py` (HBR).
 - **`app/stocks/`** — CUSIP→Ticker via fallback chain: yfinance → OpenFIGI → TradingView. Reverse ticker→CUSIP (Form 4 path) via FMP (requires `FMP_API_KEY`). Industry classification via `app/stocks/classification.py::resolve_industry`: yfinance → same-Company match in stocks.csv → Groq LLM (free, picks from `sector_hierarchy.csv` vocabulary). Maintains `stocks.csv`. `PriceFetcher` uses a separate chain: yfinance → TradingView → Nasdaq (Nasdaq covers mutual funds others miss).
 - **`app/ai/`** — Multi-provider LLM. `agent.py` runs **two-phase analysis**: (1) AI picks metric weights for current market, (2) AI computes scores using those weights. Retries up to 7× on invalid response. Clients in `clients/`: GitHub Models, Google Gemini, Groq, HuggingFace, OpenRouter.
+- **`app/api/`** — FastAPI routers, each `include_router`'d by `app/server.py`: `ai.py` (Promise Score / due-diligence, blocking + SSE), `admin.py` (filing fetches, ticker/CUSIP corrections, NASDAQ ticker-change apply, quarter-gap report), plus `me.py`/`api_keys.py`/`starred.py`. Shared infra lives in `common.py` (rate limiter, request validation, JSON-safe serialization) and `sse.py` (the per-request stdout-capture wrapper — imported on the boot path so it installs once). `server.py` keeps only app setup, static-file/SPA serving, and the quarter-listing routes.
+- **`app/database/`** — CSV data-access layer, a package split into `quarters.py` (quarter discovery + 13F loaders), `stocks.py` (stocks.csv CRUD, the stocks lock, ticker cascades), `funds.py` (hedge-fund add/delete/restore). The package `__init__` owns the shared constants (`DB_FOLDER`, `*_FILE`) + path-safety helpers and re-exports everything, so `from app.database import X` is unchanged. Submodules read `DB_FOLDER` as `_db.DB_FOLDER` (call-time) so tests can monkeypatch it.
 
 ### Key frontend files
 
@@ -235,6 +237,7 @@ All code, comments, docstrings, commit messages, and user-facing strings: **Engl
 - **Retries**: `tenacity` library, exponential backoff. Used in scrapers and AI clients.
 - **Validation loop**: `AnalystAgent` retries AI responses up to 7× via `promise_score_validator.py`.
 - **Caches**: `__llmcache__/` (AI responses), `__reports__/` (generated reports). Both gitignored.
+- **Lazy imports in handlers**: `app/server.py` route handlers `import` their service deps *inside the function body*, not at module top. This is deliberate — it keeps server startup fast (heavy modules like `yfinance`/`AnalystAgent` load on first use) and avoids import cycles between the server and the analysis/AI layers. Keep new handlers consistent; put business logic in a service module (e.g. `app/stocks/ticker_changes.py`) and have the handler lazy-import and delegate.
 
 ### Data consistency
 

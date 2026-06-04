@@ -1,4 +1,4 @@
-from app.utils.database import DB_FOLDER, EXCLUDED_HEDGE_FUNDS_FILE, get_all_quarters, get_last_quarter_for_fund, load_hedge_funds
+from app.database import DB_FOLDER, EXCLUDED_HEDGE_FUNDS_FILE, get_all_quarters, get_last_quarter_for_fund, load_hedge_funds
 import os
 import unittest
 

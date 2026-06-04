@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from app.utils.database import (
+from app.database import (
     HEDGE_FUNDS_FILE,
     LATEST_SCHEDULE_FILINGS_FILE,
     MODELS_FILE,
@@ -84,7 +84,7 @@ class TestDatabase(unittest.TestCase):
             f.write("Fund,Ticker,CUSIP,Date,Filing_Date\nFund A,TICKA,123,2025-01-01,2025-01-01\n")
 
         # Patch the DB_FOLDER constant to use the test directory
-        self.patcher = unittest.mock.patch("app.utils.database.DB_FOLDER", self.test_db_folder)
+        self.patcher = unittest.mock.patch("app.database.DB_FOLDER", self.test_db_folder)
         self.patcher.start()
 
     def test_get_all_quarters(self):
@@ -285,7 +285,7 @@ class TestDatabase(unittest.TestCase):
         """
         Keeps the first README_DISPLAY_LIMIT rows in place and sorts the rest alphabetically.
         """
-        from app.utils.database import EXCLUDED_HEDGE_FUNDS_FILE
+        from app.database import EXCLUDED_HEDGE_FUNDS_FILE
         from app.utils.readme import README_DISPLAY_LIMIT
 
         ex_path = Path(self.test_db_folder) / EXCLUDED_HEDGE_FUNDS_FILE
@@ -367,7 +367,7 @@ class TestDatabase(unittest.TestCase):
         sort_stocks reads, dedups, and rewrites stocks.csv — Industry must
         survive the round-trip.
         """
-        from app.utils.database import sort_stocks
+        from app.database import sort_stocks
 
         sort_stocks()
         df_stocks = load_stocks()
@@ -378,7 +378,7 @@ class TestDatabase(unittest.TestCase):
         """
         save_stocks(load_stocks()) must be idempotent on the Industry column.
         """
-        from app.utils.database import save_stocks
+        from app.database import save_stocks
 
         df_before = load_stocks()
         save_stocks(df_before)

@@ -2,8 +2,8 @@ from datetime import datetime
 
 import pandas as pd
 
+from app.database import load_fund_holdings
 from app.stocks.price_fetcher import PriceFetcher
-from app.utils.database import load_fund_holdings
 from app.utils.logger import get_logger, log_safe
 from app.utils.strings import get_previous_quarter, get_quarter_date
 

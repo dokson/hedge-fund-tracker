@@ -4,6 +4,20 @@ from tabulate import tabulate
 
 from app.analysis.non_quarterly import get_non_quarterly_filings_dataframe
 from app.analysis.quarterly_report import generate_comparison
+from app.database import (
+    clean_stocks,
+    delete_fund_from_database,
+    get_funds_missing_quarters,
+    load_hedge_funds,
+    restore_fund_to_database,
+    save_comparison,
+    save_non_quarterly_filings,
+    sort_excluded_hedge_funds,
+    sort_hedge_funds,
+    sort_stocks,
+    update_ticker,
+    update_ticker_for_cusip,
+)
 from app.scraper.sec_scraper import (
     fetch_latest_two_13f_filings,
     fetch_non_quarterly_after_date,
@@ -17,20 +31,6 @@ from app.utils.console import (
     select_excluded_fund,
     select_fund,
     select_period,
-)
-from app.utils.database import (
-    clean_stocks,
-    delete_fund_from_database,
-    get_funds_missing_quarters,
-    load_hedge_funds,
-    restore_fund_to_database,
-    save_comparison,
-    save_non_quarterly_filings,
-    sort_excluded_hedge_funds,
-    sort_hedge_funds,
-    sort_stocks,
-    update_ticker,
-    update_ticker_for_cusip,
 )
 from app.utils.readme import update_readme
 from app.utils.strings import get_previous_quarter_end_date
@@ -345,7 +345,7 @@ def run_auto_ticker_update():
         print("❌ Could not fetch symbol changes from NASDAQ.")
         return
 
-    from app.utils.database import find_cusips_for_ticker
+    from app.database import find_cusips_for_ticker
     applicable = []
     for change in changes:
         old_symbol = change.get("oldSymbol", "")

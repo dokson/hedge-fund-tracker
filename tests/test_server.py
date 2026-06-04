@@ -20,7 +20,7 @@ class TestDfToJsonSafeRecords(unittest.TestCase):
         """
         Positive and negative infinity values must be converted to None.
         """
-        from app.server import _df_to_json_safe_records
+        from app.api.common import _df_to_json_safe_records
 
         df = pd.DataFrame({"a": [1.0, np.inf, -np.inf]})
         records = _df_to_json_safe_records(df)
@@ -31,7 +31,7 @@ class TestDfToJsonSafeRecords(unittest.TestCase):
         NaN must be converted to None even on float64 columns (regression test for
         the dtype bug where .where(..., None) was silently a no-op on numeric dtypes).
         """
-        from app.server import _df_to_json_safe_records
+        from app.api.common import _df_to_json_safe_records
 
         df = pd.DataFrame({"a": [1.0, np.nan]})
         records = _df_to_json_safe_records(df)
@@ -41,7 +41,7 @@ class TestDfToJsonSafeRecords(unittest.TestCase):
         """
         Non-numeric columns must pass through untouched.
         """
-        from app.server import _df_to_json_safe_records
+        from app.api.common import _df_to_json_safe_records
 
         df = pd.DataFrame({"a": [1.0, np.inf], "b": ["x", "y"]})
         records = _df_to_json_safe_records(df)
@@ -53,7 +53,7 @@ class TestDfToJsonSafeRecords(unittest.TestCase):
         """
         import json
 
-        from app.server import _df_to_json_safe_records
+        from app.api.common import _df_to_json_safe_records
 
         df = pd.DataFrame({"a": [np.inf, np.nan, 0.5]})
         records = _df_to_json_safe_records(df)
@@ -63,7 +63,7 @@ class TestDfToJsonSafeRecords(unittest.TestCase):
         """
         An empty DataFrame must produce an empty record list, not raise.
         """
-        from app.server import _df_to_json_safe_records
+        from app.api.common import _df_to_json_safe_records
 
         records = _df_to_json_safe_records(pd.DataFrame())
         self.assertEqual(records, [])
@@ -73,24 +73,6 @@ class TestServer(unittest.TestCase):
     """
     Tests for the FastAPI server module and its route configuration.
     """
-
-    def test_server_module_is_importable(self):
-        """
-        Verify that the server module can be imported without errors.
-        """
-        from app.server import app
-
-        self.assertIsNotNone(app)
-
-    def test_app_is_fastapi_instance(self):
-        """
-        Verify that the exported app object is a FastAPI instance.
-        """
-        from fastapi import FastAPI
-
-        from app.server import app
-
-        self.assertIsInstance(app, FastAPI)
 
     def test_expected_routes_are_registered(self):
         """
@@ -191,6 +173,97 @@ class TestSSEContextIsolation(unittest.TestCase):
 
         wrapper.write("hello\n")
         self.assertEqual(buf.getvalue(), "hello\n")
+
+
+class TestSSETerminalSignal(unittest.TestCase):
+    """
+    Tests that the SSE worker always enqueues a terminal ("result"/"error") item,
+    on every exit path. If it didn't, the consumer's blocking `log_q.get()` would
+    hang forever — leaking an executor thread and an open HTTP connection.
+    """
+
+    def test_normal_result_emits_result_item(self):
+        """
+        A target that returns a value enqueues a single ("result", value) item.
+        """
+        from app.server import _run_sse_target
+
+        q: queue.SimpleQueue = queue.SimpleQueue()
+        _run_sse_target(lambda: {"ok": 1}, q)
+
+        self.assertEqual(q.get_nowait(), ("result", {"ok": 1}))
+        self.assertTrue(q.empty())
+
+    def test_exception_emits_error_item(self):
+        """
+        A target that raises a regular Exception enqueues an ("error", msg) item.
+        """
+        from app.server import _run_sse_target
+
+        q: queue.SimpleQueue = queue.SimpleQueue()
+
+        def target():
+            raise ValueError("boom")
+
+        _run_sse_target(target, q)
+        kind, payload = q.get_nowait()
+        self.assertEqual(kind, "error")
+        self.assertIn("boom", payload)
+
+    def test_base_exception_still_emits_terminal_item(self):
+        """
+        Even a BaseException (SystemExit, KeyboardInterrupt) must produce a
+        terminal item so the consumer never blocks forever. This is the gap the
+        old `except Exception` left open.
+        """
+        from app.server import _run_sse_target
+
+        q: queue.SimpleQueue = queue.SimpleQueue()
+
+        def target():
+            raise SystemExit("shutdown mid-stream")
+
+        _run_sse_target(target, q)
+        self.assertEqual(q.get_nowait()[0], "error")
+        self.assertTrue(q.empty())
+
+    def test_contextvar_is_reset_after_run(self):
+        """
+        The per-request contextvar must be reset on exit so the worker thread
+        (and any thread reusing the context) doesn't leak the queue binding.
+        """
+        from app.server import _request_log_q, _run_sse_target
+
+        q: queue.SimpleQueue = queue.SimpleQueue()
+        _run_sse_target(lambda: None, q)
+        self.assertIsNone(_request_log_q.get())
+
+
+class TestLifespanDisposesEngine(unittest.IsolatedAsyncioTestCase):
+    """
+    The module-level async engine owns a connection pool. The lifespan shutdown
+    must dispose it so pooled connections close gracefully instead of relying on
+    process exit.
+    """
+
+    async def test_engine_disposed_on_shutdown(self):
+        """
+        Exiting the lifespan context must await engine.dispose() exactly once.
+        """
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        import app.server as server
+
+        fake_engine = MagicMock()
+        fake_engine.dispose = AsyncMock()
+        with (
+            patch("app.security.envelope._kek"),
+            patch("app.db.session.engine", fake_engine),
+        ):
+            async with server._lifespan(server.app):
+                pass
+
+        fake_engine.dispose.assert_awaited_once()
 
 
 # Make `queue` available to the SSE isolation test without polluting module top

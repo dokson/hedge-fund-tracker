@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from app.utils.database import DB_FOLDER
-from app.utils.database import EXCLUDED_HEDGE_FUNDS_FILE as EXCLUDED_FILENAME
+from app.database import DB_FOLDER
+from app.database import EXCLUDED_HEDGE_FUNDS_FILE as EXCLUDED_FILENAME
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)

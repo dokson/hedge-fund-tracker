@@ -1,4 +1,4 @@
-from app.utils.database import DB_FOLDER, LATEST_SCHEDULE_FILINGS_FILE, get_all_quarters, load_quarterly_data, load_sector_hierarchy, load_stocks
+from app.database import DB_FOLDER, LATEST_SCHEDULE_FILINGS_FILE, get_all_quarters, load_quarterly_data, load_sector_hierarchy, load_stocks
 import pandas as pd
 import unittest
 

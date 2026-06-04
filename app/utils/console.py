@@ -7,7 +7,7 @@ from pathlib import Path
 
 from tabulate import tabulate
 
-from app.utils.database import (
+from app.database import (
     get_all_quarters,
     get_quarters_for_fund,
     load_excluded_hedge_funds,

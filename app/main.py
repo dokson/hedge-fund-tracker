@@ -13,6 +13,13 @@ from app.analysis.stocks import (
     quarter_analysis,
     stock_analysis,
 )
+from app.database import (
+    count_funds_in_quarter,
+    get_all_quarters,
+    get_last_quarter,
+    get_most_recent_quarter,
+    load_non_quarterly_data,
+)
 from app.stocks.libraries.yfinance import YFinance
 from app.stocks.price_fetcher import PriceFetcher
 from app.utils.console import (
@@ -23,13 +30,6 @@ from app.utils.console import (
     select_ai_model,
     select_fund,
     select_quarter,
-)
-from app.utils.database import (
-    count_funds_in_quarter,
-    get_all_quarters,
-    get_last_quarter,
-    get_most_recent_quarter,
-    load_non_quarterly_data,
 )
 from app.utils.logger import get_logger
 from app.utils.strings import (

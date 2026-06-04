@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from app.utils.database import clean_stocks, sort_stocks
+from app.database import clean_stocks, sort_stocks
 from database.updater import run_all_funds_report, run_fetch_nq_filings
 
 if __name__ == "__main__":

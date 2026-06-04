@@ -23,8 +23,8 @@ from typing import cast
 
 import requests
 
+from app.database import load_sector_hierarchy, load_stocks
 from app.stocks.libraries.yfinance import YFinance
-from app.utils.database import load_sector_hierarchy, load_stocks
 from app.utils.logger import get_logger, log_safe
 
 logger = get_logger(__name__)

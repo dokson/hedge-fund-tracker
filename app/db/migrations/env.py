@@ -70,9 +70,11 @@ async def run_async_migrations() -> None:
     doesn't share connections with a running app process.
     """
     connectable = make_engine(DATABASE_URL, poolclass=None)
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-    await connectable.dispose()
+    try:
+        async with connectable.connect() as connection:
+            await connection.run_sync(do_run_migrations)
+    finally:
+        await connectable.dispose()
 
 
 def run_migrations_online() -> None:

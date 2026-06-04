@@ -45,7 +45,7 @@ from tenacity import (
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.utils.database import DB_FOLDER, EXCLUDED_HEDGE_FUNDS_FILE  # noqa: E402
+from app.database import DB_FOLDER, EXCLUDED_HEDGE_FUNDS_FILE  # noqa: E402
 from app.utils.readme import README_DISPLAY_LIMIT  # noqa: E402
 
 CACHE_DIR = ROOT / "__wikicache__"

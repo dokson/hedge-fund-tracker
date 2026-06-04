@@ -12,7 +12,7 @@ import csv
 import unittest
 from pathlib import Path
 
-from app.utils.database import DB_FOLDER
+from app.database import DB_FOLDER
 
 
 class TestCsvIntegrity(unittest.TestCase):

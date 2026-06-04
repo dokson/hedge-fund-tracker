@@ -1,9 +1,9 @@
 import pandas as pd
 
+from app.database import load_non_quarterly_data
 from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
 from app.stocks.price_fetcher import PriceFetcher
 from app.stocks.ticker_resolver import TickerResolver
-from app.utils.database import load_non_quarterly_data
 from app.utils.github import open_issue
 from app.utils.logger import get_logger, log_safe
 from app.utils.pd import coalesce, format_value_series, get_numeric_series

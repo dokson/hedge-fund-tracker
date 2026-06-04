@@ -29,7 +29,7 @@ import contextlib  # noqa: E402
 
 from app.ai.agent import AnalystAgent  # noqa: E402
 from app.ai.clients.groq_client import GroqClient  # noqa: E402
-from app.utils.database import get_last_quarter, get_most_recent_quarter  # noqa: E402
+from app.database import get_last_quarter, get_most_recent_quarter  # noqa: E402
 
 DUE_DILIGENCE_TICKER = "NTR"
 RANKING_TOP_N = 10

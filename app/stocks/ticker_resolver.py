@@ -1,6 +1,7 @@
 import pandas as pd
 from pandas import Series
 
+from app.database import load_stocks, save_stock, save_stocks
 from app.stocks.classification import resolve_industry
 from app.stocks.libraries import (
     FMP,
@@ -10,7 +11,6 @@ from app.stocks.libraries import (
     YFinance,
 )
 from app.stocks.libraries.nasdaq import Nasdaq
-from app.utils.database import load_stocks, save_stock, save_stocks
 from app.utils.github import open_issue
 from app.utils.logger import get_logger, log_safe
 
