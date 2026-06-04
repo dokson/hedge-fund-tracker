@@ -19,6 +19,7 @@ import pandas as pd
 
 import app.database as _db
 from app.utils.logger import get_logger, log_safe
+from app.utils.strings import escape_csv_formula
 
 logger = get_logger(__name__)
 
@@ -43,6 +44,17 @@ def _atomic_write_rows(
         quote_all: Quote every field (default, matching stocks.csv / non_quarterly.csv);
             pass False for files written elsewhere with pandas defaults (quarterly funds).
     """
+    # Escape free-text columns against spreadsheet formula injection (issuer /
+    # company names come from external filings and the CSVs are versioned/opened).
+    safe_rows = [
+        {
+            key: escape_csv_formula(value)
+            if key in ("Company", "Industry") and isinstance(value, str)
+            else value
+            for key, value in row.items()
+        }
+        for row in rows
+    ]
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
@@ -53,7 +65,7 @@ def _atomic_write_rows(
             else:
                 writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
-            writer.writerows(rows)
+            writer.writerows(safe_rows)
         os.replace(tmp, path)
     except BaseException:
         with suppress(OSError):
@@ -201,8 +213,8 @@ def save_stock(
                     [
                         cusip.strip(),
                         ticker.strip(),
-                        company.strip(),
-                        industry.strip(),
+                        escape_csv_formula(company.strip()),
+                        escape_csv_formula(industry.strip()),
                     ]
                 )
     except Exception:
@@ -216,7 +228,9 @@ def save_stocks(stocks_df: pd.DataFrame, filepath: str | None = None) -> None:
     if filepath is None:
         filepath = str(Path(_db.DB_FOLDER) / _db.STOCKS_FILE)
     try:
-        stocks_df.to_csv(filepath, quoting=csv.QUOTE_ALL)
+        from app.utils.pd import escape_csv_text_columns
+
+        escape_csv_text_columns(stocks_df).to_csv(filepath, quoting=csv.QUOTE_ALL)
     except Exception:
         logger.error("An error occurred while writing to '%s'", _db.STOCKS_FILE, exc_info=True)
 

@@ -54,6 +54,12 @@ jobs:
       - name: mypy
         run: pipenv run mypy app database scripts
 
+      - name: Dependency vulnerability audit (pip-audit)
+        run: |
+          pipenv requirements --dev > requirements-audit.txt
+          pipenv run pip install pip-audit
+          pipenv run pip-audit --requirement requirements-audit.txt
+
   frontend:
     name: Frontend · ESLint + Prettier + tsc
     runs-on: ubuntu-latest

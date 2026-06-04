@@ -7,6 +7,7 @@ name = "pypi"
 python_version = "3.13"
 
 [packages]
+aiohttp = "~=3.14"  # security forward-pin (transitive via tradingview-datafeed)
 alembic = "~=1.18"
 asyncpg = "~=0.31"
 beautifulsoup4 = "~=4.14"

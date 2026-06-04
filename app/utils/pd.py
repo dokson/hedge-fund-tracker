@@ -1,7 +1,23 @@
 import numpy as np
 import pandas as pd
 
-from app.utils.strings import VALUE_FORMAT_MAP
+from app.utils.strings import VALUE_FORMAT_MAP, escape_csv_formula
+
+# Free-text columns that carry untrusted external strings (issuer/company names)
+# and so need CSV-formula-injection escaping before being written to disk.
+_CSV_TEXT_COLUMNS = ("Company", "Industry")
+
+
+def escape_csv_text_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Return a copy of `df` with free-text columns (Company / Industry) escaped
+    against CSV formula injection. Numeric columns are left untouched.
+    """
+    df = df.copy()
+    for col in _CSV_TEXT_COLUMNS:
+        if col in df.columns:
+            df[col] = df[col].map(lambda v: escape_csv_formula(v) if isinstance(v, str) else v)
+    return df
 
 
 def coalesce(*series: pd.Series | int | float | str) -> pd.Series:

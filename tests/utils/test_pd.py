@@ -5,6 +5,7 @@ import pandas as pd
 
 from app.utils.pd import (
     coalesce,
+    escape_csv_text_columns,
     format_value_series,
     get_numeric_series,
     get_percentage_number_series,
@@ -70,6 +71,32 @@ class TestPandas(unittest.TestCase):
 
         result = get_percentage_number_series(input_series)
         pd.testing.assert_series_equal(result, expected_output, check_names=False)
+
+
+class TestEscapeCsvTextColumns(unittest.TestCase):
+    def test_escapes_company_but_not_numeric_columns(self):
+        """
+        Free-text columns (Company) are formula-escaped; numeric columns keep a
+        legitimate leading '-' untouched (no corruption).
+        """
+        df = pd.DataFrame(
+            {
+                "Company": ["=evil()", "Acme Inc"],
+                "Delta_Value": ["-1234", "5678"],
+            }
+        )
+
+        result = escape_csv_text_columns(df)
+
+        self.assertEqual(list(result["Company"]), ["'=evil()", "Acme Inc"])
+        # Numeric-looking column must be left exactly as-is.
+        self.assertEqual(list(result["Delta_Value"]), ["-1234", "5678"])
+
+    def test_returns_copy_without_mutating_input(self):
+        """The original DataFrame is not modified."""
+        df = pd.DataFrame({"Company": ["=x"]})
+        escape_csv_text_columns(df)
+        self.assertEqual(df["Company"].iloc[0], "=x")
 
 
 if __name__ == "__main__":

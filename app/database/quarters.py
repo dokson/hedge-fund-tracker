@@ -296,8 +296,10 @@ def save_comparison(comparison_dataframe: pd.DataFrame, date: str, fund_name: st
         quarter_folder = _db._safe_db_join(quarter_name)
         quarter_folder.mkdir(parents=True, exist_ok=True)
 
+        from app.utils.pd import escape_csv_text_columns
+
         filename = _db._safe_db_join(quarter_name, f"{fund_name.replace(' ', '_')}.csv")
-        comparison_dataframe.to_csv(filename, index=False)
+        escape_csv_text_columns(comparison_dataframe).to_csv(filename, index=False)
         logger.success("Created %s", filename)
     except Exception:
         logger.error(
@@ -318,13 +320,17 @@ def save_non_quarterly_filings(schedule_filings: list, filepath: str | None = No
         return
 
     try:
+        from app.utils.pd import escape_csv_text_columns
+
         combined_schedules_df = pd.concat(schedule_filings, ignore_index=True)
         combined_schedules_df.sort_values(
             by=["Date", "Filing_Date", "Fund", "Ticker"],
             ascending=[False, False, True, True],
             inplace=True,
         )
-        combined_schedules_df.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
+        escape_csv_text_columns(combined_schedules_df).to_csv(
+            filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL
+        )
         logger.success("Latest schedule filings saved to %s", filepath)
     except Exception:
         logger.error(

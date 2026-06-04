@@ -12,6 +12,23 @@ VALUE_FORMAT_MAP = [
     (1_000, "K"),
 ]
 
+# Characters that make a spreadsheet treat a cell as a formula (CSV injection).
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def escape_csv_formula(value: str) -> str:
+    """
+    Neutralise CSV/spreadsheet formula injection: a free-text cell starting with
+    a formula trigger (= + - @ tab CR) is prefixed with a single quote so Excel /
+    Sheets render it as literal text.
+
+    Apply to free-text fields only (e.g. Company) — never to numeric columns,
+    where a leading '-'/'+' is a legitimate value.
+    """
+    if value and value[0] in _CSV_FORMULA_PREFIXES:
+        return "'" + value
+    return value
+
 
 def add_days_to_yyyymmdd(yyyymmdd_str, days):
     """

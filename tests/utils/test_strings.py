@@ -2,6 +2,7 @@ import unittest
 
 from app.utils.strings import (
     add_days_to_yyyymmdd,
+    escape_csv_formula,
     format_percentage,
     format_string,
     format_value,
@@ -20,6 +21,22 @@ from app.utils.strings import (
     isin_to_cusip,
     parse_quarter,
 )
+
+
+class TestEscapeCsvFormula(unittest.TestCase):
+    """CSV/spreadsheet formula-injection escaping."""
+
+    def test_escapes_formula_prefixes(self):
+        """A value starting with a formula trigger is prefixed with a quote."""
+        for payload in ("=1+1", "+1", "-cmd", "@SUM(A1)", '=HYPERLINK("x")'):
+            with self.subTest(value=payload):
+                self.assertEqual(escape_csv_formula(payload), "'" + payload)
+
+    def test_leaves_normal_text_untouched(self):
+        """Ordinary names (incl. digit-leading) and empty strings pass through."""
+        for value in ("Acme Inc", "", "3X Industries", "Globex Corp"):
+            with self.subTest(value=value):
+                self.assertEqual(escape_csv_formula(value), value)
 
 
 class TestStrings(unittest.TestCase):
