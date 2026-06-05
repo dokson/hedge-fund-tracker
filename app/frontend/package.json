@@ -74,13 +74,13 @@
     "vite": "^8.0.16"
   },
   "devDependencies": {
-    "@eslint-react/eslint-plugin": "^5.8.11",
+    "@eslint-react/eslint-plugin": "^5.8.12",
     "@eslint/js": "^10.0.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^25.9.1",
-    "@types/react": "^19.2.16",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^10.4.1",
