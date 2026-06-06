@@ -130,12 +130,41 @@ class TestTradingViewGetAvgPrice(unittest.TestCase):
         self.assertEqual(price, 150.0)  # (160 + 140) / 2
 
     @patch("app.stocks.libraries.trading_view.TvDatafeed")
-    def test_returns_none_when_date_not_in_data(self, mock_tv_class):
+    def test_uses_last_trading_day_before_requested_date(self, mock_tv_class):
         """
-        Returns None when the requested date is not present in the historical data.
+        Returns the most recent bar at or before the requested date when that
+        exact date has no bar (e.g., the requested date is a weekend/holiday).
         """
-        # Data only for 2023-12-24, not the requested 2023-12-25
-        hist_df = _make_hist_df(date_str="2023-12-24")
+        # Data only for 2023-12-24, requested 2023-12-25 (a holiday).
+        hist_df = _make_hist_df(high=155.0, low=145.0, date_str="2023-12-24")
+        mock_tv_class.return_value.get_hist.return_value = hist_df
+
+        price = TradingView.get_avg_price("AAPL", date(2023, 12, 25))
+
+        self.assertEqual(price, 150.0)  # (155 + 145) / 2 from the 24th
+
+    @patch("app.stocks.libraries.trading_view.TvDatafeed")
+    def test_picks_latest_bar_at_or_before_date(self, mock_tv_class):
+        """
+        With several bars, picks the latest one at or before the requested date,
+        ignoring any bars that fall after it.
+        """
+        hist_df = pd.DataFrame(
+            {"close": [10.0, 20.0, 30.0], "high": [12.0, 22.0, 32.0], "low": [8.0, 18.0, 28.0]},
+            index=pd.to_datetime(["2023-12-20", "2023-12-22", "2023-12-27"]),
+        )
+        mock_tv_class.return_value.get_hist.return_value = hist_df
+
+        price = TradingView.get_avg_price("AAPL", date(2023, 12, 25))
+
+        self.assertEqual(price, 20.0)  # (22 + 18) / 2 from the 22nd, not the 27th
+
+    @patch("app.stocks.libraries.trading_view.TvDatafeed")
+    def test_returns_none_when_all_bars_are_after_requested_date(self, mock_tv_class):
+        """
+        Returns None when no bar exists at or before the requested date.
+        """
+        hist_df = _make_hist_df(date_str="2023-12-27")
         mock_tv_class.return_value.get_hist.return_value = hist_df
 
         price = TradingView.get_avg_price("AAPL", date(2023, 12, 25))

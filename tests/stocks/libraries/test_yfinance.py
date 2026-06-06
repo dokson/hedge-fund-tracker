@@ -1,5 +1,5 @@
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -203,12 +203,40 @@ class TestYFinance(unittest.TestCase):
         self.assertEqual(price, 100.0)  # (110 + 90) / 2
         mock_download.assert_called_once()
 
-        # Mock empty download (fallback to current price)
+        # When no historical data exists in the window, the price must not be
+        # silently substituted with today's current price (that made the stored
+        # value drift between runs); it returns None so the fallback chain continues.
         mock_download.return_value = pd.DataFrame()
-        mock_get_current.return_value = 155.0
         price = YFinance.get_avg_price("AAPL", test_date)
-        self.assertEqual(price, 155.0)
-        mock_get_current.assert_called_once_with("AAPL")
+        self.assertIsNone(price)
+        mock_get_current.assert_not_called()
+
+    @patch("app.stocks.libraries.yfinance.yf.download")
+    @patch("app.stocks.libraries.yfinance.YFinance.get_current_price")
+    def test_get_avg_price_uses_last_trading_day_for_non_trading_date(
+        self, mock_get_current, mock_download
+    ):
+        """
+        For a non-trading date (weekend/holiday), returns the price of the most
+        recent trading day at or before that date, never today's current price.
+        """
+        # Requested date is a Sunday; the window returns bars up to the prior Friday.
+        df = pd.DataFrame(
+            {"High": [110.0, 120.0], "Low": [90.0, 100.0]},
+            index=[pd.Timestamp("2024-01-11"), pd.Timestamp("2024-01-12")],
+        )
+        mock_download.return_value = df
+
+        sunday = date(2024, 1, 14)
+        price = YFinance.get_avg_price("AAPL", sunday)
+
+        self.assertEqual(price, 110.0)  # (120 + 100) / 2 from the last (Friday) bar
+        mock_get_current.assert_not_called()
+
+        # The download window must look back before the requested date.
+        _, kwargs = mock_download.call_args
+        self.assertLess(kwargs["start"], sunday)
+        self.assertEqual(kwargs["end"], sunday + timedelta(days=1))
 
     @patch("app.stocks.libraries.yfinance.yf.download")
     @patch("app.stocks.libraries.yfinance.yf.Ticker")

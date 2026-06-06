@@ -283,15 +283,17 @@ class TradingView(FinanceLibrary):
             df.index = pd.to_datetime(df.index)
             target_date = pd.Timestamp(date_obj)
 
-            mask = df.index.normalize() == target_date
-            day_data = df[mask]
+            # Pick the most recent bar at or before the requested date, so non-trading
+            # dates (weekends/holidays) resolve to the last trading day.
+            on_or_before = df[df.index.normalize() <= target_date]
 
-            if not day_data.empty:
-                high = day_data["high"].iloc[0]
-                low = day_data["low"].iloc[0]
-                return round((high + low) / 2, 2)
+            if not on_or_before.empty:
+                last_bar = on_or_before.iloc[-1]
+                return round((last_bar["high"] + last_bar["low"]) / 2, 2)
 
-            logger.warning("TradingView: No data for %s on %s.", log_safe(ticker), date_obj)
+            logger.warning(
+                "TradingView: No data for %s at or before %s.", log_safe(ticker), date_obj
+            )
             return None
 
         except Exception:

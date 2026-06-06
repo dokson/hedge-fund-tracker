@@ -22,6 +22,8 @@ class YFinance(FinanceLibrary):
     """
 
     FALLBACK_SUFFIXES = [".TO", ".V"]
+    # Days to look back so a non-trading requested date falls onto the prior trading day.
+    AVG_PRICE_LOOKBACK_DAYS = 7
 
     @staticmethod
     def _sanitize_ticker(ticker: str) -> str:
@@ -143,7 +145,8 @@ class YFinance(FinanceLibrary):
         """
         Gets the average daily price for a ticker on a specific date using the yfinance library.
         The average price is calculated as (High + Low) / 2.
-        If no data is found for the specified date (e.g., delisting), tries with current_price.
+        If the requested date is not a trading day, the most recent trading day at or before it
+        is used; if no data exists in the lookback window, returns None.
 
         Args:
             ticker (str): The stock ticker.
@@ -155,10 +158,11 @@ class YFinance(FinanceLibrary):
 
         def _get_single_avg_price(t: str) -> float | None:
             search_ticker = YFinance._sanitize_ticker(t)
-            # 'end' parameter is exclusive: To get a single day, we need the next day as the end.
+            # Look back a few days so non-trading dates (weekends/holidays) resolve to
+            # the last trading day at or before the requested date. 'end' is exclusive.
             price_data = yf.download(
                 tickers=search_ticker,
-                start=date_obj,
+                start=date_obj - timedelta(days=YFinance.AVG_PRICE_LOOKBACK_DAYS),
                 end=date_obj + timedelta(days=1),
                 auto_adjust=False,
                 progress=False,
@@ -167,7 +171,7 @@ class YFinance(FinanceLibrary):
             if price_data is None or price_data.empty:
                 return None
             return round(
-                (price_data["High"].iloc[0].item() + price_data["Low"].iloc[0].item()) / 2, 2
+                (price_data["High"].iloc[-1].item() + price_data["Low"].iloc[-1].item()) / 2, 2
             )
 
         try:
@@ -193,12 +197,8 @@ class YFinance(FinanceLibrary):
                     except Exception:
                         continue
 
-            logger.warning(
-                "Using latest available price for %s (requested date %s not available)",
-                log_safe(ticker),
-                date_obj,
-            )
-            return YFinance.get_current_price(ticker)
+            logger.warning("YFinance: No price for %s at or before %s.", log_safe(ticker), date_obj)
+            return None
         except Exception as e:
             logger.error(
                 "Failed to get price for Ticker %s on %s using YFinance",
