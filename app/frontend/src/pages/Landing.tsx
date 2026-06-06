@@ -108,7 +108,7 @@ export default function Landing() {
             className="inline-flex animate-in fade-in zoom-in-95 duration-700"
             style={{ filter: "drop-shadow(0 12px 40px hsl(var(--primary) / 0.35))" }}
           >
-            <Logo className="h-28 w-28 sm:h-36 sm:w-36 rounded-2xl" />
+            <Logo className="h-40 w-40 sm:h-52 sm:w-52 rounded-2xl" />
           </div>
 
           <p

@@ -97,13 +97,16 @@ function ColumnHeader({
   );
 }
 
-function ScoreBadge({ score }: { score: number }) {
-  const bg =
-    score >= 80
-      ? "bg-positive/15 text-positive"
-      : score >= 60
-        ? "bg-warning/15 text-warning"
-        : "bg-negative/15 text-negative";
+function ScoreBadge({ score, invert = false }: { score: number; invert?: boolean }) {
+  // Risk is the one metric where higher = worse, so `invert` mirrors the
+  // thresholds: low score → green, high score → red.
+  const good = invert ? score <= 20 : score >= 80;
+  const mid = invert ? score <= 40 : score >= 60;
+  const bg = good
+    ? "bg-positive/15 text-positive"
+    : mid
+      ? "bg-warning/15 text-warning"
+      : "bg-negative/15 text-negative";
   return (
     <span
       className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-bold font-mono ${bg}`}
@@ -157,7 +160,7 @@ function RankCard({ s, onNavigate }: { s: RankedStock; onNavigate: (path: string
         <div>
           <div className="metric-label">Risk</div>
           <div className="mt-1">
-            <ScoreBadge score={s.riskScore} />
+            <ScoreBadge score={s.riskScore} invert />
           </div>
         </div>
         <div>
@@ -447,7 +450,7 @@ export default function AIRanking() {
                         <ScoreBadge score={s.lowVolatilityScore} />
                       </td>
                       <td className="p-3 text-center">
-                        <ScoreBadge score={s.riskScore} />
+                        <ScoreBadge score={s.riskScore} invert />
                       </td>
                       <td className="p-3 text-right font-mono">{s.holderCount}</td>
                       <td
