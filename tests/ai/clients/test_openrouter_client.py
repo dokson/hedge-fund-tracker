@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from app.ai.clients.openrouter_client import OpenRouterClient
 
@@ -14,9 +14,9 @@ class TestOpenRouterClient(unittest.TestCase):
     def test_generate_content_invocation(self, mock_openai):
         # Setup mock
         mock_instance = mock_openai.return_value
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content="Mocked OpenRouter response"))]
-        mock_instance.chat.completions.create.return_value = mock_response
+        mock_instance.chat.completions.create.return_value = [
+            MagicMock(choices=[MagicMock(delta=MagicMock(content="Mocked OpenRouter response"))])
+        ]
 
         # Re-initialize client to pick up mocked OpenAI instance
         with patch.dict("os.environ", {"OPENROUTER_API_KEY": self.openrouter_api_key}):
@@ -31,6 +31,7 @@ class TestOpenRouterClient(unittest.TestCase):
             model=OpenRouterClient.DEFAULT_MODEL,
             messages=[{"role": "user", "content": prompt}],
             extra_body={},
+            stream=True,
         )
 
         # Verify base_url and headers
@@ -41,6 +42,7 @@ class TestOpenRouterClient(unittest.TestCase):
                 "HTTP-Referer": "https://github.com/dokson/hedge-fund-tracker",
                 "X-Title": "Hedge Fund Tracker",
             },
+            timeout=ANY,
         )
 
 

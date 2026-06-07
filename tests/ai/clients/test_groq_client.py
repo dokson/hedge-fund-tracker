@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from app.ai.clients.groq_client import GroqClient
 
@@ -14,9 +14,9 @@ class TestGroqClient(unittest.TestCase):
     def test_generate_content_invocation(self, mock_openai):
         # Setup mock
         mock_instance = mock_openai.return_value
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content="Mocked Groq response"))]
-        mock_instance.chat.completions.create.return_value = mock_response
+        mock_instance.chat.completions.create.return_value = [
+            MagicMock(choices=[MagicMock(delta=MagicMock(content="Mocked Groq response"))])
+        ]
 
         # Re-initialize client to pick up mocked OpenAI instance
         with patch.dict("os.environ", {"GROQ_API_KEY": self.groq_api_key}):
@@ -31,11 +31,15 @@ class TestGroqClient(unittest.TestCase):
             model=GroqClient.DEFAULT_MODEL,
             messages=[{"role": "user", "content": prompt}],
             extra_body={},
+            stream=True,
         )
 
         # Verify base_url
         mock_openai.assert_called_with(
-            base_url="https://api.groq.com/openai/v1", api_key=self.groq_api_key, default_headers={}
+            base_url="https://api.groq.com/openai/v1",
+            api_key=self.groq_api_key,
+            default_headers={},
+            timeout=ANY,
         )
 
 

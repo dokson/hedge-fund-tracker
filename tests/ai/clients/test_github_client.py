@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from app.ai.clients.github_client import GitHubClient
 
@@ -14,9 +14,9 @@ class TestGitHubClient(unittest.TestCase):
     def test_generate_content_invocation(self, mock_openai):
         # Setup mock
         mock_instance = mock_openai.return_value
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content="Mocked response"))]
-        mock_instance.chat.completions.create.return_value = mock_response
+        mock_instance.chat.completions.create.return_value = [
+            MagicMock(choices=[MagicMock(delta=MagicMock(content="Mocked response"))])
+        ]
 
         # Re-initialize client to pick up mocked OpenAI instance
         with patch.dict("os.environ", {"GITHUB_TOKEN": self.github_token}):
@@ -31,6 +31,7 @@ class TestGitHubClient(unittest.TestCase):
             model=GitHubClient.DEFAULT_MODEL,
             messages=[{"role": "user", "content": prompt}],
             extra_body={},
+            stream=True,
         )
 
         # Verify base_url
@@ -38,6 +39,7 @@ class TestGitHubClient(unittest.TestCase):
             base_url="https://models.github.ai/inference",
             api_key=self.github_token,
             default_headers={},
+            timeout=ANY,
         )
 
 

@@ -478,9 +478,9 @@ The frontend can be deployed as a **static demo on GitHub Pages** — no Python 
 | Quarterly Trends | Fully functional |
 | Hedge Fund Portfolios | Fully functional |
 | Stocks Browser | Fully functional |
-| Funds Config | Read-only (data visible, no edits) |
 | AI Ranking | Disabled (requires local backend) |
 | AI Due Diligence | Disabled (requires local backend) |
+| Funds Config | Hidden |
 | AI Settings | Hidden |
 | Database Operations | Hidden |
 

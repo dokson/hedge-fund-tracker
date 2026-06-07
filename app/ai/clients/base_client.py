@@ -1,9 +1,18 @@
 import contextlib
+import contextvars
+import threading
+import time
 from abc import ABC, abstractmethod
 
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Cadence of the "still working" heartbeat during an in-flight generation.
+HEARTBEAT_INTERVAL_S = 10.0
+# Main-thread poll timeout, kept short so Ctrl+C stays responsive while a blocking
+# socket read (which swallows SIGINT, notably on Windows) is in progress.
+_INTERRUPT_POLL_S = 0.25
 
 
 class AIClient(ABC):
@@ -18,9 +27,50 @@ class AIClient(ABC):
     def generate_content(self, prompt: str, **kwargs) -> str:
         """
         Generate content using the AI service.
-        This is a template method that handles logging and delegation to the implementation.
+
+        Runs the provider call on a worker thread while the main thread polls on
+        a short timeout, so a slow/buffering provider stays interruptible by
+        Ctrl+C and emits a heartbeat instead of going silent.
         """
-        response = self._generate_content_impl(prompt, **kwargs)
+        model_name = self.get_model_name()
+        start = time.perf_counter()
+        done = threading.Event()
+        outcome: dict[str, str] = {}
+        failure: dict[str, BaseException] = {}
+
+        def _worker() -> None:
+            """
+            Runs the blocking provider call off the main thread.
+            """
+            try:
+                outcome["text"] = self._generate_content_impl(prompt, **kwargs)
+            except Exception as exc:
+                failure["exc"] = exc
+            finally:
+                done.set()
+
+        # Propagate context so the worker's logs reach the right SSE queue (app/api/sse.py).
+        ctx = contextvars.copy_context()
+        worker = threading.Thread(target=lambda: ctx.run(_worker), daemon=True)
+        worker.start()
+
+        next_heartbeat = HEARTBEAT_INTERVAL_S
+        while not done.wait(_INTERRUPT_POLL_S):
+            elapsed = time.perf_counter() - start
+            if elapsed >= next_heartbeat:
+                logger.progress("%s: still working... %.0fs elapsed", model_name, elapsed)
+                next_heartbeat += HEARTBEAT_INTERVAL_S
+
+        if "exc" in failure:
+            raise failure["exc"]
+
+        response = outcome.get("text", "")
+        logger.success(
+            "%s: response in %.1fs (%d chars)",
+            model_name,
+            time.perf_counter() - start,
+            len(response),
+        )
         self._log_response(prompt, response)
         return response
 

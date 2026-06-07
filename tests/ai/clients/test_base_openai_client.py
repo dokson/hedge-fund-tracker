@@ -3,7 +3,19 @@ from unittest.mock import MagicMock, patch
 
 from tenacity import RetryError
 
-from app.ai.clients.base_openai_client import OpenAIClient, OpenAIProviderConfig
+from app.ai.clients.base_openai_client import (
+    REQUEST_TIMEOUT_S,
+    OpenAIClient,
+    OpenAIProviderConfig,
+)
+
+
+def _stream(*contents):
+    """
+    Builds a fake streaming response: one chunk per content delta. A ``None``
+    delta models a chunk that carries no text (e.g. role-only or final chunk).
+    """
+    return [MagicMock(choices=[MagicMock(delta=MagicMock(content=c))]) for c in contents]
 
 
 class ConcreteOpenAIClient(OpenAIClient):
@@ -23,13 +35,17 @@ class TestOpenAIClientInit(unittest.TestCase):
     @patch("app.ai.clients.base_openai_client.OpenAI")
     def test_initializes_with_provided_api_key(self, mock_openai):
         """
-        Passes the env var API key and base URL to the OpenAI client on init.
+        Passes the env var API key, base URL and request timeout to the OpenAI
+        client on init.
         """
         with patch.dict("os.environ", {"TEST_API_KEY": "test-key-123"}):
             ConcreteOpenAIClient()
 
         mock_openai.assert_called_once_with(
-            base_url="https://api.test-provider.com/v1", api_key="test-key-123", default_headers={}
+            base_url="https://api.test-provider.com/v1",
+            api_key="test-key-123",
+            default_headers={},
+            timeout=REQUEST_TIMEOUT_S,
         )
 
     @patch("app.ai.clients.base_openai_client.OpenAI")
@@ -76,12 +92,10 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
     @patch("app.ai.clients.base_openai_client.OpenAI")
     def test_returns_content_from_successful_api_call(self, mock_openai):
         """
-        Returns the text content from the first choice in the API response.
+        Accumulates the streamed deltas into the full response text.
         """
         mock_instance = mock_openai.return_value
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content="Generated text"))]
-        mock_instance.chat.completions.create.return_value = mock_response
+        mock_instance.chat.completions.create.return_value = _stream("Generated ", "text")
 
         with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
             client = ConcreteOpenAIClient()
@@ -107,12 +121,11 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
     @patch("app.ai.clients.base_openai_client.OpenAI")
     def test_calls_api_with_correct_model_and_messages(self, mock_openai):
         """
-        Sends the prompt in the expected message format with the configured model.
+        Sends the prompt in the expected message format with the configured
+        model, requesting a streamed response.
         """
         mock_instance = mock_openai.return_value
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content="OK"))]
-        mock_instance.chat.completions.create.return_value = mock_response
+        mock_instance.chat.completions.create.return_value = _stream("OK")
 
         with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
             client = ConcreteOpenAIClient(model="test-model-v1")
@@ -120,18 +133,19 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
         client.generate_content("Hello!")
 
         mock_instance.chat.completions.create.assert_called_once_with(
-            model="test-model-v1", messages=[{"role": "user", "content": "Hello!"}], extra_body={}
+            model="test-model-v1",
+            messages=[{"role": "user", "content": "Hello!"}],
+            extra_body={},
+            stream=True,
         )
 
     @patch("app.ai.clients.base_openai_client.OpenAI")
-    def test_returns_empty_string_when_content_is_none(self, mock_openai):
+    def test_returns_empty_string_when_no_content_streamed(self, mock_openai):
         """
-        Returns an empty string when the API response content is None.
+        Returns an empty string when the stream yields no text deltas.
         """
         mock_instance = mock_openai.return_value
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content=None))]
-        mock_instance.chat.completions.create.return_value = mock_response
+        mock_instance.chat.completions.create.return_value = _stream(None)
 
         with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
             client = ConcreteOpenAIClient()
@@ -139,6 +153,23 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
         result = client.generate_content("Test prompt")
 
         self.assertEqual(result, "")
+
+    @patch("app.ai.clients.base_openai_client.OpenAI")
+    def test_logs_time_to_first_token(self, mock_openai):
+        """
+        Emits a first-token log as soon as the first delta arrives, so a slow
+        generation is observably progressing rather than appearing hung.
+        """
+        mock_instance = mock_openai.return_value
+        mock_instance.chat.completions.create.return_value = _stream("hello")
+
+        with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
+            client = ConcreteOpenAIClient()
+
+        with self.assertLogs("app.ai.clients.base_openai_client", level="INFO") as cm:
+            client.generate_content("Test prompt")
+
+        self.assertTrue(any("first token" in line for line in cm.output))
 
 
 if __name__ == "__main__":
