@@ -2,9 +2,9 @@
 PreToolUse hook: enforces that Python tooling (tests, typecheck, lint) runs
 inside the pipenv virtualenv for this repo.
 
-Background: the system Python on this dev machine has a polluted toon namespace
-and lacks pandas-stubs/fastapi_users, so running tests or pyright against it
-generates noise/false errors. The pipenv venv has the correct dependencies.
+Background: the system Python on this dev machine lacks pandas-stubs/fastapi_users,
+so running tests or pyright against it generates noise/false errors. The pipenv
+venv has the correct dependencies.
 
 Behavior: reads the hook JSON on stdin. If the proposed Bash/PowerShell command
 invokes `python -m unittest|pytest|mypy|ruff|pyright` or bare `pyright|ruff|

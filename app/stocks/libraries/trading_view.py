@@ -3,7 +3,8 @@ import re
 from datetime import date
 
 import pandas as pd
-import requests
+from curl_cffi import requests
+from curl_cffi.requests.exceptions import RequestException
 from tvDatafeed import Interval as TvInterval
 from tvDatafeed import TvDatafeed
 
@@ -59,7 +60,7 @@ class TradingView(FinanceLibrary):
                 headers=TradingView.SYMBOL_SEARCH_HEADERS,
                 timeout=TradingView.SYMBOL_SEARCH_TIMEOUT,
             )
-        except requests.RequestException:
+        except RequestException:
             logger.warning("TradingView: network error during symbol_search", exc_info=True)
             return []
 

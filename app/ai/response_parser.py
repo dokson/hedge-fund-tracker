@@ -1,6 +1,6 @@
 import re
 
-from toon import decode
+from toon_format import decode
 
 from app.utils.logger import get_logger, log_safe
 

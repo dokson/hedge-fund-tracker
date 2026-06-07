@@ -1,6 +1,7 @@
 import os
 
-import requests
+from curl_cffi import requests
+from curl_cffi.requests.exceptions import RequestException
 from dotenv import load_dotenv
 
 from app.utils.logger import get_logger, log_safe
@@ -44,7 +45,7 @@ class FMP:
                 params={"symbol": ticker, "apikey": FMP.API_KEY},
                 timeout=FMP.TIMEOUT,
             )
-        except requests.RequestException:
+        except RequestException:
             logger.warning("FMP: network error", exc_info=True)
             return None
 

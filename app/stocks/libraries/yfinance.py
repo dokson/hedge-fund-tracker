@@ -3,8 +3,9 @@ import re
 from datetime import date, timedelta
 
 import pandas as pd
-import requests
 import yfinance as yf
+from curl_cffi import requests
+from curl_cffi.requests.exceptions import RequestException
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.stocks.libraries.base_library import FinanceLibrary
@@ -127,7 +128,7 @@ class YFinance(FinanceLibrary):
                     return symbol
             logger.warning("YFinance: No ticker found for CUSIP %s.", log_safe(cusip))
             return None
-        except (requests.RequestException, ValueError):
+        except (RequestException, ValueError):
             logger.error(
                 "Failed to get ticker for CUSIP %s using YFinance", log_safe(cusip), exc_info=True
             )

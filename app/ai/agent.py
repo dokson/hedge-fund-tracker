@@ -2,7 +2,7 @@ from datetime import date
 
 import pandas as pd
 from tenacity import RetryError, retry, retry_if_exception_type, stop_after_attempt, wait_fixed
-from toon import encode
+from toon_format import encode
 
 from app.ai.clients import AIClient
 from app.ai.promise_score_validator import PromiseScoreValidator

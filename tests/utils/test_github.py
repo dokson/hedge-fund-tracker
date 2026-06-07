@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-import requests
+from curl_cffi.requests.exceptions import RequestException
 
 from app.utils.github import open_issue
 
@@ -250,7 +250,7 @@ class TestGithub(unittest.TestCase):
         mock_search_response.json.return_value = {"total_count": 0}
         mock_get.return_value = mock_search_response
 
-        mock_post.side_effect = requests.exceptions.RequestException("API is down")
+        mock_post.side_effect = RequestException("API is down")
 
         with self.assertLogs("app.utils.github", level="INFO") as cm:
             open_issue("API Error Test", "This should be logged as a fallback.")

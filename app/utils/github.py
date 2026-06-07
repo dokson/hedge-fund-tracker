@@ -1,6 +1,7 @@
 import os
 
-import requests
+from curl_cffi import requests
+from curl_cffi.requests.exceptions import RequestException
 from dotenv import load_dotenv
 
 from app.utils.logger import get_logger, log_safe
@@ -126,7 +127,7 @@ def open_issue(subject, body):
         # If no existing issue is found, create a new one
         create_url = f"https://api.github.com/repos/{repo}/issues"
 
-    except requests.exceptions.RequestException:
+    except RequestException:
         logger.error(
             "::error::❌ An exception occurred while searching for GitHub Issue", exc_info=True
         )
@@ -165,6 +166,6 @@ def open_issue(subject, body):
             )
             print_error()
 
-    except requests.exceptions.RequestException:
+    except RequestException:
         logger.error("::error::❌ An exception occurred while creating GitHub Issue", exc_info=True)
         print_error()

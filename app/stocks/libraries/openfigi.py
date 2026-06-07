@@ -1,6 +1,7 @@
 import os
 
-import requests
+from curl_cffi import requests
+from curl_cffi.requests.exceptions import RequestException
 from dotenv import load_dotenv
 
 from app.stocks.libraries.base_library import FinanceLibrary
@@ -45,7 +46,7 @@ class OpenFIGI(FinanceLibrary):
                 headers=headers,
                 timeout=OpenFIGI.TIMEOUT,
             )
-        except requests.RequestException:
+        except RequestException:
             logger.warning("OpenFIGI: network error", exc_info=True)
             return None
 

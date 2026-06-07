@@ -4,10 +4,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 from tenacity import RetryError
 
-try:
-    from app.ai.agent import AnalystAgent
-except ImportError as _e:  # pragma: no cover — optional dep `toon` missing
-    raise unittest.SkipTest(f"app.ai.agent unavailable: {_e}") from None
+from app.ai.agent import AnalystAgent
 
 
 def _make_stock_df(**kwargs):

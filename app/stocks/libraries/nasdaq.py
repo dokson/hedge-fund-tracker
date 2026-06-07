@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-import requests
+from curl_cffi import requests
 
 from app.stocks.libraries.base_library import FinanceLibrary
 from app.utils.logger import get_logger

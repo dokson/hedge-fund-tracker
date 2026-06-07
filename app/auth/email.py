@@ -14,7 +14,8 @@ from __future__ import annotations
 import os
 from typing import Final
 
-import requests
+from curl_cffi import requests
+from curl_cffi.requests.exceptions import RequestException
 
 from app.utils.logger import get_logger
 
@@ -47,7 +48,7 @@ async def _send(to: str, subject: str, html: str) -> None:
             timeout=_REQUEST_TIMEOUT,
         )
         response.raise_for_status()
-    except requests.RequestException:
+    except RequestException:
         logger.exception("Failed to send email to %s (subject=%r)", to, subject)
 
 

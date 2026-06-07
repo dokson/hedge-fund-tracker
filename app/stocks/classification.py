@@ -21,7 +21,8 @@ import os
 import re
 from typing import cast
 
-import requests
+from curl_cffi import requests
+from curl_cffi.requests.exceptions import RequestException
 
 from app.database import load_sector_hierarchy, load_stocks
 from app.stocks.libraries.yfinance import YFinance
@@ -87,7 +88,7 @@ def _llm_classify(ticker: str, company: str) -> str | None:
             },
             timeout=GROQ_TIMEOUT,
         )
-    except requests.RequestException:
+    except RequestException:
         logger.warning("Groq classification: network error for %s", log_safe(ticker), exc_info=True)
         return None
 

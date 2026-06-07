@@ -34,7 +34,8 @@ from pathlib import Path
 from typing import cast
 from urllib.parse import quote
 
-import requests
+from curl_cffi import requests
+from curl_cffi.requests.exceptions import RequestException
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -99,8 +100,21 @@ FINANCE_TERMS = (
     "wall street",
 )
 
-session = requests.Session()
-session.headers.update({"User-Agent": USER_AGENT, "Accept": "application/json"})
+# curl_cffi Sessions are not thread-safe; the ThreadPoolExecutor in main() fans
+# requests across workers, so each thread gets its own session.
+_thread_local = threading.local()
+
+
+def _get_session() -> requests.Session:
+    """
+    Returns the calling thread's Session, creating it on first use.
+    """
+    session: requests.Session | None = getattr(_thread_local, "session", None)
+    if session is None:
+        session = requests.Session()
+        session.headers.update({"User-Agent": USER_AGENT, "Accept": "application/json"})
+        _thread_local.session = session
+    return session
 
 
 class TransientHTTPError(Exception):
@@ -110,7 +124,7 @@ class TransientHTTPError(Exception):
 
 
 @retry(
-    retry=retry_if_exception_type((TransientHTTPError, requests.RequestException)),
+    retry=retry_if_exception_type((TransientHTTPError, RequestException)),
     wait=wait_exponential(multiplier=1, min=1, max=10),
     stop=stop_after_attempt(5),
     reraise=True,
@@ -120,7 +134,7 @@ def _http_get_json(url: str, params: dict | None = None) -> dict | None:
     GETs JSON with retries on transient failures. Returns None on 404
     (non-existent article) so callers can distinguish "no data" from "throttled".
     """
-    r = session.get(url, params=params, timeout=20)
+    r = _get_session().get(url, params=params, timeout=20)
     if r.status_code == 404:
         return None
     if r.status_code >= 500 or r.status_code == 429:

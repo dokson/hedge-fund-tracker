@@ -1,11 +1,13 @@
 import atexit
 import os
 import re
+import threading
 from contextlib import contextmanager
 from typing import Any
 
-import requests
 from bs4 import BeautifulSoup
+from curl_cffi import requests
+from curl_cffi.requests import exceptions as curl_exc
 from tenacity import RetryError, retry, retry_if_result, stop_after_attempt, wait_exponential
 
 from app.scraper.rate_limiter import RateLimiter
@@ -24,54 +26,84 @@ SEC_URL = "https://" + SEC_HOST
 
 def _build_session() -> requests.Session:
     """
-    Builds a requests.Session pre-configured with SEC-required headers.
+    Builds a Session pre-configured with the SEC-required headers.
     """
-    s = requests.Session()
-    s.headers.update(
+    session = requests.Session()
+    session.headers.update(
         {
             "User-Agent": USER_AGENT,
             "Accept-Encoding": "gzip, deflate",
             "HOST": SEC_HOST,
         }
     )
-    return s
+    return session
 
 
-# Shared session + rate limiter: process-wide singletons.
-# - requests.Session reuses TCP+TLS across parallel workers (thread-safe via urllib3 PoolManager).
+# Per-thread sessions + a process-wide rate limiter.
+# - curl_cffi Sessions wrap a single libcurl handle and are NOT thread-safe, so each
+#   worker thread owns its own (database.updater fans fetches across a ThreadPoolExecutor).
+#   Each session reuses TCP+TLS for its thread; instances are tracked so close_session()
+#   can release them all.
 # - SEC EDGAR fair-access policy caps clients at ~10 req/s per User-Agent; the token bucket
-#   bounds requests across all worker threads regardless of pool size.
-# Lifecycle: created at import, closed at interpreter exit via atexit. Use reset_session() in
-# tests to drop and rebuild both singletons, or scraper_session() for a scoped override.
-_session: requests.Session = _build_session()
+#   bounds requests across all worker threads regardless of how many sessions exist.
+# Lifecycle: sessions are created lazily on first use per thread, closed at interpreter exit
+# via atexit. Use reset_session() in tests to drop them and rebuild the rate limiter, or
+# scraper_session() for a scoped override.
+_thread_local = threading.local()
+_sessions: list[requests.Session] = []
+_sessions_lock = threading.Lock()
 _rate_limiter = RateLimiter(rate=9, capacity=9)
+
+
+def _get_session() -> requests.Session:
+    """
+    Returns the calling thread's Session, creating it on first use.
+
+    curl_cffi Sessions are not thread-safe, so each thread owns its own. New
+    instances are registered so close_session() can release every thread's
+    connections at shutdown.
+    """
+    session: requests.Session | None = getattr(_thread_local, "session", None)
+    if session is None:
+        session = _build_session()
+        _thread_local.session = session
+        with _sessions_lock:
+            _sessions.append(session)
+    return session
 
 
 def close_session() -> None:
     """
-    Closes the shared session, releasing pooled connections. Safe to call multiple times.
+    Closes every Session created across all threads, releasing pooled
+    connections. Safe to call multiple times.
     """
-    global _session
-    try:
-        _session.close()
-    except Exception:
-        logger.debug("Error closing shared SEC session", exc_info=True)
+    with _sessions_lock:
+        sessions = list(_sessions)
+        _sessions.clear()
+    for session in sessions:
+        try:
+            session.close()
+        except Exception:
+            logger.debug("Error closing a SEC session", exc_info=True)
+    # Drop the current thread's reference so the next call rebuilds it. Other
+    # threads' references go stale but point at already-closed sessions.
+    if hasattr(_thread_local, "session"):
+        del _thread_local.session
 
 
 def reset_session() -> None:
     """
-    Closes and rebuilds the shared session and rate limiter. Intended for test isolation.
+    Closes all sessions and rebuilds the rate limiter. Intended for test isolation.
     """
-    global _session, _rate_limiter
+    global _rate_limiter
     close_session()
-    _session = _build_session()
     _rate_limiter = RateLimiter(rate=9, capacity=9)
 
 
 @contextmanager
 def scraper_session():
     """
-    Context manager that ensures the shared session is closed on exit.
+    Context manager that ensures all sessions are closed on exit.
 
     Use around long-running batch jobs to guarantee connection cleanup:
 
@@ -124,24 +156,24 @@ def _get_request(url: str) -> requests.Response | None:
     """
     _rate_limiter.acquire()
     try:
-        response = _session.get(url, timeout=15)
+        response = _get_session().get(url, timeout=15)
         response.raise_for_status()
         return response
-    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+    except (curl_exc.Timeout, curl_exc.ConnectionError) as exc:
         logger.warning(
             "Transient network error for %s: %s",
             log_safe(url, max_len=200),
             log_safe(exc.__class__.__name__),
         )
         return None
-    except requests.exceptions.HTTPError as exc:
+    except curl_exc.HTTPError as exc:
         status = exc.response.status_code if exc.response is not None else None
         if status is not None and (status >= 500 or status == 429):
             logger.warning("Transient HTTP %s for %s", status, log_safe(url, max_len=200))
             return None
         logger.error("Request failed for %s", log_safe(url, max_len=200), exc_info=True)
         return None
-    except requests.exceptions.RequestException:
+    except curl_exc.RequestException:
         logger.error("Request failed for %s", log_safe(url, max_len=200), exc_info=True)
         return None
 

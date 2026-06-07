@@ -1,9 +1,6 @@
 import unittest
 
-try:
-    from app.ai.response_parser import ResponseParser
-except ImportError as _e:  # pragma: no cover — optional dep `toon` missing
-    raise unittest.SkipTest(f"app.ai.response_parser unavailable: {_e}") from None
+from app.ai.response_parser import ResponseParser
 
 
 class TestResponseParser(unittest.TestCase):
@@ -119,7 +116,7 @@ ticker: "NVDA"
         # [ is in the character class. So "checklist: [" IS matched and kept!
         # "Step 1", line is NOT matched (no colon, no value part validation?).
         # ] line is brackets.
-        # If toon.decode handles "checklist: [" followed by "ticker: ...", we get {'checklist': '[', 'ticker': ...}
+        # If toon_format.decode handles "checklist: [" followed by "ticker: ...", we get {'checklist': '[', 'ticker': ...}
         # Let's see what happens.
         result = ResponseParser.extract_and_decode_toon(response_text)
         self.assertEqual(result.get("ticker"), "NVDA")
