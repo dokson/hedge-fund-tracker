@@ -147,7 +147,7 @@ def run_all_funds_report():
     print("This will generate last vs previous quarter comparisons.")
 
     with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(process_fund, fund, skip_old=True): fund for fund in hedge_funds}
+        futures = {executor.submit(process_fund, fund, offset=0, skip_old=True): fund for fund in hedge_funds}
 
         for i, future in enumerate(as_completed(futures)):
             fund = futures[future]

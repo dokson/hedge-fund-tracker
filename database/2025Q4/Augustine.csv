@@ -1,6 +1,6 @@
 CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
-F92124100,TTE,TotalEnergies SE ADR (tte),91480,91480,5.98M,5.98M,NEW,1.2%
 088606108,BHP,Bhp Group Ltd.Spon Adr (bhp),53029,53029,3.2M,3.2M,NEW,0.64%
+F92124100,TTE,TotalEnergies SE ADR (tte),91480,8141,5.98M,532.6K,+9.8%,1.2%
 464288638,IGIB,iShares 5-10Y Inv Gr Corp (igi,4650,4650,250.55K,250.55K,NEW,0.05%
 101137107,BSX,Boston Scientific Corp (bsx),2457,2457,234.28K,234.27K,NEW,0.05%
 697900108,PAAS,Pan American Silver Corp (paas,4500,4500,233.15K,233.15K,NEW,0.05%
@@ -118,5 +118,4 @@ G7709Q104,RPRX,Royalty Pharma PLC (rprx ),0,-6450,0,-227.56K,CLOSE,0%
 46138K103,FXE,Currency Shares Euro Tr (fxe),0,-10881,0,-1.18M,CLOSE,0%
 03831W108,APP,AppLovin Corp - Cl A (app),263330,-4360,177.44M,-2.94M,-1.6%,35.4%
 37940X102,GPN,Global Pymts (gpn),0,-40356,0,-3.35M,CLOSE,0%
-89151E109,TTE,TotalEnergies SE ADR (tte),0,-91339,0,-5.45M,CLOSE,0%
 Total,,,,,500.85M,-2.95M,-0.6%,100%

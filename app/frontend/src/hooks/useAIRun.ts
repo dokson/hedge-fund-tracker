@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getModels } from "@/lib/dataService";
 
@@ -18,6 +18,8 @@ export interface AIRunContext {
   modelId: string | undefined;
   providerId: string | undefined;
   onLog: (line: string) => void;
+  /** Aborts the request when the page unmounts or a new run starts. */
+  signal: AbortSignal;
 }
 
 export interface UseAIRunOptions<T> {
@@ -74,8 +76,19 @@ export function useAIRun<T>({
   const [terminalLines, setTerminalLines] = useState<string[]>(cached?.terminalLines ?? []);
   const [modelUsed, setModelUsed] = useState(cached?.modelUsed ?? "");
   const [result, setResult] = useState<T | null>((cached?.result as T | undefined) ?? null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight request when the page unmounts, so abandoned AI runs
+  // don't keep the HTTP connection and stream open in the background.
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   const run = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setResult(null);
     setTerminalLines([]);
@@ -89,6 +102,7 @@ export function useAIRun<T>({
       const value = await execute({
         modelId: selectedModel || undefined,
         providerId: selectedProviderId || undefined,
+        signal: controller.signal,
         onLog: (line) => {
           collected.push(line);
           setTerminalLines((prev) => [...prev, line]);
@@ -105,6 +119,7 @@ export function useAIRun<T>({
       }
       if (successMessage) toast.success(successMessage(value));
     } catch (err: unknown) {
+      if (controller.signal.aborted) return;
       const msg = err instanceof Error ? err.message : String(err);
       toast.error(`AI Error: ${msg}`);
       console.error(err);

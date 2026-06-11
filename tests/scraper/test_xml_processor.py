@@ -109,6 +109,69 @@ class TestXmlProcessor(unittest.TestCase):
         val_a = df.loc[df["Company"] == "Stock A", "Value"].values[0]
         self.assertEqual(val_a, 100000)
 
+    def test_xml_to_dataframe_13f_principal_amount_rows_are_kept(self):
+        """
+        Positions denominated in principal amount (PRN, debt instruments) are
+        part of the filing and must be preserved: the saved per-fund CSV is a
+        faithful record, equity-only filtering belongs to the analysis layer.
+        """
+        xml_content = """
+        <informationtable>
+            <infotable>
+                <nameofissuer>Equity Co</nameofissuer>
+                <cusip>CUSIP1</cusip>
+                <value>10000000</value>
+                <shrsorprnamt><sshprnamt>100000</sshprnamt><sshprnamttype>SH</sshprnamttype></shrsorprnamt>
+            </infotable>
+            <infotable>
+                <nameofissuer>Convertible Bond Co</nameofissuer>
+                <cusip>CUSIP2</cusip>
+                <value>5000000</value>
+                <shrsorprnamt><sshprnamt>5000000</sshprnamt><sshprnamttype>PRN</sshprnamttype></shrsorprnamt>
+            </infotable>
+        </informationtable>
+        """
+
+        df = xml_to_dataframe_13f(xml_content)
+
+        self.assertEqual(len(df), 2)
+        self.assertEqual(int(df["Value"].sum()), 15000000)
+
+    def test_xml_to_dataframe_13f_unparseable_numbers_dropped_with_warning(self):
+        """
+        Rows whose Value or Shares cannot be parsed as numbers must be dropped
+        with a warning, not silently zeroed nor crash the parser.
+        """
+        xml_content = """
+        <informationtable>
+            <infotable>
+                <nameofissuer>Good Co</nameofissuer>
+                <cusip>CUSIP1</cusip>
+                <value>10000000</value>
+                <shrsorprnamt><sshprnamt>100000</sshprnamt></shrsorprnamt>
+            </infotable>
+            <infotable>
+                <nameofissuer>Bad Value Co</nameofissuer>
+                <cusip>CUSIP2</cusip>
+                <value>12abc</value>
+                <shrsorprnamt><sshprnamt>1000</sshprnamt></shrsorprnamt>
+            </infotable>
+            <infotable>
+                <nameofissuer>Bad Shares Co</nameofissuer>
+                <cusip>CUSIP3</cusip>
+                <value>5000000</value>
+                <shrsorprnamt><sshprnamt>garbage</sshprnamt></shrsorprnamt>
+            </infotable>
+        </informationtable>
+        """
+
+        with self.assertLogs("app.scraper.xml_processor", level="WARNING") as captured:
+            df = xml_to_dataframe_13f(xml_content)
+
+        self.assertEqual(len(df), 1)
+        self.assertEqual(df["Company"][0], "Good Co")
+        self.assertTrue(any("2" in message for message in captured.output))
+
 
 if __name__ == "__main__":
     unittest.main()

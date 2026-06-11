@@ -106,23 +106,28 @@ export async function runDueDiligence(
 // ─── Streaming AI calls ────────────────────────────────────────────────────────
 
 async function _readSSEStream(res: Response, onLog: (line: string) => void): Promise<unknown> {
-  const reader = res.body!.getReader();
+  if (!res.body) throw new Error("Response body is not readable");
+  const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const event = JSON.parse(line.slice(6));
-      if (event.type === "log") onLog(event.text);
-      else if (event.type === "result") return event.data;
-      else if (event.type === "error") throw new Error(event.message);
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const event = JSON.parse(line.slice(6));
+        if (event.type === "log") onLog(event.text);
+        else if (event.type === "result") return event.data;
+        else if (event.type === "error") throw new Error(event.message);
+      }
     }
+  } finally {
+    reader.cancel().catch(() => {});
   }
   throw new Error("Stream ended without result");
 }
@@ -133,10 +138,12 @@ export async function runPromiseScoreStream(
   modelId: string | undefined,
   providerId: string | undefined,
   onLog: (line: string) => void,
+  signal?: AbortSignal,
 ): Promise<unknown[]> {
   const res = await fetch(`${API_BASE}/api/ai/promise-score/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal,
     body: JSON.stringify({
       quarter,
       top_n: topN,
@@ -157,10 +164,12 @@ export async function runDueDiligenceStream(
   modelId: string | undefined,
   providerId: string | undefined,
   onLog: (line: string) => void,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const res = await fetch(`${API_BASE}/api/ai/due-diligence/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal,
     body: JSON.stringify({
       ticker,
       quarter,

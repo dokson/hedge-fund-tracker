@@ -157,10 +157,17 @@ def stocks_lock(timeout=30):
                         ) from exc
 
                     # Reclaim a stale lock that outlived its owner (>60s).
+                    # Rename before deleting: the rename is atomic, so when
+                    # several contenders reclaim at once only one wins and a
+                    # lock just re-acquired by a third party can't be deleted.
                     try:
                         if time.time() - Path(lock_path).stat().st_mtime > 60:
+                            stale_path = lock_path.with_name(
+                                f"{lock_path.name}.stale-{os.getpid()}"
+                            )
                             try:
-                                Path(lock_path).unlink()
+                                Path(lock_path).rename(stale_path)
+                                stale_path.unlink()
                                 continue
                             except OSError:
                                 pass

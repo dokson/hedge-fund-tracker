@@ -90,6 +90,21 @@ def _run_sse_target(target_fn: Callable[[], object], log_q: queue.SimpleQueue) -
             log_q.put(("error", "stream terminated unexpectedly"))
 
 
+def _queue_get_with_timeout(log_q: queue.SimpleQueue) -> tuple | None:
+    """
+    Pop the next queue item, returning None after a short poll timeout.
+
+    The SSE consumer must never block an executor thread indefinitely: when a
+    client disconnects the async generator is cancelled, but a thread parked
+    in a timeout-less ``get()`` would stay blocked until the worker finishes
+    (or forever, if it hangs). Polling bounds that leak to one timeout window.
+    """
+    try:
+        return log_q.get(timeout=1.0)
+    except queue.Empty:
+        return None
+
+
 def _make_sse_stream(target_fn: Callable[[], object]) -> StreamingResponse:
     """
     Run target_fn in a thread, capture its stdout via contextvar, and stream
@@ -102,7 +117,9 @@ def _make_sse_stream(target_fn: Callable[[], object]) -> StreamingResponse:
     async def generate():
         loop = asyncio.get_running_loop()
         while True:
-            item = await loop.run_in_executor(None, log_q.get)
+            item = await loop.run_in_executor(None, _queue_get_with_timeout, log_q)
+            if item is None:
+                continue
             kind, payload = item
             if kind == "log":
                 yield f"data: {json.dumps({'type': 'log', 'text': payload})}\n\n"

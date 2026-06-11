@@ -74,6 +74,10 @@ def xml_to_dataframe_13f(xml_content):
     # Filter out options to keep only shares
     df = df[df["Put/Call"] == ""].drop("Put/Call", axis=1)
 
+    # PRN (principal-amount) rows are kept on purpose: the saved per-fund CSV
+    # must stay a faithful record of the filing, debt positions included.
+    # Equity-only views belong to the analysis layer on top.
+
     # Filter out 0 values
     df = df[(df["Value"] != "0") & (df["Shares"] != "0")]
 
@@ -81,7 +85,17 @@ def xml_to_dataframe_13f(xml_content):
     df["Company"] = df["Company"].str.strip().str.replace(r"\s+", " ", regex=True)
     df["CUSIP"] = df["CUSIP"].str.upper()
     df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
-    df["Shares"] = pd.to_numeric(df["Shares"], errors="coerce").astype(int)
+    df["Shares"] = pd.to_numeric(df["Shares"], errors="coerce")
+
+    # Unparseable numbers must surface, not silently corrupt the report
+    unparseable_mask = df["Value"].isna() | df["Shares"].isna()
+    if unparseable_mask.any():
+        logger.warning(
+            "Dropped %d row(s) with unparseable Value/Shares from 13F filing",
+            int(unparseable_mask.sum()),
+        )
+        df = df[~unparseable_mask]
+    df["Shares"] = df["Shares"].astype(int)
 
     # --- Smart Value Scaling (Heuristic-based) ---
     # SEC rules for XML filings technically require full dollar amounts, but many funds still report in thousands, while others use full dollars.

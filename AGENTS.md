@@ -33,6 +33,7 @@ cd app/frontend && npm install --legacy-peer-deps && cd ../..
 pipenv run app                              # web UI on auto-discovered port from 8000
 pipenv run app-cli                          # legacy terminal menu (6 analysis options)
 pipenv run update                           # database management CLI
+pipenv run regenerate [fund ...]            # rebuild all quarterly comparisons from EDGAR (amendment-aware); optional fund-name filter
 
 # Tests
 pipenv run test                                                          # all (Python); alias for unittest discover

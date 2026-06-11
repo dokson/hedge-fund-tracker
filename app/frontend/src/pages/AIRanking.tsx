@@ -212,9 +212,9 @@ export default function AIRanking() {
     result: results,
     run,
   } = useAIRun<RankedStock[]>({
-    execute: async ({ modelId, providerId, onLog }) => {
+    execute: async ({ modelId, providerId, onLog, signal }) => {
       if (!quarter) throw new Error("No quarters available");
-      const data = await runPromiseScoreStream(quarter, topN, modelId, providerId, onLog);
+      const data = await runPromiseScoreStream(quarter, topN, modelId, providerId, onLog, signal);
       return (data as RawRankedStock[]).map((s, i) => ({
         rank: i + 1,
         ticker: s.Ticker ?? s.ticker ?? "",

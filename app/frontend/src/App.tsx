@@ -1,11 +1,12 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Dashboard from "@/pages/Dashboard";
 import Landing from "@/pages/Landing";
 import { IS_GH_PAGES_MODE, BASE_PATH } from "@/lib/config";
@@ -31,6 +32,13 @@ const RouteFallback = () => (
   </div>
 );
 
+// Must live inside BrowserRouter: keys the boundary on the pathname so
+// navigating away from a crashed page recovers automatically.
+const RoutedErrorBoundary = ({ children }: { children: ReactNode }) => {
+  const location = useLocation();
+  return <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -38,36 +46,38 @@ const App = () => (
       <Sonner />
       <BrowserRouter basename={BASE_PATH || "/"}>
         <DashboardLayout>
-          <Suspense fallback={<RouteFallback />}>
-            <Routes>
-              {/* Home / landing — inside the shell so the sidebar persists */}
-              <Route path={ROUTES.home} element={<Landing />} />
+          <RoutedErrorBoundary>
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                {/* Home / landing — inside the shell so the sidebar persists */}
+                <Route path={ROUTES.home} element={<Landing />} />
 
-              {/* Core analysis routes — always available */}
-              <Route path={ROUTES.latest} element={<Dashboard />} />
-              <Route path={ROUTES.quarterly} element={<QuarterlyTrends />} />
-              <Route path={ROUTES.funds} element={<FundPortfolio />} />
-              <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
-              <Route path={ROUTES.stocks} element={<StockBrowser />} />
-              <Route path={`${ROUTES.stock}/:ticker`} element={<StockAnalysis />} />
+                {/* Core analysis routes — always available */}
+                <Route path={ROUTES.latest} element={<Dashboard />} />
+                <Route path={ROUTES.quarterly} element={<QuarterlyTrends />} />
+                <Route path={ROUTES.funds} element={<FundPortfolio />} />
+                <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
+                <Route path={ROUTES.stocks} element={<StockBrowser />} />
+                <Route path={`${ROUTES.stock}/:ticker`} element={<StockAnalysis />} />
 
-              {/* AI routes — available but disabled in GH Pages mode */}
-              <Route path={ROUTES.aiRanking} element={<AIRanking />} />
-              <Route path={ROUTES.aiDiligence} element={<AIDueDiligence />} />
+                {/* AI routes — available but disabled in GH Pages mode */}
+                <Route path={ROUTES.aiRanking} element={<AIRanking />} />
+                <Route path={ROUTES.aiDiligence} element={<AIDueDiligence />} />
 
-              {/* Restricted routes — completely unreachable in GH Pages mode for security */}
-              {!IS_GH_PAGES_MODE && (
-                <>
-                  <Route path={ROUTES.fundsConfig} element={<FundsConfig />} />
-                  <Route path={ROUTES.aiSettings} element={<AISettings />} />
-                  <Route path={ROUTES.database} element={<DatabasePage />} />
-                </>
-              )}
+                {/* Restricted routes — completely unreachable in GH Pages mode for security */}
+                {!IS_GH_PAGES_MODE && (
+                  <>
+                    <Route path={ROUTES.fundsConfig} element={<FundsConfig />} />
+                    <Route path={ROUTES.aiSettings} element={<AISettings />} />
+                    <Route path={ROUTES.database} element={<DatabasePage />} />
+                  </>
+                )}
 
-              {/* 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+                {/* 404 */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </RoutedErrorBoundary>
         </DashboardLayout>
       </BrowserRouter>
     </TooltipProvider>

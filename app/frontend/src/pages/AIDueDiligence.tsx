@@ -106,7 +106,7 @@ export default function AIDueDiligence() {
     result: report,
     run,
   } = useAIRun<DueDiligenceReport>({
-    execute: async ({ modelId, providerId, onLog }) => {
+    execute: async ({ modelId, providerId, onLog, signal }) => {
       if (!quarter) throw new Error("No quarters available");
       const t = inputTicker.toUpperCase();
       setTicker(t);
@@ -116,6 +116,7 @@ export default function AIDueDiligence() {
         modelId,
         providerId,
         onLog,
+        signal,
       )) as DueDiligenceReport;
       setGeneratedAt(new Date().toISOString().split("T")[0]);
       return result;
