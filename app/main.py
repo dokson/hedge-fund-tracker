@@ -33,6 +33,7 @@ from app.utils.console import (
 )
 from app.utils.logger import get_logger
 from app.utils.strings import (
+    eastern_today,
     format_percentage,
     format_value,
     get_percentage_formatter,
@@ -71,7 +72,7 @@ def run_view_nq_filings():
     interesting_day_range = 30
     subset_df = nq_filings_df[
         pd.to_datetime(nq_filings_df["Date"])
-        >= pd.Timestamp.now().normalize() - pd.Timedelta(days=interesting_day_range)
+        >= eastern_today() - pd.Timedelta(days=interesting_day_range)
     ].copy()
     tickers = subset_df["Ticker"].unique().tolist()
     # Fetch current prices and industry info

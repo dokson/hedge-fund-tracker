@@ -1,7 +1,10 @@
 import unittest
+from datetime import UTC, datetime
+from unittest.mock import patch
 
 from app.utils.strings import (
     add_days_to_yyyymmdd,
+    eastern_today,
     escape_csv_formula,
     format_percentage,
     format_string,
@@ -248,6 +251,24 @@ class TestStrings(unittest.TestCase):
         """
         self.assertEqual(get_next_yyyymmdd_day("20241231"), "20250101")
         self.assertEqual(get_next_yyyymmdd_day("20240228"), "20240229")
+
+    def test_eastern_today_uses_eastern_not_utc(self):
+        """
+        At 02:00 UTC the US Eastern date is still the previous day; the helper
+        must return the Eastern calendar date, not the local/UTC one, so SEC
+        filing-date filters don't drift by a day.
+        """
+        utc_instant = datetime(2026, 3, 15, 2, 0, tzinfo=UTC)
+
+        class _FixedDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return utc_instant.astimezone(tz)
+
+        with patch("app.utils.strings.datetime", _FixedDatetime):
+            result = eastern_today()
+
+        self.assertEqual(result.strftime("%Y-%m-%d"), "2026-03-14")
 
     def test_formatter_factories(self):
         """Tests the various formatter factory functions."""

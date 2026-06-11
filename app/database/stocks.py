@@ -13,6 +13,7 @@ import time
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager, suppress
+from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -105,9 +106,28 @@ def load_sector_hierarchy(filepath: str | None = None) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+@lru_cache(maxsize=8)
+def _load_stocks_cached(filepath: str, _mtime: float) -> pd.DataFrame:
+    """
+    Parse the stocks CSV, keyed by path and modification time.
+
+    The `_mtime` argument is part of the cache key only: a changed file gets a
+    new mtime and so re-reads, while repeated calls within aggregation loops
+    reuse the parsed frame. Callers receive copies (see load_stocks).
+    """
+    df = pd.read_csv(filepath, dtype=str, keep_default_na=False)
+    if "Industry" not in df.columns:
+        df["Industry"] = ""
+    return df.set_index("CUSIP")
+
+
 def load_stocks(filepath: str | None = None) -> pd.DataFrame:
     """
     Loads the stock master data (CUSIP, Ticker, Company, Industry) from the CSV file.
+
+    The parse is cached and invalidated by the file's modification time, so the
+    repeated reads inside aggregation loops don't re-parse the CSV each call. A
+    fresh copy is returned every time, so callers may mutate it freely.
 
     The Sector is intentionally not stored here — it is derivable by joining the
     `Industry` column against `database/sector_hierarchy.csv`. Legacy CSVs missing
@@ -117,13 +137,21 @@ def load_stocks(filepath: str | None = None) -> pd.DataFrame:
     if filepath is None:
         filepath = str(Path(_db.DB_FOLDER) / _db.STOCKS_FILE)
     try:
-        df = pd.read_csv(filepath, dtype=str, keep_default_na=False)
-        if "Industry" not in df.columns:
-            df["Industry"] = ""
-        return df.set_index("CUSIP")
+        mtime = Path(filepath).stat().st_mtime
+        return _load_stocks_cached(filepath, mtime).copy()
     except Exception:
         logger.error("while reading stocks file from '%s'", filepath, exc_info=True)
         return pd.DataFrame()
+
+
+def _clear_load_stocks_cache() -> None:
+    """
+    Drop the cached stocks parse (used by tests and after bulk rewrites).
+    """
+    _load_stocks_cached.cache_clear()
+
+
+load_stocks.cache_clear = _clear_load_stocks_cache  # type: ignore[attr-defined]
 
 
 @contextmanager

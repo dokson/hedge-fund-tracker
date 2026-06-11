@@ -315,6 +315,11 @@ export async function getExcludedHedgeFunds(): Promise<ExcludedHedgeFund[]> {
 
 const FUNDS_CSV_HEADER = '"CIK","Fund","Manager","Denomination","CIKs","URL"';
 
+/** Quotes a CSV field, doubling embedded double quotes per RFC 4180. */
+function csvQuote(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
 function fundsToCSV(funds: HedgeFund[]): string {
   const sorted = [...funds].sort((a, b) =>
     a.fund.localeCompare(b.fund, undefined, { sensitivity: "base" }),
@@ -323,9 +328,7 @@ function fundsToCSV(funds: HedgeFund[]): string {
     FUNDS_CSV_HEADER +
     "\n" +
     sorted
-      .map(
-        (f) => `"${f.cik}","${f.fund}","${f.manager}","${f.denomination}","${f.ciks}","${f.url}"`,
-      )
+      .map((f) => [f.cik, f.fund, f.manager, f.denomination, f.ciks, f.url].map(csvQuote).join(","))
       .join("\n") +
     "\n"
   );

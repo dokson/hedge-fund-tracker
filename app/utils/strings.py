@@ -1,9 +1,22 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
 
 from app.patterns import QUARTER_CAPTURE_RE
+
+# SEC filing dates are stamped in US Eastern; anchor "today" there so date
+# filters don't drift a day on machines in other timezones.
+_EASTERN = ZoneInfo("America/New_York")
+
+
+def eastern_today() -> pd.Timestamp:
+    """
+    Return the current calendar date in US Eastern as a midnight Timestamp.
+    """
+    return pd.Timestamp(datetime.now(_EASTERN).date())
+
 
 VALUE_FORMAT_MAP = [
     (1_000_000_000_000, "T"),

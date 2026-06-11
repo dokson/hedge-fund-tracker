@@ -24,7 +24,18 @@ const FundsConfig = lazy(() => import("@/pages/FundsConfig"));
 const DatabasePage = lazy(() => import("@/pages/DatabasePage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
-const queryClient = new QueryClient();
+// Explicit defaults: retry transient CSV/API failures with backoff (the
+// library default, made intentional) and treat data as fresh for a minute so
+// rapid navigation between pages doesn't refetch the whole CSV database.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+      staleTime: 60_000,
+    },
+  },
+});
 
 const RouteFallback = () => (
   <div className="flex items-center justify-center py-16 text-muted-foreground">

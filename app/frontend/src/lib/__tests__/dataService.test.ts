@@ -233,3 +233,26 @@ describe("hedge_funds CSV alphabetical ordering", () => {
     expect(remainingExcluded).toEqual(["Other"]);
   });
 });
+
+describe("hedge_funds CSV quote escaping (RFC 4180)", () => {
+  it("escapes embedded double quotes so the CSV round-trips", () => {
+    const fund: HedgeFund = {
+      cik: "001",
+      fund: 'John "JJ" Capital',
+      manager: 'A "B" C',
+      denomination: "Plain",
+      ciks: "",
+      url: "",
+    };
+    const csv = generateAddFundCSV([], fund);
+    const dataLine = csv.trim().split("\n")[1];
+    // Embedded quotes are doubled per RFC 4180.
+    expect(dataLine).toContain('"John ""JJ"" Capital"');
+    expect(dataLine).toContain('"A ""B"" C"');
+  });
+
+  it("does not alter fields without quotes", () => {
+    const csv = generateAddFundCSV([], mkFund("001", "Acme"));
+    expect(csv.trim().split("\n")[1]).toBe('"001","Acme","M","D","",""');
+  });
+});
