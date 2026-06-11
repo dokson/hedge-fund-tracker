@@ -101,7 +101,7 @@ repos:
   - repo: local
     hooks:
       - id: typecheck
-        name: pyright + mypy (pre-push)
+        name: pyright + mypy + unittest (pre-push)
         entry: python scripts/run_typechecks.py
         language: system
         stages: [pre-push]
@@ -109,6 +109,12 @@ repos:
       - id: frontend-check
         name: frontend lint + type-check + format check (pre-push)
         entry: npm run --prefix app/frontend check
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+      - id: frontend-tests
+        name: frontend tests (pre-push)
+        entry: npm test --prefix app/frontend -- --run
         language: system
         stages: [pre-push]
         pass_filenames: false

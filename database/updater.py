@@ -5,6 +5,7 @@ from tabulate import tabulate
 from app.analysis.non_quarterly import get_non_quarterly_filings_dataframe
 from app.analysis.quarterly_report import generate_comparison
 from app.database import (
+    MIN_REFERENCE_DATE,
     clean_stocks,
     delete_fund_from_database,
     get_funds_missing_quarters,
@@ -36,7 +37,6 @@ from app.utils.readme import update_readme
 from app.utils.strings import get_previous_quarter_end_date
 
 APP_NAME = "HEDGE FUND TRACKER - DATABASE UPDATER"
-MIN_REFERENCE_DATE = "2025-03-31"
 # Hard ceiling on the back-search through a fund's filing history, so a fund
 # that never matches the target quarter can't loop indefinitely hammering EDGAR.
 MAX_SEARCH_OFFSET = 20
@@ -70,8 +70,8 @@ def process_fund(fund_info, offset=0, skip_old=False):
         fund_info (dict): A dictionary containing fund information, including 'CIK' and 'Fund' name.
         offset (int, optional): The number of filings to skip. Defaults to 0 (latest filing).
     """
-    cik = fund_info.get('CIK')
-    fund_name = fund_info.get('Fund') or fund_info.get('CIK')
+    cik = fund_info.get("CIK")
+    fund_name = fund_info.get("Fund") or fund_info.get("CIK")
 
     try:
         # Step 1: Fetch the primary filing for the given offset.
@@ -80,15 +80,17 @@ def process_fund(fund_info, offset=0, skip_old=False):
             if not filings:
                 return
 
-            latest_date = filings[0]['reference_date']
+            latest_date = filings[0]["reference_date"]
 
             if skip_old and latest_date < MIN_REFERENCE_DATE:
-                print(f"⏩ {fund_name}: latest filing found at offset {offset} ({latest_date}) is before {MIN_REFERENCE_DATE[:4]}. Searching next...")
+                print(
+                    f"⏩ {fund_name}: latest filing found at offset {offset} ({latest_date}) is before {MIN_REFERENCE_DATE[:4]}. Searching next..."
+                )
                 offset += 1
                 continue
             break
 
-        dataframe_latest = xml_to_dataframe_13f(filings[0]['xml_content'])
+        dataframe_latest = xml_to_dataframe_13f(filings[0]["xml_content"])
 
         # Step 2: Find the filing for the immediately preceding quarter.
         # This loop skips amendments and ensures we are comparing against the correct previous period.
@@ -102,8 +104,8 @@ def process_fund(fund_info, offset=0, skip_old=False):
 
         # Exhaustive search: prioritized target_date, fallback target_date_prev
         while previous_filing:
-            ref_date = previous_filing['reference_date']
-            pub_date = previous_filing['date']
+            ref_date = previous_filing["reference_date"]
+            pub_date = previous_filing["date"]
 
             if ref_date == target_date:
                 found_previous = previous_filing
@@ -127,7 +129,9 @@ def process_fund(fund_info, offset=0, skip_old=False):
 
         previous_filing = found_previous or fallback_previous
 
-        dataframe_previous = xml_to_dataframe_13f(previous_filing['xml_content']) if previous_filing else None
+        dataframe_previous = (
+            xml_to_dataframe_13f(previous_filing["xml_content"]) if previous_filing else None
+        )
         dataframe_comparison = generate_comparison(dataframe_latest, dataframe_previous)
         save_comparison(dataframe_comparison, latest_date, fund_name)
     except Exception as e:
@@ -147,7 +151,10 @@ def run_all_funds_report():
     print("This will generate last vs previous quarter comparisons.")
 
     with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(process_fund, fund, offset=0, skip_old=True): fund for fund in hedge_funds}
+        futures = {
+            executor.submit(process_fund, fund, offset=0, skip_old=True): fund
+            for fund in hedge_funds
+        }
 
         for i, future in enumerate(as_completed(futures)):
             fund = futures[future]
@@ -178,24 +185,26 @@ def process_fund_nq(fund):
 
         filings = fetch_non_quarterly_after_date(cik_to_process, latest_date)
         if filings:
-            filings_df = get_non_quarterly_filings_dataframe(filings, fund_denomination, cik_to_process)
+            filings_df = get_non_quarterly_filings_dataframe(
+                filings, fund_denomination, cik_to_process
+            )
             if filings_df is not None:
                 filings_df = filings_df.copy()
-                filings_df.insert(0, 'Fund', fund_name)
+                filings_df.insert(0, "Fund", fund_name)
                 return filings_df
         return None
 
-    latest_13f_date = get_latest_13f_filing_date(fund['CIK'])
+    latest_13f_date = get_latest_13f_filing_date(fund["CIK"])
 
-    result_cik = _fetch_nq(fund['CIK'], fund['Fund'], fund['Denomination'], latest_13f_date)
+    result_cik = _fetch_nq(fund["CIK"], fund["Fund"], fund["Denomination"], latest_13f_date)
     if result_cik is not None:
         fund_results.append(result_cik)
 
-    result_ciks = _fetch_nq(fund['CIKs'], fund['Fund'], fund['Denomination'], latest_13f_date)
+    result_ciks = _fetch_nq(fund["CIKs"], fund["Fund"], fund["Denomination"], latest_13f_date)
     if result_ciks is not None:
         fund_results.append(result_ciks)
 
-    return (fund['Fund'], fund_results)
+    return (fund["Fund"], fund_results)
 
 
 def run_fetch_nq_filings():
@@ -268,7 +277,7 @@ def run_manual_cik_report():
 
     selected_period = select_period()
     if selected_period is not None:
-        process_fund({'CIK': cik}, offset=selected_period[0])
+        process_fund({"CIK": cik}, offset=selected_period[0])
 
 
 def run_ticker_update():
@@ -296,7 +305,9 @@ def run_ticker_update():
         print("❌ New ticker cannot be empty.")
         return
 
-    new_company = input("Enter the NEW company name (leave empty to keep current): ").strip() or None
+    new_company = (
+        input("Enter the NEW company name (leave empty to keep current): ").strip() or None
+    )
 
     update_ticker(old_ticker, new_ticker, new_company=new_company)
 
@@ -326,7 +337,9 @@ def run_cusip_ticker_update():
         print("❌ New ticker cannot be empty.")
         return
 
-    new_company = input("Enter the NEW company name (leave empty to keep current): ").strip() or None
+    new_company = (
+        input("Enter the NEW company name (leave empty to keep current): ").strip() or None
+    )
 
     update_ticker_for_cusip(cusip, new_ticker, new_company=new_company)
 
@@ -344,6 +357,7 @@ def run_auto_ticker_update():
     print("Fetching recent symbol changes from NASDAQ...")
 
     from app.stocks.libraries.nasdaq import Nasdaq
+
     changes = Nasdaq.get_symbol_changes()
 
     if not changes:
@@ -351,6 +365,7 @@ def run_auto_ticker_update():
         return
 
     from app.database import find_cusips_for_ticker
+
     applicable = []
     for change in changes:
         old_symbol = change.get("oldSymbol", "")
@@ -361,7 +376,9 @@ def run_auto_ticker_update():
             applicable.append((old_symbol, new_symbol, company_name, matching))
 
     if not applicable:
-        print(f"✅ No ticker changes apply to the {len(changes)} changes found. stocks.csv is up to date.")
+        print(
+            f"✅ No ticker changes apply to the {len(changes)} changes found. stocks.csv is up to date."
+        )
         return
 
     print(f"Found {len(applicable)} applicable change(s):")
@@ -371,13 +388,14 @@ def run_auto_ticker_update():
 
     horizontal_rule()
     confirm = input("Apply these changes? (y/N): ").strip().lower()
-    if confirm != 'y':
+    if confirm != "y":
         print("Cancelled.")
         return
 
     from app.stocks.libraries.yfinance import YFinance
+
     for old, new, nasdaq_company, _ in applicable:
-        company = YFinance.get_company('', ticker=new) or nasdaq_company
+        company = YFinance.get_company("", ticker=new) or nasdaq_company
         update_ticker(old, new, new_company=company)
 
     print_centered("All ticker changes applied successfully", "-")
@@ -391,8 +409,8 @@ def run_delete_fund():
     if not selected_fund:
         return
 
-    fund_name = selected_fund['Fund']
-    fund_url = selected_fund.get('URL', '')
+    fund_name = selected_fund["Fund"]
+    fund_url = selected_fund.get("URL", "")
     if fund_url:
         print(f"Fund URL on record: {fund_url}")
     else:
@@ -415,11 +433,11 @@ def run_restore_fund():
     if not selected_fund:
         return
 
-    fund_name = selected_fund['Fund']
+    fund_name = selected_fund["Fund"]
     print(f"Restoring '{fund_name}' will move it back to the active hedge funds list.")
     confirm = input("Proceed? (y/N): ").strip().lower()
 
-    if confirm == 'y':
+    if confirm == "y":
         restore_fund_to_database(selected_fund)
     else:
         print("❌ Restoration aborted.")
@@ -441,23 +459,25 @@ def print_missing_quarters_report():
 
     data = [[fund, ", ".join(quarters)] for fund, quarters in missing_quarters.items()]
 
-    print_centered_table(tabulate(data, headers=["Fund", "Missing Quarters"], tablefmt="psql", stralign="left"))
+    print_centered_table(
+        tabulate(data, headers=["Fund", "Missing Quarters"], tablefmt="psql", stralign="left")
+    )
     horizontal_rule()
 
 
 if __name__ == "__main__":
     actions = {
-        '0': exit_app,
-        '1': run_all_funds_report,
-        '2': run_fetch_nq_filings,
-        '3': run_fund_report,
-        '4': run_manual_cik_report,
-        '5': run_ticker_update,
-        '6': run_cusip_ticker_update,
-        '7': run_auto_ticker_update,
-        '8': run_delete_fund,
-        '9': run_restore_fund,
-        '10': print_missing_quarters_report
+        "0": exit_app,
+        "1": run_all_funds_report,
+        "2": run_fetch_nq_filings,
+        "3": run_fund_report,
+        "4": run_manual_cik_report,
+        "5": run_ticker_update,
+        "6": run_cusip_ticker_update,
+        "7": run_auto_ticker_update,
+        "8": run_delete_fund,
+        "9": run_restore_fund,
+        "10": print_missing_quarters_report,
     }
 
     while True:

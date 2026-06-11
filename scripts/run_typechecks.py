@@ -1,5 +1,6 @@
 """
-Pre-push helper: run pyright and mypy through the project's pipenv venv.
+Pre-push helper: run pyright, mypy and the unit-test suite through the
+project's pipenv venv.
 
 Resolves pipenv even when it is not on PATH. This is the reason these checks
 were historically left out of the pre-commit hooks: a bare `python -m pipenv`
@@ -31,10 +32,11 @@ _PIPENV_CANDIDATES: list[list[str]] = [
     ["py", "-3.13", "-m", "pipenv"],
 ]
 
-# Mirrors the commands in .github/workflows/lint.yml.
+# Mirrors the commands in .github/workflows/lint.yml and run-tests.yml.
 _CHECKS: list[tuple[str, list[str]]] = [
     ("pyright", ["run", "pyright"]),
     ("mypy", ["run", "mypy", "app", "database", "scripts"]),
+    ("unittest", ["run", "python", "-m", "unittest", "discover"]),
 ]
 
 
@@ -82,7 +84,7 @@ def main() -> int:
         print(f"pre-push: {', '.join(failed)} failed — push aborted.", file=sys.stderr)
         return 1
 
-    print("pre-push: pyright + mypy clean.")
+    print("pre-push: pyright + mypy + unittest clean.")
     return 0
 
 

@@ -16,7 +16,7 @@ SEC EDGAR → app/scraper/ → app/analysis/ → app/ai/ (Promise Scores) → we
 
 ## Running Python tooling (must read)
 
-**Always run Python tooling through the pipenv venv** — `pipenv run <cmd>` (or `python -m pipenv run <cmd>` if `pipenv` is not on PATH, common on Windows). The system Python lacks `pandas-stubs` and `fastapi_users` — running tests/pyright outside the venv produces import errors and ~150 false type errors. Sanity-check at session start: `python -m pipenv --venv`.
+**Always run Python tooling through the pipenv venv** — `pipenv run <cmd>` (or `python -m pipenv run <cmd>` if `pipenv` is not on PATH, common on Windows; if a venv is already active in the shell its python lacks pipenv — use `py -3.13 -m pipenv run <cmd>`). The system Python lacks `pandas-stubs` and `fastapi_users` — running tests/pyright outside the venv produces import errors and ~150 false type errors. Sanity-check at session start: `python -m pipenv --venv`.
 
 A `PreToolUse` hook in `.claude/settings.json` (script: `.claude/scripts/enforce_pipenv.py`) blocks bare invocations of `pyright`/`ruff`/`mypy`/`pytest` and `python -m <those>` when not preceded by `pipenv run`.
 
@@ -89,6 +89,12 @@ These are real incidents — read before changing code in these areas.
 
 - **`log_safe()` in `app/utils/logger.py` sanitizes log interpolations.** Fund names, tickers, CUSIPs and other user-controlled values are wrapped in `log_safe(...)` before being passed to `logger.X("msg %s", value)`. The helper strips non-printable characters (newlines, ANSI escapes, NUL) and truncates to 64 chars, preventing log forgery (a CSV row injecting `\nFAKE LOG LINE` would otherwise appear as a separate log entry in the SSE stream and CI logs). Apply the same wrapping when adding new logs that interpolate external strings; prefer lazy `%`-formatting (`"... %s ...", log_safe(x)`) over f-strings so the sanitized value is the one ultimately serialized.
 
+- **Per-fund quarter CSVs are faithful filing records.** Totals must match EDGAR's declared `tableValueTotal`, debt/PRN positions included — a parse-time "equity-only" filter once collapsed a credit fund's AUM from ~$200M to ~$21M. Equity-only views belong to the analysis layer, never to the parser or the saved CSVs.
+
+- **`generate_comparison` links CUSIP changes.** An unambiguous NEW/CLOSE pair resolving to the same ticker collapses into one continuing position (equity-style CUSIPs only — numeric issue code in chars 7-8; debt is never linked to the issuer's equity). Missing CLOSE rows for renamed tickers are intentional.
+
+- **EDGAR ordering is by publication date, except same-day batches.** Filings filed the same day can list in ascending period order, and funds publish old periods late. Never assume list position == recency of period; 13F-HR/A amendments win because comparisons match by reference date, latest-published first.
+
 - **`stocks.csv` is auto-sorted on exit.** A diff that only shows reordering = something else changed. Don't commit "sort cleanup" PRs without inspecting actual content changes.
 
 - **`scripts/regenerate_samples.py` imports after `sys.path.insert`.** The `# noqa: E402` lines are required — moving imports above the path setup breaks resolution of `app.*` modules.
@@ -154,7 +160,7 @@ Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `datab
 
 All in `database/`:
 
-- **`hedge_funds.csv`** — curated tracked funds. Columns: CIK, name, manager, **Denomination** (exact legal name for non-quarterly matching — see Footguns), additional CIKs (comma-separated), URL.
+- **`hedge_funds.csv`** — curated tracked funds. Columns: CIK, name, manager, **Denomination** (exact legal name for non-quarterly matching — see Footguns), additional CIKs (comma-separated; used ONLY for non-quarterly filings by design, never for 13F fetches), URL.
 - **`models.csv`** — available AI models (id, description, provider). Editable at runtime.
 - **`stocks.csv`** — CUSIP → Ticker → Company. Auto-sorted on exit.
 - **`non_quarterly.csv`** — recent 13D/G + Form 4 activity.

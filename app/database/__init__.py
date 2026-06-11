@@ -37,6 +37,9 @@ _stocks_thread_lock = threading.Lock()
 
 
 DB_FOLDER = "./database"
+# Oldest reporting period tracked by the database; fetch/regeneration tooling
+# skips filings referring to earlier quarters.
+MIN_REFERENCE_DATE = "2025-03-31"
 HEDGE_FUNDS_FILE = "hedge_funds.csv"
 EXCLUDED_HEDGE_FUNDS_FILE = "excluded_hedge_funds.csv"
 LATEST_SCHEDULE_FILINGS_FILE = "non_quarterly.csv"
