@@ -11,7 +11,7 @@ aiohttp = "~=3.14"  # security forward-pin (transitive via tradingview-datafeed)
 alembic = "~=1.18"
 asyncpg = "~=0.31"
 beautifulsoup4 = "~=4.15"
-cryptography = "~=48.0"
+cryptography = "~=49.0"
 curl-cffi = "~=0.15"
 fastapi = "~=0.136"
 fastapi-users = {extras = ["sqlalchemy"], version = "~=15.0"}
