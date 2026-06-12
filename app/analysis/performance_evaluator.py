@@ -16,6 +16,11 @@ class PerformanceEvaluator:
     """
     Evaluates fund performance by calculating price-based returns of holdings,
     isolating management skill from capital flows.
+
+    The Holding-Based Return is an approximation reconstructed from quarterly
+    13F snapshots, not an audited track record. See
+    `calculate_quarterly_performance` for the specific methodological
+    limitations before using the numbers for ranking or comparison.
     """
 
     @staticmethod
@@ -50,6 +55,23 @@ class PerformanceEvaluator:
         Calculates the Holding-Based Return (HBR) for a fund for the specified quarter.
         HBR = Σ (Weight_i * Return_i) for all positions held at the start of the quarter.
         Only the top EVAL_TOP_N_POSITIONS positions by value are considered to optimize speed.
+
+        Limitations (the result is an approximation, not an audited return):
+        - Price-only: returns are price_end/price_start − 1, so dividends are
+          ignored — total return is understated for dividend-paying holdings.
+        - Mixed price bases: start/end prices come from each quarter's 13F
+          (Value/Shares), while a closed position's end price is fetched from a
+          market source that is split-adjusted; a split mid-quarter can skew
+          that position's return.
+        - Closed positions are marked to the quarter-end price, not the actual
+          exit price, so intra-quarter timing of a sale is not captured.
+        - Start-of-quarter snapshot only: positions opened during the quarter
+          don't contribute (intentional — HBR measures skill on held names),
+          and the top-EVAL_TOP_N_POSITIONS cap drops the long tail.
+        - Survivorship bias: only funds currently in the curated database are
+          evaluable; funds that stopped filing or were dropped are absent.
+        - US long equity only (13F scope): shorts, options, non-US and
+          non-equity exposure are not reflected.
         """
         prev_quarter = get_previous_quarter(target_quarter)
 

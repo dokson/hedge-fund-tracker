@@ -1,0 +1,12 @@
+[run]
+source = app, database
+omit =
+    */__pycache__/*
+    app/frontend/*
+    app/main.py
+
+[report]
+# Surface the least-covered modules first; informational, not a gate.
+show_missing = true
+skip_covered = false
+sort = cover

@@ -67,6 +67,13 @@ jobs:
           OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
 
+      # Gate the commit on the test suite: the data-integrity tests
+      # (test_csv_integrity, test_stocks) read the real database/, so they
+      # validate the freshly written filings. A partial/corrupt fetch (SEC
+      # down mid-run, malformed XML) fails here and is never committed.
+      - name: Validate fetched data
+        run: pipenv run python -m unittest discover
+
       - name: Get filings date
         id: date
         run: |

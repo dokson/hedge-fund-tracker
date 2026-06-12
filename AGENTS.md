@@ -37,6 +37,7 @@ pipenv run regenerate [fund ...]            # rebuild all quarterly comparisons 
 
 # Tests
 pipenv run test                                                          # all (Python); alias for unittest discover
+pipenv run cov                                                           # Python tests + coverage report (informational)
 pipenv run python -m unittest tests.stocks.test_price_fetcher            # single file
 pipenv run test-frontend                                                 # frontend (vitest); or: cd app/frontend && npm test
 
@@ -94,6 +95,8 @@ These are real incidents — read before changing code in these areas.
 - **`generate_comparison` links CUSIP changes.** An unambiguous NEW/CLOSE pair resolving to the same ticker collapses into one continuing position (equity-style CUSIPs only — numeric issue code in chars 7-8; debt is never linked to the issuer's equity). Missing CLOSE rows for renamed tickers are intentional.
 
 - **EDGAR ordering is by publication date, except same-day batches.** Filings filed the same day can list in ascending period order, and funds publish old periods late. Never assume list position == recency of period; 13F-HR/A amendments win because comparisons match by reference date, latest-published first.
+
+- **Stock-level analysis is duplicated in Python and TS, pinned by a golden fixture.** `app/analysis/stocks.py` (`_calculate_fund_level_flags`→`_aggregate_stock_data`→`_calculate_derived_metrics`) and `dataService.ts::aggregateStockLevel` must produce identical output — the TS copy is required because GH Pages has no backend. Both assert against `tests/fixtures/analysis_golden.json`. After an intentional change to either, regenerate with `pipenv run python scripts/gen_analysis_golden.py` and update both sides, or the equivalence tests fail.
 
 - **`stocks.csv` is auto-sorted on exit.** A diff that only shows reordering = something else changed. Don't commit "sort cleanup" PRs without inspecting actual content changes.
 

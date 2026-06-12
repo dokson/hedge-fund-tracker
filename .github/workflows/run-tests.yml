@@ -41,8 +41,12 @@ jobs:
           python -m pip install pipenv
           pipenv install --dev
 
-      - name: Run Python tests
-        run: pipenv run python -m unittest discover
+      - name: Run Python tests with coverage
+        run: pipenv run coverage run -m unittest discover
+
+      - name: Coverage report
+        if: always()
+        run: pipenv run coverage report
 
   frontend-tests:
     runs-on: ubuntu-latest

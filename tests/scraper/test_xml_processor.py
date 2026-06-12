@@ -1,8 +1,13 @@
 import unittest
+from unittest.mock import patch
 
 import pandas as pd
 
-from app.scraper.xml_processor import xml_to_dataframe_13f
+from app.scraper.xml_processor import (
+    xml_to_dataframe_4,
+    xml_to_dataframe_13f,
+    xml_to_dataframe_schedule,
+)
 
 
 class TestXmlProcessor(unittest.TestCase):
@@ -171,6 +176,126 @@ class TestXmlProcessor(unittest.TestCase):
         self.assertEqual(len(df), 1)
         self.assertEqual(df["Company"][0], "Good Co")
         self.assertTrue(any("2" in message for message in captured.output))
+
+
+class TestXmlToDataframeSchedule(unittest.TestCase):
+    SCHEDULE_XML = """
+    <edgarSubmission>
+      <formData>
+        <coverPageHeader>
+          <issuerName>Target Corp</issuerName>
+          <issuerCUSIPNumber>123456789</issuerCUSIPNumber>
+          <issuerCIK>0001234567</issuerCIK>
+          <dateOfEvent>03/15/2026</dateOfEvent>
+        </coverPageHeader>
+        <coverPageHeaderReportingPersonDetails>
+          <reportingPersonName>Big Fund LP</reportingPersonName>
+          <rptOwnerCIK>0007654321</rptOwnerCIK>
+          <aggregateAmountOwned>500000</aggregateAmountOwned>
+        </coverPageHeaderReportingPersonDetails>
+      </formData>
+    </edgarSubmission>
+    """
+
+    def test_parses_issuer_and_reporting_person(self):
+        """
+        A 13D/G filing yields one row per reporting person with the issuer
+        metadata, normalized CUSIP, uppercased owner name and parsed date.
+        """
+        df = xml_to_dataframe_schedule(self.SCHEDULE_XML)
+
+        self.assertEqual(len(df), 1)
+        row = df.iloc[0]
+        self.assertEqual(row["Company"], "Target Corp")
+        self.assertEqual(row["CUSIP"], "123456789")
+        self.assertEqual(row["CIK"], "0001234567")
+        self.assertEqual(row["Shares"], 500000)
+        self.assertEqual(row["Owner_CIK"], "0007654321")
+        self.assertEqual(row["Owner"], "BIG FUND LP")
+        self.assertEqual(row["Date"], pd.Timestamp("2026-03-15"))
+
+    def test_non_numeric_shares_coerced_to_zero(self):
+        """
+        A missing/garbage aggregate amount becomes 0 rather than crashing the
+        integer cast.
+        """
+        xml = self.SCHEDULE_XML.replace("<aggregateAmountOwned>500000", "<aggregateAmountOwned>n/a")
+
+        df = xml_to_dataframe_schedule(xml)
+
+        self.assertEqual(df.iloc[0]["Shares"], 0)
+
+
+@patch("app.scraper.xml_processor.TickerResolver.assign_cusip", side_effect=lambda df: df)
+class TestXmlToDataframe4(unittest.TestCase):
+    FORM4_XML = """
+    <ownershipDocument>
+      <issuer>
+        <issuerName>Insider Co</issuerName>
+        <issuerTradingSymbol>INSD</issuerTradingSymbol>
+        <issuerCik>0002223334</issuerCik>
+      </issuer>
+      <periodOfReport>2026-04-10</periodOfReport>
+      <nonDerivativeTable>
+        <nonDerivativeTransaction>
+          <postTransactionAmounts>
+            <sharesOwnedFollowingTransaction><value>12000</value></sharesOwnedFollowingTransaction>
+          </postTransactionAmounts>
+          <ownershipNature>
+            <directOrIndirectOwnership><value>D</value></directOrIndirectOwnership>
+          </ownershipNature>
+        </nonDerivativeTransaction>
+      </nonDerivativeTable>
+      <reportingOwner>
+        <reportingOwnerId>
+          <rptOwnerCik>0005556667</rptOwnerCik>
+          <rptOwnerName>Jane Insider</rptOwnerName>
+        </reportingOwnerId>
+      </reportingOwner>
+    </ownershipDocument>
+    """
+
+    def test_parses_final_holding_and_owner(self, _assign):
+        """
+        Form 4 yields the post-transaction share count for the reporting
+        owner with normalized ticker and parsed period-of-report date.
+        """
+        df = xml_to_dataframe_4(self.FORM4_XML)
+
+        self.assertEqual(len(df), 1)
+        row = df.iloc[0]
+        self.assertEqual(row["Company"], "Insider Co")
+        self.assertEqual(row["Ticker"], "INSD")
+        self.assertEqual(row["CIK"], "0002223334")
+        self.assertEqual(row["Shares"], 12000)
+        self.assertEqual(row["Owner_CIK"], "0005556667")
+        self.assertEqual(row["Owner"], "JANE INSIDER")
+        self.assertEqual(row["Date"], pd.Timestamp("2026-04-10"))
+
+    def test_sums_direct_and_indirect_holdings(self, _assign):
+        """
+        Holdings under distinct ownership natures (direct + indirect) are
+        summed into the owner's total post-transaction position.
+        """
+        xml = self.FORM4_XML.replace(
+            "</nonDerivativeTable>",
+            """
+            <nonDerivativeHolding>
+              <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction><value>3000</value></sharesOwnedFollowingTransaction>
+              </postTransactionAmounts>
+              <ownershipNature>
+                <directOrIndirectOwnership><value>I</value></directOrIndirectOwnership>
+                <natureOfOwnership><value>By Trust</value></natureOfOwnership>
+              </ownershipNature>
+            </nonDerivativeHolding>
+            </nonDerivativeTable>
+            """,
+        )
+
+        df = xml_to_dataframe_4(xml)
+
+        self.assertEqual(df.iloc[0]["Shares"], 15000)
 
 
 if __name__ == "__main__":

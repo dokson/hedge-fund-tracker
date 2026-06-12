@@ -1,0 +1,109 @@
+{
+  "input": [
+    {
+      "Fund": "FundX",
+      "Ticker": "AAA",
+      "Company": "Alpha",
+      "Shares": 100,
+      "Delta_Shares": 100,
+      "Value": 1000,
+      "Delta_Value": 1000,
+      "Portfolio_Pct": 5.0,
+      "Portfolio_Pct_Rank": 1,
+      "Fund_Concentration_Ratio": 40.0,
+      "Shares_Delta_Pct": 0.0
+    },
+    {
+      "Fund": "FundY",
+      "Ticker": "AAA",
+      "Company": "Alpha",
+      "Shares": 200,
+      "Delta_Shares": 50,
+      "Value": 2000,
+      "Delta_Value": 500,
+      "Portfolio_Pct": 2.0,
+      "Portfolio_Pct_Rank": 15,
+      "Fund_Concentration_Ratio": 30.0,
+      "Shares_Delta_Pct": 33.3333
+    },
+    {
+      "Fund": "FundX",
+      "Ticker": "BBB",
+      "Company": "Bravo",
+      "Shares": 0,
+      "Delta_Shares": -80,
+      "Value": 0,
+      "Delta_Value": -800,
+      "Portfolio_Pct": 0.0,
+      "Portfolio_Pct_Rank": 99,
+      "Fund_Concentration_Ratio": 40.0,
+      "Shares_Delta_Pct": 0.0
+    },
+    {
+      "Fund": "FundZ",
+      "Ticker": "CCC",
+      "Company": "Charlie",
+      "Shares": 50,
+      "Delta_Shares": 50,
+      "Value": 500,
+      "Delta_Value": 500,
+      "Portfolio_Pct": 10.0,
+      "Portfolio_Pct_Rank": 2,
+      "Fund_Concentration_Ratio": 50.0,
+      "Shares_Delta_Pct": 0.0
+    }
+  ],
+  "expected": {
+    "AAA": {
+      "totalValue": 3000.0,
+      "totalDeltaValue": 1500.0,
+      "maxPortfolioPct": 5.0,
+      "avgPortfolioPct": 3.5,
+      "buyerCount": 2.0,
+      "sellerCount": 0.0,
+      "holderCount": 2.0,
+      "newHolderCount": 1.0,
+      "closeCount": 0.0,
+      "highConvictionCount": 1.0,
+      "netBuyers": 2.0,
+      "buyerSellerRatio": "Infinity",
+      "ownershipDeltaAvg": 33.3333,
+      "fundConcentrationAvg": 35.0,
+      "delta": 100.0
+    },
+    "BBB": {
+      "totalValue": 0.0,
+      "totalDeltaValue": -800.0,
+      "maxPortfolioPct": 0.0,
+      "avgPortfolioPct": 0.0,
+      "buyerCount": 0.0,
+      "sellerCount": 1.0,
+      "holderCount": 0.0,
+      "newHolderCount": 0.0,
+      "closeCount": 1.0,
+      "highConvictionCount": 0.0,
+      "netBuyers": -1.0,
+      "buyerSellerRatio": 0.0,
+      "ownershipDeltaAvg": 0.0,
+      "fundConcentrationAvg": 40.0,
+      "delta": -100.0
+    },
+    "CCC": {
+      "totalValue": 500.0,
+      "totalDeltaValue": 500.0,
+      "maxPortfolioPct": 10.0,
+      "avgPortfolioPct": 10.0,
+      "buyerCount": 1.0,
+      "sellerCount": 0.0,
+      "holderCount": 1.0,
+      "newHolderCount": 1.0,
+      "closeCount": 0.0,
+      "highConvictionCount": 1.0,
+      "netBuyers": 1.0,
+      "buyerSellerRatio": "Infinity",
+      "ownershipDeltaAvg": 0.0,
+      "fundConcentrationAvg": 50.0,
+      "delta": "Infinity"
+    }
+  }
+}

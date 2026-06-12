@@ -665,6 +665,116 @@ export async function getFundQuarterlyHoldings(
 // ---------- Analysis: Quarter Analysis (replicates Python quarter_analysis) ----------
 
 /**
+ * Aggregates per-(fund, ticker) holdings to the stock level.
+ *
+ * Mirrors the Python chain `_calculate_fund_level_flags` →
+ * `_aggregate_stock_data` → `_calculate_derived_metrics` exactly. The two
+ * implementations are kept in lockstep by a shared golden fixture
+ * (tests/fixtures/analysis_golden.json) asserted from both sides; changing
+ * one without the other fails CI. Input holdings must already carry
+ * portfolioPctRank, fundConcentrationRatio and sharesDeltaPct (assigned
+ * per-fund upstream); the activity flags are derived here.
+ */
+export function aggregateStockLevel(holdings: FundTickerHolding[]): StockQuarterAnalysis[] {
+  const flagged = holdings.map((h) => {
+    const isNew = h.shares > 0 && h.shares === h.deltaShares;
+    return {
+      ...h,
+      isBuyer: h.deltaValue > 0,
+      isSeller: h.deltaValue < 0,
+      isHolder: h.shares > 0,
+      isNew,
+      isClosed: h.shares === 0,
+      isHighConviction: isNew && (h.portfolioPctRank <= 10 || h.portfolioPct > 3.0),
+    };
+  });
+
+  interface StockQuarterAccumulator extends StockQuarterAnalysis {
+    _sumPct?: number;
+    _countPct?: number;
+    _sumConcentration?: number;
+    _sumDeltaPct?: number;
+    _countDeltaPct?: number;
+  }
+  const stockMap = new Map<string, StockQuarterAccumulator>();
+
+  for (const fth of flagged) {
+    const existing = stockMap.get(fth.ticker);
+    if (existing) {
+      existing.totalValue += fth.value;
+      existing.totalDeltaValue += fth.deltaValue;
+      existing.maxPortfolioPct = Math.max(existing.maxPortfolioPct, fth.portfolioPct);
+      existing._sumPct += fth.portfolioPct;
+      existing._countPct += 1;
+      existing._sumConcentration += fth.fundConcentrationRatio;
+      existing.buyerCount += fth.isBuyer ? 1 : 0;
+      existing.sellerCount += fth.isSeller ? 1 : 0;
+      existing.holderCount += fth.isHolder ? 1 : 0;
+      existing.newHolderCount += fth.isNew ? 1 : 0;
+      existing.closeCount += fth.isClosed ? 1 : 0;
+      existing.highConvictionCount += fth.isHighConviction ? 1 : 0;
+      // Accumulation velocity: only buyers who aren't new
+      if (fth.isBuyer && !fth.isNew && fth.sharesDeltaPct !== 0) {
+        existing._sumDeltaPct += fth.sharesDeltaPct;
+        existing._countDeltaPct += 1;
+      }
+    } else {
+      const isBuyerNotNew = fth.isBuyer && !fth.isNew && fth.sharesDeltaPct !== 0;
+      stockMap.set(fth.ticker, {
+        ticker: fth.ticker,
+        company: fth.company,
+        totalValue: fth.value,
+        totalDeltaValue: fth.deltaValue,
+        maxPortfolioPct: fth.portfolioPct,
+        avgPortfolioPct: 0,
+        buyerCount: fth.isBuyer ? 1 : 0,
+        sellerCount: fth.isSeller ? 1 : 0,
+        holderCount: fth.isHolder ? 1 : 0,
+        newHolderCount: fth.isNew ? 1 : 0,
+        closeCount: fth.isClosed ? 1 : 0,
+        highConvictionCount: fth.isHighConviction ? 1 : 0,
+        netBuyers: 0,
+        buyerSellerRatio: 0,
+        ownershipDeltaAvg: 0,
+        fundConcentrationAvg: 0,
+        delta: 0,
+        _sumPct: fth.portfolioPct,
+        _countPct: 1,
+        _sumConcentration: fth.fundConcentrationRatio,
+        _sumDeltaPct: isBuyerNotNew ? fth.sharesDeltaPct : 0,
+        _countDeltaPct: isBuyerNotNew ? 1 : 0,
+      });
+    }
+  }
+
+  const results: StockQuarterAnalysis[] = [];
+  for (const s of stockMap.values()) {
+    s.avgPortfolioPct = s._countPct ? s._sumPct! / s._countPct : 0;
+    s.netBuyers = s.buyerCount - s.sellerCount;
+    s.buyerSellerRatio = s.sellerCount > 0 ? s.buyerCount / s.sellerCount : Infinity;
+    s.ownershipDeltaAvg = s._countDeltaPct ? s._sumDeltaPct! / s._countDeltaPct : 0;
+    s.fundConcentrationAvg = s._countPct ? s._sumConcentration! / s._countPct : 0;
+
+    const previousTotal = s.totalValue - s.totalDeltaValue;
+    if (s.newHolderCount === s.holderCount && s.closeCount === 0) {
+      s.delta = Infinity;
+    } else if (previousTotal !== 0) {
+      s.delta = (s.totalDeltaValue / previousTotal) * 100;
+    } else {
+      s.delta = 0;
+    }
+
+    delete s._sumPct;
+    delete s._countPct;
+    delete s._sumConcentration;
+    delete s._sumDeltaPct;
+    delete s._countDeltaPct;
+    results.push(s);
+  }
+  return results;
+}
+
+/**
  * Loads all fund CSVs for a quarter, aggregates by Fund+Ticker,
  * then aggregates to stock-level with buyer/seller counts etc.
  * Progress callback reports loading status.
@@ -771,15 +881,8 @@ export async function runQuarterAnalysis(
       const top10Sum = sorted.slice(0, 10).reduce((s, h) => s + h.portfolioPct, 0);
 
       sorted.forEach((fth, idx) => {
-        const rank = idx + 1;
-        fth.portfolioPctRank = rank;
+        fth.portfolioPctRank = idx + 1;
         fth.fundConcentrationRatio = top10Sum;
-        fth.isBuyer = fth.deltaValue > 0;
-        fth.isSeller = fth.deltaValue < 0;
-        fth.isHolder = fth.shares > 0;
-        fth.isNew = fth.shares > 0 && fth.shares === fth.deltaShares;
-        fth.isClosed = fth.shares === 0;
-        fth.isHighConviction = fth.isNew && (rank <= 10 || fth.portfolioPct > 3.0);
 
         // Shares delta pct (velocity of accumulation, only for existing positions)
         const prevShares = fth.shares - fth.deltaShares;
@@ -788,90 +891,8 @@ export async function runQuarterAnalysis(
       });
     }
 
-    // Step 3: Aggregate to stock level (replicates _aggregate_stock_data)
-    interface StockQuarterAccumulator extends StockQuarterAnalysis {
-      _sumPct?: number;
-      _countPct?: number;
-      _sumConcentration?: number;
-      _sumDeltaPct?: number;
-      _countDeltaPct?: number;
-    }
-    const stockMap = new Map<string, StockQuarterAccumulator>();
-
-    for (const fth of fundTickerMap.values()) {
-      const existing = stockMap.get(fth.ticker);
-      if (existing) {
-        existing.totalValue += fth.value;
-        existing.totalDeltaValue += fth.deltaValue;
-        existing.maxPortfolioPct = Math.max(existing.maxPortfolioPct, fth.portfolioPct);
-        existing._sumPct += fth.portfolioPct;
-        existing._countPct += 1;
-        existing._sumConcentration += fth.fundConcentrationRatio;
-        existing.buyerCount += fth.isBuyer ? 1 : 0;
-        existing.sellerCount += fth.isSeller ? 1 : 0;
-        existing.holderCount += fth.isHolder ? 1 : 0;
-        existing.newHolderCount += fth.isNew ? 1 : 0;
-        existing.closeCount += fth.isClosed ? 1 : 0;
-        existing.highConvictionCount += fth.isHighConviction ? 1 : 0;
-        // Accumulation velocity: only buyers who aren't new
-        if (fth.isBuyer && !fth.isNew && fth.sharesDeltaPct !== 0) {
-          existing._sumDeltaPct += fth.sharesDeltaPct;
-          existing._countDeltaPct += 1;
-        }
-      } else {
-        const isBuyerNotNew = fth.isBuyer && !fth.isNew && fth.sharesDeltaPct !== 0;
-        stockMap.set(fth.ticker, {
-          ticker: fth.ticker,
-          company: tickerNameMap.get(fth.ticker) || fth.company,
-          totalValue: fth.value,
-          totalDeltaValue: fth.deltaValue,
-          maxPortfolioPct: fth.portfolioPct,
-          avgPortfolioPct: 0,
-          buyerCount: fth.isBuyer ? 1 : 0,
-          sellerCount: fth.isSeller ? 1 : 0,
-          holderCount: fth.isHolder ? 1 : 0,
-          newHolderCount: fth.isNew ? 1 : 0,
-          closeCount: fth.isClosed ? 1 : 0,
-          highConvictionCount: fth.isHighConviction ? 1 : 0,
-          netBuyers: 0,
-          buyerSellerRatio: 0,
-          ownershipDeltaAvg: 0,
-          fundConcentrationAvg: 0,
-          delta: 0,
-          _sumPct: fth.portfolioPct,
-          _countPct: 1,
-          _sumConcentration: fth.fundConcentrationRatio,
-          _sumDeltaPct: isBuyerNotNew ? fth.sharesDeltaPct : 0,
-          _countDeltaPct: isBuyerNotNew ? 1 : 0,
-        });
-      }
-    }
-
-    // Step 4: Derived metrics (replicates _calculate_derived_metrics)
-    const results: StockQuarterAnalysis[] = [];
-    for (const s of stockMap.values()) {
-      s.avgPortfolioPct = s._countPct > 0 ? s._sumPct / s._countPct : 0;
-      s.netBuyers = s.buyerCount - s.sellerCount;
-      s.buyerSellerRatio = s.sellerCount > 0 ? s.buyerCount / s.sellerCount : Infinity;
-      s.ownershipDeltaAvg = s._countDeltaPct > 0 ? s._sumDeltaPct / s._countDeltaPct : 0;
-      s.fundConcentrationAvg = s._countPct > 0 ? s._sumConcentration / s._countPct : 0;
-
-      const previousTotal = s.totalValue - s.totalDeltaValue;
-      if (s.newHolderCount === s.holderCount && s.closeCount === 0) {
-        s.delta = Infinity;
-      } else if (previousTotal !== 0) {
-        s.delta = (s.totalDeltaValue / previousTotal) * 100;
-      } else {
-        s.delta = 0;
-      }
-
-      delete s._sumPct;
-      delete s._countPct;
-      delete s._sumConcentration;
-      delete s._sumDeltaPct;
-      delete s._countDeltaPct;
-      results.push(s);
-    }
+    // Steps 3 & 4: fund flags + stock-level aggregation + derived metrics.
+    const results = aggregateStockLevel([...fundTickerMap.values()]);
 
     onProgress?.("Done", 100);
     return results;

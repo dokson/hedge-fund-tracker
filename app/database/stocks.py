@@ -73,6 +73,7 @@ def _atomic_write_rows(
             os.unlink(tmp)
         raise
 
+
 __all__ = [
     "clean_stocks",
     "find_cusips_for_ticker",
@@ -107,13 +108,15 @@ def load_sector_hierarchy(filepath: str | None = None) -> pd.DataFrame:
 
 
 @lru_cache(maxsize=8)
-def _load_stocks_cached(filepath: str, _mtime: float) -> pd.DataFrame:
+def _load_stocks_cached(filepath: str, _mtime_ns: int, _size: int) -> pd.DataFrame:
     """
-    Parse the stocks CSV, keyed by path and modification time.
+    Parse the stocks CSV, keyed by path, modification time and size.
 
-    The `_mtime` argument is part of the cache key only: a changed file gets a
-    new mtime and so re-reads, while repeated calls within aggregation loops
-    reuse the parsed frame. Callers receive copies (see load_stocks).
+    `_mtime_ns` and `_size` are cache-key only. mtime alone is not enough:
+    its filesystem resolution can be coarser than the interval between rapid
+    successive writes (e.g. concurrent appends), so the size is included to
+    force a re-read whenever the byte count changes even within one mtime
+    tick. Callers receive copies (see load_stocks).
     """
     df = pd.read_csv(filepath, dtype=str, keep_default_na=False)
     if "Industry" not in df.columns:
@@ -137,8 +140,8 @@ def load_stocks(filepath: str | None = None) -> pd.DataFrame:
     if filepath is None:
         filepath = str(Path(_db.DB_FOLDER) / _db.STOCKS_FILE)
     try:
-        mtime = Path(filepath).stat().st_mtime
-        return _load_stocks_cached(filepath, mtime).copy()
+        stat = Path(filepath).stat()
+        return _load_stocks_cached(filepath, stat.st_mtime_ns, stat.st_size).copy()
     except Exception:
         logger.error("while reading stocks file from '%s'", filepath, exc_info=True)
         return pd.DataFrame()
