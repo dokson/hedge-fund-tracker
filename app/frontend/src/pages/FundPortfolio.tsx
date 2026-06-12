@@ -37,6 +37,7 @@ import {
   SortAsc,
   DollarSign,
   Star,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStarred } from "@/hooks/useStarred";
@@ -585,9 +586,16 @@ function FundDetail({ fundName }: { fundName: string }) {
     () => holdings.filter((h) => h.delta !== "CLOSE" && h.deltaShares < 0).length,
     [holdings],
   );
+  // Holdings Map mirrors the active sector filter so it stays coherent with the
+  // central list and the Sector Map selection.
   const treemapData = useMemo(() => {
     const byPct = [...holdings]
       .filter((h) => h.delta !== "CLOSE")
+      .filter(
+        (h) =>
+          activeSector === "all" ||
+          (tickerSectorMap.get(h.ticker) ?? "Unclassified") === activeSector,
+      )
       .sort((a, b) => b.portfolioPct - a.portfolioPct);
     return byPct.slice(0, 20).map((h) => {
       const prevShares = h.shares - h.deltaShares;
@@ -600,7 +608,7 @@ function FundDetail({ fundName }: { fundName: string }) {
         delta: h.delta,
       };
     });
-  }, [holdings]);
+  }, [holdings, activeSector, tickerSectorMap]);
 
   // Sector-level treemap: aggregate the fund's current positions by Yahoo
   // Finance sector (joined via stocks.csv → sector_hierarchy.csv inside
@@ -629,6 +637,15 @@ function FundDetail({ fundName }: { fundName: string }) {
       }))
       .sort((a, b) => b.value - a.value);
   }, [holdings, tickerSectorMap]);
+
+  // Holdings in the active sector (held positions), for the filter chip count.
+  const activeSectorCount = useMemo(() => {
+    if (activeSector === "all") return 0;
+    return holdings.filter(
+      (h) =>
+        h.delta !== "CLOSE" && (tickerSectorMap.get(h.ticker) ?? "Unclassified") === activeSector,
+    ).length;
+  }, [holdings, activeSector, tickerSectorMap]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
@@ -716,21 +733,6 @@ function FundDetail({ fundName }: { fundName: string }) {
               ))}
             </SelectContent>
           </Select>
-          {fundSectors.length > 1 && (
-            <Select value={activeSector} onValueChange={setSectorFilter}>
-              <SelectTrigger className="flex-1 sm:flex-none sm:w-44 bg-card border-border">
-                <SelectValue placeholder="All sectors" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All sectors</SelectItem>
-                {fundSectors.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
       </div>
 
@@ -798,6 +800,24 @@ function FundDetail({ fundName }: { fundName: string }) {
               );
             })}
           </div>
+
+          {/* Active sector filter chip — mirrors the Stocks page pattern. */}
+          {activeSector !== "all" && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground">Filtered by sector:</span>
+              <button
+                type="button"
+                onClick={() => setSectorFilter("all")}
+                className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium hover:bg-primary/15 transition-colors"
+              >
+                {activeSector}
+                <X className="h-3 w-3" aria-label="Clear sector filter" />
+              </button>
+              <span className="text-xs text-muted-foreground">
+                · {activeSectorCount} holding{activeSectorCount === 1 ? "" : "s"}
+              </span>
+            </div>
+          )}
 
           {isLoading ? (
             <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
@@ -937,7 +957,14 @@ function FundDetail({ fundName }: { fundName: string }) {
         {/* Right: Holdings Map + Sector Map side-by-side (stack on narrow viewports) */}
         <div className="lg:col-span-2 lg:sticky lg:top-4 lg:self-start grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="surface p-5">
-            <h3 className="section-title mb-3 text-sm">Holdings Map</h3>
+            <h3 className="section-title mb-3 text-sm">
+              Holdings Map
+              {activeSector !== "all" && (
+                <span className="ml-2 font-normal normal-case text-muted-foreground">
+                  · {activeSector}
+                </span>
+              )}
+            </h3>
             <HoldingsTreemap
               data={treemapData}
               onClickTicker={(t) => navigate(stockPath(t))}
@@ -953,6 +980,7 @@ function FundDetail({ fundName }: { fundName: string }) {
                   setSectorFilter((cur) => (cur === sector ? "all" : sector))
                 }
                 displayMode="pct"
+                activeName={activeSector === "all" ? null : activeSector}
               />
             </div>
           )}

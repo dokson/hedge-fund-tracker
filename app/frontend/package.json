@@ -51,6 +51,7 @@
     "@tailwindcss/postcss": "^4.3.0",
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/react-query": "^5.101.0",
+    "@tanstack/react-virtual": "^3.14.2",
     "@types/papaparse": "^5.5.2",
     "autoprefixer": "^10.5.0",
     "class-variance-authority": "^0.7.1",

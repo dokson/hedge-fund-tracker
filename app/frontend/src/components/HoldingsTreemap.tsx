@@ -27,6 +27,11 @@ interface Props {
   onClickTicker: (ticker: string) => void;
   height?: number;
   displayMode?: "value" | "pct";
+  /**
+   * When set, cells whose name differs from it are dimmed — a visual cue that a
+   * filter is active while keeping every cell clickable to switch the selection.
+   */
+  activeName?: string | null;
 }
 
 function getDeltaColor(deltaPct: number, delta: string): string {
@@ -219,6 +224,7 @@ export function HoldingsTreemap({
   onClickTicker,
   height: propHeight,
   displayMode = "value",
+  activeName = null,
 }: Props) {
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null);
   const [tip, setTip] = useState<TooltipState | null>(null);
@@ -255,6 +261,7 @@ export function HoldingsTreemap({
       >
         {rects.map(({ item, x, y, w, h }) => {
           const isHovered = hoveredTicker === item.name;
+          const isDimmed = activeName != null && item.name !== activeName;
           const bgColor = getDeltaColor(item.deltaPct, item.delta);
           const isSmall = w < 12 || h < 28;
           const showValue = !isSmall && h > 36;
@@ -284,7 +291,7 @@ export function HoldingsTreemap({
                 width: `${w}%`,
                 height: h,
                 backgroundColor: bgColor,
-                opacity: isHovered ? 1 : hoveredTicker ? 0.7 : 0.9,
+                opacity: isHovered ? 1 : isDimmed ? 0.3 : hoveredTicker ? 0.7 : 0.9,
                 border: "1px solid hsl(var(--background) / 0.3)",
               }}
               onClick={() => onClickTicker(item.name)}
