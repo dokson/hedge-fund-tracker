@@ -7,6 +7,8 @@ export const ROUTES = {
   home: "/",
   latest: "/latest",
   quarterly: "/quarterly",
+  strategyPerformance: "/performance",
+  learn: "/learn",
   funds: "/funds",
   stocks: "/stocks",
   /** Base segment for a single stock page; use `stockPath()` for a full link. */
@@ -31,3 +33,7 @@ export const stocksByIndustry = (industry: string) =>
 /** AI Due Diligence pre-loaded with a ticker. */
 export const aiDiligenceFor = (ticker: string) =>
   `${ROUTES.aiDiligence}?ticker=${encodeURIComponent(ticker)}`;
+
+/** Strategy Performance pre-focused on a strategy (by canonical id). */
+export const performanceFor = (strategyId: string) =>
+  `${ROUTES.strategyPerformance}?strategy=${encodeURIComponent(strategyId)}`;

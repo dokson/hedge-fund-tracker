@@ -4,6 +4,7 @@ from tabulate import tabulate
 
 from app.analysis.non_quarterly import get_non_quarterly_filings_dataframe
 from app.analysis.quarterly_report import generate_comparison
+from app.backtest.report import rebuild_strategy_performance
 from app.database import (
     MIN_REFERENCE_DATE,
     clean_stocks,
@@ -465,6 +466,15 @@ def print_missing_quarters_report():
     horizontal_rule()
 
 
+def run_rebuild_strategy_performance():
+    """
+    11. Rebuilds the strategy-performance backtest (Avg Portfolio vs SPY) CSV.
+    """
+    print_centered("Rebuilding strategy performance (Avg Portfolio) vs SPY...")
+    path = rebuild_strategy_performance()
+    print(f"✅ Strategy performance written to {path}")
+
+
 if __name__ == "__main__":
     actions = {
         "0": exit_app,
@@ -478,6 +488,7 @@ if __name__ == "__main__":
         "8": run_delete_fund,
         "9": run_restore_fund,
         "10": print_missing_quarters_report,
+        "11": run_rebuild_strategy_performance,
     }
 
     while True:
@@ -496,9 +507,10 @@ if __name__ == "__main__":
             print("8. Delete a hedge fund from the database")
             print("9. Restore an excluded hedge fund to the database")
             print("10. Show funds with missing quarters")
+            print("11. Rebuild strategy performance (Avg Portfolio backtest)")
             horizontal_rule()
 
-            choice = input("Choose an option (0-10): ")
+            choice = input("Choose an option (0-11): ")
             action = actions.get(choice)
             if action:
                 if action() is False:

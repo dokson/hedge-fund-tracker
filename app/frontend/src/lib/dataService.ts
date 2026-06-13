@@ -58,6 +58,21 @@ export interface RawSectorHierarchy {
   Count: string;
 }
 
+export interface RawPerformanceRow {
+  series_type: string;
+  series_id: string;
+  label: string;
+  quarter_in: string;
+  quarter_out: string;
+  entry_date: string;
+  exit_date: string;
+  n_stocks: string;
+  window_return: string;
+  cum_return: string;
+  excess_return: string;
+  turnover: string;
+}
+
 // ---------- Parsed domain types ----------
 
 export interface HedgeFund {
@@ -75,6 +90,40 @@ export interface Stock {
   company: string;
   sector?: string;
   industry?: string;
+}
+
+export interface PerfWindow {
+  quarterOut: string;
+  windowReturn: number;
+  cumReturn: number;
+  /** Strategy return minus the anchor benchmark (S&P 500) this window; null for benchmark series. */
+  excessReturn: number | null;
+}
+
+export interface PerfSeries {
+  id: string;
+  label: string;
+  type: "strategy" | "benchmark";
+  windows: PerfWindow[];
+  /** Cumulative return over all windows (last window's cum_return). */
+  cumReturn: number;
+  /** Sample standard deviation of the per-window returns (quarterly σ). */
+  volatility: number;
+  /** Cumulative excess vs the S&P 500 in percentage points (strategies only). */
+  excessPp: number | null;
+  /** Windows whose return beat the S&P 500 (strategies only). */
+  beats: number;
+  total: number;
+}
+
+export interface PerformanceData {
+  /** Ordered exit-quarter labels shared by every series (chart x-axis). */
+  quarters: string[];
+  series: PerfSeries[];
+  /** Entry date of the first window (ISO) — when the track record actually starts. */
+  startDate: string;
+  /** Quarter the first window is entered from (e.g. "2025Q1"); the chart origin label. */
+  startQuarter: string;
 }
 
 export interface NonQuarterlyFiling {
@@ -459,6 +508,79 @@ export async function getStocks(): Promise<Stock[]> {
       industry: r.Industry || undefined,
       sector: r.Industry ? industryToSector.get(r.Industry) : undefined,
     }));
+  });
+}
+
+/**
+ * Sample standard deviation (Bessel-corrected); 0 with fewer than two values.
+ */
+function stdev(values: number[]): number {
+  if (values.length < 2) return 0;
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / (values.length - 1);
+  return Math.sqrt(variance);
+}
+
+/**
+ * Group long-format performance rows into per-series track records.
+ *
+ * Each series (strategy or benchmark) keeps its ordered windows; strategies
+ * also get cumulative excess vs the S&P 500 (percentage points) and a count of
+ * windows that beat it. Kept pure (no fetch) so it is unit-testable.
+ */
+export function parsePerformanceRows(raw: RawPerformanceRow[]): PerformanceData {
+  const bySeries = new Map<string, PerfSeries>();
+  const quarters: string[] = [];
+  for (const r of raw) {
+    if (!quarters.includes(r.quarter_out)) quarters.push(r.quarter_out);
+    let series = bySeries.get(r.series_id);
+    if (!series) {
+      series = {
+        id: r.series_id,
+        label: r.label,
+        type: r.series_type === "benchmark" ? "benchmark" : "strategy",
+        windows: [],
+        cumReturn: 0,
+        volatility: 0,
+        excessPp: null,
+        beats: 0,
+        total: 0,
+      };
+      bySeries.set(r.series_id, series);
+    }
+    const excess = r.excess_return === "" ? null : parseFloat(r.excess_return);
+    series.windows.push({
+      quarterOut: r.quarter_out,
+      windowReturn: parseFloat(r.window_return) || 0,
+      cumReturn: parseFloat(r.cum_return) || 0,
+      excessReturn: excess === null || Number.isNaN(excess) ? null : excess,
+    });
+  }
+
+  const series = [...bySeries.values()];
+  const spy = series.find((s) => s.id === "SPY");
+  const spyCum = spy?.windows.at(-1)?.cumReturn ?? 0;
+  for (const s of series) {
+    s.total = s.windows.length;
+    s.cumReturn = s.windows.at(-1)?.cumReturn ?? 0;
+    s.volatility = stdev(s.windows.map((w) => w.windowReturn));
+    if (s.type === "strategy") {
+      s.excessPp = (s.cumReturn - spyCum) * 100;
+      s.beats = s.windows.filter((w) => (w.excessReturn ?? 0) > 0).length;
+    }
+  }
+  return {
+    quarters,
+    series,
+    startDate: raw[0]?.entry_date ?? "",
+    startQuarter: raw[0]?.quarter_in ?? "",
+  };
+}
+
+export async function getPerformance(): Promise<PerformanceData> {
+  return cachedFetch("performance", async () => {
+    const raw = await fetchCSV<RawPerformanceRow>("/database/performance.csv");
+    return parsePerformanceRows(raw);
   });
 }
 

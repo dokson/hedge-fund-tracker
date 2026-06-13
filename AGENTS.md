@@ -34,6 +34,7 @@ pipenv run app                              # web UI on auto-discovered port fro
 pipenv run app-cli                          # legacy terminal menu (6 analysis options)
 pipenv run update                           # database management CLI
 pipenv run regenerate [fund ...]            # rebuild all quarterly comparisons from EDGAR (amendment-aware); optional fund-name filter
+pipenv run gen-strategy                     # rebuild database/performance.csv (6-strategy backtest vs S&P 500)
 
 # Tests
 pipenv run test                                                          # all (Python); alias for unittest discover
@@ -100,6 +101,8 @@ These are real incidents — read before changing code in these areas.
 
 - **`stocks.csv` is auto-sorted on exit.** A diff that only shows reordering = something else changed. Don't commit "sort cleanup" PRs without inspecting actual content changes.
 
+- **The backtest is a descriptive track record, not a forecast — and its params aren't tuned on return.** `app/backtest/` reads only consolidated (matured) windows; the current sample is tiny and single-regime (no down-quarter yet), so every strategy beating the S&P 500 is largely beta, not skill — even "Decreasing" beat the market because the whole institutional universe rose. `min_holders` is `round(funds/10)` per quarter on a *breadth* principle (~10% of funds), and the five non-Avg-Portfolio screens are top-30 — NOT tuned to maximise the backtest number. The price cache lives in gitignored `__pricecache__/` — historical prices never change, so it makes a fund-list-change regeneration near-instant; don't commit it and don't expect it in CI (CI rebuilds cold).
+
 - **`scripts/regenerate_samples.py` imports after `sys.path.insert`.** The `# noqa: E402` lines are required — moving imports above the path setup breaks resolution of `app.*` modules.
 
 - **CRLF on Windows.** Git auto-converts. Don't fight it. Pre-commit hooks and `.editorconfig` enforce LF in repo; checkout converts as needed.
@@ -134,6 +137,7 @@ Static build via `npm run build:gh-pages`:
 - **Hidden pages** in GH Pages (route unreachable + sidebar entry removed): `/funds-config`, `/ai-settings`, `/database`
 - **Disabled pages**: `/ai-ranking`, `/ai-diligence` show `FeatureNotAvailable`
 - CSV bundled into `dist/database/` via `scripts/copy-database.mjs`
+- **Static FAQ pre-render**: the `faqStaticSeo` Vite plugin (`vite.config.ts`, gh-pages only) bakes `dist/learn/index.html` with the full Q&A + JSON-LD in the HTML (so JS-less AI/search crawlers read it; the SPA still hydrates over it) and emits `dist/sitemap.xml` + `dist/robots.txt`. Caveat: under the GH Pages *project* path, `robots.txt` isn't host-root so it's not authoritative until the custom domain is live.
 - SPA routing: `public/404.html` redirects to `index.html` with path encoded as query
 - Config: `app/frontend/src/lib/config.ts` (`IS_GH_PAGES_MODE`, `BASE_PATH`, `DATABASE_URL`, `API_BASE`)
 
@@ -147,6 +151,7 @@ Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `datab
 - **`app/analysis/`** — `quarterly_report.py` (delta shares/values, NEW/CLOSE positions), `stocks.py` (multi-fund consensus), `non_quarterly.py` (13D/G + Form 4 integration), `performance_evaluator.py` (HBR).
 - **`app/stocks/`** — CUSIP→Ticker via fallback chain: yfinance → OpenFIGI → TradingView. Reverse ticker→CUSIP (Form 4 path) via FMP (requires `FMP_API_KEY`). Industry classification via `app/stocks/classification.py::resolve_industry`: yfinance → same-Company match in stocks.csv → Groq LLM (free, picks from `sector_hierarchy.csv` vocabulary). Maintains `stocks.csv`. `PriceFetcher` uses a separate chain: yfinance → TradingView → Nasdaq (Nasdaq covers mutual funds others miss).
 - **`app/ai/`** — Multi-provider LLM. `agent.py` runs **two-phase analysis**: (1) AI picks metric weights for current market, (2) AI computes scores using those weights. Retries up to 7× on invalid response. Clients in `clients/`: GitHub Models, Google Gemini, Groq, HuggingFace, OpenRouter.
+- **`app/backtest/`** — Strategy backtester. `strategies.py` defines the six `/quarterly` screens as `StrategySpec`s (Avg Portfolio, Consensus Buys, New Consensus, Big Bets, Increasing, Decreasing) — each mirrors its tab's default sort + filters; the five non-Avg-Portfolio ones take **top 30**. `engine.py` reconstructs each screen point-in-time per quarter (reusing `app/analysis/stocks.py` aggregation — NOT the non-quarterly-merged view), weights every screen by `Avg_Portfolio_Pct` normalized to 100% (so strategies differ in *what* they hold, not *how* it's weighted), holds filing-date→next-filing, and computes returns vs the **S&P 500** (`BENCHMARKS`, extensible to more indices; `run_backtest`, long-format rows); `min_holders_for_quarter` = round(funds/10) per quarter. `price_cache.py` persists `(ticker, date)→price` (gitignored `__pricecache__/`) so regeneration after a fund-list change is near-instant. `report.py` writes `database/performance.csv`. Run via `pipenv run gen-strategy` or updater option 11. Compute is offline → the CSV is bundled for GH Pages; the `/performance` page only reads it (no PriceFetcher in TS).
 - **`app/api/`** — FastAPI routers, each `include_router`'d by `app/server.py`: `ai.py` (Promise Score / due-diligence, blocking + SSE), `admin.py` (filing fetches, ticker/CUSIP corrections, NASDAQ ticker-change apply, quarter-gap report), plus `me.py`/`api_keys.py`/`starred.py`. Shared infra lives in `common.py` (rate limiter, request validation, JSON-safe serialization) and `sse.py` (the per-request stdout-capture wrapper — imported on the boot path so it installs once). `server.py` keeps only app setup, static-file/SPA serving, and the quarter-listing routes.
 - **`app/database/`** — CSV data-access layer, a package split into `quarters.py` (quarter discovery + 13F loaders), `stocks.py` (stocks.csv CRUD, the stocks lock, ticker cascades), `funds.py` (hedge-fund add/delete/restore). The package `__init__` owns the shared constants (`DB_FOLDER`, `*_FILE`) + path-safety helpers and re-exports everything, so `from app.database import X` is unchanged. Submodules read `DB_FOLDER` as `_db.DB_FOLDER` (call-time) so tests can monkeypatch it.
 
@@ -157,7 +162,9 @@ Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `datab
 - `src/lib/aiClient.ts` — SSE calls to `/api/ai/*`
 - `src/components/ModelSelector.tsx` — reads `models.csv` via `getModels()`; `CLIENT_TO_PROVIDER_ID` maps CSV `Client` column to provider IDs
 - `src/components/TerminalOutput.tsx` — macOS-style streaming terminal
-- `src/pages/` — Landing (home `/`), Dashboard (Latest Filings, `/latest`), QuarterlyTrends, FundPortfolio, StockBrowser, StockAnalysis, AIRanking, AIDueDiligence, FundsConfig, AISettings, DatabasePage
+- `src/pages/` — Landing (home `/`), Dashboard (Latest Filings, `/latest`), QuarterlyTrends, StrategyPerformance (`/performance`), Learn (FAQ, `/learn`), FundPortfolio, StockBrowser, StockAnalysis, AIRanking, AIDueDiligence, FundsConfig, AISettings, DatabasePage
+- `src/components/EquityCurveChart.tsx` + `src/lib/equityCurve.ts` — multi-series cumulative-return curve for the `/performance` page (one line per strategy + benchmark, toggled via pills). `buildChartData` + `seriesColor` are the pure transforms (kept out of the component file for fast-refresh); the long CSV is parsed into per-series records by `parsePerformanceRows` in `dataService.ts`.
+- `src/pages/Learn.tsx` (FAQ) + `src/lib/faqContent.ts` (content as plain data) + `src/lib/seo.ts` (React-free helpers: `canonicalUrl`, `buildFaqJsonLd`/`buildBreadcrumbJsonLd`, `renderFaqStaticHtml`) + `src/hooks/usePageMeta.ts` (per-route title/description/canonical/OG + JSON-LD for the live SPA, no `react-helmet`). The canonical origin is the single constant `SITE_ORIGIN`/`SITE_BASE` in `seo.ts` — switching to a custom domain is one edit (keep `SITE_BASE` in sync with `BASE_PATH`).
 
 ### Database (CSV files)
 
@@ -169,6 +176,7 @@ All in `database/`:
 - **`non_quarterly.csv`** — recent 13D/G + Form 4 activity.
 - **`{YEAR}Q{N}/`** — per-fund 13F per quarter (one CSV per fund).
 - **`sector_hierarchy.csv`** — Yahoo Finance sector → industry mapping, derived empirically from `stocks.csv` after the classification backfill. The Sector for any stock is derived at read time by joining this file on the Industry column.
+- **`performance.csv`** — multi-strategy backtest in **long format**: one row per (series, consolidated window), where a series is a strategy or a benchmark (`series_type`/`series_id`). Carries per-window + cumulative return, plus (strategies) stock count, excess vs SPY, turnover. Regenerated by `pipenv run gen-strategy` / updater option 11; bundled to GH Pages and read by the `/performance` page.
 
 ## Frontend: Global Search & Company Logos
 

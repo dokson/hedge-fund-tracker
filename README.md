@@ -478,6 +478,7 @@ The frontend can be deployed as a **static demo on GitHub Pages** — no Python 
 | Quarterly Trends | Fully functional |
 | Hedge Fund Portfolios | Fully functional |
 | Stocks Browser | Fully functional |
+| FAQ (`/learn`) | Fully functional (statically pre-rendered for SEO) |
 | AI Ranking | Disabled (requires local backend) |
 | AI Due Diligence | Disabled (requires local backend) |
 | Funds Config | Hidden |

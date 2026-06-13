@@ -1,13 +1,101 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import { readFileSync } from "fs";
+import { mkdirSync, readFileSync, writeFileSync } from "fs";
+
+import { ROUTES } from "./src/lib/routes";
+import { FAQ_LAST_UPDATED, FAQ_META, FAQ_SECTIONS } from "./src/lib/faqContent";
+import {
+  buildBreadcrumbJsonLd,
+  buildFaqJsonLd,
+  canonicalUrl,
+  renderFaqStaticHtml,
+  SITE_BASE,
+  SITE_ORIGIN,
+} from "./src/lib/seo";
 
 // Single source-of-truth for the app version: app/frontend/package.json. The
 // backend reads the same field at request time (see app/utils/version.py) so
 // every surface (sidebar footer, server /health, GH release tag) agrees.
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf-8"));
 const APP_VERSION: string = pkg.version;
+
+// Public routes worth advertising in the sitemap (excludes parametrised and
+// backend-only pages).
+const SITEMAP_ROUTES = [
+  ROUTES.home,
+  ROUTES.latest,
+  ROUTES.quarterly,
+  ROUTES.strategyPerformance,
+  ROUTES.funds,
+  ROUTES.stocks,
+  ROUTES.learn,
+];
+
+/**
+ * Bakes a crawler-facing static snapshot of the /learn FAQ (full Q&A + JSON-LD
+ * in the HTML, so AI/search crawlers that don't run JavaScript read it) and
+ * emits sitemap.xml + robots.txt. Enabled only for the public gh-pages build.
+ */
+function faqStaticSeo(enabled: boolean): Plugin {
+  return {
+    name: "faq-static-seo",
+    apply: "build",
+    closeBundle() {
+      if (!enabled) return;
+      const distDir = path.resolve(__dirname, "dist");
+      const template = readFileSync(path.resolve(distDir, "index.html"), "utf-8");
+
+      const html = renderFaqStaticHtml({
+        template,
+        canonical: canonicalUrl(ROUTES.learn),
+        meta: FAQ_META,
+        sections: FAQ_SECTIONS,
+        jsonLd: [
+          buildFaqJsonLd(FAQ_SECTIONS),
+          buildBreadcrumbJsonLd([
+            { name: "Home", path: ROUTES.home },
+            { name: "FAQ", path: ROUTES.learn },
+          ]),
+        ],
+      });
+      mkdirSync(path.resolve(distDir, "learn"), { recursive: true });
+      writeFileSync(path.resolve(distDir, "learn/index.html"), html);
+
+      const urls = SITEMAP_ROUTES.map((route) => {
+        const lastmod =
+          route === ROUTES.learn ? `\n    <lastmod>${FAQ_LAST_UPDATED}</lastmod>` : "";
+        return `  <url>\n    <loc>${canonicalUrl(route)}</loc>${lastmod}\n  </url>`;
+      }).join("\n");
+      writeFileSync(
+        path.resolve(distDir, "sitemap.xml"),
+        `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`,
+      );
+
+      const robots = [
+        "User-agent: *",
+        "Allow: /",
+        "",
+        "# AI search crawlers explicitly welcomed",
+        "User-agent: GPTBot",
+        "Allow: /",
+        "",
+        "User-agent: OAI-SearchBot",
+        "Allow: /",
+        "",
+        "User-agent: ClaudeBot",
+        "Allow: /",
+        "",
+        "User-agent: PerplexityBot",
+        "Allow: /",
+        "",
+        `Sitemap: ${SITE_ORIGIN}${SITE_BASE}/sitemap.xml`,
+        "",
+      ].join("\n");
+      writeFileSync(path.resolve(distDir, "robots.txt"), robots);
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => ({
   base: mode === "gh-pages" ? "/hedge-fund-tracker/" : "/",
@@ -29,7 +117,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   publicDir: "public",
-  plugins: [react()],
+  plugins: [react(), faqStaticSeo(mode === "gh-pages")],
   build: {
     rollupOptions: {
       output: {

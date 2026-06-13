@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   runQuarterAnalysis,
@@ -8,6 +8,9 @@ import {
   type StockQuarterAnalysis,
 } from "@/lib/dataService";
 import type { Quarter } from "@/lib/quarters";
+import { STRATEGY_BY_TAB, STRATEGY_DEFS_PERF_ORDER } from "@/lib/strategies";
+import { seriesColor } from "@/lib/seriesColors";
+import { performanceFor } from "@/lib/routes";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { TickerLink, CompanyLink } from "@/components/EntityLinks";
 import { Delta } from "@/components/Delta";
@@ -22,18 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Loader2,
-  TrendingUp,
-  TrendingDown,
-  Handshake,
-  UserPlus,
-  Banknote,
-  PieChart,
-  BarChart3,
-  Info,
-  Filter,
-} from "lucide-react";
+import { Loader2, BarChart3, Info, Filter, LineChart, ArrowUpRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useStarred } from "@/hooks/useStarred";
@@ -94,6 +86,7 @@ function AnalysisTable({
   defaultFilterInfinite = false,
   defaultLimit = 30,
   disableFilters = false,
+  deltaSign,
 }: {
   data: StockQuarterAnalysis[];
   defaultSort: SortKey;
@@ -112,6 +105,8 @@ function AnalysisTable({
   defaultFilterInfinite?: boolean;
   defaultLimit?: number;
   disableFilters?: boolean;
+  /** Hard constraint: keep only positive / negative deltas (Increasing / Decreasing). */
+  deltaSign?: "positive" | "negative";
 }) {
   const [sortKey, setSortKey] = useState<SortKey>(defaultSort);
   const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultDir);
@@ -128,11 +123,14 @@ function AnalysisTable({
   }
 
   const filtered = useMemo(() => {
-    if (disableFilters) return data;
-    let arr = data.filter((s) => s.holderCount >= minHolders);
-    if (filterInfinite) arr = arr.filter((s) => isFinite(s.delta));
+    let arr = disableFilters ? data : data.filter((s) => s.holderCount >= minHolders);
+    if (!disableFilters && filterInfinite) arr = arr.filter((s) => isFinite(s.delta));
+    // Sign constraint always applies, on the strategy's ranking metric (defaultSort) —
+    // it defines the Increasing/Decreasing screens.
+    if (deltaSign === "positive") arr = arr.filter((s) => (s[defaultSort] as number) > 0);
+    else if (deltaSign === "negative") arr = arr.filter((s) => (s[defaultSort] as number) < 0);
     return arr;
-  }, [data, minHolders, filterInfinite, disableFilters]);
+  }, [data, minHolders, filterInfinite, disableFilters, deltaSign, defaultSort]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -413,7 +411,20 @@ export default function QuarterlyTrends() {
     enabled: !!quarter,
     staleTime: Infinity,
   });
-  const defaultMinHolders = Math.max(1, Math.ceil(quarterFundList.length * 0.1));
+  // Per-tab AnalysisTable defaults sourced from the shared strategy registry
+  // (src/lib/strategies.ts), so the backtest and these screens stay in sync.
+  const tableDefaults = (tab: string) => {
+    const def = STRATEGY_BY_TAB[tab];
+    return {
+      defaultSort: def.sortKey as SortKey,
+      defaultDir: (def.ascending ? "asc" : "desc") as "asc" | "desc",
+      defaultMinHolders: def.minHolders
+        ? Math.max(1, Math.ceil(quarterFundList.length / (def.minHoldersDivisor ?? 10)))
+        : 0,
+      defaultFilterInfinite: def.excludeInfiniteDelta,
+      deltaSign: def.deltaSign,
+    };
+  };
 
   const data = useMemo(() => {
     if (filterStarredStocks && starredStocks.size > 0) {
@@ -438,18 +449,35 @@ export default function QuarterlyTrends() {
               )}
             </p>
           </div>
-          <Select value={quarter ?? ""} onValueChange={(v) => setSelectedQuarter(v as Quarter)}>
-            <SelectTrigger className="w-36 bg-card border-border">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[...quarters].reverse().map((q) => (
-                <SelectItem key={q} value={q}>
-                  {q.replace("Q", " Q")}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            {STRATEGY_BY_TAB[activeTab] && (
+              <Link
+                to={performanceFor(STRATEGY_BY_TAB[activeTab].id)}
+                title={`See the ${STRATEGY_BY_TAB[activeTab].label} screen's backtested track record vs the S&P 500`}
+                className="group inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground shadow-sm transition-colors hover:border-foreground/30 hover:text-foreground"
+              >
+                <LineChart
+                  className="h-4 w-4"
+                  style={{ color: seriesColor(STRATEGY_BY_TAB[activeTab].id) }}
+                />
+                <span className="hidden sm:inline">Backtested track record</span>
+                <span className="sm:hidden">Backtest</span>
+                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </Link>
+            )}
+            <Select value={quarter ?? ""} onValueChange={(v) => setSelectedQuarter(v as Quarter)}>
+              <SelectTrigger className="w-36 bg-card border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[...quarters].reverse().map((q) => (
+                  <SelectItem key={q} value={q}>
+                    {q.replace("Q", " Q")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -474,96 +502,27 @@ export default function QuarterlyTrends() {
           className="w-full"
         >
           <TabsList className="h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <TabsTrigger
-                    value="avgportfolio"
-                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
-                  >
-                    <PieChart className="h-3.5 w-3.5" /> Avg Portfolio
-                  </TabsTrigger>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px] text-xs font-normal">
-                Stocks ranked by average portfolio weight across all tracked funds.
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <TabsTrigger
-                    value="consensus"
-                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
-                  >
-                    <Handshake className="h-3.5 w-3.5" /> Consensus Buys
-                  </TabsTrigger>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px] text-xs font-normal">
-                Stocks with the most net buyers (buyers minus sellers) this quarter.
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <TabsTrigger
-                    value="new"
-                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
-                  >
-                    <UserPlus className="h-3.5 w-3.5" /> New Consensus
-                  </TabsTrigger>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px] text-xs font-normal">
-                Stocks attracting the most brand-new holders this quarter.
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <TabsTrigger
-                    value="bigbets"
-                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
-                  >
-                    <Banknote className="h-3.5 w-3.5" /> Big Bets
-                  </TabsTrigger>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px] text-xs font-normal">
-                Stocks with the highest portfolio concentration in a single fund.
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <TabsTrigger
-                    value="increasing"
-                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
-                  >
-                    <TrendingUp className="h-3.5 w-3.5" /> Increasing Positions
-                  </TabsTrigger>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px] text-xs font-normal">
-                Stocks with the largest percentage increase in aggregate shares held.
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <TabsTrigger
-                    value="decreasing"
-                    className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
-                  >
-                    <TrendingDown className="h-3.5 w-3.5" /> Decreasing Positions
-                  </TabsTrigger>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px] text-xs font-normal">
-                Stocks with the largest percentage decrease in aggregate shares held.
-              </TooltipContent>
-            </Tooltip>
+            {STRATEGY_DEFS_PERF_ORDER.map((d) => {
+              const Icon = d.icon;
+              return (
+                <Tooltip key={d.tab}>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <TabsTrigger
+                        value={d.tab}
+                        className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
+                      >
+                        <Icon className="h-3.5 w-3.5" style={{ color: seriesColor(d.id) }} />{" "}
+                        {d.label}
+                      </TabsTrigger>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[280px] text-xs font-normal">
+                    {d.description}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
           </TabsList>
 
           {/* Starred filters */}
@@ -580,7 +539,7 @@ export default function QuarterlyTrends() {
           <TabsContent value="consensus" className="mt-4">
             <AnalysisTable
               data={data}
-              defaultSort="netBuyers"
+              {...tableDefaults("consensus")}
               disableFilters={anyStarredFilter}
               columns={[
                 {
@@ -623,7 +582,7 @@ export default function QuarterlyTrends() {
           <TabsContent value="new" className="mt-4">
             <AnalysisTable
               data={data}
-              defaultSort="newHolderCount"
+              {...tableDefaults("new")}
               disableFilters={anyStarredFilter}
               columns={[
                 {
@@ -667,9 +626,7 @@ export default function QuarterlyTrends() {
           <TabsContent value="increasing" className="mt-4">
             <AnalysisTable
               data={data}
-              defaultSort="delta"
-              defaultFilterInfinite
-              defaultMinHolders={defaultMinHolders}
+              {...tableDefaults("increasing")}
               disableFilters={anyStarredFilter}
               columns={[
                 {
@@ -713,9 +670,7 @@ export default function QuarterlyTrends() {
           <TabsContent value="decreasing" className="mt-4">
             <AnalysisTable
               data={data}
-              defaultSort="delta"
-              defaultDir="asc"
-              defaultMinHolders={defaultMinHolders}
+              {...tableDefaults("decreasing")}
               disableFilters={anyStarredFilter}
               columns={[
                 {
@@ -759,7 +714,7 @@ export default function QuarterlyTrends() {
           <TabsContent value="bigbets" className="mt-4">
             <AnalysisTable
               data={data}
-              defaultSort="maxPortfolioPct"
+              {...tableDefaults("bigbets")}
               disableFilters={anyStarredFilter}
               columns={[
                 {
@@ -799,8 +754,7 @@ export default function QuarterlyTrends() {
           <TabsContent value="avgportfolio" className="mt-4">
             <AnalysisTable
               data={data}
-              defaultSort="avgPortfolioPct"
-              defaultMinHolders={defaultMinHolders}
+              {...tableDefaults("avgportfolio")}
               disableFilters={anyStarredFilter}
               columns={[
                 {

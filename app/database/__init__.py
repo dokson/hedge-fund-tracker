@@ -46,6 +46,7 @@ LATEST_SCHEDULE_FILINGS_FILE = "non_quarterly.csv"
 MODELS_FILE = "models.csv"
 SECTOR_HIERARCHY_FILE = "sector_hierarchy.csv"
 STOCKS_FILE = "stocks.csv"
+PERFORMANCE_FILE = "performance.csv"
 
 
 def _get_db_root() -> Path:

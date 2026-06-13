@@ -1,0 +1,74 @@
+[
+  {
+    "id": "avg_portfolio",
+    "label": "Avg Portfolio",
+    "metric": "avg_portfolio_pct",
+    "ascending": false,
+    "min_holders": true,
+    "exclude_infinite_delta": false,
+    "capped": false,
+    "top_n": null,
+    "delta_sign": null,
+    "min_holders_divisor": 10
+  },
+  {
+    "id": "consensus",
+    "label": "Consensus Buys",
+    "metric": "net_buyers",
+    "ascending": false,
+    "min_holders": false,
+    "exclude_infinite_delta": false,
+    "capped": true,
+    "top_n": 30,
+    "delta_sign": null,
+    "min_holders_divisor": 10
+  },
+  {
+    "id": "new_consensus",
+    "label": "New Consensus",
+    "metric": "new_holder_count",
+    "ascending": false,
+    "min_holders": false,
+    "exclude_infinite_delta": false,
+    "capped": true,
+    "top_n": 30,
+    "delta_sign": null,
+    "min_holders_divisor": 10
+  },
+  {
+    "id": "big_bets",
+    "label": "Big Bets",
+    "metric": "max_portfolio_pct",
+    "ascending": false,
+    "min_holders": false,
+    "exclude_infinite_delta": false,
+    "capped": true,
+    "top_n": 30,
+    "delta_sign": null,
+    "min_holders_divisor": 10
+  },
+  {
+    "id": "increasing",
+    "label": "Increasing",
+    "metric": "delta",
+    "ascending": false,
+    "min_holders": true,
+    "exclude_infinite_delta": true,
+    "capped": true,
+    "top_n": 30,
+    "delta_sign": "positive",
+    "min_holders_divisor": 10
+  },
+  {
+    "id": "decreasing",
+    "label": "Decreasing",
+    "metric": "total_delta_value",
+    "ascending": true,
+    "min_holders": false,
+    "exclude_infinite_delta": false,
+    "capped": true,
+    "top_n": 30,
+    "delta_sign": "negative",
+    "min_holders_divisor": 10
+  }
+]

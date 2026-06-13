@@ -42,6 +42,9 @@
   "[shellscript]": {
     "files.eol": "\n"
   },
+  "[csv]": {
+    "editor.rulers": []
+  },
 
   "eslint.workingDirectories": [{ "pattern": "app/frontend" }],
   "eslint.validate": [
@@ -61,10 +64,11 @@
     "**/__pycache__/**": true,
     "**/__llmcache__/**": true,
     "**/__reports__/**": true,
+    "**/__pricecache__/**": true,
     "**/.ruff_cache/**": true,
     "**/.mypy_cache/**": true,
     "**/.pytest_cache/**": true,
-    "**/database/[0-9]*Q[0-9]/**": true,
+    "**/coverage/**": true,
     "**/Pipfile.lock": true,
     "**/package-lock.json": true
   },
@@ -72,10 +76,28 @@
     "**/.ruff_cache/**": true,
     "**/.mypy_cache/**": true,
     "**/.pytest_cache/**": true,
+    "**/__pycache__/**": true,
     "**/__llmcache__/**": true,
     "**/__reports__/**": true,
+    "**/__pricecache__/**": true,
     "**/node_modules/**": true,
     "**/dist/**": true
   },
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.ruff_cache": true,
+    "**/.mypy_cache": true,
+    "**/.pytest_cache": true,
+    "**/*.egg-info": true
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "Pipfile": "Pipfile.lock",
+    "package.json": "package-lock.json, .npmrc",
+    "tsconfig.json": "tsconfig.*.json",
+    "AGENTS.md": "CLAUDE.md",
+    ".env.example": ".env, .env.*"
+  },
+  "editor.unicodeHighlight.nonBasicASCII": false,
   "python-envs.defaultEnvManager": "ms-python.python:pipenv"
 }

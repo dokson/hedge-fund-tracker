@@ -14,12 +14,14 @@ import { ROUTES } from "@/lib/routes";
 
 // Route-level code splitting: each page ships as its own chunk and loads on navigation.
 const QuarterlyTrends = lazy(() => import("@/pages/QuarterlyTrends"));
+const StrategyPerformance = lazy(() => import("@/pages/StrategyPerformance"));
 const FundPortfolio = lazy(() => import("@/pages/FundPortfolio"));
 const StockAnalysis = lazy(() => import("@/pages/StockAnalysis"));
 const StockBrowser = lazy(() => import("@/pages/StockBrowser"));
 const AIRanking = lazy(() => import("@/pages/AIRanking"));
 const AIDueDiligence = lazy(() => import("@/pages/AIDueDiligence"));
 const AISettings = lazy(() => import("@/pages/AISettings"));
+const Learn = lazy(() => import("@/pages/Learn"));
 const FundsConfig = lazy(() => import("@/pages/FundsConfig"));
 const DatabasePage = lazy(() => import("@/pages/DatabasePage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -66,10 +68,14 @@ const App = () => (
                 {/* Core analysis routes — always available */}
                 <Route path={ROUTES.latest} element={<Dashboard />} />
                 <Route path={ROUTES.quarterly} element={<QuarterlyTrends />} />
+                <Route path={ROUTES.strategyPerformance} element={<StrategyPerformance />} />
                 <Route path={ROUTES.funds} element={<FundPortfolio />} />
                 <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
                 <Route path={ROUTES.stocks} element={<StockBrowser />} />
                 <Route path={`${ROUTES.stock}/:ticker`} element={<StockAnalysis />} />
+
+                {/* Educational FAQ — public, available in every mode */}
+                <Route path={ROUTES.learn} element={<Learn />} />
 
                 {/* AI routes — available but disabled in GH Pages mode */}
                 <Route path={ROUTES.aiRanking} element={<AIRanking />} />

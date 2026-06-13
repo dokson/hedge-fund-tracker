@@ -6,9 +6,11 @@ import {
   Search,
   ClipboardCheck,
   CandlestickChart,
+  LineChart,
   Settings2,
   Cpu,
   Database,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -38,6 +40,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { title: "Latest Filings", url: ROUTES.latest, icon: FileText },
       { title: "Quarterly Trends", url: ROUTES.quarterly, icon: BarChart3 },
+      { title: "Strategy Performance", url: ROUTES.strategyPerformance, icon: LineChart },
       { title: "Hedge Fund Portfolios", url: ROUTES.funds, icon: Wallet },
       { title: "Stocks", url: ROUTES.stocks, icon: CandlestickChart },
     ],
@@ -48,6 +51,10 @@ const SECTIONS: NavSection[] = [
       { title: "Most Promising Stocks", url: ROUTES.aiRanking, icon: Search },
       { title: "Stock Due Diligence", url: ROUTES.aiDiligence, icon: ClipboardCheck },
     ],
+  },
+  {
+    label: "Resources",
+    items: [{ title: "FAQ", url: ROUTES.learn, icon: BookOpen }],
   },
   // Configuration + Database are local-only — hidden entirely on the public
   // GH Pages build (no backend to write CSVs / manage funds / configure AI).
