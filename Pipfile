@@ -7,7 +7,6 @@ name = "pypi"
 python_version = "3.13"
 
 [packages]
-aiohttp = "~=3.14"  # security forward-pin (transitive via tradingview-datafeed)
 alembic = "~=1.18"
 asyncpg = "~=0.31"
 beautifulsoup4 = "~=4.15"
@@ -37,6 +36,7 @@ yfinance = "~=1.4"
 
 [dev-packages]
 coverage = "~=7.6"
+httpx2 = "~=2.4"
 mypy = "~=2.1"
 pandas-stubs = "~=3.0"
 pre-commit = "~=4.6"
