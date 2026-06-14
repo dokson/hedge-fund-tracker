@@ -11,16 +11,12 @@ handler convention.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import StreamingResponse
 
 from app.api.common import _require_cusip, _require_ticker
 from app.api.sse import _make_sse_stream
-
-if TYPE_CHECKING:
-    from fastapi.responses import StreamingResponse
 
 router = APIRouter(tags=["admin"])
 

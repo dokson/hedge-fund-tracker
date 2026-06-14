@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import StreamingResponse
 
 from app.api.common import (
     _df_to_json_safe_records,
@@ -24,8 +25,6 @@ from app.db.session import AsyncSessionLocal
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from fastapi.responses import StreamingResponse
 
     from app.ai.clients.base_client import AIClient
     from app.db.models import User

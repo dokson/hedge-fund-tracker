@@ -13,7 +13,7 @@ asyncpg = "~=0.31"
 beautifulsoup4 = "~=4.15"
 cryptography = "~=49.0"
 curl-cffi = "~=0.15"
-fastapi = "~=0.136"
+fastapi = "~=0.137"
 fastapi-users = {extras = ["sqlalchemy"], version = "~=15.0"}
 fastapi-users-db-sqlalchemy = "~=7.0"
 google-genai = "~=2.8"

@@ -1,21 +1,21 @@
 """
 Regression tests for the auth router wiring.
 
-We can't easily integration-test "PATCH /users/<other> returns 403" without
-spinning up a full DB + auth flow, so we lock in the **shape** of the routes:
-- The /users/{id} family (PATCH, DELETE) MUST exist and have an authentication
-  dependency. If a future fastapi-users version stops mounting these as
-  superuser-only, this test alone won't catch it — but it'll detect the bigger
-  regression of "the routes vanished or lost their auth dep entirely".
+We lock in the **behaviour** of the /users/{id} family rather than its internal
+shape: an unauthenticated GET/PATCH/DELETE must be rejected with 401. This is a
+stronger guarantee than introspecting `route.dependant.dependencies` (it proves
+the gate actually rejects, not merely that a dependency is declared) and it is
+immune to FastAPI's internal route representation, which became a router tree in
+0.137 — `app.routes` is no longer a flat list of routes to walk.
 
-For the real 403 verification, do a manual smoke test against a running stack:
-    curl -X PATCH https://app/users/<some-uuid> -H "Cookie: hft_session=..."
-expect: HTTP 403 when authenticated as a non-superuser.
+A 401 (not 404) also proves the route exists: a missing path would fall through
+to the SPA catch-all and return 200, so 401 confirms both presence and gating.
 """
 
 from __future__ import annotations
 
 import unittest
+from uuid import UUID
 
 try:
     import app.auth  # noqa: F401 — probe import; tests do their own imports lazily.
@@ -28,34 +28,31 @@ class TestUsersRouterShape(unittest.TestCase):
     Architectural regression tests for /users/{id} routes.
     """
 
-    def test_users_id_routes_have_auth_dependency(self) -> None:
+    def test_users_id_methods_reject_unauthenticated(self) -> None:
         """
-        Each of GET/PATCH/DELETE on /users/{id} must declare at least one
-        dependency. The fastapi-users default for these is `current_user(
-        active=True, superuser=True)`. Library upgrades that drop the auth
-        dep would render the route open — fail the build instead.
+        GET/PATCH/DELETE on /users/{id} must reject anonymous callers with 401.
+
+        The fastapi-users default mounts these behind `current_user(active=True,
+        superuser=True)`. A library upgrade that dropped the auth dependency would
+        leave the route open (200/404 instead of 401) — fail the build instead.
         """
+        from starlette.testclient import TestClient
+
         from app.server import app
 
-        protected_methods_seen: set[str] = set()
-        for route in app.routes:
-            path = getattr(route, "path", None)
-            if path != "/users/{id}":
-                continue
-            methods = getattr(route, "methods", set()) - {"OPTIONS", "HEAD"}
-            dependencies = getattr(getattr(route, "dependant", None), "dependencies", [])
-            self.assertTrue(
-                len(dependencies) > 0,
-                f"{methods} /users/{{id}} has no dependencies — auth gating may have regressed",
-            )
-            protected_methods_seen.update(methods)
-
-        # All three management methods must be registered (regression on missing routes).
-        self.assertEqual(
-            protected_methods_seen,
-            {"GET", "PATCH", "DELETE"},
-            "Expected /users/{id} to expose GET, PATCH, DELETE — fastapi-users wiring changed",
-        )
+        client = TestClient(app)
+        # Nil UUID: a valid path param so routing matches and the rejection comes
+        # from auth, not from path-parameter validation (which would be 422).
+        path = f"/users/{UUID(int=0)}"
+        for method in ("GET", "PATCH", "DELETE"):
+            with self.subTest(method=method):
+                response = client.request(method, path)
+                self.assertEqual(
+                    response.status_code,
+                    401,
+                    f"{method} /users/{{id}} returned {response.status_code}, "
+                    "expected 401 — auth gating may have regressed",
+                )
 
 
 if __name__ == "__main__":

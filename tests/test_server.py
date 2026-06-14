@@ -9,6 +9,26 @@ except ImportError as _e:  # pragma: no cover — optional dep missing (e.g. fas
     raise unittest.SkipTest(f"app.server unavailable: {_e}") from None
 
 
+def _iter_routes(router):
+    """
+    Yield every concrete route reachable from a FastAPI app or router.
+
+    FastAPI 0.137 turned `app.routes` into a tree: an included sub-router appears
+    as an intermediate node carrying its real routes on `original_router.routes`
+    rather than inline. Walking that (and falling back to the flat `.routes` of
+    older versions) keeps the route-wiring assertions working regardless of how
+    FastAPI composes the app internally, and preserves registration order within
+    each router. The public alternative — the OpenAPI schema — is currently
+    unusable under the pinned pydantic alpha.
+    """
+    for route in getattr(router, "routes", []):
+        nested = getattr(route, "original_router", None)
+        if nested is not None:
+            yield from _iter_routes(nested)
+        else:
+            yield route
+
+
 class TestDfToJsonSafeRecords(unittest.TestCase):
     """
     Tests for the _df_to_json_safe_records helper that sanitizes ±Infinity and NaN
@@ -80,7 +100,7 @@ class TestServer(unittest.TestCase):
         """
         from app.server import app
 
-        paths = [getattr(r, "path", "") for r in app.routes]
+        paths = [getattr(r, "path", "") for r in _iter_routes(app)]
 
         expected_paths = [
             "/database/{filepath:path}",
@@ -95,6 +115,22 @@ class TestServer(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertIn(path, paths)
 
+    def test_openapi_schema_builds(self):
+        """
+        The OpenAPI schema must generate without raising.
+
+        The SSE endpoints return StreamingResponse. With `from __future__ import
+        annotations` their return annotation is a string ForwardRef; if the class
+        isn't importable at runtime, FastAPI can't see it's a Response subclass,
+        treats it as a response model and pydantic raises — taking /docs and
+        /openapi.json down with it. This locks the schema build in as a contract.
+        """
+        from app.server import app
+
+        schema = app.openapi()
+        self.assertIn("/api/ai/promise-score/stream", schema["paths"])
+        self.assertIn("/api/update-all/stream", schema["paths"])
+
     def test_latest_quarter_route_is_registered_before_parameterized_quarter(self):
         """
         FastAPI matches routes in registration order, so the literal "/latest"
@@ -102,7 +138,7 @@ class TestServer(unittest.TestCase):
         """
         from app.server import app
 
-        paths = [getattr(r, "path", "") for r in app.routes]
+        paths = [getattr(r, "path", "") for r in _iter_routes(app)]
         latest_idx = paths.index("/api/database/quarters/latest")
         param_idx = paths.index("/api/database/quarters/{quarter}")
         self.assertLess(latest_idx, param_idx)
