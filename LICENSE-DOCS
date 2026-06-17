@@ -1,0 +1,33 @@
+SPDX-License-Identifier: CC-BY-4.0
+
+Documentation License
+=====================
+
+Copyright (c) 2025 Alessandro Colace
+
+All Markdown documentation files (`*.md`) in this repository — including but not
+limited to README.md, AGENTS.md, CLAUDE.md, CONTRIBUTING.md, SECURITY.md, and
+.github/pull_request_template.md — are licensed under the Creative Commons
+Attribution 4.0 International License (CC BY 4.0).
+
+You are free to:
+- Share — copy and redistribute the material in any medium or format.
+- Adapt — remix, transform, and build upon the material for any purpose, even
+  commercially.
+
+Under the following terms:
+- Attribution — You must give appropriate credit to Alessandro Colace, provide a
+  link to this license, and indicate if changes were made. You may do so in any
+  reasonable manner, but not in any way that suggests the licensor endorses you
+  or your use.
+
+Suggested attribution:
+    "Documentation from hedge-fund-tracker by Alessandro Colace
+    (https://github.com/dokson/hedge-fund-tracker), licensed under CC BY 4.0."
+
+Human-readable summary: https://creativecommons.org/licenses/by/4.0/
+Full legal code:        https://creativecommons.org/licenses/by/4.0/legalcode
+
+This documentation license applies ONLY to the Markdown documentation files.
+All source code and other materials remain governed by the LICENSE file
+(proprietary, All Rights Reserved) unless explicitly stated otherwise.

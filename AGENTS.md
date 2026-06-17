@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
 # AGENTS.md
 
 Single source of truth for AI coding agents (Claude Code, Codex, Copilot Coding Agent, etc.). `CLAUDE.md` is a one-line `@AGENTS.md` pointer so Claude Code picks it up automatically.
@@ -295,3 +296,10 @@ App degrades gracefully when keys are missing — providers without keys are sim
 `hedge_funds.csv` is a **curated** list selected via custom methodology emphasizing cumulative returns while penalizing volatility (Sharpe-like) and drawdowns (Sterling-like, with dampened recovery penalty). Actively maintained — underperformers removed, strong performers added.
 
 Specialists (healthcare/biotech) and mega-funds (Berkshire, Citadel, Bridgewater) are intentionally excluded — analysis quality drops when tracking very large/diverse portfolios. See `excluded_hedge_funds.csv` for the full list with CIKs (re-add by moving rows back).
+
+## License
+
+This repository is **dual-licensed**:
+
+- **Source code** — proprietary, All Rights Reserved (see `LICENSE`).
+- **Markdown documentation** (`*.md`, including this file) — Creative Commons Attribution 4.0 International (CC BY 4.0); see `LICENSE-DOCS`. Reuse with attribution to Alessandro Colace (https://github.com/dokson/hedge-fund-tracker).

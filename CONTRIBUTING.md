@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
 # Contributing
 
 Thanks for considering a contribution! This document covers what you need to know to land a change.

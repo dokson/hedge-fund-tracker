@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!--
 Keep this title concise (<70 chars). Conventional Commits prefix encouraged:
   feat: fix: chore: docs: refactor: test: perf: ci:

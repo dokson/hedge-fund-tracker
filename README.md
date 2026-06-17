@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
 ![Hedge Fund Tracker](app/frontend/public/readme-logo.png)
 
 # 📊 Hedge Fund Tracker

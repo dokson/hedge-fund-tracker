@@ -1,3 +1,5 @@
+SPDX-License-Identifier: LicenseRef-Proprietary
+
 Copyright (c) 2025 Alessandro Colace. All Rights Reserved.
 
 ## Original Work
@@ -48,3 +50,9 @@ You may NOT, without prior written permission from Alessandro Colace:
 
 To request permission, open an issue or contact the author through GitHub:
 https://github.com/dokson
+
+## Documentation (Markdown files)
+
+The terms above do NOT apply to the Markdown documentation files (`*.md`) in this
+repository. Those files are licensed separately under the Creative Commons
+Attribution 4.0 International License (CC BY 4.0); see the `LICENSE-DOCS` file.
