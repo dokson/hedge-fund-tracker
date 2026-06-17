@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2e4601f919b6e284840a218490d76980bdc0290fb8ddb3fa4d122f7f22179964"
+            "sha256": "b6877c2583d4cf312bb6bb3c3265874c63bec9d39464d12bc15cc8d7654e05e1"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -43,11 +43,11 @@
         },
         "anyio": {
             "hashes": [
-                "sha256:08b310f9e24a9594186fd75b4f73f4a4152069e3853f1ed8bfbf58369f4ad708",
-                "sha256:334b70e641fd2221c1505b3890c69882fe4a2df910cba14d97019b90b24439dc"
+                "sha256:b47c1f9ccf73e67021df785332508f99379c68fa7d0684e8e3492cb1d4b23f89",
+                "sha256:dd9b7a2a9799ed6552fde617b2c5df02b7fdd7d88392fc48101e51bae46164d9"
             ],
             "markers": "python_version >= '3.10'",
-            "version": "==4.13.0"
+            "version": "==4.14.0"
         },
         "argon2-cffi": {
             "hashes": [
@@ -233,11 +233,11 @@
         },
         "certifi": {
             "hashes": [
-                "sha256:3c52e209ba0a4ad7aebe60436a4ab349c39e1e602e8c134221e546902ad25897",
-                "sha256:69dea482ab64caa7b9f6aba1c6bf48bb6a5448d1c0f1b17ab42ad8c763a5344d"
+                "sha256:024c88eeec92ca068db80f02b8b07c9cef7b9fe261d1d535abfd5abd6f6af432",
+                "sha256:2227dcbaafe0d2f59279d1762ddddc37783ed4354594f194ffc31d20f41fc3db"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==2026.5.20"
+            "version": "==2026.6.17"
         },
         "cffi": {
             "hashes": [
@@ -1249,12 +1249,12 @@
         },
         "openai": {
             "hashes": [
-                "sha256:23d617a0432457ad844973bee8f540be9da90894f7c5686852d2d365da058f57",
-                "sha256:a939565f350cb7443cb843b801b88c716ac8024b492fb94ca269d5f6b1bbefd6"
+                "sha256:65a670b54fadf2268c9e1330133373c963eb779ee969e5cbad419ec2c21dce97",
+                "sha256:e74d238200a26868977002190fb6631613480a93dfe0c9c982e77021ed60a017"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==2.41.1"
+            "version": "==2.43.0"
         },
         "packaging": {
             "hashes": [
@@ -1729,11 +1729,11 @@
         },
         "tqdm": {
             "hashes": [
-                "sha256:89c230e8dbc67c7615c142487111222f878c77427ea09549960f62389e258add",
-                "sha256:d4240441fb5353290b87d6a85968c9decc131a99b8c7faa28269d829de669ede"
+                "sha256:00dfa48452b6b6cfae3dd9885636c23d3422d1ec97c66d96818cbd5e0821d482",
+                "sha256:39832cc2def2789a6f29df83f172db7416cea70052c0907a57801c5f2fdccb03"
             ],
-            "markers": "python_version >= '3.7'",
-            "version": "==4.68.2"
+            "markers": "python_version >= '3.8'",
+            "version": "==4.68.3"
         },
         "tradingview-datafeed": {
             "hashes": [
