@@ -262,7 +262,8 @@ hedge-fund-tracker/
 ├── 📁 tests/                        # Test suite
 ├── 📝 .env.example                 # Template for your API keys
 ├── ⛔ .gitignore                   # Git ignore rules
-├── 🧾 LICENSE                      # MIT License
+├── 🧾 LICENSE                      # Proprietary (code) + bundled MIT (original work)
+├── 🧾 LICENSE-DOCS                 # CC BY 4.0 (Markdown documentation)
 ├── 🛠️ Pipfile                      # Project dependencies
 ├── 🔏 Pipfile.lock                 # Locked dependency versions
 └── 📖 README.md                    # Project documentation (this file)
@@ -569,12 +570,13 @@ This project began as a fork of [sec-web-scraper-13f](https://github.com/CodeWri
 
 ## 📄 License
 
-This project uses a **dual license**:
+This repository is **dual-licensed**, with documentation carved out separately:
 
 - **Original work** (Gary Pang's [sec-web-scraper-13f](https://github.com/CodeWritingCow/sec-web-scraper-13f)): MIT License.
-- **All new work** (everything added by Alessandro Colace): Copyright © 2025 Alessandro Colace — All Rights Reserved. Personal and educational use is permitted; redistribution and commercial use require written permission.
+- **All new code** (everything added by Alessandro Colace): Copyright © 2025 Alessandro Colace — All Rights Reserved. Personal and educational use is permitted; redistribution and commercial use require written permission.
+- **Markdown documentation** (`*.md` files): [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) — reuse with attribution to Alessandro Colace ([github.com/dokson/hedge-fund-tracker](https://github.com/dokson/hedge-fund-tracker)). Each `.md` file carries an `SPDX-License-Identifier: CC-BY-4.0` header.
 
-See the [LICENSE](LICENSE) file for the full terms.
+See [LICENSE](LICENSE) for the code terms and [LICENSE-DOCS](LICENSE-DOCS) for the documentation terms.
 
 ## ⭐ Star History
 
