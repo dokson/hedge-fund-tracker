@@ -1,13 +1,4 @@
-SPDX-License-Identifier: CC-BY-4.0
-
-Copyright (c) 2025 Alessandro Colace
-
-This license applies ONLY to the Markdown documentation files (*.md) in this
-repository (each carries its own SPDX-License-Identifier: CC-BY-4.0 header).
-All source code and other materials remain governed by the proprietary LICENSE
-file, except the original third-party work noted there.
-
-The verbatim legal text of the license follows.
+Copyright (c) 2025 Alessandro Colace. This license applies only to the Markdown documentation (*.md) files in this repository; all source code is governed by the separate proprietary LICENSE file.
 
 Attribution 4.0 International
 
