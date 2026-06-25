@@ -18,7 +18,7 @@ fastapi-users-db-sqlalchemy = "~=7.0"
 google-genai = "~=2.10"
 httptools = {version = "==0.8.0", markers = "sys_platform != 'win32'"}
 lxml = "~=6.1"
-openai = "~=2.43"
+openai = "~=2.44"
 pandas = "~=3.0"
 psutil = "~=7.2"
 python-dotenv = "~=1.2"
@@ -36,7 +36,7 @@ yfinance = "~=1.4"
 
 [dev-packages]
 coverage = "~=7.14"
-httpx2 = "~=2.4"
+httpx2 = "~=2.5"
 mypy = "~=2.1"
 pandas-stubs = "~=3.0"
 pre-commit = "~=4.6"
