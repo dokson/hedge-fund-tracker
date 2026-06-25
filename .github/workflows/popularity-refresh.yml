@@ -38,7 +38,7 @@ jobs:
         run: echo "month=$(date -u +'%Y-%m')" >> $GITHUB_OUTPUT
 
       - name: Restore Wikipedia cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: __wikicache__
           key: wiki-popularity-${{ steps.cache_key.outputs.month }}
@@ -53,7 +53,7 @@ jobs:
           cache-dependency-path: "**/Pipfile.lock"
 
       - name: Cache pipenv dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.local/share/virtualenvs
           key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
