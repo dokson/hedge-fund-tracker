@@ -1,11 +1,20 @@
+from typing import ClassVar
+
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
+from google.genai.errors import ClientError, ServerError
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.ai.clients import AIClient
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Mirrors DEFAULT_REASONING_EFFORT in base_openai_client.py: a bounded thinking
+# budget for reasoning-capable Gemini models, so short structured prompts
+# don't burn output tokens on hidden chain-of-thought.
+DEFAULT_THINKING_LEVEL = types.ThinkingLevel.LOW
 
 
 class GoogleAIClient(AIClient):
@@ -14,6 +23,15 @@ class GoogleAIClient(AIClient):
     """
 
     DEFAULT_MODEL = "gemini-2.5-flash"
+
+    # Model to switch to, within the same call, when the primary model is
+    # overloaded (503 UNAVAILABLE) — "high demand" spikes are usually
+    # temporary but can outlast the outer retry's backoff window.
+    FALLBACK_MODEL: ClassVar[str] = "gemini-3.1-flash-lite"
+
+    # Model names that have already rejected thinking_config, so repeat calls
+    # to a known non-thinking model skip the failing round trip.
+    _thinking_unsupported: ClassVar[set[str]] = set()
 
     def __init__(self, model: str = DEFAULT_MODEL, api_key: str | None = None):
         """
@@ -59,8 +77,54 @@ class GoogleAIClient(AIClient):
             Exception: If the Google AI API call fails after retries
         """
         try:
-            response = self.client.models.generate_content(model=self.model, contents=prompt)
-            return response.text or ""
+            try:
+                return self._generate_with_thinking_fallback(prompt, self.model)
+            except ServerError as exc:
+                if self.model == self.FALLBACK_MODEL or "unavailable" not in str(exc).lower():
+                    raise
+                logger.warning(
+                    "GoogleAIClient: %s is overloaded (%s), falling back to %s",
+                    self.model,
+                    exc,
+                    self.FALLBACK_MODEL,
+                )
+                result = self._generate_with_thinking_fallback(prompt, self.FALLBACK_MODEL)
+                self.model = self.FALLBACK_MODEL
+                return result
         except Exception:
             logger.error("Google AI API call failed", exc_info=True)
             raise
+
+    def _generate_with_thinking_fallback(self, prompt: str, model: str) -> str:
+        """
+        Generates content on ``model``, retrying once without thinking_config
+        if the model rejects it.
+        """
+        try:
+            return self._generate_once(prompt, model, with_thinking_config=True)
+        except ClientError as exc:
+            if model in self._thinking_unsupported or "thinking" not in str(exc).lower():
+                raise
+            logger.warning(
+                "GoogleAIClient: %s does not support thinking_config, retrying without it",
+                model,
+            )
+            self._thinking_unsupported.add(model)
+            return self._generate_once(prompt, model, with_thinking_config=False)
+
+    def _generate_once(self, prompt: str, model: str, with_thinking_config: bool) -> str:
+        """
+        Sends one generate_content request, optionally with a bounded
+        thinking_config, and returns the response text.
+        """
+        config = None
+        if with_thinking_config and model not in self._thinking_unsupported:
+            config = types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_level=DEFAULT_THINKING_LEVEL)
+            )
+
+        request_kwargs = {"config": config} if config is not None else {}
+        response = self.client.models.generate_content(
+            model=model, contents=prompt, **request_kwargs
+        )
+        return response.text or ""

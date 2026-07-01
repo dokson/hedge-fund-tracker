@@ -5,7 +5,7 @@ Outputs:
 - app/frontend/src/data/sampleRanking.json (top promising stocks for the latest quarter)
 - app/frontend/src/data/sampleDueDiligence.json (full AI due diligence for a chosen ticker)
 
-Both samples are regenerated using Groq's llama-3.3-70b-versatile model and
+Both samples are regenerated using Groq's llama-3.1-8b-instant model and
 include a `generated_at` ISO date for display in the UI.
 
 Run locally with the project's .env loaded:
@@ -33,7 +33,7 @@ from app.database import get_last_quarter, get_most_recent_quarter  # noqa: E402
 
 DUE_DILIGENCE_TICKER = "NTR"
 RANKING_TOP_N = 10
-MODEL_ID = "llama-3.3-70b-versatile"
+MODEL_ID = "llama-3.1-8b-instant"
 
 SAMPLE_RANKING_PATH = ROOT / "app/frontend/src/data/sampleRanking.json"
 SAMPLE_DD_PATH = ROOT / "app/frontend/src/data/sampleDueDiligence.json"

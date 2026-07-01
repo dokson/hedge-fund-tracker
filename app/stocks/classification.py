@@ -31,7 +31,7 @@ from app.utils.logger import get_logger, log_safe
 logger = get_logger(__name__)
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "llama-3.1-8b-instant"
 GROQ_TIMEOUT = 20
 
 
@@ -53,7 +53,7 @@ def _match_by_company_name(company: str) -> str:
 
 def _llm_classify(ticker: str, company: str) -> str | None:
     """
-    Asks Groq's llama-3.3-70b to pick an Industry from the closed vocabulary in
+    Asks Groq's llama-3.1-8b-instant to pick an Industry from the closed vocabulary in
     sector_hierarchy.csv. Returns None when GROQ_API_KEY is missing, the API
     errors, or the response is not a recognised Industry string.
     """

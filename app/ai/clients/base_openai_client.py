@@ -2,9 +2,10 @@ import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import BadRequestError, OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.ai.clients.base_client import AIClient
@@ -14,6 +15,11 @@ logger = get_logger(__name__)
 
 # Per-request timeout, so a stalled model fails fast (the OpenAI SDK default is 600s).
 REQUEST_TIMEOUT_S = 90.0
+
+# Reasoning models (e.g. gpt-oss) spend a hidden token budget "thinking" before
+# emitting content; without a bound they can exhaust their output tokens with
+# no visible answer. "low" is enough for this app's short, structured prompts.
+DEFAULT_REASONING_EFFORT = "low"
 
 
 def _identity(model: str) -> str:
@@ -51,6 +57,10 @@ class OpenAIClient(AIClient):
     """
 
     CONFIG: OpenAIProviderConfig
+
+    # (base_url, model) pairs that have already rejected reasoning_effort, so
+    # repeat calls to a known non-reasoning model skip the failing round trip.
+    _reasoning_unsupported: ClassVar[set[tuple[str, str]]] = set()
 
     def __init__(self, model: str | None = None, api_key: str | None = None):
         """
@@ -104,38 +114,35 @@ class OpenAIClient(AIClient):
         Generate content from an OpenAI-compatible API via streaming.
 
         Streaming surfaces time-to-first-token and returns the accumulated text.
-        Accepts optional keyword arguments for the completion call.
+        Accepts optional keyword arguments for the completion call. Reasoning
+        models get a bounded ``reasoning_effort`` by default; if the model
+        rejects the parameter, the call is transparently retried without it
+        (see ``_reasoning_unsupported``).
         """
         extra_body = dict(self.CONFIG.extra_body)
+        cache_key = (self.CONFIG.base_url, self.model)
+        if cache_key not in self._reasoning_unsupported:
+            extra_body.setdefault("reasoning_effort", DEFAULT_REASONING_EFFORT)
         if "extra_body" in kwargs:
             extra_body.update(kwargs.pop("extra_body"))
 
         model_name = self.get_model_name()
         start = time.perf_counter()
-        chunks: list[str] = []
-        ttft_logged = False
 
         try:
-            stream = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                extra_body=extra_body,
-                stream=True,
-                **kwargs,
-            )
-            for chunk in stream:
-                if not chunk.choices:
-                    continue
-                delta = chunk.choices[0].delta.content
-                if not delta:
-                    continue
-                if not ttft_logged:
-                    ttft_logged = True
-                    logger.progress(
-                        "%s: first token after %.1fs", model_name, time.perf_counter() - start
-                    )
-                chunks.append(delta)
-            return "".join(chunks)
+            try:
+                return self._stream_completion(prompt, extra_body, model_name, start, **kwargs)
+            except BadRequestError as exc:
+                if "reasoning_effort" not in extra_body or "reasoning_effort" not in str(exc):
+                    raise
+                logger.warning(
+                    "%s: %s does not support reasoning_effort, retrying without it",
+                    self.__class__.__name__,
+                    self.model,
+                )
+                self._reasoning_unsupported.add(cache_key)
+                extra_body = {k: v for k, v in extra_body.items() if k != "reasoning_effort"}
+                return self._stream_completion(prompt, extra_body, model_name, start, **kwargs)
         except Exception:
             logger.error(
                 "%s: API call failed for model %s after %.1fs",
@@ -145,3 +152,33 @@ class OpenAIClient(AIClient):
                 exc_info=True,
             )
             raise
+
+    def _stream_completion(
+        self, prompt: str, extra_body: dict, model_name: str, start: float, **kwargs
+    ) -> str:
+        """
+        Sends one streamed completion request and accumulates the text deltas.
+        """
+        chunks: list[str] = []
+        ttft_logged = False
+
+        stream = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            extra_body=extra_body,
+            stream=True,
+            **kwargs,
+        )
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta.content
+            if not delta:
+                continue
+            if not ttft_logged:
+                ttft_logged = True
+                logger.progress(
+                    "%s: first token after %.1fs", model_name, time.perf_counter() - start
+                )
+            chunks.append(delta)
+        return "".join(chunks)

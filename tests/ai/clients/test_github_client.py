@@ -30,7 +30,7 @@ class TestGitHubClient(unittest.TestCase):
         mock_instance.chat.completions.create.assert_called_once_with(
             model=GitHubClient.DEFAULT_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            extra_body={},
+            extra_body={"reasoning_effort": "low"},
             stream=True,
         )
 

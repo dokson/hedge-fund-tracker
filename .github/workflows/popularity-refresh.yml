@@ -12,26 +12,16 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      COMMIT_BRANCH: automated/popularity-refresh
       PIPENV_VENV_IN_PROJECT: "1"
 
     permissions:
       contents: write
-      pull-requests: write
 
     steps:
       - name: Check out repository code
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
-      - name: Create or reset the commit branch
-        run: |
-          if git ls-remote --exit-code --heads origin ${{ env.COMMIT_BRANCH }}; then
-            echo "::notice::Deleting '${{ env.COMMIT_BRANCH }}' branch."
-            git push origin --delete ${{ env.COMMIT_BRANCH }} || true
-          fi
-          git checkout -B ${{ env.COMMIT_BRANCH }}
 
       - name: Compute cache month key
         id: cache_key
@@ -88,13 +78,12 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: Refresh excluded funds popularity ranking ($(date -u +'%Y-%m'))"
-          git push --set-upstream origin ${{ env.COMMIT_BRANCH }}
+          git push origin HEAD:master
 
       - name: Log completion
         run: |
           if [[ "${{ steps.changes.outputs.no_changes }}" == "true" ]]; then
             echo "✅ Workflow completed - No ranking changes this month"
           else
-            echo "✅ Workflow completed - Ranking updated and pushed to ${{ env.COMMIT_BRANCH }}"
-            echo "🔗 https://github.com/${{ github.repository }}/commits/${{ env.COMMIT_BRANCH }}"
+            echo "✅ Workflow completed - Ranking updated and pushed directly to master"
           fi
