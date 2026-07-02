@@ -35,7 +35,7 @@ websockets = "~=16.0"
 yfinance = "~=1.5"
 
 [dev-packages]
-coverage = "~=7.14"
+coverage = "~=7.15"
 httpx2 = "~=2.5"
 mypy = "~=2.1"
 pandas-stubs = "~=3.0"
