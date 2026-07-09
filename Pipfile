@@ -15,10 +15,10 @@ curl-cffi = "~=0.15"
 fastapi = "~=0.139"
 fastapi-users = {extras = ["sqlalchemy"], version = "~=15.0"}
 fastapi-users-db-sqlalchemy = "~=7.0"
-google-genai = "~=2.10"
+google-genai = "~=2.11"
 httptools = {version = "==0.8.0", markers = "sys_platform != 'win32'"}
 lxml = "~=6.1"
-openai = "~=2.44"
+openai = "~=2.45"
 pandas = "~=3.0"
 psutil = "~=7.2"
 python-dotenv = "~=1.2"
