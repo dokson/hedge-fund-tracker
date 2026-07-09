@@ -40,7 +40,7 @@ repos:
       - id: prettier
         files: ^app/frontend/.*\.(ts|tsx|js|jsx|json|css|md)$
         additional_dependencies:
-          - prettier@3.9.4
+          - prettier@3.9.5
 
   # NOTE: eslint + tsc are NOT in pre-commit by design.
   # They require `cd app/frontend && npx ...`, which doesn't run cross-platform
