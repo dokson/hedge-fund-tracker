@@ -7,6 +7,7 @@ import yfinance as yf
 from curl_cffi import requests
 from curl_cffi.requests.exceptions import RequestException
 from tenacity import retry, stop_after_attempt, wait_exponential
+from yfinance.exceptions import YFRateLimitError
 
 from app.stocks.libraries.base_library import FinanceLibrary
 from app.utils.logger import get_logger, log_safe
@@ -307,6 +308,8 @@ class YFinance(FinanceLibrary):
                         continue
                     price = ticker_data["Close"].dropna().iloc[-1].item()
                     stocks_info[original] = {"price": float(price), "sector": None}
+                except YFRateLimitError:
+                    raise
                 except Exception:
                     continue
 
@@ -324,10 +327,17 @@ class YFinance(FinanceLibrary):
                         price = YFinance.get_current_price(original)
                         if price:
                             stocks_info[original] = {"price": price, "sector": sector}
+                except YFRateLimitError:
+                    raise
                 except Exception:
                     continue
 
             return stocks_info
+        except YFRateLimitError:
+            # Escape the per-ticker loops so the outer retry backs off instead
+            # of silently recording every remaining ticker as a data gap.
+            logger.warning("YFinance rate limit hit during bulk info fetch: backing off.")
+            raise
         except Exception as e:
             logger.error("Failed to get stock info using YFinance", exc_info=True)
             raise e

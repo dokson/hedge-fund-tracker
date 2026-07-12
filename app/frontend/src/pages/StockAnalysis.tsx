@@ -225,8 +225,8 @@ export default function StockAnalysis() {
         break;
     }
     list.sort((a, b) => {
-      const va = a[sortKey] as number;
-      const vb = b[sortKey] as number;
+      const va = a[sortKey];
+      const vb = b[sortKey];
       return sortDir === "desc" ? vb - va : va - vb;
     });
     return list;
@@ -528,7 +528,7 @@ export default function StockAnalysis() {
                         }}
                         labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
                         itemStyle={{ color: "hsl(var(--foreground))" }}
-                        formatter={(val: number) => [formatValue(val), null]}
+                        formatter={(val) => [formatValue(Number(val ?? 0)), null]}
                         separator=" : "
                       />
                       <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24}>

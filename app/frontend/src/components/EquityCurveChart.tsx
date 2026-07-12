@@ -1,4 +1,13 @@
-import { Area, ComposedChart, Line, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  ComposedChart,
+  Line,
+  ReferenceLine,
+  Tooltip,
+  XAxis,
+  YAxis,
+  type TooltipContentProps,
+} from "recharts";
 import { useElementSize } from "@/hooks/useElementSize";
 import { buildChartData } from "@/lib/equityCurve";
 import { seriesColor } from "@/lib/seriesColors";
@@ -6,17 +15,15 @@ import type { PerfSeries } from "@/lib/dataService";
 
 const fmtPct = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`;
 
-interface TooltipProps {
-  active?: boolean;
-  label?: string;
-  payload?: Array<{ name?: string; value?: number; color?: string }>;
-}
-
-function renderTooltip({ active, label, payload }: TooltipProps) {
+function renderTooltip({ active, label, payload }: TooltipContentProps) {
   if (!active || !payload?.length) return null;
-  const rows = payload.filter((p) => p.name && !p.name.startsWith("__"));
+  const rows = payload.flatMap((p) =>
+    typeof p.name === "string" && !p.name.startsWith("__")
+      ? [{ name: p.name, value: Number(p.value ?? 0), color: p.color }]
+      : [],
+  );
   if (!rows.length) return null;
-  const sorted = [...rows].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+  const sorted = [...rows].sort((a, b) => b.value - a.value);
   return (
     <div
       style={{
@@ -42,7 +49,7 @@ function renderTooltip({ active, label, payload }: TooltipProps) {
           }}
         >
           <span>{p.name}</span>
-          <span>{fmtPct(p.value ?? 0)}</span>
+          <span>{fmtPct(p.value)}</span>
         </div>
       ))}
     </div>

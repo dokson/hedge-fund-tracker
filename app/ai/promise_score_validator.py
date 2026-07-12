@@ -24,6 +24,11 @@ class PromiseScoreValidator:
         "Portfolio_Concentration_Avg",
     ]
 
+    # Metrics that measure selling pressure: their weights must be negative,
+    # every other metric's weight must be positive — a flipped sign would
+    # invert the ranking (e.g. rewarding institutional selling).
+    NEGATIVE_METRICS: frozenset[str] = frozenset({"Seller_Count", "Close_Count"})
+
     def __init__(self, top_n_stocks: int = 30, weight_tolerance: float = 0.05):
         self.top_n_stocks = top_n_stocks
         self.weight_tolerance = weight_tolerance
@@ -43,6 +48,26 @@ class PromiseScoreValidator:
             bool: True if the sum of weights is valid, False otherwise.
         """
         return 1.0 - tolerance <= sum(weights.values()) <= 1.0 + tolerance
+
+    @staticmethod
+    def validate_weight_signs(weights: dict) -> list:
+        """
+        Checks that each weight carries the sign its metric requires.
+
+        Selling metrics (NEGATIVE_METRICS) must have negative weights; every
+        other metric must have a positive weight.
+
+        Args:
+            weights (dict): A dictionary where keys are metric names and values are their weights.
+
+        Returns:
+            list: Metric names whose weight has the wrong sign. An empty list signifies all signs are valid.
+        """
+        return [
+            metric
+            for metric, weight in weights.items()
+            if (weight >= 0) == (metric in PromiseScoreValidator.NEGATIVE_METRICS)
+        ]
 
     @staticmethod
     def validate_metrics(metrics: list) -> list:

@@ -25,6 +25,9 @@
   "rules": {
     "typescript/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
     "typescript/no-explicit-any": "warn",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": ["error", { "checksVoidReturn": { "attributes": false } }],
+    "typescript/await-thenable": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }],
     "jsx-a11y/prefer-tag-over-role": "off",
     "jsx-a11y/no-noninteractive-element-to-interactive-role": "off",

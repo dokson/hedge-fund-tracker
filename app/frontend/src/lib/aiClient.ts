@@ -105,6 +105,43 @@ export async function runDueDiligence(
 
 // ─── Streaming AI calls ────────────────────────────────────────────────────────
 
+/** Events the backend SSE endpoints emit (see app/api/sse.py). */
+type SSEEvent =
+  | { type: "log"; text: string }
+  | { type: "result"; data: unknown }
+  | { type: "error"; message: string };
+
+/**
+ * Parse one SSE `data:` payload into a validated event. Returns null for
+ * malformed or unknown payloads so a bad line is skipped instead of leaking
+ * undefined into log/result consumers (or throwing a raw SyntaxError).
+ */
+export function parseSSEEvent(json: string): SSEEvent | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null || !("type" in parsed)) return null;
+  if (parsed.type === "log") {
+    return "text" in parsed && typeof parsed.text === "string"
+      ? { type: "log", text: parsed.text }
+      : null;
+  }
+  if (parsed.type === "result") {
+    return { type: "result", data: "data" in parsed ? parsed.data : undefined };
+  }
+  if (parsed.type === "error") {
+    const message =
+      "message" in parsed && typeof parsed.message === "string"
+        ? parsed.message
+        : "AI stream reported an error";
+    return { type: "error", message };
+  }
+  return null;
+}
+
 async function _readSSEStream(res: Response, onLog: (line: string) => void): Promise<unknown> {
   if (!res.body) throw new Error("Response body is not readable");
   const reader = res.body.getReader();
@@ -120,10 +157,11 @@ async function _readSSEStream(res: Response, onLog: (line: string) => void): Pro
       buffer = lines.pop() ?? "";
       for (const line of lines) {
         if (!line.startsWith("data: ")) continue;
-        const event = JSON.parse(line.slice(6));
+        const event = parseSSEEvent(line.slice(6));
+        if (!event) continue;
         if (event.type === "log") onLog(event.text);
         else if (event.type === "result") return event.data;
-        else if (event.type === "error") throw new Error(event.message);
+        else throw new Error(event.message);
       }
     }
   } finally {
@@ -155,7 +193,9 @@ export async function runPromiseScoreStream(
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || `Server error ${res.status}`);
   }
-  return (await _readSSEStream(res, onLog)) as unknown[];
+  const data = await _readSSEStream(res, onLog);
+  if (!Array.isArray(data)) throw new Error("Malformed AI response: expected a list of stocks");
+  return data;
 }
 
 export async function runDueDiligenceStream(
@@ -202,57 +242,4 @@ export async function getConfiguredProviders(): Promise<
   } catch {
     return AI_PROVIDERS.map((provider) => ({ provider, hasKey: false }));
   }
-}
-
-// ─── Response parsing (kept for any local use) ────────────────────────────────
-
-export function extractJSON<T = unknown>(response: string): T {
-  const codeBlockMatch = response.match(/```(?:json|toon)?\s*\n?([\s\S]*?)```/);
-  if (codeBlockMatch) {
-    const block = codeBlockMatch[1].trim();
-    try {
-      return JSON.parse(block);
-    } catch {
-      return parseTOON(block) as T;
-    }
-  }
-  const jsonMatch = response.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    try {
-      return JSON.parse(jsonMatch[0]);
-    } catch {
-      /* fall through */
-    }
-  }
-  throw new Error("Could not extract structured data from AI response");
-}
-
-function parseTOON(text: string): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  const lines = text.split("\n").filter((l) => l.trim());
-  let currentObj: Record<string, unknown> | null = null;
-
-  for (const line of lines) {
-    const indent = line.search(/\S/);
-    const trimmed = line.trim();
-    const colonIdx = trimmed.indexOf(":");
-    if (colonIdx === -1) continue;
-    const key = trimmed.slice(0, colonIdx).trim().replace(/^"|"$/g, "");
-    let value: string | number | null = trimmed.slice(colonIdx + 1).trim();
-    if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
-    if (!value || value === "") {
-      currentObj = {};
-      result[key] = currentObj;
-      continue;
-    }
-    const num = Number(value);
-    const parsedValue = value === "null" ? null : !isNaN(num) && value !== "" ? num : value;
-    if (indent >= 2 && currentObj) {
-      currentObj[key] = parsedValue;
-    } else {
-      currentObj = null;
-      result[key] = parsedValue;
-    }
-  }
-  return result;
 }

@@ -280,6 +280,38 @@ class TestYFinance(unittest.TestCase):
         stocks_info = YFinance.get_stocks_info([])
         self.assertEqual(stocks_info, {})
 
+    @patch("app.stocks.libraries.yfinance.yf.download")
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_get_stocks_info_rate_limit_propagates_for_backoff(self, mock_ticker, mock_download):
+        """
+        A rate-limit error must escape the per-ticker loop so the outer retry
+        backs off, instead of silently recording every remaining ticker as a
+        data gap. (__wrapped__ bypasses the tenacity decorator for speed.)
+        """
+        from yfinance.exceptions import YFRateLimitError
+
+        mock_download.return_value = pd.DataFrame({"Close": [10.0]})
+        mock_ticker.side_effect = YFRateLimitError()
+
+        with self.assertRaises(YFRateLimitError):
+            YFinance.get_stocks_info.__wrapped__(["AAA"])
+
+    @patch("app.stocks.libraries.yfinance.yf.download")
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_get_stocks_info_per_ticker_error_keeps_partial_results(
+        self, mock_ticker, mock_download
+    ):
+        """
+        A non-rate-limit failure on one ticker's info lookup must not lose the
+        prices already fetched for the batch.
+        """
+        mock_download.return_value = pd.DataFrame({"Close": [10.0]})
+        mock_ticker.side_effect = ValueError("bad payload")
+
+        stocks_info = YFinance.get_stocks_info.__wrapped__(["AAA"])
+
+        self.assertEqual(stocks_info, {"AAA": {"price": 10.0, "sector": None}})
+
     @patch("app.stocks.libraries.yfinance.yf.Sector")
     def test_get_sector_tickers(self, mock_yf_sector):
         """

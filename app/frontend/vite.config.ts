@@ -1,4 +1,7 @@
-import { defineConfig, type Plugin } from "vite";
+// vitest/config wraps Vite's defineConfig with the `test` key typed
+// deliberately (not via incidental module augmentation).
+import { defineConfig } from "vitest/config";
+import type { Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
@@ -17,7 +20,15 @@ import {
 // Single source-of-truth for the app version: app/frontend/package.json. The
 // backend reads the same field at request time (see app/utils/version.py) so
 // every surface (sidebar footer, server /health, GH release tag) agrees.
-const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf-8"));
+const pkg: unknown = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf-8"));
+if (
+  typeof pkg !== "object" ||
+  pkg === null ||
+  !("version" in pkg) ||
+  typeof pkg.version !== "string"
+) {
+  throw new Error("package.json is missing a string `version` field");
+}
 const APP_VERSION: string = pkg.version;
 
 // Public routes worth advertising in the sitemap (excludes parametrised and

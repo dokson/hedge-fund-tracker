@@ -11,6 +11,8 @@ import {
   Tooltip,
   ReferenceLine,
   ReferenceArea,
+  type MouseHandlerDataParam,
+  type TooltipContentProps,
 } from "recharts";
 import { Loader2, TrendingUp, TrendingDown, Activity, BarChart3 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
@@ -126,19 +128,19 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
     setIsDragging(false);
   }
 
-  const lookupCandle = (label: string | undefined) =>
-    label ? (series.find((s) => s.date === label) ?? null) : null;
+  const lookupCandle = (label: string | number | undefined) =>
+    label != null ? (series.find((s) => s.date === label) ?? null) : null;
 
-  const handleMouseDown = (e: { activeLabel?: string } | null) => {
-    const p = lookupCandle(e?.activeLabel);
+  const handleMouseDown = (e: MouseHandlerDataParam) => {
+    const p = lookupCandle(e.activeLabel);
     if (!p) return;
     setSelection({ start: p, end: p });
     setIsDragging(true);
   };
 
-  const handleMouseMove = (e: { activeLabel?: string } | null) => {
+  const handleMouseMove = (e: MouseHandlerDataParam) => {
     if (!isDragging) return;
-    const p = lookupCandle(e?.activeLabel);
+    const p = lookupCandle(e.activeLabel);
     if (!p) return;
     setSelection((s) => (s ? { ...s, end: p } : null));
   };
@@ -231,16 +233,18 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
     ? [stats.min - (stats.max - stats.min) * 0.05, stats.max + (stats.max - stats.min) * 0.05]
     : undefined;
 
-  const renderTooltip = ({
-    active,
-    payload,
-  }: {
-    active?: boolean;
-    payload?: Array<{ payload?: Partial<Candle> }>;
-  }) => {
+  const renderTooltip = ({ active, payload }: TooltipContentProps) => {
     if (!active || !payload?.length) return null;
-    const p = payload[0]?.payload;
-    if (!p || p.close == null || p.open == null || p.high == null || p.low == null) return null;
+    const p: Partial<Candle> | undefined = payload[0]?.payload;
+    if (
+      !p ||
+      p.date == null ||
+      p.close == null ||
+      p.open == null ||
+      p.high == null ||
+      p.low == null
+    )
+      return null;
 
     // Inner wrapper: shifts the tooltip to the top-right of the cursor (translateY pulls it above
     // the cursor's vertical position; recharts already places it to the right of the cursor).
@@ -288,18 +292,18 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
             style={{ display: "grid", gridTemplateColumns: "auto auto", columnGap: 12, rowGap: 2 }}
           >
             <span style={{ color: "hsl(var(--muted-foreground))" }}>O</span>
-            <span>{`$${p.open!.toFixed(2)}`}</span>
+            <span>{`$${p.open.toFixed(2)}`}</span>
             <span style={{ color: "hsl(var(--muted-foreground))" }}>H</span>
-            <span>{`$${p.high!.toFixed(2)}`}</span>
+            <span>{`$${p.high.toFixed(2)}`}</span>
             <span style={{ color: "hsl(var(--muted-foreground))" }}>L</span>
-            <span>{`$${p.low!.toFixed(2)}`}</span>
+            <span>{`$${p.low.toFixed(2)}`}</span>
             <span style={{ color: "hsl(var(--muted-foreground))" }}>C</span>
             <span style={{ color: isUp ? UP_COLOR : DOWN_COLOR, fontWeight: 700 }}>
-              {`$${p.close!.toFixed(2)}`}
+              {`$${p.close.toFixed(2)}`}
             </span>
           </div>
         ) : (
-          <div style={{ fontWeight: 700 }}>{`$${p.close!.toFixed(2)}`}</div>
+          <div style={{ fontWeight: 700 }}>{`$${p.close.toFixed(2)}`}</div>
         )}
         <div style={{ fontSize: 11, color: delta >= 0 ? UP_COLOR : DOWN_COLOR, marginTop: 2 }}>
           {delta >= 0 ? "+" : ""}

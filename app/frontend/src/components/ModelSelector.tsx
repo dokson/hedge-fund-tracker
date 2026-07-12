@@ -38,7 +38,7 @@ export default function ModelSelector({
   const [configuredProviderIds, setConfiguredProviderIds] = useState<string[] | null>(null);
 
   useEffect(() => {
-    getConfiguredProviders().then((providers) => {
+    void getConfiguredProviders().then((providers) => {
       setConfiguredProviderIds(
         providers.filter(({ hasKey }) => hasKey).map(({ provider }) => provider.id),
       );

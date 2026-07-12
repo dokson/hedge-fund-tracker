@@ -151,8 +151,20 @@ def update_quarter_with_nq_filings(
         updated_df["Shares_schedule"] - coalesce(updated_df["Shares_13f"], 0),
         updated_df["Delta_Shares"],
     )
+    # Value delta on a single price basis: subtracting the quarter-end 13F
+    # value from the filing-date NQ value would count pure price drift as
+    # traded value and could flip the buyer/seller signal.
+    nq_price = coalesce(
+        (updated_df["Value_Num_schedule"] / updated_df["Shares_schedule"]).where(
+            updated_df["Shares_schedule"] > 0
+        ),
+        (updated_df["Value_Num_13f"] / updated_df["Shares_13f"]).where(
+            updated_df["Shares_13f"] > 0
+        ),
+    )
+    nq_delta_shares = updated_df["Shares_schedule"] - coalesce(updated_df["Shares_13f"], 0)
     updated_df["Delta_Value_Num"] = coalesce(
-        updated_df["Value_Num_schedule"] - coalesce(updated_df["Value_Num_13f"], 0),
+        nq_delta_shares * nq_price,
         updated_df["Delta_Value_Num"],
     )
 

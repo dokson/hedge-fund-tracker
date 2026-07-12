@@ -9,11 +9,12 @@ data-access package this router reads through.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.concurrency import run_in_threadpool
 
 from app.api.common import _df_to_json_safe_records, _require_quarter
 from app.api.paths import DATABASE_DIR, _safe_db_path
+from app.auth.dependencies import require_local_or_superuser
 from app.patterns import QUARTER_RE
 
 router = APIRouter(tags=["data"])
@@ -43,7 +44,10 @@ def get_database_file(filepath: str) -> Response:
     return Response(content=content, media_type=media_type)
 
 
-@router.put("/database/{filepath:path}")
+@router.put(
+    "/database/{filepath:path}",
+    dependencies=[Depends(require_local_or_superuser)],
+)
 async def put_database_file(filepath: str, request: Request) -> dict[str, bool]:
     """Overwrite a database file with the raw request body.
 

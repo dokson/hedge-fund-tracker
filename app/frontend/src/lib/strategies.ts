@@ -22,6 +22,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { NumericStockKey } from "./dataService";
 
 export interface StrategyDef {
   /** Canonical id, identical to the Python strategy id. */
@@ -31,8 +32,8 @@ export interface StrategyDef {
   label: string;
   /** Lucide icon (shared by the QuarterlyTrends tab and the Performance card). */
   icon: LucideIcon;
-  /** AnalysisTable sort field (camelCase). */
-  sortKey: string;
+  /** AnalysisTable sort field (camelCase); constrained to numeric analysis fields. */
+  sortKey: NumericStockKey;
   /** Canonical ranking metric (lower_snake of the analysis column). */
   metric: string;
   ascending: boolean;
@@ -163,6 +164,13 @@ export const STRATEGY_DEFS: StrategyDef[] = [
 export const STRATEGY_BY_TAB: Record<string, StrategyDef> = Object.fromEntries(
   STRATEGY_DEFS.map((d) => [d.tab, d]),
 );
+
+/**
+ * Whether `v` is a valid QuarterlyTrends strategy tab. Derived from the defs
+ * so adding a strategy can never ship a tab the page rejects.
+ */
+export const isStrategyTab = (v: string | null | undefined): v is string =>
+  v != null && STRATEGY_DEFS.some((d) => d.tab === v);
 
 /** Strategy def keyed by canonical id. */
 export const STRATEGY_BY_ID: Record<string, StrategyDef> = Object.fromEntries(

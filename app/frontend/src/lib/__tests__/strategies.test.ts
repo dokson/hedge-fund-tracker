@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { STRATEGY_DEFS } from "../strategies";
+import { STRATEGY_DEFS, isStrategyTab } from "../strategies";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = JSON.parse(
@@ -44,5 +44,17 @@ describe("STRATEGY_DEFS", () => {
       min_holders_divisor: d.minHoldersDivisor ?? 10,
     }));
     expect(canonical).toEqual(fixture);
+  });
+});
+
+describe("isStrategyTab", () => {
+  it("accepts every registry tab, so a new strategy can't ship an unselectable tab", () => {
+    for (const d of STRATEGY_DEFS) expect(isStrategyTab(d.tab)).toBe(true);
+    expect(isStrategyTab("smartscore")).toBe(true);
+  });
+
+  it("rejects unknown or missing values", () => {
+    expect(isStrategyTab("unknown")).toBe(false);
+    expect(isStrategyTab(null)).toBe(false);
   });
 });

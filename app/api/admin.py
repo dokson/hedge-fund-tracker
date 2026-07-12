@@ -11,14 +11,16 @@ handler convention.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
 from app.api.common import _require_cusip, _require_ticker
 from app.api.sse import _make_sse_stream
+from app.auth.dependencies import require_local_or_superuser
 
-router = APIRouter(tags=["admin"])
+# Fetch jobs and database corrections are operator-only in a production posture.
+router = APIRouter(tags=["admin"], dependencies=[Depends(require_local_or_superuser)])
 
 
 @router.post("/api/database/fetch")

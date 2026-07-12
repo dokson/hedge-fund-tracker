@@ -5,10 +5,11 @@ import {
   runQuarterAnalysis,
   getQuarterFundList,
   formatValue,
+  type NumericStockKey,
   type StockQuarterAnalysis,
 } from "@/lib/dataService";
 import type { Quarter } from "@/lib/quarters";
-import { STRATEGY_BY_TAB, STRATEGY_DEFS_PERF_ORDER } from "@/lib/strategies";
+import { STRATEGY_BY_TAB, STRATEGY_DEFS_PERF_ORDER, isStrategyTab } from "@/lib/strategies";
 import { seriesColor } from "@/lib/seriesColors";
 import { performanceFor } from "@/lib/routes";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
@@ -32,7 +33,7 @@ import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { useStarred } from "@/hooks/useStarred";
 import { StarredFilterToggle } from "@/components/StarredFilterToggle";
 
-type SortKey = keyof StockQuarterAnalysis;
+type SortKey = NumericStockKey;
 
 function SortableHeader({
   label,
@@ -116,16 +117,16 @@ function AnalysisTable({
     if (!disableFilters && filterInfinite) arr = arr.filter((s) => isFinite(s.delta));
     // Sign constraint always applies, on the strategy's ranking metric (defaultSort) —
     // it defines the Increasing/Decreasing screens.
-    if (deltaSign === "positive") arr = arr.filter((s) => (s[defaultSort] as number) > 0);
-    else if (deltaSign === "negative") arr = arr.filter((s) => (s[defaultSort] as number) < 0);
+    if (deltaSign === "positive") arr = arr.filter((s) => (s[defaultSort] ?? NaN) > 0);
+    else if (deltaSign === "negative") arr = arr.filter((s) => (s[defaultSort] ?? NaN) < 0);
     return arr;
   }, [data, minHolders, filterInfinite, disableFilters, deltaSign, defaultSort]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
     arr.sort((a, b) => {
-      const va = a[sortKey] as number;
-      const vb = b[sortKey] as number;
+      const va = a[sortKey] ?? NaN;
+      const vb = b[sortKey] ?? NaN;
       if (!isFinite(va) && !isFinite(vb)) return 0;
       if (!isFinite(va)) return sortDir === "desc" ? -1 : 1;
       if (!isFinite(vb)) return sortDir === "desc" ? 1 : -1;
@@ -210,7 +211,7 @@ function AnalysisTable({
           <div className="surface p-8 text-center text-muted-foreground">No data available.</div>
         ) : (
           sorted.map((s, index) => {
-            const deltaVal = deltaColumn ? (s[deltaColumn.key] as number) : null;
+            const deltaVal = deltaColumn ? (s[deltaColumn.key] ?? null) : null;
             return (
               <div key={s.ticker} className="surface p-3.5">
                 <div className="flex items-start justify-between gap-3">
@@ -231,7 +232,7 @@ function AnalysisTable({
                 </div>
                 <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-3 gap-x-2 gap-y-3">
                   {metricColumns.map((col) => {
-                    const rawVal = s[col.key] as number;
+                    const rawVal = s[col.key];
                     return (
                       <div key={col.key} className="min-w-0">
                         <div className="metric-label truncate">{col.label}</div>
@@ -239,8 +240,12 @@ function AnalysisTable({
                           {col.deltaMode && typeof rawVal === "number" ? (
                             <Delta value={rawVal} mode={col.deltaMode} />
                           ) : (
-                            <span className={col.colorFn ? col.colorFn(rawVal) : "text-foreground"}>
-                              {col.format ? col.format(rawVal, s) : String(rawVal)}
+                            <span
+                              className={
+                                col.colorFn ? col.colorFn(rawVal ?? NaN) : "text-foreground"
+                              }
+                            >
+                              {col.format ? col.format(rawVal ?? NaN, s) : String(rawVal)}
                             </span>
                           )}
                         </div>
@@ -305,7 +310,7 @@ function AnalysisTable({
                       />
                     </td>
                     {columns.map((col) => {
-                      const rawVal = s[col.key] as number;
+                      const rawVal = s[col.key];
                       if (col.deltaMode && typeof rawVal === "number") {
                         return (
                           <td
@@ -318,8 +323,8 @@ function AnalysisTable({
                           </td>
                         );
                       }
-                      const display = col.format ? col.format(rawVal, s) : String(rawVal);
-                      const colorClass = col.colorFn ? col.colorFn(rawVal) : "";
+                      const display = col.format ? col.format(rawVal ?? NaN, s) : String(rawVal);
+                      const colorClass = col.colorFn ? col.colorFn(rawVal ?? NaN) : "";
                       return (
                         <td
                           key={col.key}
@@ -342,14 +347,6 @@ function AnalysisTable({
 
 const netColor = (v: number) => (v > 0 ? "delta-positive" : v < 0 ? "delta-negative" : "");
 
-const VALID_TABS = [
-  "avgportfolio",
-  "consensus",
-  "new",
-  "bigbets",
-  "increasing",
-  "decreasing",
-] as const;
 const DEFAULT_TAB = "avgportfolio";
 
 export default function QuarterlyTrends() {
@@ -367,15 +364,13 @@ export default function QuarterlyTrends() {
   // shareable / back-forward navigable. Missing or unknown tab → default.
   const [searchParams, setSearchParams] = useSearchParams();
   const urlTab = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState<string>(
-    urlTab && (VALID_TABS as readonly string[]).includes(urlTab) ? urlTab : DEFAULT_TAB,
-  );
+  const [activeTab, setActiveTab] = useState<string>(isStrategyTab(urlTab) ? urlTab : DEFAULT_TAB);
   // Canonical setState-in-effect: syncing state with an external system
   // (the URL). The setter short-circuits when the value already matches.
   /* oxlint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const param = searchParams.get("tab");
-    const next = param && (VALID_TABS as readonly string[]).includes(param) ? param : DEFAULT_TAB;
+    const next = isStrategyTab(param) ? param : DEFAULT_TAB;
     setActiveTab((current) => (current === next ? current : next));
   }, [searchParams]);
   /* oxlint-enable react-hooks/set-state-in-effect */
@@ -405,8 +400,8 @@ export default function QuarterlyTrends() {
   const tableDefaults = (tab: string) => {
     const def = STRATEGY_BY_TAB[tab];
     return {
-      defaultSort: def.sortKey as SortKey,
-      defaultDir: (def.ascending ? "asc" : "desc") as "asc" | "desc",
+      defaultSort: def.sortKey,
+      defaultDir: def.ascending ? ("asc" as const) : ("desc" as const),
       defaultMinHolders: def.minHolders
         ? Math.max(1, Math.ceil(quarterFundList.length / (def.minHoldersDivisor ?? 10)))
         : 0,

@@ -109,6 +109,51 @@ class TestPromiseScoreValidatorValidateWeights(unittest.TestCase):
         self.assertTrue(result)
 
 
+class TestPromiseScoreValidatorValidateWeightSigns(unittest.TestCase):
+    def test_returns_empty_list_for_correctly_signed_weights(self):
+        """
+        Positive weights on positive metrics and negative weights on the
+        selling metrics pass with no offenders.
+        """
+        weights = {"Holder_Count": 0.8, "Net_Buyers": 0.4, "Seller_Count": -0.2}
+
+        result = PromiseScoreValidator.validate_weight_signs(weights)
+
+        self.assertEqual(result, [])
+
+    def test_flags_positive_weight_on_selling_metric(self):
+        """
+        A positive Seller_Count weight would reward institutional selling:
+        it must be reported as an offender.
+        """
+        weights = {"Seller_Count": 0.6, "Holder_Count": 0.4}
+
+        result = PromiseScoreValidator.validate_weight_signs(weights)
+
+        self.assertEqual(result, ["Seller_Count"])
+
+    def test_flags_negative_weight_on_positive_metric(self):
+        """
+        A negative weight on a conviction metric inverts the ranking intent:
+        it must be reported as an offender.
+        """
+        weights = {"High_Conviction_Count": -0.5, "Net_Buyers": 1.5}
+
+        result = PromiseScoreValidator.validate_weight_signs(weights)
+
+        self.assertEqual(result, ["High_Conviction_Count"])
+
+    def test_flags_positive_close_count(self):
+        """
+        Close_Count is the other must-be-negative metric from the prompt.
+        """
+        weights = {"Close_Count": 0.2, "Holder_Count": 0.8}
+
+        result = PromiseScoreValidator.validate_weight_signs(weights)
+
+        self.assertEqual(result, ["Close_Count"])
+
+
 class TestPromiseScoreValidatorValidateMetrics(unittest.TestCase):
     def test_returns_empty_list_when_all_metrics_are_valid(self):
         """

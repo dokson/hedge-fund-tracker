@@ -4,8 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from bs4 import BeautifulSoup
 from curl_cffi import requests
-from curl_cffi.requests.exceptions import RequestException
-from tenacity import RetryError
+from curl_cffi.requests.exceptions import HTTPError, RequestException
 
 from app.scraper.sec_scraper import (
     SEC_HOST,
@@ -100,15 +99,49 @@ class TestSecScraper(unittest.TestCase):
             reset_session()
 
     @patch("app.scraper.sec_scraper._get_session")
-    def test_get_request_failure(self, mock_get_session):
-        """Test _get_request raises RetryError on persistent failure."""
+    def test_get_request_failure_returns_none_after_retries(self, mock_get_session):
+        """
+        Persistent failures must honor the documented None-on-error contract:
+        callers never see tenacity's RetryError.
+        """
         mock_get_session.return_value.get.side_effect = RequestException("Error")
 
-        url = "http://test.com"
+        response = _get_request("http://test.com")
 
-        # tenacity raises RetryError after max attempts if retry_if_result returns True (for None)
-        with self.assertRaises(RetryError):
-            _get_request(url)
+        self.assertIsNone(response)
+        self.assertEqual(mock_get_session.return_value.get.call_count, 5)
+
+    @patch("app.scraper.sec_scraper._get_session")
+    def test_get_request_does_not_retry_permanent_4xx(self, mock_get_session):
+        """
+        A permanent HTTP error can never succeed on retry: one attempt, None.
+        """
+        error = HTTPError("404")
+        error.response = MagicMock(status_code=404)
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = error
+        mock_get_session.return_value.get.return_value = mock_response
+
+        response = _get_request("http://test.com")
+
+        self.assertIsNone(response)
+        self.assertEqual(mock_get_session.return_value.get.call_count, 1)
+
+    @patch("app.scraper.sec_scraper._get_session")
+    def test_get_request_retries_transient_5xx(self, mock_get_session):
+        """
+        5xx responses are transient: retried up to the attempt cap, then None.
+        """
+        error = HTTPError("503")
+        error.response = MagicMock(status_code=503)
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = error
+        mock_get_session.return_value.get.return_value = mock_response
+
+        response = _get_request("http://test.com")
+
+        self.assertIsNone(response)
+        self.assertEqual(mock_get_session.return_value.get.call_count, 5)
 
     def test_create_search_url(self):
         """Test _create_search_url generates correct URLs."""
@@ -257,6 +290,17 @@ class TestSecScraper(unittest.TestCase):
             # Should call scrape for SCHEDULE and Form 4 (found 1 doc each in mock)
             assert filings is not None
             self.assertEqual(len(filings), 2)
+
+    @patch("app.scraper.sec_scraper._get_request")
+    def test_fetch_non_quarterly_without_start_date_returns_none(self, mock_get_request):
+        """
+        A missing 13F baseline date (fund page unparseable) must degrade to
+        None without firing any request, not crash on None.replace.
+        """
+        result = fetch_non_quarterly_after_date("CIK123", None)  # type: ignore[arg-type]
+
+        self.assertIsNone(result)
+        mock_get_request.assert_not_called()
 
     @patch("app.scraper.sec_scraper._get_request")
     def test_get_latest_13f_filing_date(self, mock_get_request):

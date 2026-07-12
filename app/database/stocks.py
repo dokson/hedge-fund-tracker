@@ -206,7 +206,15 @@ def stocks_lock(timeout=30):
                         pass
 
                     time.sleep(0.05)
-                except OSError:
+                except OSError as exc:
+                    # Windows hot path: unlink of a held-open lock file raises
+                    # PermissionError on the next O_CREAT|O_EXCL. Retry, but
+                    # honor the timeout — spinning forever here would hold the
+                    # thread lock and wedge every stocks.csv access.
+                    if time.time() - start_time > timeout:
+                        raise TimeoutError(
+                            f"Could not acquire lock for {_db.STOCKS_FILE} within {timeout} seconds."
+                        ) from exc
                     time.sleep(0.05)
 
             yield
@@ -243,10 +251,14 @@ def save_stock(
                 # Already exists, skip appending
                 return
 
-            with (Path(_db.DB_FOLDER) / _db.STOCKS_FILE).open(
-                "a", newline="", encoding="utf-8"
-            ) as stocks_file:
+            stocks_path = Path(_db.DB_FOLDER) / _db.STOCKS_FILE
+            # A headerless first row would be parsed as the header by every
+            # subsequent read, poisoning the whole file.
+            write_header = not stocks_path.exists() or stocks_path.stat().st_size == 0
+            with stocks_path.open("a", newline="", encoding="utf-8") as stocks_file:
                 writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
+                if write_header:
+                    writer.writerow(["CUSIP", "Ticker", "Company", "Industry"])
                 writer.writerow(
                     [
                         cusip.strip(),
@@ -262,13 +274,18 @@ def save_stock(
 def save_stocks(stocks_df: pd.DataFrame, filepath: str | None = None) -> None:
     """
     Overwrites the master stocks CSV file with the given DataFrame.
+
+    Takes the stocks lock (a concurrent ``save_stock`` append between the
+    caller's read and this write would otherwise be clobbered) and writes
+    atomically so a crash mid-write cannot truncate the file.
     """
     if filepath is None:
         filepath = str(Path(_db.DB_FOLDER) / _db.STOCKS_FILE)
     try:
-        from app.utils.pd import escape_csv_text_columns
+        from app.utils.pd import atomic_to_csv, escape_csv_text_columns
 
-        escape_csv_text_columns(stocks_df).to_csv(filepath, quoting=csv.QUOTE_ALL)
+        with stocks_lock():
+            atomic_to_csv(escape_csv_text_columns(stocks_df), filepath, quoting=csv.QUOTE_ALL)
     except Exception:
         logger.error("An error occurred while writing to '%s'", _db.STOCKS_FILE, exc_info=True)
 
@@ -344,13 +361,15 @@ def clean_stocks(filepath: str | None = None) -> None:
         orphan_cusips_to_remove = set(final_orphans_df["CUSIP"])
 
         # 5. Remove orphans and save
+        from app.utils.pd import atomic_to_csv
+
         with stocks_lock():
             # Reload to ensure we have the latest data before saving
             current_stocks_df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna("")
             cleaned_df = current_stocks_df[
                 ~current_stocks_df["CUSIP"].isin(orphan_cusips_to_remove)
             ]
-            cleaned_df.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
+            atomic_to_csv(cleaned_df, filepath, index=False, quoting=csv.QUOTE_ALL)
             logger.success(
                 "Removed %d orphan CUSIPs from %s.", len(orphan_cusips_to_remove), _db.STOCKS_FILE
             )
@@ -370,11 +389,13 @@ def sort_stocks(filepath: str | None = None) -> None:
     if filepath is None:
         filepath = str(Path(_db.DB_FOLDER) / _db.STOCKS_FILE)
     try:
+        from app.utils.pd import atomic_to_csv
+
         with stocks_lock():
             df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna("")
             df.drop_duplicates(subset=["CUSIP"], keep="first", inplace=True)
             df.sort_values(by=["Ticker", "CUSIP"], inplace=True)
-            df.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
+            atomic_to_csv(df, filepath, index=False, quoting=csv.QUOTE_ALL)
     except Exception:
         logger.error("An error occurred while processing file '%s'", filepath, exc_info=True)
 

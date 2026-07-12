@@ -10,29 +10,29 @@ export default function FeatureNotAvailable({ feature }: { feature: string }) {
         </div>
         <h2 className="text-xl font-bold">{feature}</h2>
         <p className="text-muted-foreground">
-          Questa funzione richiede un backend AI locale e non è disponibile nella versione web.
+          This feature requires a local AI backend and is not available in the web version.
         </p>
         <div className="surface p-4 text-left text-sm space-y-2">
-          <p className="font-semibold">Per utilizzare le funzioni AI:</p>
+          <p className="font-semibold">To use the AI features:</p>
           <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-            <li>Clona il repository</li>
+            <li>Clone the repository</li>
             <li>
-              Configura il file <code className="bg-muted px-1 rounded text-xs">.env</code> con le
-              tue API key
+              Configure the <code className="bg-muted px-1 rounded text-xs">.env</code> file with
+              your API keys
             </li>
             <li>
-              Esegui <code className="bg-muted px-1 rounded text-xs">python -m app.main</code>
+              Run <code className="bg-muted px-1 rounded text-xs">python -m app.main</code>
             </li>
           </ol>
         </div>
         <Button variant="outline" asChild>
           <a
-            href="https://github.com/nicholasgaspar/hedge-fund-tracker"
+            href="https://github.com/dokson/hedge-fund-tracker"
             target="_blank"
             rel="noopener noreferrer"
           >
             <ExternalLink className="h-4 w-4 mr-2" />
-            Vedi su GitHub
+            View on GitHub
           </a>
         </Button>
       </div>

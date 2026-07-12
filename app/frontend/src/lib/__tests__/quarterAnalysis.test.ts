@@ -15,8 +15,8 @@ const MOCK_FUND_B_CSV = `CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Va
 A123456,TSLA,Tesla Inc,500,200,"$1.25M","$500K",40.0,3.0
 B654321,AAPL,Apple Inc,3000,0,"$6M","$0",0.0,12.0`;
 
-const MOCK_SECTOR_HIERARCHY_CSV = `"Sector","Industry"
-"Technology","Consumer Electronics"
+const MOCK_SECTOR_HIERARCHY_CSV = `"Sector","Industry","Count"
+"Technology","Consumer Electronics","1"
 `;
 
 function mockFetch(url: string, _init?: RequestInit): Promise<Response> {

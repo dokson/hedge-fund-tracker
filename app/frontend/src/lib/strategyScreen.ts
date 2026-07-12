@@ -27,16 +27,16 @@ export function selectStrategyScreen(
   def: StrategyDef,
   minHolders: number,
 ): ScreenHolding[] {
-  const key = def.sortKey as keyof StockQuarterAnalysis;
+  const key = def.sortKey;
   let arr = def.minHolders ? rows.filter((r) => r.holderCount >= minHolders) : rows;
   if (def.excludeInfiniteDelta) arr = arr.filter((r) => Number.isFinite(r.delta));
   // The sign constraint applies to the ranking metric (matches Python select_screen).
-  if (def.deltaSign === "positive") arr = arr.filter((r) => (r[key] as number) > 0);
-  else if (def.deltaSign === "negative") arr = arr.filter((r) => (r[key] as number) < 0);
+  if (def.deltaSign === "positive") arr = arr.filter((r) => (r[key] ?? NaN) > 0);
+  else if (def.deltaSign === "negative") arr = arr.filter((r) => (r[key] ?? NaN) < 0);
 
   arr = [...arr].sort((a, b) => {
-    const va = a[key] as number;
-    const vb = b[key] as number;
+    const va = a[key] ?? NaN;
+    const vb = b[key] ?? NaN;
     if (!Number.isFinite(va) && !Number.isFinite(vb)) return 0;
     if (!Number.isFinite(va)) return def.ascending ? 1 : -1;
     if (!Number.isFinite(vb)) return def.ascending ? -1 : 1;

@@ -178,7 +178,10 @@ export default function AIRanking() {
     execute: async ({ modelId, providerId, onLog, signal }) => {
       if (!quarter) throw new Error("No quarters available");
       const data = await runPromiseScoreStream(quarter, topN, modelId, providerId, onLog, signal);
-      return (data as RawRankedStock[]).map((s, i) => ({
+      // Field-level defense lives in the `??` fallbacks below; here we only
+      // drop non-object elements so a null in the AI response can't throw.
+      const rows = data.filter((s): s is RawRankedStock => typeof s === "object" && s !== null);
+      return rows.map((s, i) => ({
         rank: i + 1,
         ticker: s.Ticker ?? s.ticker ?? "",
         company: s.Company ?? s.company ?? "",
@@ -210,7 +213,7 @@ export default function AIRanking() {
   const hasLiveResults = (results?.length ?? 0) > 0;
   const sampleResults: RankedStock[] =
     isReadOnly && !hasLiveResults
-      ? (sampleRanking.stocks as RawRankedStock[]).map((s, i) => ({
+      ? sampleRanking.stocks.map((s, i) => ({
           rank: i + 1,
           ticker: s.Ticker,
           company: s.Company,
@@ -225,7 +228,7 @@ export default function AIRanking() {
           highConvictionCount: s.High_Conviction_Count ?? 0,
         }))
       : [];
-  const displayResults: RankedStock[] = (results?.length ?? 0) > 0 ? results! : sampleResults;
+  const displayResults: RankedStock[] = results && results.length > 0 ? results : sampleResults;
   const hasResults = displayResults.length > 0;
   const isSample = isReadOnly && (results?.length ?? 0) === 0;
 
@@ -470,7 +473,7 @@ export default function AIRanking() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(stockPath(s.ticker));
+                                void navigate(stockPath(s.ticker));
                               }}
                             >
                               View Stock Analysis
@@ -480,7 +483,7 @@ export default function AIRanking() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(aiDiligenceFor(s.ticker));
+                                void navigate(aiDiligenceFor(s.ticker));
                               }}
                             >
                               <Brain className="h-3 w-3 mr-1" /> AI Due Diligence

@@ -62,13 +62,13 @@ export function CompanyLink({
       className={`company-link ${className}`}
       onClick={(e) => {
         e.stopPropagation();
-        navigate(stockPath(ticker));
+        void navigate(stockPath(ticker));
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           e.stopPropagation();
-          navigate(stockPath(ticker));
+          void navigate(stockPath(ticker));
         }
       }}
     >
@@ -106,13 +106,13 @@ export function TickerLink({
       className={`ticker-pill ${className}`}
       onClick={(e) => {
         e.stopPropagation();
-        navigate(stockPath(ticker));
+        void navigate(stockPath(ticker));
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           e.stopPropagation();
-          navigate(stockPath(ticker));
+          void navigate(stockPath(ticker));
         }
       }}
     >
@@ -146,13 +146,13 @@ export function FundCell({ fundName, className = "" }: { fundName: string; class
           className="font-semibold text-foreground hover:text-primary focus-visible:text-primary focus-visible:outline-none transition-colors cursor-pointer truncate"
           onClick={(e) => {
             e.stopPropagation();
-            navigate(fundPath(fundName));
+            void navigate(fundPath(fundName));
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               e.stopPropagation();
-              navigate(fundPath(fundName));
+              void navigate(fundPath(fundName));
             }
           }}
         >
@@ -184,13 +184,13 @@ export function FundLink({
       className={`fund-link ${className}`}
       onClick={(e) => {
         e.stopPropagation();
-        navigate(fundPath(fundName));
+        void navigate(fundPath(fundName));
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           e.stopPropagation();
-          navigate(fundPath(fundName));
+          void navigate(fundPath(fundName));
         }
       }}
     >

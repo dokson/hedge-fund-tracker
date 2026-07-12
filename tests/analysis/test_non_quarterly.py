@@ -239,6 +239,35 @@ class TestUpdateQuarterWithNqFilings(unittest.TestCase):
         self.assertEqual(closed_row["Delta"], "CLOSE")
         self.assertEqual(closed_row["Shares"], 0)
 
+    def test_reduced_position_with_price_rise_has_negative_delta_value(self):
+        """
+        A reduced stake must yield a negative value delta even when the stock
+        price rose enough that the new market value exceeds the 13F value.
+        """
+        nq = self._nq_df([("Fund A", "CUSIP0001", "TICK0001", "Alpha Co", 90, "1.17K")])
+
+        with patch("app.analysis.non_quarterly.load_non_quarterly_data", return_value=nq):
+            result = update_quarter_with_nq_filings(self._quarter_df(), ["Fund A"])
+
+        row = result[(result["Fund"] == "Fund A") & (result["CUSIP"] == "CUSIP0001")].iloc[0]
+        self.assertEqual(row["Delta_Shares"], -10)
+        self.assertAlmostEqual(row["Delta_Value_Num"], -130.0)
+        self.assertAlmostEqual(row["Delta"], -10.0)
+
+    def test_unchanged_position_has_zero_delta_value_despite_price_drift(self):
+        """
+        An amendment reporting the same share count is not a trade: the value
+        delta must be zero no matter how much the price moved since quarter-end.
+        """
+        nq = self._nq_df([("Fund A", "CUSIP0001", "TICK0001", "Alpha Co", 100, "1.3K")])
+
+        with patch("app.analysis.non_quarterly.load_non_quarterly_data", return_value=nq):
+            result = update_quarter_with_nq_filings(self._quarter_df(), ["Fund A"])
+
+        row = result[(result["Fund"] == "Fund A") & (result["CUSIP"] == "CUSIP0001")].iloc[0]
+        self.assertEqual(row["Delta_Shares"], 0)
+        self.assertEqual(row["Delta_Value_Num"], 0.0)
+
     def test_fund_without_13f_keeps_only_nq_active_rows(self):
         """
         For a fund that did not file a 13F this quarter, stale carried-over

@@ -1,6 +1,9 @@
 import type { PerfSeries } from "@/lib/dataService";
 
-export type ChartPoint = { label: string } & Record<string, number | string>;
+export type ChartPoint = { label: string; __band?: [number, number] } & Record<
+  string,
+  number | string
+>;
 
 /**
  * Build the cumulative equity curve rows for a set of series.

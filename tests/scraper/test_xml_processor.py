@@ -272,6 +272,29 @@ class TestXmlToDataframe4(unittest.TestCase):
         self.assertEqual(row["Owner"], "JANE INSIDER")
         self.assertEqual(row["Date"], pd.Timestamp("2026-04-10"))
 
+    def test_comma_grouped_share_count_is_parsed(self, _assign):
+        """
+        A comma-grouped share count is a formatting quirk, not bad data: it
+        must parse to the numeric value instead of crashing the batch.
+        """
+        xml = self.FORM4_XML.replace("<value>12000</value>", "<value>12,000</value>")
+
+        df = xml_to_dataframe_4(xml)
+
+        self.assertEqual(df.iloc[0]["Shares"], 12000)
+
+    def test_garbage_share_count_skips_item_not_filing(self, _assign):
+        """
+        A non-numeric share count skips that item with a warning; the filing
+        (and the rest of the batch) survives instead of raising ValueError.
+        """
+        xml = self.FORM4_XML.replace("<value>12000</value>", "<value>see footnote</value>")
+
+        df = xml_to_dataframe_4(xml)
+
+        self.assertEqual(len(df), 1)
+        self.assertEqual(df.iloc[0]["Shares"], 0)
+
     def test_sums_direct_and_indirect_holdings(self, _assign):
         """
         Holdings under distinct ownership natures (direct + indirect) are

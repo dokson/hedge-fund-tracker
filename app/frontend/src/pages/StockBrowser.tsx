@@ -330,22 +330,18 @@ export default function StockBrowser() {
     return groups;
   }, [filtered, renderCount]);
 
-  // Hydrate the remaining cards once the browser is idle. The setTimeout
-  // fallback is paired with clearTimeout via `cancel` in the cleanup return —
-  // the linter can't trace the indirection through the `idle` / `cancel` refs.
+  // Hydrate the remaining cards once the browser is idle, falling back to a
+  // macrotask where requestIdleCallback is unavailable. Each branch returns
+  // its own paired cleanup so schedule/cancel can't drift apart.
   useEffect(() => {
     if (renderCount >= filtered.length) return;
-    const idle =
-      "requestIdleCallback" in window
-        ? window.requestIdleCallback
-        : (cb: IdleRequestCallback) =>
-            window.setTimeout(
-              () => cb({ didTimeout: false, timeRemaining: () => 0 } as IdleDeadline),
-              0,
-            );
-    const cancel = "cancelIdleCallback" in window ? window.cancelIdleCallback : window.clearTimeout;
-    const handle = idle(() => setRenderCount(filtered.length));
-    return () => cancel(handle as number);
+    const hydrate = () => setRenderCount(filtered.length);
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(hydrate);
+      return () => window.cancelIdleCallback(handle);
+    }
+    const handle = window.setTimeout(hydrate, 0);
+    return () => window.clearTimeout(handle);
   }, [filtered.length, renderCount]);
 
   // Reset both chunk caps when the filter set changes (search/letter/reveal).
@@ -541,7 +537,7 @@ export default function StockBrowser() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      navigate(stockPath(stock.ticker));
+                      void navigate(stockPath(stock.ticker));
                     }
                   }}
                 >
@@ -656,7 +652,7 @@ export default function StockBrowser() {
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            navigate(stockPath(stock.ticker));
+                            void navigate(stockPath(stock.ticker));
                           }
                         }}
                       >
@@ -721,7 +717,7 @@ export default function StockBrowser() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          navigate(stockPath(s.ticker));
+                          void navigate(stockPath(s.ticker));
                         }
                       }}
                       className="surface p-3.5 cursor-pointer"
@@ -794,7 +790,7 @@ export default function StockBrowser() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          navigate(stockPath(s.ticker));
+                          void navigate(stockPath(s.ticker));
                         }
                       }}
                     >
@@ -965,7 +961,7 @@ export default function StockBrowser() {
                             onKeyDown={(e) => {
                               if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
-                                navigate(stockPath(stock.ticker));
+                                void navigate(stockPath(stock.ticker));
                               }
                             }}
                           >

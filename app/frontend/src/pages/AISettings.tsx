@@ -443,7 +443,7 @@ function ModelsTab() {
 
   const invalidateModels = () => {
     clearCache("models");
-    queryClient.invalidateQueries({ queryKey: ["aiModels"] });
+    void queryClient.invalidateQueries({ queryKey: ["aiModels"] });
   };
 
   const handleAddModel = async () => {

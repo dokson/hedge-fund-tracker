@@ -287,8 +287,8 @@ export default function FundsConfig() {
   const invalidateAll = () => {
     clearCache("hedge_funds");
     clearCache("excluded_hedge_funds");
-    queryClient.invalidateQueries({ queryKey: ["hedgeFunds"] });
-    queryClient.invalidateQueries({ queryKey: ["excludedHedgeFunds"] });
+    void queryClient.invalidateQueries({ queryKey: ["hedgeFunds"] });
+    void queryClient.invalidateQueries({ queryKey: ["excludedHedgeFunds"] });
   };
 
   const isValidUrl = (url: string) => url.trim().startsWith("https://");

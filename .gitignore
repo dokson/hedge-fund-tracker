@@ -12,6 +12,7 @@ app/frontend/dist/
 .ruff_cache/
 .mypy_cache/
 .pytest_cache/
+*.tsbuildinfo
 
 # Coverage
 .coverage

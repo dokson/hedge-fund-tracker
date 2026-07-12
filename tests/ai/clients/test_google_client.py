@@ -57,6 +57,16 @@ class TestGoogleAIClient(unittest.TestCase):
         self.patcher.stop()
         self.sleep_patcher.stop()
 
+    def test_client_configured_with_request_timeout(self):
+        """
+        A stalled Gemini call must eventually time out instead of emitting
+        heartbeats forever (the OpenAI-compatible path caps at 90s — mirror it).
+        """
+        _, kwargs = self.mock_genai_client.call_args
+        http_options = kwargs.get("http_options")
+        self.assertIsNotNone(http_options)
+        self.assertEqual(http_options.timeout, 90_000)
+
     def test_generate_content_invocation(self):
         prompt = "Hello, Gemini!"
         response = self.client.generate_content(prompt)

@@ -1,4 +1,4 @@
-import type { StockQuarterAnalysis } from "./dataService";
+import type { StockQuarterAnalysis } from "./data/types";
 
 const HIGH_SCORE = 7.5;
 const MID_SCORE = 4.5;

@@ -5,6 +5,7 @@
  *
  * Wired in via `test.setupFiles` in vite.config.ts.
  */
+import { vi } from "vitest";
 
 // Synchronous IntersectionObserver: fires `isIntersecting=true` on observe()
 // so components gated by intersection (CompanyLogo, FundLogo) render their
@@ -12,6 +13,7 @@
 class SyncIntersectionObserver implements IntersectionObserver {
   readonly root = null;
   readonly rootMargin = "";
+  readonly scrollMargin = "";
   readonly thresholds: readonly number[] = [];
   private callback: IntersectionObserverCallback;
 
@@ -29,6 +31,4 @@ class SyncIntersectionObserver implements IntersectionObserver {
   }
 }
 
-(
-  globalThis as unknown as { IntersectionObserver: typeof IntersectionObserver }
-).IntersectionObserver = SyncIntersectionObserver as unknown as typeof IntersectionObserver;
+vi.stubGlobal("IntersectionObserver", SyncIntersectionObserver);

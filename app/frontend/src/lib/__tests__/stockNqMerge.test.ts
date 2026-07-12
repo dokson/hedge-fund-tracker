@@ -79,6 +79,22 @@ describe("mergeNonQuarterlyHoldings", () => {
     expect(merged[0].isBuyer).toBe(true);
   });
 
+  it("keeps deltaValue negative on a reduced stake even when the price rose", () => {
+    // 13F: 1000 shares worth 10K (price 10). Filing: 900 shares at price 13
+    // (value 11.7K). The market value rose, but the fund SOLD: the value delta
+    // must stay on the filing-price basis (-100 shares × 13 = -1300), not the
+    // cross-basis market-value difference (+1700).
+    const merged = mergeNonQuarterlyHoldings(
+      [mkHolding({ fund: "Fund A", shares: 1000, value: 10_000 })],
+      [mkFiling({ fund: "Fund A", shares: 900, value: "11.7K" })],
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].deltaShares).toBe(-100);
+    expect(merged[0].deltaValue).toBeCloseTo(-1300);
+    expect(merged[0].isSeller).toBe(true);
+  });
+
   it("closes an existing 13F row on a zero-share filing", () => {
     const merged = mergeNonQuarterlyHoldings(
       [mkHolding({ fund: "Fund A", shares: 1000, value: 10_000 })],

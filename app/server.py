@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.admin import router as admin_router
@@ -138,8 +139,11 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 # `limiter` is defined in app.api.common so routers can share the one instance.
+# The middleware is what applies `default_limits` to every route; without it
+# only routes with an explicit @limiter.limit decorator are throttled.
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+app.add_middleware(SlowAPIMiddleware)
 
 
 # ── Routers ─────────────────────────────────────────────────────────────────
@@ -156,6 +160,7 @@ app.include_router(settings_router)
 
 
 @app.get("/health")
+@limiter.exempt
 async def health_check() -> dict[str, str]:
     """
     Health check endpoint for Docker and load balancers.
@@ -178,7 +183,10 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
     return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
 
+# Exempt from the default rate limit: one SPA page view fans out to many asset
+# requests, which must not consume the API budget of real endpoints.
 @app.get("/{full_path:path}")
+@limiter.exempt
 async def serve_spa(full_path: str) -> FileResponse:
     try:
         if full_path:

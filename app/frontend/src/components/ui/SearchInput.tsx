@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface SearchInputProps extends Omit<
   React.ComponentProps<typeof Input>,
-  "placeholder" | "aria-label" | "type"
+  "placeholder" | "aria-label" | "type" | "size"
 > {
   /** Used verbatim as the accessible name, and with a trailing ellipsis as the placeholder — a
    * single source of truth so the two can't drift apart. */

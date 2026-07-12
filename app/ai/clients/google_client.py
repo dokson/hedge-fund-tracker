@@ -43,11 +43,14 @@ class GoogleAIClient(AIClient):
                 env var via genai.Client default — DEPRECATED, will be required
                 explicitly once BYOK is wired end-to-end.
         """
+        # Mirror the OpenAI-compatible clients' 90s request timeout: without it
+        # a stalled call emits heartbeats forever (google-genai wants ms).
+        http_options = types.HttpOptions(timeout=90_000)
         if api_key is None:
             load_dotenv()
-            self.client = genai.Client()
+            self.client = genai.Client(http_options=http_options)
         else:
-            self.client = genai.Client(api_key=api_key)
+            self.client = genai.Client(api_key=api_key, http_options=http_options)
         self.model = model
 
     def get_model_name(self) -> str:

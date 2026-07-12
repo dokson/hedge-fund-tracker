@@ -8,7 +8,7 @@ from typing import Any
 from bs4 import BeautifulSoup
 from curl_cffi import requests
 from curl_cffi.requests import exceptions as curl_exc
-from tenacity import RetryError, retry, retry_if_result, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
 
 from app.scraper.rate_limiter import RateLimiter
 from app.utils.logger import get_logger, log_safe
@@ -135,24 +135,31 @@ FILING_SPECS: dict[str, dict[str, Any]] = {
 }
 
 
+class _PermanentHTTPError(Exception):
+    """
+    Non-retryable HTTP failure (4xx other than 429): retrying cannot succeed.
+    """
+
+
 @retry(
     retry=retry_if_result(lambda value: value is None),
     wait=wait_exponential(multiplier=1, min=2, max=8),
     stop=stop_after_attempt(5),
+    retry_error_callback=lambda rs: None,
     before_sleep=lambda rs: logger.progress(
-        f"Retrying request for '{rs.args[0]}' in {rs.next_action.sleep:.0f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
+        "Retrying request for '%s' in %.0fs... (Attempt #%d)",
+        log_safe(rs.args[0], max_len=200),
+        rs.next_action.sleep,  # type: ignore[union-attr]
+        rs.attempt_number,
     ),
 )
-def _get_request(url: str) -> requests.Response | None:
+def _attempt_request(url: str) -> requests.Response | None:
     """
-    Sends a GET request to the specified URL via the shared Session.
+    Single rate-limited GET attempt, retried by tenacity while it returns None.
 
-    Rate-limited via a process-wide token bucket so parallel workers stay
-    within SEC EDGAR's fair-access policy. Retries on failure via tenacity.
-
-    Transient network errors (timeouts, connection resets, 5xx) are logged
-    as warnings without a traceback since tenacity will retry them. Other
-    RequestExceptions log a full traceback for diagnosis.
+    Transient failures (timeouts, connection resets, 5xx, 429) return None so
+    tenacity retries them; exhaustion maps to None via retry_error_callback.
+    Permanent HTTP errors raise _PermanentHTTPError to stop retrying at once.
     """
     _rate_limiter.acquire()
     try:
@@ -172,9 +179,24 @@ def _get_request(url: str) -> requests.Response | None:
             logger.warning("Transient HTTP %s for %s", status, log_safe(url, max_len=200))
             return None
         logger.error("Request failed for %s", log_safe(url, max_len=200), exc_info=True)
-        return None
+        raise _PermanentHTTPError(str(status)) from exc
     except curl_exc.RequestException:
         logger.error("Request failed for %s", log_safe(url, max_len=200), exc_info=True)
+        return None
+
+
+def _get_request(url: str) -> requests.Response | None:
+    """
+    Sends a GET request to the specified URL via the shared Session.
+
+    Rate-limited via a process-wide token bucket so parallel workers stay
+    within SEC EDGAR's fair-access policy. Retries transient failures via
+    tenacity and always returns None on error — callers never see an
+    exception from this function.
+    """
+    try:
+        return _attempt_request(url)
+    except _PermanentHTTPError:
         return None
 
 
@@ -265,16 +287,8 @@ def _scrape_filing(document_tag, filing_type):
         Dictionary with 'date' and 'xml_content' or None if processing fails
     """
     report_page_url = SEC_URL + document_tag["href"]
-    try:
-        report_page_response = _get_request(report_page_url)
-        if not report_page_response:
-            return None
-    except RetryError:
-        logger.error(
-            "Failed to fetch report page %s after multiple retries.",
-            log_safe(report_page_url, max_len=200),
-            exc_info=True,
-        )
+    report_page_response = _get_request(report_page_url)
+    if not report_page_response:
         return None
 
     report_page_soup = BeautifulSoup(report_page_response.text, "html.parser")
@@ -289,17 +303,9 @@ def _scrape_filing(document_tag, filing_type):
         )
         return None
 
-    try:
-        xml_response = _get_request(xml_url)
-        if not xml_response:
-            logger.info("Failed to download XML from %s", log_safe(xml_url, max_len=200))
-            return None
-    except RetryError:
-        logger.error(
-            "Failed to fetch XML file %s after multiple retries.",
-            log_safe(xml_url, max_len=200),
-            exc_info=True,
-        )
+    xml_response = _get_request(xml_url)
+    if not xml_response:
+        logger.info("Failed to download XML from %s", log_safe(xml_url, max_len=200))
         return None
 
     if filing_type == "13F-HR":
@@ -347,11 +353,18 @@ def fetch_latest_two_13f_filings(cik, offset=0):
     return filings
 
 
-def fetch_non_quarterly_after_date(cik: str, start_date: str) -> list[dict] | None:
+def fetch_non_quarterly_after_date(cik: str, start_date: str | None) -> list[dict] | None:
     """
     Fetches the raw content and filing dates for the latest schedule (13D/G) and Form 4 filings for a given CIK.
-    Returns a list of dictionaries, or None if an error occurs.
+    Returns a list of dictionaries, or None if an error occurs or no start date is available.
     """
+    if not start_date:
+        logger.warning(
+            "No 13F baseline date available for CIK %s: skipping non-quarterly fetch.",
+            log_safe(cik),
+        )
+        return None
+
     filings: list[dict] = []
     yyyymmdd_date = start_date.replace("-", "")
 

@@ -99,5 +99,55 @@ class TestEscapeCsvTextColumns(unittest.TestCase):
         self.assertEqual(df["Company"].iloc[0], "=x")
 
 
+class TestAtomicToCsv(unittest.TestCase):
+    def setUp(self):
+        """
+        Create an isolated temp directory for the write targets.
+        """
+        import shutil
+        import tempfile
+        from pathlib import Path
+
+        self._tmp = Path(tempfile.mkdtemp(prefix="hft_atomic_"))
+        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
+
+    def test_writes_dataframe_round_trip(self):
+        """
+        The written CSV parses back to the same frame.
+        """
+        from app.utils.pd import atomic_to_csv
+
+        df = pd.DataFrame({"A": ["1", "2"], "B": ["x", "y"]})
+        target = self._tmp / "out.csv"
+
+        atomic_to_csv(df, target, index=False)
+
+        pd.testing.assert_frame_equal(pd.read_csv(target, dtype=str), df)
+
+    def test_failure_leaves_target_intact_and_no_tmp_files(self):
+        """
+        A crash mid-write must neither truncate the existing file nor leave
+        temp files behind — that is the whole point of the helper.
+        """
+        from app.utils.pd import atomic_to_csv
+
+        target = self._tmp / "out.csv"
+        target.write_text("original", encoding="utf-8")
+
+        class _Boom:
+            def to_csv(self, f, **kwargs):
+                """
+                Simulate a failure after a partial write.
+                """
+                f.write("partial")
+                raise RuntimeError("disk full")
+
+        with self.assertRaises(RuntimeError):
+            atomic_to_csv(_Boom(), target, index=False)  # type: ignore[arg-type]
+
+        self.assertEqual(target.read_text(encoding="utf-8"), "original")
+        self.assertEqual([p.name for p in self._tmp.iterdir()], ["out.csv"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -80,10 +80,10 @@ jobs:
         run: npm ci
 
       - name: oxlint
-        run: npx oxlint --deny-warnings
+        run: npx oxlint --type-aware --deny-warnings
 
       - name: Prettier check
         run: npx prettier --check .
 
       - name: TypeScript type check
-        run: npx tsc --noEmit
+        run: npx tsc -b --noEmit

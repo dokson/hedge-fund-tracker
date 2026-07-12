@@ -24,30 +24,7 @@ import {
 } from "@/components/ui/accordion";
 import sampleDueDiligence from "@/data/sampleDueDiligence.json";
 import { StockPriceChart } from "@/components/StockPriceChart";
-
-interface DueDiligenceReport {
-  ticker: string;
-  company: string;
-  current_price: string;
-  filing_date_price: string;
-  price_delta_percentage: string;
-  analysis?: {
-    business_summary?: string;
-    financial_health?: string;
-    financial_health_sentiment?: string;
-    valuation?: string;
-    valuation_sentiment?: string;
-    growth_vs_risks?: string;
-    growth_vs_risks_sentiment?: string;
-    institutional_sentiment?: string;
-    institutional_sentiment_sentiment?: string;
-  };
-  investment_thesis?: {
-    overall_sentiment?: string;
-    thesis?: string;
-    price_target?: string;
-  };
-}
+import { toDueDiligenceReport, type DueDiligenceReport } from "@/lib/dueDiligence";
 
 function SentimentBadge({ sentiment }: { sentiment: string }) {
   if (!sentiment) return null;
@@ -110,14 +87,9 @@ export default function AIDueDiligence() {
       if (!quarter) throw new Error("No quarters available");
       const t = inputTicker.toUpperCase();
       setTicker(t);
-      const result = (await runDueDiligenceStream(
-        t,
-        quarter,
-        modelId,
-        providerId,
-        onLog,
-        signal,
-      )) as DueDiligenceReport;
+      const raw = await runDueDiligenceStream(t, quarter, modelId, providerId, onLog, signal);
+      const result = toDueDiligenceReport(raw);
+      if (!result) throw new Error("The AI returned a malformed due-diligence report — try again.");
       setGeneratedAt(new Date().toISOString().split("T")[0]);
       return result;
     },
@@ -151,11 +123,7 @@ export default function AIDueDiligence() {
     await run();
   };
 
-  const sample = sampleDueDiligence as DueDiligenceReport & {
-    quarter?: string;
-    generated_by?: string;
-    generated_at?: string;
-  };
+  const sample = sampleDueDiligence;
   const displayReport: DueDiligenceReport | null = report ?? (isReadOnly ? sample : null);
 
   // When the cached report rehydrates after a page revisit (no URL param), seed

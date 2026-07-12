@@ -32,9 +32,11 @@ def sort_hedge_funds(filepath: str | None = None) -> None:
     if filepath is None:
         filepath = str(Path(_db.DB_FOLDER) / _db.HEDGE_FUNDS_FILE)
     try:
+        from app.utils.pd import atomic_to_csv
+
         df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna("")
         df.sort_values(by="Fund", key=lambda s: s.str.lower(), inplace=True, kind="stable")
-        df.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
+        atomic_to_csv(df, filepath, index=False, quoting=csv.QUOTE_ALL)
     except Exception:
         logger.error("An error occurred while processing file '%s'", filepath, exc_info=True)
 
@@ -50,13 +52,15 @@ def sort_excluded_hedge_funds(filepath: str | None = None) -> None:
     if filepath is None:
         filepath = str(Path(_db.DB_FOLDER) / _db.EXCLUDED_HEDGE_FUNDS_FILE)
     try:
+        from app.utils.pd import atomic_to_csv
+
         df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna("")
         head = df.iloc[:README_DISPLAY_LIMIT]
         tail = df.iloc[README_DISPLAY_LIMIT:].sort_values(
             by="Fund", key=lambda s: s.str.lower(), kind="stable"
         )
         result = pd.concat([head, tail], ignore_index=True)
-        result.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
+        atomic_to_csv(result, filepath, index=False, quoting=csv.QUOTE_ALL)
     except Exception:
         logger.error("An error occurred while processing file '%s'", filepath, exc_info=True)
 
@@ -103,23 +107,29 @@ def delete_fund_from_database(fund_info: dict) -> None:
 
         if record_to_move.empty:
             logger.error("Fund '%s' not found in %s", log_safe(fund_name), _db.HEDGE_FUNDS_FILE)
-        else:
-            # Both files share the same schema (URL included), so the row moves as-is.
-            if excluded_path.exists():
-                record_to_move.to_csv(
-                    excluded_path, mode="a", header=False, index=False, quoting=csv.QUOTE_ALL
-                )
-            else:
-                record_to_move.to_csv(excluded_path, index=False, quoting=csv.QUOTE_ALL)
-            logger.info("  - Added '%s' to excluded_hedge_funds.csv", log_safe(fund_name))
+            return
 
-            # Remove from hedge_funds.csv
-            df_hedge_funds = df_hedge_funds[df_hedge_funds["Fund"] != fund_name]
-            df_hedge_funds.to_csv(hedge_funds_path, index=False, quoting=csv.QUOTE_ALL)
-            logger.info("  - Removed '%s' from %s", log_safe(fund_name), _db.HEDGE_FUNDS_FILE)
+        from app.utils.pd import atomic_to_csv
+
+        # Both files share the same schema (URL included), so the row moves
+        # as-is. Add-then-remove ordering: a crash between the two writes
+        # leaves the fund in both files (recoverable) rather than in neither.
+        if excluded_path.exists():
+            df_excluded = pd.read_csv(excluded_path, dtype=str, keep_default_na=False)
+            df_excluded = pd.concat([df_excluded, record_to_move], ignore_index=True)
+        else:
+            df_excluded = record_to_move
+        atomic_to_csv(df_excluded, excluded_path, index=False, quoting=csv.QUOTE_ALL)
+        logger.info("  - Added '%s' to excluded_hedge_funds.csv", log_safe(fund_name))
+
+        # Remove from hedge_funds.csv
+        df_hedge_funds = df_hedge_funds[df_hedge_funds["Fund"] != fund_name]
+        atomic_to_csv(df_hedge_funds, hedge_funds_path, index=False, quoting=csv.QUOTE_ALL)
+        logger.info("  - Removed '%s' from %s", log_safe(fund_name), _db.HEDGE_FUNDS_FILE)
 
     except Exception:
         logger.error("updating CSV files", exc_info=True)
+        return
 
     logger.success("Deletion of '%s' completed.", log_safe(fund_name))
 
@@ -172,16 +182,18 @@ def restore_fund_to_database(fund_info: dict) -> None:
             df_hedge_funds = pd.concat([df_hedge_funds, record_to_move], ignore_index=True)
         else:
             df_hedge_funds = record_to_move
+        from app.utils.pd import atomic_to_csv
+
         df_hedge_funds = df_hedge_funds.sort_values(
             by="Fund", key=lambda s: s.str.casefold(), kind="stable"
         ).reset_index(drop=True)
-        df_hedge_funds.to_csv(hedge_funds_path, index=False, quoting=csv.QUOTE_ALL)
+        atomic_to_csv(df_hedge_funds, hedge_funds_path, index=False, quoting=csv.QUOTE_ALL)
         logger.info(
             "  - Added '%s' to %s (alphabetical order)", log_safe(fund_name), _db.HEDGE_FUNDS_FILE
         )
 
         df_excluded = df_excluded[df_excluded["Fund"] != fund_name]
-        df_excluded.to_csv(excluded_path, index=False, quoting=csv.QUOTE_ALL)
+        atomic_to_csv(df_excluded, excluded_path, index=False, quoting=csv.QUOTE_ALL)
         logger.info("  - Removed '%s' from %s", log_safe(fund_name), _db.EXCLUDED_HEDGE_FUNDS_FILE)
 
     except Exception:

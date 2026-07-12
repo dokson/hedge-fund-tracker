@@ -5,7 +5,12 @@ const STORAGE_KEY_PREFIX = "starred_";
 function readStarred(type: "stock" | "fund"): Set<string> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PREFIX + type);
-    if (raw) return new Set(JSON.parse(raw));
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return new Set(parsed.filter((x): x is string => typeof x === "string"));
+      }
+    }
   } catch {
     // Ignore localStorage parse / access errors and fall back to an empty set.
   }

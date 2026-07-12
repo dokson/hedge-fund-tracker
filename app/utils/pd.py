@@ -1,3 +1,8 @@
+import os
+import tempfile
+from contextlib import suppress
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -18,6 +23,31 @@ def escape_csv_text_columns(df: pd.DataFrame) -> pd.DataFrame:
         if col in df.columns:
             df[col] = df[col].map(lambda v: escape_csv_formula(v) if isinstance(v, str) else v)
     return df
+
+
+def atomic_to_csv(df: pd.DataFrame, filepath: str | Path, **to_csv_kwargs) -> None:
+    """
+    Write ``df`` to ``filepath`` atomically.
+
+    Writes to a temp file in the same directory, then ``os.replace()`` swaps it
+    in — so a crash mid-write can never truncate or corrupt the target file.
+
+    Args:
+        df: The DataFrame to serialize.
+        filepath: Destination CSV path.
+        **to_csv_kwargs: Forwarded to ``DataFrame.to_csv`` (index, quoting, ...).
+    """
+    path = Path(filepath)
+    encoding = to_csv_kwargs.pop("encoding", "utf-8")
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding=encoding, newline="") as f:
+            df.to_csv(f, **to_csv_kwargs)
+        Path(tmp).replace(path)
+    except BaseException:
+        with suppress(OSError):
+            Path(tmp).unlink()
+        raise
 
 
 def coalesce(*series: pd.Series | int | float | str) -> pd.Series:

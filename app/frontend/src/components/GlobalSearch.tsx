@@ -165,9 +165,9 @@ export default function GlobalSearch({
 
   const navigateToHit = (hit: SearchHit) => {
     if (hit.kind === "ticker" || hit.kind === "company") {
-      navigate(stockPath(hit.ticker));
+      void navigate(stockPath(hit.ticker));
     } else {
-      navigate(fundPath(hit.fund));
+      void navigate(fundPath(hit.fund));
     }
     setOpen(false);
     setQuery("");

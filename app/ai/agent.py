@@ -78,6 +78,10 @@ class AnalystAgent:
         if invalid_metrics:
             raise InvalidAIResponseError(f"AI returned invalid metrics: {invalid_metrics}")
 
+        wrong_signs = PromiseScoreValidator.validate_weight_signs(parsed_weights)
+        if wrong_signs:
+            raise InvalidAIResponseError(f"AI returned wrongly signed weights: {wrong_signs}")
+
         weights_str = "\n\t" + "\n\t".join(
             [f"{k:<20} = {v:5.2f}" for k, v in parsed_weights.items()]
         )
@@ -131,8 +135,25 @@ class AnalystAgent:
         if not parsed_data:
             raise InvalidAIResponseError("AI returned no data")
 
+        if not all(isinstance(data, dict) for data in parsed_data.values()):
+            raise InvalidAIResponseError("AI response entries are not key/value blocks")
+
         if not all(all(key in data for key in required_keys) for data in parsed_data.values()):
             raise InvalidAIResponseError("AI response was missing required keys")
+
+        for data in parsed_data.values():
+            for key in required_keys:
+                value = data[key]
+                if isinstance(value, bool) or not isinstance(value, int | float):
+                    raise InvalidAIResponseError(f"AI returned a non-numeric {key}")
+                if not 1 <= value <= 100:
+                    raise InvalidAIResponseError(f"AI returned an out-of-range {key}")
+
+        # A truncated stream decodes to a valid prefix: without this check the
+        # missing tickers would silently score 0 downstream.
+        missing = {stock["ticker"] for stock in stocks_context} - parsed_data.keys()
+        if missing:
+            raise InvalidAIResponseError(f"AI response is missing {len(missing)} ticker(s)")
 
         logger.success("Successfully parsed AI scores for %d tickers", len(parsed_data))
         return parsed_data

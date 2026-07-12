@@ -260,6 +260,19 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         for v in result.values():
             self.assertIsInstance(v, float)
 
+    @patch("app.ai.agent.ResponseParser.extract_and_decode_toon")
+    @patch("app.ai.agent.promise_score_weights_prompt")
+    def test_wrongly_signed_weights_trigger_retry(self, mock_prompt, mock_parse):
+        """
+        A positive Seller_Count weight passes the sum check but would reward
+        institutional selling: the sign constraint must reject it.
+        """
+        self.mock_ai_client.generate_content.return_value = "mock_response"
+        mock_parse.return_value = {"Seller_Count": 0.6, "Holder_Count": 0.4}
+
+        with self.assertRaises(RetryError):
+            self.agent._get_promise_score_weights()
+
     @patch("app.ai.agent.PromiseScoreValidator.validate_weights")
     @patch("app.ai.agent.ResponseParser.extract_and_decode_toon")
     @patch("app.ai.agent.promise_score_weights_prompt")
@@ -304,7 +317,7 @@ class TestGetAIScores(unittest.TestCase):
         Returns the AI-parsed score dict when the response contains all required keys.
         """
         valid_scores = {
-            "AAPL": {"momentum_score": 0.8, "low_volatility_score": 0.6, "risk_score": 0.4}
+            "AAPL": {"momentum_score": 80, "low_volatility_score": 60, "risk_score": 40}
         }
         self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = valid_scores
@@ -312,6 +325,61 @@ class TestGetAIScores(unittest.TestCase):
         result = self.agent._get_ai_scores([{"ticker": "AAPL", "company": "Apple"}])
 
         self.assertEqual(result, valid_scores)
+
+    @patch("app.ai.agent.encode")
+    @patch("app.ai.agent.ResponseParser.extract_and_decode_toon")
+    @patch("app.ai.agent.quantivative_scores_prompt")
+    def test_scalar_entries_trigger_retry_not_typeerror(self, mock_prompt, mock_parse, mock_encode):
+        """
+        A flat `TICKER: score` response decodes to scalar values; that must be
+        treated as an invalid response (retried) — not escape as a TypeError.
+        """
+        self.mock_ai_client.generate_content.return_value = "mock_response"
+        mock_parse.return_value = {"AAPL": 95}
+
+        with self.assertRaises(RetryError):
+            self.agent._get_ai_scores([{"ticker": "AAPL", "company": "Apple"}])
+
+    @patch("app.ai.agent.encode")
+    @patch("app.ai.agent.ResponseParser.extract_and_decode_toon")
+    @patch("app.ai.agent.quantivative_scores_prompt")
+    def test_missing_tickers_trigger_retry(self, mock_prompt, mock_parse, mock_encode):
+        """
+        A truncated response covering only part of the requested universe must
+        not pass validation: missing tickers would silently score 0 downstream.
+        """
+        self.mock_ai_client.generate_content.return_value = "mock_response"
+        mock_parse.return_value = {
+            "AAPL": {"momentum_score": 80, "low_volatility_score": 60, "risk_score": 40}
+        }
+
+        with self.assertRaises(RetryError):
+            self.agent._get_ai_scores(
+                [{"ticker": "AAPL", "company": "Apple"}, {"ticker": "MSFT", "company": "Microsoft"}]
+            )
+
+    @patch("app.ai.agent.encode")
+    @patch("app.ai.agent.ResponseParser.extract_and_decode_toon")
+    @patch("app.ai.agent.quantivative_scores_prompt")
+    def test_non_numeric_or_out_of_range_scores_trigger_retry(
+        self, mock_prompt, mock_parse, mock_encode
+    ):
+        """
+        Scores must be numbers in 1-100 (the prompt's contract): a string or an
+        out-of-range value must be rejected instead of flowing into numeric columns.
+        """
+        self.mock_ai_client.generate_content.return_value = "mock_response"
+        for bad_value in ("high", 0, 250, True):
+            with self.subTest(bad_value=bad_value):
+                mock_parse.return_value = {
+                    "AAPL": {
+                        "momentum_score": bad_value,
+                        "low_volatility_score": 60,
+                        "risk_score": 40,
+                    }
+                }
+                with self.assertRaises(RetryError):
+                    self.agent._get_ai_scores([{"ticker": "AAPL", "company": "Apple"}])
 
     @patch("app.ai.agent.encode")
     @patch("app.ai.agent.ResponseParser.extract_and_decode_toon")

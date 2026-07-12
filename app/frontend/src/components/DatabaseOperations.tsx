@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getStocks } from "@/lib/dataService";
+import { parseSSEEvent } from "@/lib/aiClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,8 +207,9 @@ export default function DatabaseOperations() {
           signal: abortController.signal,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.body) throw new Error("Response body is not readable");
 
-        const reader = res.body!.getReader();
+        const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
         let finalMessage = "Completed successfully";
@@ -220,12 +222,13 @@ export default function DatabaseOperations() {
           buffer = lines.pop() ?? "";
           for (const line of lines) {
             if (!line.startsWith("data: ")) continue;
-            const event = JSON.parse(line.slice(6));
+            const event = parseSSEEvent(line.slice(6));
+            if (!event) continue;
             if (event.type === "log") addLog(event.text);
             else if (event.type === "result") {
-              finalMessage = event.data ?? finalMessage;
+              if (typeof event.data === "string") finalMessage = event.data;
               break;
-            } else if (event.type === "error") throw new Error(event.message);
+            } else throw new Error(event.message);
           }
         }
 
@@ -239,9 +242,16 @@ export default function DatabaseOperations() {
           signal: abortController.signal,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setStates((prev) => ({ ...prev, [op.id]: { status: "success", message: data.message } }));
-        addLog(`✅ ${data.message || "Completed successfully"}`);
+        const data: unknown = await res.json();
+        const message =
+          typeof data === "object" &&
+          data !== null &&
+          "message" in data &&
+          typeof data.message === "string"
+            ? data.message
+            : "Completed successfully";
+        setStates((prev) => ({ ...prev, [op.id]: { status: "success", message } }));
+        addLog(`✅ ${message}`);
         toast.success(`${op.title} completed`);
       }
     } catch (err: unknown) {
@@ -282,7 +292,7 @@ export default function DatabaseOperations() {
     // Read-only operations don't touch the disk, so skip the destructive-action
     // confirmation dialog and run immediately.
     if (op.readonly) {
-      runOperation(op, params);
+      void runOperation(op, params);
       return;
     }
 
@@ -292,7 +302,7 @@ export default function DatabaseOperations() {
   const handleConfirm = () => {
     if (!confirmOp) return;
     const params = fieldValues[confirmOp.id] || {};
-    runOperation(confirmOp, params);
+    void runOperation(confirmOp, params);
     setConfirmOp(null);
   };
 

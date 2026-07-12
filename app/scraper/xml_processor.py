@@ -5,7 +5,7 @@ import pandas as pd
 from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
 
 from app.stocks.ticker_resolver import TickerResolver
-from app.utils.logger import get_logger
+from app.utils.logger import get_logger, log_safe
 
 logger = get_logger(__name__)
 
@@ -190,7 +190,13 @@ def xml_to_dataframe_4(xml_content):
         if raw_shares is None:
             logger.warning("Form 4: skipping item without sharesownedfollowingtransaction")
             return
-        shares_post = float(raw_shares)
+        try:
+            shares_post = float(raw_shares.replace(",", ""))
+        except ValueError:
+            logger.warning(
+                "Form 4: skipping item with unparseable share count %s", log_safe(raw_shares)
+            )
+            return
         ownership_nature = item.find("ownershipnature")
         direct_indirect = _get_tag_text(ownership_nature, "directorindirectownership")
         nature_of_ownership = _get_tag_text(ownership_nature, "natureofownership") or "Direct"

@@ -567,6 +567,118 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(len(excluded), 1)
         self.assertEqual(excluded[0]["Fund"], "Fund X")
 
+    def test_stocks_lock_times_out_on_persistent_oserror(self):
+        """
+        With DB_FOLDER pointing at a deleted directory, os.open raises
+        FileNotFoundError (an OSError) forever: the acquire loop must still
+        honor the timeout instead of spinning while holding the thread lock.
+        """
+        from app.database.stocks import stocks_lock
+
+        gone = tempfile.mkdtemp(prefix="hft_gone_")
+        shutil.rmtree(gone)
+
+        class _FakeTime:
+            """
+            Deterministic clock: sleep advances time; a guard breaks a runaway spin.
+            """
+
+            def __init__(self):
+                self.now = 0.0
+
+            def time(self):
+                """
+                Return the fake current time.
+                """
+                return self.now
+
+            def sleep(self, seconds):
+                """
+                Advance the fake clock instead of blocking.
+                """
+                self.now += seconds
+                if self.now > 100:
+                    raise RuntimeError("stocks_lock spun without honoring its timeout")
+
+        with (
+            unittest.mock.patch("app.database.DB_FOLDER", gone),
+            unittest.mock.patch("app.database.stocks.time", _FakeTime()),
+            self.assertRaises(TimeoutError),
+            stocks_lock(timeout=1),
+        ):
+            pass
+
+    def test_save_stock_creates_missing_file_with_header(self):
+        """
+        The first write on a fresh database must produce a parseable CSV: a
+        headerless first row would poison every subsequent load.
+        """
+        (Path(self.test_db_folder) / STOCKS_FILE).unlink()
+
+        save_stock("C_NEW", "T_NEW", "New Co", "Software - Application")
+
+        df = load_stocks()
+        self.assertIn("C_NEW", df.index)
+        self.assertEqual(df.loc["C_NEW", "Ticker"], "T_NEW")
+        self.assertEqual(df.loc["C_NEW", "Industry"], "Software - Application")
+
+    def test_save_comparison_failure_leaves_previous_file_intact(self):
+        """
+        A failed write must not truncate the previously saved comparison —
+        the GH Action would otherwise commit an empty per-fund CSV.
+        """
+        from app.database import save_comparison
+
+        save_comparison(pd.DataFrame({"CUSIP": ["123"], "Company": ["A"]}), "2025-03-31", "Fund A")
+        target = Path(self.test_db_folder) / "2025Q1" / "Fund_A.csv"
+        original = target.read_text(encoding="utf-8")
+
+        with unittest.mock.patch("app.utils.pd.tempfile.mkstemp", side_effect=OSError("disk full")):
+            save_comparison(pd.DataFrame({"CUSIP": ["999"]}), "2025-03-31", "Fund A")
+
+        self.assertEqual(target.read_text(encoding="utf-8"), original)
+
+    def test_save_non_quarterly_failure_leaves_previous_file_intact(self):
+        """
+        Same crash-safety contract for non_quarterly.csv, which is written by
+        the scheduled fetch workflow.
+        """
+        from app.database import save_non_quarterly_filings
+
+        target = Path(self.test_db_folder) / LATEST_SCHEDULE_FILINGS_FILE
+        original = target.read_text(encoding="utf-8")
+        frames = [
+            pd.DataFrame(
+                {
+                    "Fund": ["F"],
+                    "Ticker": ["T"],
+                    "CUSIP": ["1"],
+                    "Date": ["2025-01-02"],
+                    "Filing_Date": ["2025-01-03"],
+                }
+            )
+        ]
+
+        with unittest.mock.patch("app.utils.pd.tempfile.mkstemp", side_effect=OSError("disk full")):
+            save_non_quarterly_filings(frames)
+
+        self.assertEqual(target.read_text(encoding="utf-8"), original)
+
+    def test_delete_fund_does_not_report_success_when_csv_update_fails(self):
+        """
+        A failed CSV move must not end with a success log line: the operator
+        would believe the curated list is consistent when it is not.
+        """
+        (Path(self.test_db_folder) / HEDGE_FUNDS_FILE).unlink()
+
+        with self.assertLogs("app.database.funds", level="INFO") as captured:
+            delete_fund_from_database({"Fund": "Fund A"})
+
+        self.assertFalse(
+            any("completed" in message for message in captured.output),
+            f"success logged after failure:\n{captured.output}",
+        )
+
     def tearDown(self):
         """
         Clean up the temporary database directory.

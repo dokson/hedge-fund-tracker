@@ -5,12 +5,14 @@ Runtime settings endpoints under /api/settings: read and overwrite the project
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.api.paths import ENV_FILE
+from app.auth.dependencies import require_local_or_superuser
 from app.patterns import ENV_KEY_RE
 
-router = APIRouter(tags=["settings"])
+# .env holds every provider secret: operator-only in a production posture.
+router = APIRouter(tags=["settings"], dependencies=[Depends(require_local_or_superuser)])
 
 
 @router.get("/api/settings/env")

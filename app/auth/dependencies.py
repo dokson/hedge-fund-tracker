@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import uuid
 
+from fastapi import Depends, HTTPException
 from fastapi_users import FastAPIUsers  # pyright: ignore[reportMissingImports]
 
 from app.auth.backend import auth_backend
@@ -43,3 +44,24 @@ current_active_verified_user = fastapi_users.current_user(active=True, verified=
 
 # Admin only.
 current_superuser = fastapi_users.current_user(active=True, superuser=True)
+
+
+async def require_local_or_superuser(
+    user: User | None = Depends(current_optional_user),
+) -> User | None:
+    """
+    Gate for operator-only endpoints (.env settings, admin jobs, database writes).
+
+    Local single-user mode (COOKIE_SECURE unset) keeps them open — the app runs
+    as a personal tool on localhost. In a production posture (COOKIE_SECURE set)
+    only an authenticated superuser may pass: 401 for anonymous, 403 otherwise.
+    """
+    from app.auth import backend
+
+    if not backend.COOKIE_SECURE:
+        return user
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not user.is_superuser:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    return user
