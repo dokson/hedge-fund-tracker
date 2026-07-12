@@ -7,9 +7,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ModelSelector from "./ModelSelector";
+import type { getModels as getModelsType } from "@/lib/dataService";
+import type { getConfiguredProviders as getConfiguredProvidersType } from "@/lib/aiClient";
 
 vi.mock("@/lib/dataService", () => ({
-  getModels: vi.fn(async () => [
+  getModels: vi.fn<typeof getModelsType>(async () => [
     { id: "gemini-3.1-flash-lite", description: "Gemini 3.1 Flash Lite", client: "Google" },
     { id: "llama-3.3-70b-versatile", description: "Llama 3.3 70B", client: "Groq" },
   ]),
@@ -19,7 +21,7 @@ vi.mock("@/lib/aiClient", async () => {
   const actual = await vi.importActual<typeof import("@/lib/aiClient")>("@/lib/aiClient");
   return {
     ...actual,
-    getConfiguredProviders: vi.fn(async () => [
+    getConfiguredProviders: vi.fn<typeof getConfiguredProvidersType>(async () => [
       { provider: actual.AI_PROVIDERS.find((p) => p.id === "google")!, hasKey: true },
       { provider: actual.AI_PROVIDERS.find((p) => p.id === "groq")!, hasKey: true },
     ]),
@@ -39,8 +41,8 @@ describe("ModelSelector — provider propagation", () => {
   });
 
   it("propagates default model id + provider id to parent on initial render (no manual selection)", async () => {
-    const onChange = vi.fn();
-    const onProviderChange = vi.fn();
+    const onChange = vi.fn<(modelId: string) => void>();
+    const onProviderChange = vi.fn<(providerId: string) => void>();
 
     renderWithClient(
       <ModelSelector value="" onChange={onChange} onProviderChange={onProviderChange} />,
@@ -57,8 +59,8 @@ describe("ModelSelector — provider propagation", () => {
   });
 
   it("never propagates an empty provider id when a model is displayed", async () => {
-    const onChange = vi.fn();
-    const onProviderChange = vi.fn();
+    const onChange = vi.fn<(modelId: string) => void>();
+    const onProviderChange = vi.fn<(providerId: string) => void>();
 
     renderWithClient(
       <ModelSelector value="" onChange={onChange} onProviderChange={onProviderChange} />,

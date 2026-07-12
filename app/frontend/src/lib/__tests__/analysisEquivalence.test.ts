@@ -55,13 +55,18 @@ describe("aggregateStockLevel matches the Python golden fixture", () => {
   });
 
   for (const [ticker, expected] of Object.entries(golden.expected)) {
+    // Test titles/assertions are generated per golden-fixture entry, not static.
+    // oxlint-disable-next-line vitest/valid-title
     describe(ticker, () => {
       for (const [field, rawExpected] of Object.entries(expected)) {
+        // oxlint-disable-next-line vitest/valid-title
         it(field, () => {
           const actual = byTicker.get(ticker)![field];
           if (rawExpected === "Infinity") {
+            // oxlint-disable-next-line vitest/no-conditional-expect
             expect(actual).toBe(Infinity);
           } else {
+            // oxlint-disable-next-line vitest/no-conditional-expect
             expect(round4(actual)).toBe(rawExpected);
           }
         });

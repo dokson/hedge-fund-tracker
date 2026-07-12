@@ -31,8 +31,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     console.error("ErrorBoundary caught a render error", error, info.componentStack);
   }
 
+  // Guarded reset-on-prop-change (resetKey), not an unconditional update loop.
   componentDidUpdate(prevProps: ErrorBoundaryProps) {
     if (this.state.error && prevProps.resetKey !== this.props.resetKey) {
+      // oxlint-disable-next-line react/no-did-update-set-state
       this.setState({ error: null });
     }
   }

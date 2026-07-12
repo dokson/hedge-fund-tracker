@@ -164,14 +164,14 @@ export default function AIDueDiligence() {
   // setState-in-effect is the documented React pattern when syncing component
   // state with an external system (here: the cached run result rehydrated by
   // useAIRun). The one-shot guard prevents the cascade the linter flags.
-  /* eslint-disable @eslint-react/set-state-in-effect, react-hooks/set-state-in-effect, @eslint-react/exhaustive-deps, react-hooks/exhaustive-deps */
+  /* oxlint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     if (report && !inputTicker && !initialTicker) {
       setInputTicker(report.ticker);
       setTicker(report.ticker);
     }
   }, [report]);
-  /* eslint-enable @eslint-react/set-state-in-effect, react-hooks/set-state-in-effect, @eslint-react/exhaustive-deps, react-hooks/exhaustive-deps */
+  /* oxlint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   const isSample = isReadOnly && !report;
 
   return (

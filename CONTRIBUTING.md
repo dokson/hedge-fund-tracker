@@ -83,7 +83,7 @@ pre-commit run --all-files
 pipenv run lint                                 # Ruff
 pipenv run format                               # Ruff format
 pipenv run typecheck                            # mypy (informational, not blocking)
-cd app/frontend && npm run lint                 # ESLint --max-warnings=0
+cd app/frontend && npm run lint                 # oxlint --deny-warnings
 cd app/frontend && npm run type-check           # tsc --noEmit
 cd app/frontend && npm run format:check         # Prettier
 ```

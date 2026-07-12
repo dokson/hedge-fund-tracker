@@ -335,8 +335,11 @@ export default function DatabaseOperations() {
             </div>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">New Ticker</Label>
+            <Label htmlFor={`${op.id}-new-ticker`} className="text-xs text-muted-foreground">
+              New Ticker
+            </Label>
             <Input
+              id={`${op.id}-new-ticker`}
               placeholder="e.g. META"
               value={fieldValues[op.id]?.new_ticker || ""}
               onChange={(e) => setField(op.id, "new_ticker", e.target.value.toUpperCase())}
@@ -372,8 +375,11 @@ export default function DatabaseOperations() {
             </div>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">New Ticker</Label>
+            <Label htmlFor={`${op.id}-new-ticker`} className="text-xs text-muted-foreground">
+              New Ticker
+            </Label>
             <Input
+              id={`${op.id}-new-ticker`}
               placeholder="e.g. MSFT"
               value={fieldValues[op.id]?.new_ticker || ""}
               onChange={(e) => setField(op.id, "new_ticker", e.target.value.toUpperCase())}
@@ -506,7 +512,7 @@ export default function DatabaseOperations() {
             <div className="rounded-md bg-background border border-border p-3 max-h-64 overflow-y-auto font-mono text-xs">
               {activeLogs.map((log, i) => (
                 <p
-                  // eslint-disable-next-line @eslint-react/no-array-index-key -- append-only log buffer; index is a stable identity
+                  // append-only log buffer; index is a stable identity
                   key={i}
                   className="text-muted-foreground leading-relaxed whitespace-pre-wrap"
                 >

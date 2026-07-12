@@ -110,7 +110,6 @@ function SidebarNav({
   // Reads the active DOM node's geometry after layout to position the sliding
   // indicator — this is the canonical setState-in-effect use-case (syncing
   // React state with an external system, here the rendered DOM).
-  /* eslint-disable @eslint-react/set-state-in-effect */
   useLayoutEffect(() => {
     if (!navRef.current) return;
     const activeEl = navRef.current.querySelector<HTMLElement>("[data-active='true']");
@@ -123,7 +122,6 @@ function SidebarNav({
       height: activeEl.offsetHeight - 16,
     });
   }, [location.pathname, collapsed]);
-  /* eslint-enable @eslint-react/set-state-in-effect */
 
   return (
     <>
@@ -227,19 +225,19 @@ function SidebarNav({
                   <span className="absolute inset-0 rounded-full bg-positive/60 animate-ping" />
                   <span className="relative rounded-full h-1.5 w-1.5 bg-positive" />
                 </span>
-                <p className="text-[10px] font-medium tracking-wide text-sidebar-foreground/50">
+                <p className="text-[10px] font-medium tracking-wide text-sidebar-foreground">
                   Data as of{" "}
-                  <span className="font-semibold text-sidebar-foreground/75">{dataAsOfLabel}</span>
+                  <span className="font-semibold text-sidebar-foreground">{dataAsOfLabel}</span>
                 </p>
               </div>
             )}
-            <p className="text-[9px] tracking-wider text-sidebar-foreground/30">
+            <p className="text-[9px] tracking-wider text-sidebar-foreground">
               v{APP_VERSION} · by{" "}
               <a
                 href="https://github.com/dokson"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-sidebar-foreground/60 transition-colors"
+                className="hover:text-primary transition-colors underline decoration-sidebar-foreground/30 underline-offset-2"
               >
                 Alessandro Colace
               </a>

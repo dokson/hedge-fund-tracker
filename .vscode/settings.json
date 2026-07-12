@@ -2,7 +2,7 @@
   "editor.formatOnSave": true,
   "editor.formatOnPaste": false,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
+    "source.fixAll.oxc": "explicit",
     "source.organizeImports": "explicit"
   },
   "editor.rulers": [100],
@@ -46,13 +46,6 @@
     "editor.rulers": []
   },
 
-  "eslint.workingDirectories": [{ "pattern": "app/frontend" }],
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact",
-    "typescript",
-    "typescriptreact"
-  ],
   "typescript.tsdk": "app/frontend/node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "prettier.requireConfig": true,

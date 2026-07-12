@@ -383,13 +383,13 @@ export default function QuarterlyTrends() {
   );
   // Canonical setState-in-effect: syncing state with an external system
   // (the URL). The setter short-circuits when the value already matches.
-  /* eslint-disable @eslint-react/set-state-in-effect, react-hooks/set-state-in-effect */
+  /* oxlint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const param = searchParams.get("tab");
     const next = param && (VALID_TABS as readonly string[]).includes(param) ? param : DEFAULT_TAB;
     setActiveTab((current) => (current === next ? current : next));
   }, [searchParams]);
-  /* eslint-enable @eslint-react/set-state-in-effect, react-hooks/set-state-in-effect */
+  /* oxlint-enable react-hooks/set-state-in-effect */
 
   const activeFundFilter = filterStarredFunds && starredFunds.size > 0 ? starredFunds : undefined;
 
@@ -462,7 +462,7 @@ export default function QuarterlyTrends() {
                 />
                 <span className="hidden sm:inline">Backtested track record</span>
                 <span className="sm:hidden">Backtest</span>
-                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                <ArrowUpRight className="h-3.5 w-3.5 icon-faint transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </Link>
             )}
             <Select value={quarter ?? ""} onValueChange={(v) => setSelectedQuarter(v as Quarter)}>

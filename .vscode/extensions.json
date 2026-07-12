@@ -4,7 +4,7 @@
     "ms-python.python",
     "ms-python.mypy-type-checker",
     "esbenp.prettier-vscode",
-    "dbaeumer.vscode-eslint",
+    "oxc.oxc-vscode",
     "editorconfig.editorconfig",
     "tamasfe.even-better-toml",
     "redhat.vscode-yaml",

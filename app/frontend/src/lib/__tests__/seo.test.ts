@@ -123,6 +123,7 @@ describe("renderFaqStaticHtml", () => {
     // The page heading contains an ampersand regardless of item content.
     expect(html).toContain("Hedge Fund &amp; SEC Filing FAQ");
     if (ampItem) {
+      // oxlint-disable-next-line vitest/no-conditional-expect
       expect(html).not.toContain(ampItem.question); // raw & should be escaped
     }
   });

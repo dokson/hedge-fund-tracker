@@ -8,7 +8,7 @@ import { useStarred } from "@/hooks/useStarred";
 import { stockPath, fundPath } from "@/lib/routes";
 
 /** Convert CSV-filename fund name (with underscores) to display name */
-// eslint-disable-next-line react-refresh/only-export-components
+// oxlint-disable-next-line react/only-export-components
 export function formatFundName(name: string | null | undefined): string {
   if (!name) return "";
   return name.replace(/_/g, " ");
@@ -18,7 +18,7 @@ export function formatFundName(name: string | null | undefined): string {
  * Hook to resolve a fund filename to its denomination.
  * Returns the denomination if found, otherwise falls back to formatFundName.
  */
-// eslint-disable-next-line react-refresh/only-export-components
+// oxlint-disable-next-line react/only-export-components
 export function useFundDenomination(fundName: string | null | undefined): string {
   const { data: funds } = useQuery({
     queryKey: ["hedgeFunds"],
