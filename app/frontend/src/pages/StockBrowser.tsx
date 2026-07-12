@@ -9,12 +9,14 @@ import {
   type Stock,
   type StockQuarterAnalysis,
 } from "@/lib/dataService";
+import { smartScoreToneClass, percentileBarClass } from "@/lib/smartScore";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Search,
-  Loader2,
   LayoutGrid,
   SortAsc,
   X,
@@ -22,6 +24,7 @@ import {
   TrendingUp,
   DollarSign,
   CandlestickChart,
+  Gauge,
   Star,
 } from "lucide-react";
 import SectorHeatmap from "@/components/SectorHeatmap";
@@ -29,6 +32,7 @@ import YFinanceClassificationTreeVisual from "@/components/YFinanceClassificatio
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 import { useStarred } from "@/hooks/useStarred";
 import { StarButton } from "@/components/StarButton";
+import { SmartScoreBadge } from "@/components/SmartScoreBadge";
 import { TickerLink } from "@/components/EntityLinks";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { matchesQuery } from "@/lib/utils";
@@ -36,12 +40,62 @@ import { stockPath } from "@/lib/routes";
 import { VirtualList } from "@/components/ui/VirtualList";
 
 const ALPHABET = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-const VALID_TABS = ["starred", "byvalue", "sectors", "alphabetical"] as const;
+const VALID_TABS = ["score", "starred", "byvalue", "sectors", "alphabetical"] as const;
+
+// Column template for the windowed "Score" grid (kept literal for Tailwind).
+const SCORE_GRID_COLS =
+  "grid grid-cols-[3rem_5rem_minmax(0,1fr)_6.5rem_minmax(4.5rem,7rem)_minmax(4.5rem,7rem)_minmax(4.5rem,7rem)]";
 
 // Shared column template for the windowed "By Value" grid so the sticky header
 // and every virtualized row align. Kept as one literal so Tailwind emits it.
 const VALUE_GRID_COLS =
-  "grid grid-cols-[3rem_5rem_minmax(0,1fr)_minmax(6.5rem,auto)_minmax(6rem,auto)_4rem_8rem]";
+  "grid grid-cols-[3rem_5rem_minmax(0,1fr)_minmax(6.5rem,auto)_minmax(6rem,auto)_4rem_4.5rem_8rem]";
+
+/** Podium accent for the top 3 Score-tab ranks; ranks 4+ stay plain mono text. */
+const PODIUM_RANK_CLASS: Record<number, string> = {
+  1: "border-amber-500/40 bg-amber-500/10 text-amber-500",
+  2: "border-slate-400/40 bg-slate-400/10 text-slate-400",
+  3: "border-orange-700/40 bg-orange-700/10 text-orange-700 dark:text-orange-400",
+};
+
+function RankBadge({ rank }: { rank: number }) {
+  const podiumClass = PODIUM_RANK_CLASS[rank];
+  if (!podiumClass) {
+    return <span className="font-mono text-xs text-muted-foreground">{rank}</span>;
+  }
+  return (
+    <span
+      className={`inline-flex h-5 w-5 items-center justify-center rounded-full border font-mono text-[10px] font-bold ${podiumClass}`}
+    >
+      {rank}
+    </span>
+  );
+}
+
+/**
+ * Inline 0-100 percentile meter for a Smart Score sub-component (Breadth,
+ * Momentum, Conviction) — a filled track instead of a bare number, so each
+ * row visually reads as "score built from these parts" rather than an
+ * unrelated set of stats.
+ */
+function PercentileBar({ label, value }: { label?: string; value: number | null }) {
+  return (
+    <div className="flex items-center gap-1.5 min-w-0">
+      {label && <span className="metric-label w-20 shrink-0">{label}</span>}
+      <div className="h-1 flex-1 min-w-[2rem] rounded-full bg-muted overflow-hidden">
+        {value !== null && (
+          <div
+            className={`h-full rounded-full ${percentileBarClass(value)}`}
+            style={{ width: `${value}%` }}
+          />
+        )}
+      </div>
+      <span className="font-mono text-xs text-muted-foreground tabular-nums w-6 text-right shrink-0">
+        {value === null ? "—" : Math.round(value)}
+      </span>
+    </div>
+  );
+}
 
 /**
  * Mobile card for one "By Value" row. The seven-column table can't fit a phone,
@@ -53,6 +107,7 @@ function ValueStockCard({
   rank,
   maxValue,
   starred,
+  smartScore,
   onToggleStar,
   onOpen,
 }: {
@@ -60,6 +115,7 @@ function ValueStockCard({
   rank: number;
   maxValue: number;
   starred: boolean;
+  smartScore: number | undefined;
   onToggleStar: () => void;
   onOpen: () => void;
 }) {
@@ -82,6 +138,13 @@ function ValueStockCard({
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-mono text-xs text-muted-foreground shrink-0">#{rank}</span>
           <TickerLink ticker={stock.ticker} />
+          {smartScore !== undefined && (
+            <span
+              className={`font-mono text-xs font-semibold shrink-0 ${smartScoreToneClass(smartScore)}`}
+            >
+              {smartScore.toFixed(1)}
+            </span>
+          )}
         </div>
         <StarButton active={starred} onClick={onToggleStar} size={16} />
       </div>
@@ -134,16 +197,18 @@ export default function StockBrowser() {
   // about scale, not about the active query.
   const [alphaReveal, setAlphaReveal] = useState(ALPHA_CHUNK);
   const [valueSearch, setValueSearch] = useState("");
+  const [scoreSearch, setScoreSearch] = useState("");
   const [valueSortKey, setValueSortKey] = useState<
-    "totalValue" | "totalDeltaValue" | "holderCount"
+    "totalValue" | "totalDeltaValue" | "holderCount" | "smartScore"
   >("totalValue");
   const [valueSortDir, setValueSortDir] = useState<"asc" | "desc">("desc");
   const [industryFilter, setIndustryFilter] = useState<string | null>(null);
+  const [sectorFilter, setSectorFilter] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const { starred, toggle: toggleStar, isStarred } = useStarred("stock");
   const [searchParams, setSearchParams] = useSearchParams();
-  // Order of preference: explicit ?tab=... > starred (if any) > byvalue.
-  const defaultTab = starred.size > 0 ? "starred" : "byvalue";
+  // Order of preference: explicit ?tab=... > starred (if any) > score.
+  const defaultTab = starred.size > 0 ? "starred" : "score";
   const urlTab = searchParams.get("tab");
   const initialTab =
     urlTab && (VALID_TABS as readonly string[]).includes(urlTab) ? urlTab : defaultTab;
@@ -154,12 +219,14 @@ export default function StockBrowser() {
   // Two effects below sync local state with the URL (external system) — the
   // canonical setState-in-effect use-case. Param consumption in tick 1 + the
   // setActiveTab short-circuit guarantee no cascading renders.
-  /* eslint-disable @eslint-react/set-state-in-effect, react-hooks/set-state-in-effect */
+  /* oxlint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const param = searchParams.get("industry");
     if (param) {
       setIndustryFilter(param);
+      setSectorFilter(null);
       setActiveTab("byvalue");
+      setVisitedTabs((prev) => (prev.has("byvalue") ? prev : new Set(prev).add("byvalue")));
       // Consume the industry param but keep the tab param if present.
       const next = new URLSearchParams(searchParams);
       next.delete("industry");
@@ -174,7 +241,7 @@ export default function StockBrowser() {
     setActiveTab((current) => (current === target ? current : target));
     setVisitedTabs((prev) => (prev.has(target) ? prev : new Set(prev).add(target)));
   }, [searchParams, defaultTab]);
-  /* eslint-enable @eslint-react/set-state-in-effect, react-hooks/set-state-in-effect */
+  /* oxlint-enable react-hooks/set-state-in-effect */
 
   // Progressive reveal: render the first chunk on mount, hydrate the rest after
   // the browser is idle so the initial INP isn't blocked by 500 cards of React
@@ -272,7 +339,6 @@ export default function StockBrowser() {
       "requestIdleCallback" in window
         ? window.requestIdleCallback
         : (cb: IdleRequestCallback) =>
-            // eslint-disable-next-line @eslint-react/web-api-no-leaked-timeout
             window.setTimeout(
               () => cb({ didTimeout: false, timeRemaining: () => 0 } as IdleDeadline),
               0,
@@ -294,9 +360,10 @@ export default function StockBrowser() {
     if (search || activeLetter) setAlphaReveal(ALPHA_CHUNK);
   }
 
-  // Ticker → industry lookup, derived from stocks.csv (joined with sector_hierarchy
-  // inside getStocks). Used to filter the By Value table when the user clicks an
-  // industry in the Sectors tab.
+  // Ticker → industry/sector lookup, derived from stocks.csv (joined with
+  // sector_hierarchy inside getStocks). Used to filter the By Value table when
+  // the user clicks an industry (Yahoo classification tree) or a sector (the
+  // "Institutional Value by Sector" heatmap) in the Sectors tab.
   const tickerIndustry = useMemo(() => {
     const map = new Map<string, string>();
     for (const s of stocks) {
@@ -305,21 +372,80 @@ export default function StockBrowser() {
     return map;
   }, [stocks]);
 
+  const tickerSector = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of stocks) {
+      if (s.sector && !map.has(s.ticker)) map.set(s.ticker, s.sector);
+    }
+    return map;
+  }, [stocks]);
+
   const valueRanked = useMemo(() => {
     let list = [...quarterData];
     if (industryFilter) {
       list = list.filter((s) => tickerIndustry.get(s.ticker) === industryFilter);
+    } else if (sectorFilter) {
+      list = list.filter((s) => tickerSector.get(s.ticker) === sectorFilter);
     }
     list.sort((a, b) => {
-      const va = a[valueSortKey];
-      const vb = b[valueSortKey];
+      const va = a[valueSortKey] ?? -1;
+      const vb = b[valueSortKey] ?? -1;
       return valueSortDir === "desc" ? vb - va : va - vb;
     });
     if (valueSearch) {
       list = list.filter((s) => matchesQuery(valueSearch, s.ticker, s.company));
     }
     return list;
-  }, [quarterData, valueSearch, valueSortKey, valueSortDir, industryFilter, tickerIndustry]);
+  }, [
+    quarterData,
+    valueSearch,
+    valueSortKey,
+    valueSortDir,
+    industryFilter,
+    tickerIndustry,
+    sectorFilter,
+    tickerSector,
+  ]);
+
+  // Ranked smart-score list: scored rows straight from the quarter analysis
+  // (computed on the fly like every other consensus metric) plus 1.0-floor
+  // rows for the rest of the registry, so every ticker is searchable.
+  const scoreRanked = useMemo(() => {
+    const held = new Set(quarterData.map((s) => s.ticker));
+    const floor: StockQuarterAnalysis[] = uniqueStocks
+      .filter((s) => !held.has(s.ticker))
+      .map((s) => ({
+        ticker: s.ticker,
+        company: s.company,
+        totalValue: 0,
+        totalDeltaValue: 0,
+        maxPortfolioPct: 0,
+        avgPortfolioPct: 0,
+        buyerCount: 0,
+        sellerCount: 0,
+        holderCount: 0,
+        newHolderCount: 0,
+        closeCount: 0,
+        highConvictionCount: 0,
+        netBuyers: 0,
+        buyerSellerRatio: 0,
+        ownershipDeltaAvg: 0,
+        fundConcentrationAvg: 0,
+        delta: 0,
+        smartScore: 1.0,
+        scoreBreadth: 0,
+        scoreMomentum: 0,
+        scoreConviction: 0,
+      }));
+    let list = [...quarterData, ...floor];
+    list.sort(
+      (a, b) => (b.smartScore ?? 0) - (a.smartScore ?? 0) || a.ticker.localeCompare(b.ticker),
+    );
+    if (scoreSearch) {
+      list = list.filter((s) => matchesQuery(scoreSearch, s.ticker, s.company));
+    }
+    return list;
+  }, [quarterData, uniqueStocks, scoreSearch]);
 
   const heatmapData = useMemo(() => {
     if (quarterData.length === 0) return [];
@@ -345,6 +471,20 @@ export default function StockBrowser() {
     return Math.max(...quarterData.map((s) => s.totalValue)) || 1;
   }, [quarterData]);
 
+  // Shared by the TabsList's onValueChange and any programmatic tab switch
+  // (e.g. clicking a sector/industry cell) — mounts the tab (lazy-mount set),
+  // resets the alphabetical chunk cap, and syncs the URL, all in one place so
+  // a programmatic switch can never skip a step the user-driven one does.
+  function switchToTab(value: string) {
+    setActiveTab(value);
+    setVisitedTabs((prev) => (prev.has(value) ? prev : new Set(prev).add(value)));
+    setAlphaReveal(ALPHA_CHUNK);
+    const next = new URLSearchParams(searchParams);
+    if (value === defaultTab) next.delete("tab");
+    else next.set("tab", value);
+    setSearchParams(next, { replace: false });
+  }
+
   return (
     <div className="space-y-6 max-w-screen-2xl">
       <div>
@@ -357,26 +497,11 @@ export default function StockBrowser() {
         </p>
       </div>
 
-      <Tabs
-        value={activeTab ?? initialTab}
-        onValueChange={(value) => {
-          setActiveTab(value);
-          setVisitedTabs((prev) => (prev.has(value) ? prev : new Set(prev).add(value)));
-          // Switching tabs resets the alphabetical chunk cap to one page so a
-          // returning user never lands on a heavy 11k-card DOM left behind from
-          // before. (The By Value tab is windowed and needs no cap.)
-          setAlphaReveal(ALPHA_CHUNK);
-          // Reflect the active tab in the URL so browser back/forward navigate
-          // between views. Skip the param when it matches the default to keep
-          // /stocks tidy.
-          const next = new URLSearchParams(searchParams);
-          if (value === defaultTab) next.delete("tab");
-          else next.set("tab", value);
-          setSearchParams(next, { replace: false });
-        }}
-        className="space-y-4"
-      >
+      <Tabs value={activeTab ?? initialTab} onValueChange={switchToTab} className="space-y-4">
         <TabsList>
+          <TabsTrigger value="score" className="gap-1.5">
+            <Gauge className="h-3.5 w-3.5" /> Score
+          </TabsTrigger>
           {starred.size > 0 && (
             <TabsTrigger value="starred" className="gap-1.5 group">
               <Star className="h-3.5 w-3.5" fill="currentColor" /> Starred
@@ -399,13 +524,11 @@ export default function StockBrowser() {
         {/* ── Starred tab ── */}
         <TabsContent value="starred" className="space-y-4">
           {starredStocks.length === 0 ? (
-            <div className="surface p-12 text-center">
-              <Star className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-muted-foreground">No starred stocks yet.</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">
-                Click the ★ icon on any stock to add it here.
-              </p>
-            </div>
+            <EmptyState
+              icon={Star}
+              title="No starred stocks yet."
+              description="Click the ★ icon on any stock to add it here."
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
               {starredStocks.map((stock) => (
@@ -443,15 +566,12 @@ export default function StockBrowser() {
         {/* ── Alphabetical tab ── */}
         <TabsContent value="alphabetical" className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search ticker or company…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-card border-border"
-              />
-            </div>
+            <SearchInput
+              label="Search ticker or company"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              wrapperClassName="w-full sm:w-72"
+            />
             {!search && !activeLetter && topTickersByValue && uniqueStocks.length > alphaReveal && (
               <div className="text-xs text-muted-foreground flex items-center gap-3 flex-wrap">
                 <span>
@@ -507,9 +627,7 @@ export default function StockBrowser() {
           </div>
 
           {isLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
-              <Loader2 className="h-5 w-5 animate-spin" /> Loading stocks…
-            </div>
+            <LoadingState message="Loading stocks…" />
           ) : filtered.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">No stocks match your search.</p>
           ) : (
@@ -571,26 +689,176 @@ export default function StockBrowser() {
         </TabsContent>
 
         {/* ── By Value tab ── (deferred to keep initial paint snappy) */}
+        {/* ── Score tab ── ranked institutional smart scores (children deferred until visited) */}
+        <TabsContent value="score" className="space-y-4">
+          {visitedTabs.has("score") && (
+            <>
+              <div className="flex flex-col sm:flex-row gap-4 items-start justify-between">
+                <SearchInput
+                  label="Search ticker or company"
+                  value={scoreSearch}
+                  onChange={(e) => setScoreSearch(e.target.value)}
+                  wrapperClassName="w-full sm:w-72"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {scoreRanked.length.toLocaleString()} stocks ·{" "}
+                  {latestQuarter?.replace("Q", " Q") ?? ""} · Institutional signals only
+                </p>
+              </div>
+
+              {/* Mobile: windowed card list */}
+              <VirtualList
+                className="md:hidden max-h-[70vh] pr-1"
+                items={scoreRanked}
+                estimateSize={92}
+                getKey={(s) => s.ticker}
+                renderItem={(s, i) => (
+                  <div className="pb-3">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate(stockPath(s.ticker))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          navigate(stockPath(s.ticker));
+                        }
+                      }}
+                      className="surface p-3.5 cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <RankBadge rank={i + 1} />
+                          <TickerLink ticker={s.ticker} />
+                        </div>
+                        <SmartScoreBadge score={s.smartScore ?? 1} size="sm" />
+                      </div>
+                      <div className="company-link cursor-default mt-2 text-sm" title={s.company}>
+                        {s.company}
+                      </div>
+                      <div className="mt-3 space-y-1.5">
+                        <PercentileBar label="Breadth" value={s.scoreBreadth ?? null} />
+                        <PercentileBar label="Momentum" value={s.scoreMomentum ?? null} />
+                        <PercentileBar label="Conviction" value={s.scoreConviction ?? null} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              />
+
+              {/* Desktop: windowed grid "table" */}
+              <div className="surface overflow-hidden hidden md:block">
+                <div
+                  className={`${SCORE_GRID_COLS} items-center border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider`}
+                >
+                  <span className="text-left p-3 font-medium">#</span>
+                  <span className="text-left p-3 font-medium">Ticker</span>
+                  <span className="text-left p-3 font-medium">Company</span>
+                  <span className="text-right p-3 pr-4 font-medium">
+                    <span className="inline-flex items-center justify-end gap-1">
+                      Score
+                      <InfoTooltip text="Composite 1-10 score: the mean of the Breadth, Momentum and Conviction percentiles, rescaled. Computed on the current quarter's merged view (13F + recent 13D/G and Form 4)." />
+                    </span>
+                  </span>
+                  <span className="text-left p-3 pl-4 font-medium border-l border-border/50">
+                    <span className="inline-flex items-center gap-1">
+                      Breadth
+                      <InfoTooltip text="Percentile rank of how many tracked funds hold the stock (Holder Count) — 0 to 100." />
+                    </span>
+                  </span>
+                  <span className="text-left p-3 pl-4 font-medium border-l border-border/50">
+                    <span className="inline-flex items-center gap-1">
+                      Momentum
+                      <InfoTooltip text="Percentile rank of net institutional buying pressure (Net Buyers) — 0 to 100." />
+                    </span>
+                  </span>
+                  <span className="text-left p-3 pl-4 font-medium border-l border-border/50">
+                    <span className="inline-flex items-center gap-1">
+                      Conviction
+                      <InfoTooltip text="Percentile rank of average portfolio allocation across holders (Avg Portfolio %), plus a capped bonus per high-conviction new entry — 0 to 100." />
+                    </span>
+                  </span>
+                </div>
+                <VirtualList
+                  className="max-h-[70vh]"
+                  items={scoreRanked}
+                  estimateSize={45}
+                  getKey={(s) => s.ticker}
+                  renderItem={(s, i) => (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`View ${s.ticker} details`}
+                      className={`data-table-row cursor-pointer text-sm ${SCORE_GRID_COLS} items-center`}
+                      onClick={() => navigate(stockPath(s.ticker))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          navigate(stockPath(s.ticker));
+                        }
+                      }}
+                    >
+                      <span className="p-3 flex items-center">
+                        <RankBadge rank={i + 1} />
+                      </span>
+                      <span className="p-3">
+                        <TickerLink ticker={s.ticker} />
+                      </span>
+                      <span className="p-3 inline-flex items-center gap-2 min-w-0">
+                        <StarButton
+                          active={isStarred(s.ticker)}
+                          onClick={() => toggleStar(s.ticker)}
+                          size={14}
+                        />
+                        <span className="company-link cursor-default truncate" title={s.company}>
+                          {s.company}
+                        </span>
+                      </span>
+                      <span className="p-3 text-right">
+                        <SmartScoreBadge score={s.smartScore ?? 1} size="sm" />
+                      </span>
+                      <span className="p-3">
+                        <PercentileBar value={s.scoreBreadth ?? null} />
+                      </span>
+                      <span className="p-3">
+                        <PercentileBar value={s.scoreMomentum ?? null} />
+                      </span>
+                      <span className="p-3">
+                        <PercentileBar value={s.scoreConviction ?? null} />
+                      </span>
+                    </div>
+                  )}
+                />
+              </div>
+            </>
+          )}
+        </TabsContent>
+
         <TabsContent value="byvalue" className="space-y-4">
           {!visitedTabs.has("byvalue") ? null : (
             <>
-              {industryFilter && (
+              {(industryFilter || sectorFilter) && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-muted-foreground">Filtered by industry:</span>
+                  <span className="text-xs text-muted-foreground">
+                    Filtered by {industryFilter ? "industry" : "sector"}:
+                  </span>
                   <button
                     type="button"
-                    onClick={() => setIndustryFilter(null)}
+                    onClick={() => {
+                      setIndustryFilter(null);
+                      setSectorFilter(null);
+                    }}
                     className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium hover:bg-primary/15 transition-colors"
                   >
-                    {industryFilter}
-                    <X className="h-3 w-3" aria-label="Clear industry filter" />
+                    {industryFilter ?? sectorFilter}
+                    <X className="h-3 w-3" aria-label="Clear filter" />
                   </button>
                   <span className="text-xs text-muted-foreground">
                     · {valueRanked.length} stock{valueRanked.length === 1 ? "" : "s"}
                   </span>
                 </div>
               )}
-              {!quarterLoading && heatmapData.length > 0 && !industryFilter && (
+              {!quarterLoading && heatmapData.length > 0 && !industryFilter && !sectorFilter && (
                 <div className="surface p-5">
                   <h3 className="section-title mb-3 text-sm">Top 20 by Institutional Value</h3>
                   <HoldingsTreemap
@@ -601,15 +869,12 @@ export default function StockBrowser() {
                 </div>
               )}
               <div className="flex flex-col sm:flex-row gap-4 items-start justify-between">
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search ticker or company…"
-                    value={valueSearch}
-                    onChange={(e) => setValueSearch(e.target.value)}
-                    className="pl-9 bg-card border-border"
-                  />
-                </div>
+                <SearchInput
+                  label="Search ticker or company"
+                  value={valueSearch}
+                  onChange={(e) => setValueSearch(e.target.value)}
+                  wrapperClassName="w-full sm:w-72"
+                />
                 <p className="text-xs text-muted-foreground">
                   {valueRanked.length.toLocaleString()} stocks ·{" "}
                   {latestQuarter?.replace("Q", " Q") ?? ""} · Total institutional holdings value
@@ -617,9 +882,7 @@ export default function StockBrowser() {
               </div>
 
               {quarterLoading ? (
-                <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin" /> Loading quarter data…
-                </div>
+                <LoadingState message="Loading quarter data…" />
               ) : valueRanked.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">No data available.</p>
               ) : (
@@ -635,6 +898,7 @@ export default function StockBrowser() {
                         <ValueStockCard
                           stock={stock}
                           rank={i + 1}
+                          smartScore={stock.smartScore}
                           maxValue={maxValue}
                           starred={isStarred(stock.ticker)}
                           onToggleStar={() => toggleStar(stock.ticker)}
@@ -672,6 +936,14 @@ export default function StockBrowser() {
                         onClick={() => toggleValueSort("holderCount")}
                       >
                         Funds{valueSortIndicator("holderCount")}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-right p-3 font-medium uppercase cursor-pointer hover:text-foreground whitespace-nowrap"
+                        onClick={() => toggleValueSort("smartScore")}
+                        title="Smart Score: composite of institutional and analyst signals (1-10)"
+                      >
+                        Score{valueSortIndicator("smartScore")}
                       </button>
                       <span className="p-3 font-medium">Relative Size</span>
                     </div>
@@ -734,6 +1006,17 @@ export default function StockBrowser() {
                             <span className="p-3 text-right font-mono text-xs text-muted-foreground">
                               {stock.holderCount}
                             </span>
+                            <span className="p-3 text-right font-mono text-xs">
+                              {stock.smartScore !== undefined ? (
+                                <span
+                                  className={`font-semibold ${smartScoreToneClass(stock.smartScore)}`}
+                                >
+                                  {stock.smartScore.toFixed(1)}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </span>
                             <span className="p-3">
                               <span className="block h-2 rounded-full bg-muted overflow-hidden">
                                 <span
@@ -757,13 +1040,22 @@ export default function StockBrowser() {
         <TabsContent value="sectors" className="space-y-4">
           {visitedTabs.has("sectors") && (
             <>
-              <SectorHeatmap />
+              <SectorHeatmap
+                onSectorClick={(sector) => {
+                  setSectorFilter(sector);
+                  setIndustryFilter(null);
+                  setValueSortKey("totalValue");
+                  setValueSortDir("desc");
+                  switchToTab("byvalue");
+                }}
+              />
               <YFinanceClassificationTreeVisual
                 onSelectIndustry={(industry) => {
                   setIndustryFilter(industry);
+                  setSectorFilter(null);
                   setValueSortKey("totalValue");
                   setValueSortDir("desc");
-                  setActiveTab("byvalue");
+                  switchToTab("byvalue");
                 }}
               />
             </>

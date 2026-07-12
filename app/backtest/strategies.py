@@ -34,7 +34,10 @@ class StrategySpec:
 
 
 # Order matches the /quarterly tab order; ids are stable (used in CSV + UI).
+# Smart Score leads: it ranks by the institutional score core, which the
+# engine derives on every point-in-time frame (see app/analysis/smart_scores).
 STRATEGIES: list[StrategySpec] = [
+    StrategySpec("smart_score", "Smart Score", "Smart_Score"),
     StrategySpec(
         "avg_portfolio", "Avg Portfolio", "Avg_Portfolio_Pct", use_min_holders=True, capped=False
     ),

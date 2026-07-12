@@ -25,9 +25,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, BarChart3, Info, Filter, LineChart, ArrowUpRight } from "lucide-react";
+import { Loader2, BarChart3, Filter, LineChart, ArrowUpRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { useStarred } from "@/hooks/useStarred";
 import { StarredFilterToggle } from "@/components/StarredFilterToggle";
 
@@ -59,19 +60,7 @@ function SortableHeader({
       <span className="inline-flex items-center gap-1">
         {label}
         {indicator}
-        {tooltip && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent
-              side="top"
-              className="max-w-[280px] text-xs font-normal normal-case tracking-normal"
-            >
-              <p>{tooltip}</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
+        {tooltip && <InfoTooltip text={tooltip} />}
       </span>
     </th>
   );
@@ -512,7 +501,14 @@ export default function QuarterlyTrends() {
                         value={d.tab}
                         className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
                       >
-                        <Icon className="h-3.5 w-3.5" style={{ color: seriesColor(d.id) }} />{" "}
+                        <Icon
+                          className="h-3.5 w-3.5"
+                          // The series accent color is tuned for the neutral inactive
+                          // background; it can't guarantee contrast against the solid
+                          // primary-blue active background, so inherit the (white)
+                          // label color instead once active.
+                          style={activeTab === d.tab ? undefined : { color: seriesColor(d.id) }}
+                        />{" "}
                         {d.label}
                       </TabsTrigger>
                     </span>
@@ -535,6 +531,52 @@ export default function QuarterlyTrends() {
             onToggleFunds={() => setFilterStarredFunds((v) => !v)}
             onToggleStocks={() => setFilterStarredStocks((v) => !v)}
           />
+
+          <TabsContent value="smartscore" className="mt-4">
+            <AnalysisTable
+              data={data}
+              {...tableDefaults("smartscore")}
+              disableFilters={anyStarredFilter}
+              columns={[
+                {
+                  key: "smartScore",
+                  label: "Score",
+                  format: (v) => (Number.isFinite(v) ? v.toFixed(1) : "—"),
+                  tooltip:
+                    "Composite 1-10 smart score: mean of the Breadth, Momentum and Conviction percentiles (institutional signals only).",
+                },
+                {
+                  key: "holderCount",
+                  label: "Holders",
+                  tooltip: "Total number of tracked funds holding this stock.",
+                },
+                {
+                  key: "netBuyers",
+                  label: "Net Buyers",
+                  colorFn: netColor,
+                  tooltip: "Buyers minus sellers this quarter.",
+                },
+                {
+                  key: "avgPortfolioPct",
+                  label: "Avg Ptf %",
+                  format: (v) => `${v.toFixed(2)}%`,
+                  tooltip: "Average portfolio weight across holders.",
+                },
+                {
+                  key: "delta",
+                  label: "Δ%",
+                  deltaMode: "percent",
+                  tooltip: "Percentage change in aggregate shares held vs previous quarter.",
+                },
+                {
+                  key: "totalValue",
+                  label: "Total Value",
+                  format: (v) => formatValue(v),
+                  tooltip: "Total institutional value across all tracked holders.",
+                },
+              ]}
+            />
+          </TabsContent>
 
           <TabsContent value="consensus" className="mt-4">
             <AnalysisTable

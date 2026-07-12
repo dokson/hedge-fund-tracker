@@ -28,14 +28,14 @@ A `PreToolUse` hook in `.claude/settings.json` (script: `.claude/scripts/enforce
 # Requires Python 3.13 (see Pipfile)
 pipenv install
 cp .env.example .env                        # all keys optional; app degrades gracefully
-cd app/frontend && npm install --legacy-peer-deps && cd ../..
+cd app/frontend && npm install && cd ../..
 
 # Run the app
 pipenv run app                              # web UI on auto-discovered port from 8000
 pipenv run app-cli                          # legacy terminal menu (6 analysis options)
 pipenv run update                           # database management CLI
 pipenv run regenerate [fund ...]            # rebuild all quarterly comparisons from EDGAR (amendment-aware); optional fund-name filter
-pipenv run gen-strategy                     # rebuild database/performance.csv (6-strategy backtest vs S&P 500)
+pipenv run gen-strategy                     # rebuild database/performance.csv (7-strategy backtest vs S&P 500)
 
 # Tests
 pipenv run test                                                          # all (Python); alias for unittest discover
@@ -84,6 +84,8 @@ These are real incidents — read before changing code in these areas.
 
 - **Stale frontend dist served silently.** The dev server auto-rebuilds when `frontend/src/` mtimes are newer than `dist/index.html`. If you bypass `pipenv run app` and serve dist directly, edits to `.tsx` or `src/data/*.json` are invisible. Trust the auto-rebuild or run `pipenv run build-frontend` explicitly.
 
+- **`oxlint`'s `ignorePatterns` are relative to the CWD, not to `.oxlintrc.json`'s location.** Running `npx oxlint` from the repo root (even with `--config app/frontend/.oxlintrc.json`) does NOT ignore `src/components/ui/**` or `scripts/**` — false positives appear in vendored shadcn/ui files and build scripts that are meant to be excluded. Always run oxlint from `app/frontend` (`npm run lint`, or CI's `working-directory: app/frontend`), never from the repo root.
+
 - **SSE stdout capture is per-request.** `app/api/sse.py` installs a `_ContextAwareStdout` wrapper at module import (so it must stay on the boot path — `app/server.py` imports it) that consults a `ContextVar` on every `write()`. Concurrent SSE streams are isolated via `contextvars` — no global lock. Don't reintroduce `sys.stdout = ...` redirections, and don't bind a logger handler to a fixed stream (the project logger resolves `sys.stdout` lazily on every emit — see "Logging conventions"). Both patterns break isolation.
 
 - **Wrong `Denomination` breaks non-quarterly merging.** 13D/G and Form 4 filings match by *legal name string*, not CIK. The `Denomination` column in `hedge_funds.csv` must be exact. Mismatch = silent gap in non-quarterly view.
@@ -105,6 +107,12 @@ These are real incidents — read before changing code in these areas.
 - **The backtest is a descriptive track record, not a forecast — and its params aren't tuned on return.** `app/backtest/` reads only consolidated (matured) windows; the current sample is tiny and single-regime (no down-quarter yet), so every strategy beating the S&P 500 is largely beta, not skill — even "Decreasing" beat the market because the whole institutional universe rose. `min_holders` is `round(funds/10)` per quarter on a *breadth* principle (~10% of funds), and the five non-Avg-Portfolio screens are top-30 — NOT tuned to maximise the backtest number. The price cache lives in gitignored `__pricecache__/` — historical prices never change, so it makes a fund-list-change regeneration near-instant; don't commit it and don't expect it in CI (CI rebuilds cold).
 
 - **`scripts/regenerate_samples.py` imports after `sys.path.insert`.** The `# noqa: E402` lines are required — moving imports above the path setup breaks resolution of `app.*` modules.
+
+- **No price-derived or daily-churning values in committed CSVs.** They turn every regeneration into a full-file git diff. The hosted site will fetch live prices at runtime; snapshots that must accumulate belong in the future history store, not in git.
+
+- **The smart score is institutional-only and computed on the fly, by product decision.** No sell-side analyst inputs (a full Yahoo analyst-ratings integration was built and then removed on 2026-07-12 — differentiation beats me-too data) and no precomputed CSV: the Python `score_core` and its TypeScript mirror (`lib/smartScore.ts`, pinned by hand-computed parity tests) derive it from the quarter-analysis frame, so every tab/page/backtest shows the same formula on the same universe. Don't tune score weights on backtest returns — same principle as the strategy screens — and keep the two implementations in lockstep when changing the formula.
+
+- **Yahoo rate-limits bulk yfinance sweeps.** A concurrent fetch over thousands of tickers got the IP temporarily banned (`YFRateLimitError`) and silently degraded to empty responses. If a mass yfinance fetch ever returns, pace requests, keep workers ≤2 and back off on rate limits rather than recording gaps.
 
 - **CRLF on Windows.** Git auto-converts. Don't fight it. Pre-commit hooks and `.editorconfig` enforce LF in repo; checkout converts as needed.
 
@@ -149,16 +157,18 @@ Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `datab
 ### Modules at a glance
 
 - **`app/scraper/`** — SEC EDGAR retrieval. `sec_scraper.py` fetches 13F-HR, 13D/G, Form 4 with tenacity retries + custom User-Agent. `xml_processor.py` parses 13F XML into DataFrames.
-- **`app/analysis/`** — `quarterly_report.py` (delta shares/values, NEW/CLOSE positions), `stocks.py` (multi-fund consensus), `non_quarterly.py` (13D/G + Form 4 integration), `performance_evaluator.py` (HBR).
+- **`app/analysis/`** — `quarterly_report.py` (delta shares/values, NEW/CLOSE positions), `stocks.py` (multi-fund consensus), `non_quarterly.py` (13D/G + Form 4 integration), `performance_evaluator.py` (HBR), `smart_scores.py` (the smart-score core: composite 1-10 from **institutional signals only** — breadth/momentum percentiles + conviction with a capped +10/high-conviction-entry bonus; deliberately NO sell-side analyst inputs, that's the product stance. Pure compute, NO persistence: the backtest derives it per point-in-time frame and the UI mirrors it in TS (`lib/smartScore.ts`) on the fly, like every other consensus metric).
 - **`app/stocks/`** — CUSIP→Ticker via fallback chain: yfinance → OpenFIGI → TradingView. Reverse ticker→CUSIP (Form 4 path) via FMP (requires `FMP_API_KEY`). Industry classification via `app/stocks/classification.py::resolve_industry`: yfinance → same-Company match in stocks.csv → Groq LLM (free, picks from `sector_hierarchy.csv` vocabulary). Maintains `stocks.csv`. `PriceFetcher` uses a separate chain: yfinance → TradingView → Nasdaq (Nasdaq covers mutual funds others miss).
 - **`app/ai/`** — Multi-provider LLM. `agent.py` runs **two-phase analysis**: (1) AI picks metric weights for current market, (2) AI computes scores using those weights. Retries up to 7× on invalid response. Clients in `clients/`: GitHub Models, Google Gemini, Groq, HuggingFace, OpenRouter.
-- **`app/backtest/`** — Strategy backtester. `strategies.py` defines the six `/quarterly` screens as `StrategySpec`s (Avg Portfolio, Consensus Buys, New Consensus, Big Bets, Increasing, Decreasing) — each mirrors its tab's default sort + filters; the five non-Avg-Portfolio ones take **top 30**. `engine.py` reconstructs each screen point-in-time per quarter (reusing `app/analysis/stocks.py` aggregation — NOT the non-quarterly-merged view), weights every screen by `Avg_Portfolio_Pct` normalized to 100% (so strategies differ in *what* they hold, not *how* it's weighted), holds filing-date→next-filing, and computes returns vs the **S&P 500** (`BENCHMARKS`, extensible to more indices; `run_backtest`, long-format rows); `min_holders_for_quarter` = round(funds/10) per quarter. `price_cache.py` persists `(ticker, date)→price` (gitignored `__pricecache__/`) so regeneration after a fund-list change is near-instant. `report.py` writes `database/performance.csv`. Run via `pipenv run gen-strategy` or updater option 11. Compute is offline → the CSV is bundled for GH Pages; the `/performance` page only reads it (no PriceFetcher in TS).
+- **`app/backtest/`** — Strategy backtester. `strategies.py` defines the seven `/quarterly` screens as `StrategySpec`s (Smart Score first, then Avg Portfolio, Consensus Buys, New Consensus, Big Bets, Increasing, Decreasing) — each mirrors its tab's default sort + filters; all but Avg Portfolio take **top 30**. Smart Score ranks by the score core the engine derives lazily on each point-in-time frame (`app/analysis/smart_scores.py::score_core`). `engine.py` reconstructs each screen point-in-time per quarter (reusing `app/analysis/stocks.py` aggregation — NOT the non-quarterly-merged view), weights every screen by `Avg_Portfolio_Pct` normalized to 100% (so strategies differ in *what* they hold, not *how* it's weighted), holds filing-date→next-filing, and computes returns vs the **S&P 500** (`BENCHMARKS`, extensible to more indices; `run_backtest`, long-format rows); `min_holders_for_quarter` = round(funds/10) per quarter. `price_cache.py` persists `(ticker, date)→price` (gitignored `__pricecache__/`) so regeneration after a fund-list change is near-instant. `report.py` writes `database/performance.csv`. Run via `pipenv run gen-strategy` or updater option 11. Compute is offline → the CSV is bundled for GH Pages; the `/performance` page only reads it (no PriceFetcher in TS).
 - **`app/api/`** — FastAPI routers, each `include_router`'d by `app/server.py`: `ai.py` (Promise Score / due-diligence, blocking + SSE), `admin.py` (filing fetches, ticker/CUSIP corrections, NASDAQ ticker-change apply, quarter-gap report), plus `me.py`/`api_keys.py`/`starred.py`. Shared infra lives in `common.py` (rate limiter, request validation, JSON-safe serialization) and `sse.py` (the per-request stdout-capture wrapper — imported on the boot path so it installs once). `server.py` keeps only app setup, static-file/SPA serving, and the quarter-listing routes.
 - **`app/database/`** — CSV data-access layer, a package split into `quarters.py` (quarter discovery + 13F loaders), `stocks.py` (stocks.csv CRUD, the stocks lock, ticker cascades), `funds.py` (hedge-fund add/delete/restore). The package `__init__` owns the shared constants (`DB_FOLDER`, `*_FILE`) + path-safety helpers and re-exports everything, so `from app.database import X` is unchanged. Submodules read `DB_FOLDER` as `_db.DB_FOLDER` (call-time) so tests can monkeypatch it.
 
 ### Key frontend files
 
 - `src/lib/dataService.ts` — all CSV reads via HTTP; single source for analysis logic
+- `src/lib/smartScore.ts` — TS mirror of the Python smart-score core (`smartScoreComponents`/`withSmartScores`, applied by the quarter loaders) + the score tone/chip class helpers; parity with Python pinned by hand-computed percentile tests
+- `src/lib/strategies.ts` — the seven `StrategyDef`s (tabs, icons, sort keys) pinned to `tests/fixtures/strategies.json`; regenerate the fixture with `pipenv run python scripts/gen_strategy_definitions.py` after changing the Python specs
 - `src/lib/routes.ts` — single source of truth for route paths (`ROUTES` + `stockPath`/`fundPath`/… builders)
 - `src/lib/aiClient.ts` — SSE calls to `/api/ai/*`
 - `src/components/ModelSelector.tsx` — reads `models.csv` via `getModels()`; `CLIENT_TO_PROVIDER_ID` maps CSV `Client` column to provider IDs
@@ -196,7 +206,7 @@ Three workflows touch the repo:
 
 **`.github/workflows/python-tests.yml`** — Full test suite on push/PR.
 
-**`.github/workflows/lint.yml`** — Ruff + format check + mypy + ESLint + Prettier check + tsc on push/PR. Blocks merging if dirty.
+**`.github/workflows/lint.yml`** — Ruff + format check + mypy + oxlint + Prettier check + tsc on push/PR. Blocks merging if dirty.
 
 ## Branch hygiene
 

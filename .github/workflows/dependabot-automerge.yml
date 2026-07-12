@@ -28,7 +28,7 @@ jobs:
           cache-dependency-path: "app/frontend/package-lock.json"
 
       - name: Install and build frontend
-        run: cd app/frontend && npm ci --legacy-peer-deps && npm run build
+        run: cd app/frontend && npm ci && npm run build
 
       - name: Approve and auto-merge PR
         run: |

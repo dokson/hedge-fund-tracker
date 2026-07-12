@@ -1,4 +1,5 @@
 import type { StockQuarterAnalysis } from "./dataService";
+import { smartScoreCore } from "./smartScore";
 import type { StrategyDef } from "./strategies";
 
 export interface ScreenHolding {
@@ -44,6 +45,25 @@ export function selectStrategyScreen(
 
   if (def.capped && def.topN != null) arr = arr.slice(0, def.topN);
 
+  return toScreenHoldings(arr);
+}
+
+/**
+ * Reconstruct the backtest-only smart-score screen for one quarter: rank by
+ * the institutional score core (mirror of the Python engine's derivation) and
+ * take the top N, weighted like every other strategy.
+ */
+export function selectSmartScoreScreen(rows: StockQuarterAnalysis[], topN = 30): ScreenHolding[] {
+  const scores = smartScoreCore(rows);
+  const ranked = rows
+    .map((r, i) => ({ row: r, score: scores[i] }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topN)
+    .map((x) => x.row);
+  return toScreenHoldings(ranked);
+}
+
+function toScreenHoldings(arr: StockQuarterAnalysis[]): ScreenHolding[] {
   const total = arr.reduce((sum, r) => sum + (r.avgPortfolioPct || 0), 0);
   if (total <= 0) return [];
   return arr.map((r) => ({

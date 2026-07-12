@@ -164,6 +164,19 @@
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground));
   }
+
+  /* WCAG 2.3.3: honor the OS-level reduced-motion preference for every
+     CSS animation/transition/scroll-behavior in the app. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer components {
@@ -178,6 +191,18 @@
   }
   .kpi-card:hover {
     border-color: hsl(var(--border));
+  }
+
+  /* De-emphasized text/icon tones, floored to stay WCAG 2.2 AA-safe.
+     Ad-hoc opacity modifiers below these (text-muted-foreground/30, /40, /50,
+     /60...) were found to drop under 4.5:1 (text) / 3:1 (icons) once blended
+     toward the near-white light theme background — use these two instead of
+     picking an arbitrary fraction at the call site. */
+  .text-faint {
+    @apply text-muted-foreground/90;
+  }
+  .icon-faint {
+    @apply text-muted-foreground/70;
   }
 
   .metric-label {

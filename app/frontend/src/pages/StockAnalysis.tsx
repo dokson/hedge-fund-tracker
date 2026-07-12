@@ -5,11 +5,16 @@ import { useStarred } from "@/hooks/useStarred";
 import { useQuery } from "@tanstack/react-query";
 import {
   runStockAnalysis,
+  fetchQuarterAnalysis,
+  runQuarterAnalysis,
   formatValue,
   formatPct,
   getStocks,
   type FundTickerHolding,
 } from "@/lib/dataService";
+import type { SmartScoreView } from "@/lib/smartScore";
+import { SmartScorePanel } from "@/components/SmartScorePanel";
+import { SmartScoreBadge } from "@/components/SmartScoreBadge";
 import { stocksByIndustry, aiDiligenceFor } from "@/lib/routes";
 import { getSectorStyle } from "@/lib/sectorStyle";
 import type { Quarter } from "@/lib/quarters";
@@ -101,6 +106,25 @@ export default function StockAnalysis() {
   // Sector + industry come from stocks.csv (joined with sector_hierarchy inside
   // getStocks). Same in-memory cache as the rest of the app — no extra fetch.
   const { data: stocks = [] } = useQuery({ queryKey: ["stocks"], queryFn: getStocks });
+  // The smart score is derived on the fly from the selected quarter's analysis
+  // (same cached data the browser pages use), so it always matches the dropdown.
+  const { data: quarterRows = [] } = useQuery({
+    queryKey: ["quarterAnalysis", quarter],
+    queryFn: async () =>
+      (await fetchQuarterAnalysis(quarter!)) ?? (await runQuarterAnalysis(quarter!)),
+    enabled: !!quarter,
+    staleTime: 10 * 60 * 1000,
+  });
+  const scoreRow = quarterRows.find((r) => r.ticker === ticker);
+  const smartScore: SmartScoreView | undefined =
+    scoreRow?.smartScore !== undefined
+      ? {
+          smartScore: scoreRow.smartScore,
+          breadth: scoreRow.scoreBreadth ?? null,
+          momentum: scoreRow.scoreMomentum ?? null,
+          conviction: scoreRow.scoreConviction ?? null,
+        }
+      : undefined;
   const meta = stocks.find((s) => s.ticker === ticker);
   const sector = meta?.sector;
   const industry = meta?.industry;
@@ -222,6 +246,7 @@ export default function StockAnalysis() {
                 {company}
               </span>
               <StarButton active={isStarred(ticker)} onClick={() => toggleStar(ticker)} size={20} />
+              {smartScore && <SmartScoreBadge score={smartScore.smartScore} />}
             </div>
             {(sector || industry) && (
               <div className="flex items-center gap-2 flex-wrap text-xs">
@@ -274,6 +299,10 @@ export default function StockAnalysis() {
           </Button>
         </div>
       </div>
+
+      {/* Smart score: independent of the selected quarter's 13F holdings, so it
+          renders even for stocks no tracked fund currently holds. */}
+      <SmartScorePanel score={smartScore} quarterLabel={quarter} />
 
       {isLoading ? (
         <div className="surface p-8">

@@ -21,7 +21,6 @@ import {
   ExternalLink,
   Shield,
   Save,
-  Search,
   Plus,
   KeyRound,
   Brain,
@@ -29,6 +28,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/SearchInput";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import {
@@ -235,7 +235,7 @@ function APIKeysTab() {
                 {hasKey ? (
                   <CheckCircle2 className="h-3.5 w-3.5 text-positive shrink-0" />
                 ) : (
-                  <XCircle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                  <XCircle className="h-3.5 w-3.5 icon-faint shrink-0" />
                 )}
                 <span className={hasKey ? "text-foreground" : "text-muted-foreground"}>
                   {provider.name}
@@ -349,7 +349,8 @@ function APIKeysTab() {
                   <button
                     type="button"
                     onClick={() => toggleVisibility(provider.id)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                    aria-label={isVisible ? "Hide API key" : "Show API key"}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors p-1"
                   >
                     {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -497,15 +498,13 @@ function ModelsTab() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search model, provider…"
-            value={modelSearch}
-            onChange={(e) => setModelSearch(e.target.value)}
-            className="pl-8 bg-card border-border"
-          />
-        </div>
+        <SearchInput
+          label="Search model, provider"
+          size="sm"
+          value={modelSearch}
+          onChange={(e) => setModelSearch(e.target.value)}
+          wrapperClassName="flex-1 max-w-sm"
+        />
         <span className="text-xs text-muted-foreground">
           {filteredModels.length} / {models.length} models
         </span>

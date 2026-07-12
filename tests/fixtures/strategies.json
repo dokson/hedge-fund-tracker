@@ -1,5 +1,17 @@
 [
   {
+    "id": "smart_score",
+    "label": "Smart Score",
+    "metric": "smart_score",
+    "ascending": false,
+    "min_holders": false,
+    "exclude_infinite_delta": false,
+    "capped": true,
+    "top_n": 30,
+    "delta_sign": null,
+    "min_holders_divisor": 10
+  },
+  {
     "id": "avg_portfolio",
     "label": "Avg Portfolio",
     "metric": "avg_portfolio_pct",

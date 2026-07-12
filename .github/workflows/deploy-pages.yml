@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: app/frontend
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Build static site
         working-directory: app/frontend

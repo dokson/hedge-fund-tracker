@@ -5,6 +5,7 @@ import { Loader2, LineChart as LineChartIcon, Info } from "lucide-react";
 import EquityCurveChart from "@/components/EquityCurveChart";
 import CompositionPanel from "@/components/CompositionPanel";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { seriesColor } from "@/lib/seriesColors";
 import { getPerformance, type PerfSeries } from "@/lib/dataService";
 import { STRATEGY_BY_ID, perfOrderIndex } from "@/lib/strategies";
@@ -138,14 +139,14 @@ export default function StrategyPerformance() {
           <p className="text-sm text-muted-foreground">Loading performance…</p>
         </div>
       ) : series.length === 0 ? (
-        <div className="surface p-8 text-center text-sm text-muted-foreground">
-          No consolidated windows yet. A window appears once a quarter has fully elapsed since
-          filing.
-        </div>
+        <EmptyState
+          padding="sm"
+          title="No consolidated windows yet. A window appears once a quarter has fully elapsed since filing."
+        />
       ) : (
         <>
           {/* Click a card to isolate that strategy vs the S&P 500 on the chart. */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
             {strategies.map((s) => (
               <StrategyCard
                 key={s.id}

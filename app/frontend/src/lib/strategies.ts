@@ -1,5 +1,5 @@
 /**
- * Single source of truth (TypeScript side) for the six cross-fund consensus
+ * Single source of truth (TypeScript side) for the seven cross-fund consensus
  * strategies surfaced in QuarterlyTrends and backtested on the /performance page.
  *
  * The canonical fields (id, label, metric, ascending, minHolders,
@@ -12,7 +12,15 @@
  * (camelCase) the canonical snake_case `metric` maps to.
  */
 
-import { Banknote, Handshake, PieChart, TrendingDown, TrendingUp, UserPlus } from "lucide-react";
+import {
+  Banknote,
+  Gauge,
+  Handshake,
+  PieChart,
+  TrendingDown,
+  TrendingUp,
+  UserPlus,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface StrategyDef {
@@ -46,6 +54,22 @@ export interface StrategyDef {
 const TOP_N = 30;
 
 export const STRATEGY_DEFS: StrategyDef[] = [
+  {
+    id: "smart_score",
+    tab: "smartscore",
+    label: "Smart Score",
+    icon: Gauge,
+    sortKey: "smartScore",
+    metric: "smart_score",
+    ascending: false,
+    minHolders: false,
+    excludeInfiniteDelta: false,
+    capped: true,
+    topN: TOP_N,
+    description:
+      "Stocks ranked by the composite 1-10 smart score: breadth, momentum and conviction percentiles from institutional signals only, computed on the fly for the selected quarter.",
+    note: "The exact same formula is backtested on the Performance page — no analyst inputs, no tuning.",
+  },
   {
     id: "avg_portfolio",
     tab: "avgportfolio",
@@ -145,8 +169,10 @@ export const STRATEGY_BY_ID: Record<string, StrategyDef> = Object.fromEntries(
   STRATEGY_DEFS.map((d) => [d.id, d]),
 );
 
-/** Display order for the Strategy Performance page (cards, legend, drill-down pills). */
+/** Display order for the Strategy Performance page (cards, legend, drill-down pills).
+ * `smart_score` leads — it's the house strategy. */
 const PERFORMANCE_ORDER = [
+  "smart_score",
   "consensus",
   "new_consensus",
   "big_bets",

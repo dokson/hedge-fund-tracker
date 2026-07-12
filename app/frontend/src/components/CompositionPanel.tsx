@@ -13,7 +13,7 @@ import {
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { getQuarterFundList, getStocks, runQuarterAnalysis } from "@/lib/dataService";
 import { STRATEGY_BY_ID } from "@/lib/strategies";
-import { selectStrategyScreen } from "@/lib/strategyScreen";
+import { selectSmartScoreScreen, selectStrategyScreen } from "@/lib/strategyScreen";
 import { seriesColor } from "@/lib/seriesColors";
 import { stockPath } from "@/lib/routes";
 
@@ -59,8 +59,12 @@ export default function CompositionPanel({ strategyId }: { strategyId: string })
   }, [stocks]);
 
   const { stockItems, sectorItems } = useMemo(() => {
-    if (!def) return { stockItems: [] as TreemapItem[], sectorItems: [] as TreemapItem[] };
-    const holdings = selectStrategyScreen(analysis, def, minHolders);
+    const holdings =
+      strategyId === "smart_score"
+        ? selectSmartScoreScreen(analysis)
+        : def
+          ? selectStrategyScreen(analysis, def, minHolders)
+          : [];
     const stockItems: TreemapItem[] = holdings.map((h) => ({
       name: h.ticker,
       company: h.company,
@@ -92,25 +96,26 @@ export default function CompositionPanel({ strategyId }: { strategyId: string })
         };
       });
     return { stockItems, sectorItems };
-  }, [analysis, def, minHolders, sectorOf]);
+  }, [analysis, def, minHolders, sectorOf, strategyId]);
 
   const Icon = def?.icon;
+  const label = def?.label ?? strategyId;
 
   return (
     <div className="surface p-5">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 className="section-title text-sm flex items-center gap-1.5">
           {Icon && <Icon className="h-4 w-4" style={{ color: seriesColor(strategyId) }} />}
-          Composition · {def?.label ?? strategyId}
+          Composition · {label}
         </h3>
         <Select value={quarter ?? ""} onValueChange={setSelectedQuarter}>
-          <SelectTrigger className="w-28 h-8 bg-card border-border text-xs">
+          <SelectTrigger className="w-32 h-8 bg-card border-border text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {quarters.map((q) => (
+            {[...quarters].reverse().map((q) => (
               <SelectItem key={q} value={q}>
-                {q}
+                {q.replace("Q", " Q")}
               </SelectItem>
             ))}
           </SelectContent>

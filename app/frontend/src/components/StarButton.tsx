@@ -18,8 +18,8 @@ export function StarButton({ active, onClick, className, size = 16 }: StarButton
         onClick();
       }}
       className={cn(
-        "inline-flex items-center justify-center rounded-sm transition-colors hover:text-yellow-500",
-        active ? "text-yellow-500" : "text-muted-foreground/40 hover:text-yellow-500/70",
+        "inline-flex items-center justify-center rounded-sm p-1 -m-1 transition-colors hover:text-yellow-500",
+        active ? "text-yellow-500" : "icon-faint hover:text-yellow-500/70",
         className,
       )}
       aria-label={active ? "Remove from starred" : "Add to starred"}

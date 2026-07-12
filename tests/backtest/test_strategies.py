@@ -37,14 +37,24 @@ class TestStrategies(unittest.TestCase):
     Tests for per-strategy screen selection.
     """
 
-    def test_registry_has_six_strategies(self):
+    def test_registry_has_seven_strategies(self):
         """
-        All six /quarterly strategies are registered with stable ids.
+        All seven /quarterly strategies are registered with stable ids,
+        Smart Score first.
         """
         ids = [s.strategy_id for s in STRATEGIES]
+        self.assertEqual(ids[0], "smart_score")
         self.assertEqual(
             set(ids),
-            {"avg_portfolio", "consensus", "new_consensus", "big_bets", "increasing", "decreasing"},
+            {
+                "smart_score",
+                "avg_portfolio",
+                "consensus",
+                "new_consensus",
+                "big_bets",
+                "increasing",
+                "decreasing",
+            },
         )
 
     def test_consensus_ranks_by_net_buyers_top_n(self):

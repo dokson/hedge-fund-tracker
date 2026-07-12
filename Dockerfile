@@ -1,9 +1,7 @@
 # Stage 1: Build React frontend
 FROM node:26-slim AS frontend-build
 WORKDIR /app/frontend
-# .npmrc must land before `npm ci` so legacy-peer-deps=true is honoured
-# (jsx-a11y@6.10 still declares eslint <=^9 as peer; we ship eslint 10).
-COPY app/frontend/package.json app/frontend/package-lock.json app/frontend/.npmrc ./
+COPY app/frontend/package.json app/frontend/package-lock.json ./
 RUN npm ci
 COPY app/frontend/ ./
 RUN npm run build

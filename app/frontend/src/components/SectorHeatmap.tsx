@@ -12,7 +12,12 @@ interface SectorGroup {
   tickers: string[];
 }
 
-export default function SectorHeatmap() {
+export default function SectorHeatmap({
+  onSectorClick,
+}: {
+  /** Called with the clicked sector's name — used to jump to the By Value tab pre-filtered. */
+  onSectorClick?: (sector: string) => void;
+}) {
   const { latestQuarter } = useAvailableQuarters();
 
   const { data: stocks = [], isLoading: stocksLoading } = useQuery({
@@ -91,7 +96,11 @@ export default function SectorHeatmap() {
   return (
     <div className="surface p-5 space-y-3">
       <h3 className="section-title text-sm">Institutional Value by Sector</h3>
-      <HoldingsTreemap data={sectorHeatmapData} onClickTicker={() => {}} height={350} />
+      <HoldingsTreemap
+        data={sectorHeatmapData}
+        onClickTicker={(sector) => onSectorClick?.(sector)}
+        height={350}
+      />
     </div>
   );
 }

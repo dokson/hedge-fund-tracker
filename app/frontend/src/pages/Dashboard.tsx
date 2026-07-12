@@ -6,6 +6,7 @@ import {
   getHedgeFunds,
   parseValueString,
   clearCache,
+  formatPct,
   type EnrichedNQFiling,
 } from "@/lib/dataService";
 import { getSectorStyle } from "@/lib/sectorStyle";
@@ -18,11 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StarredFilterToggle } from "@/components/StarredFilterToggle";
 import {
-  Loader2,
   ArrowUpRight,
   ArrowDownRight,
   Plus,
@@ -42,7 +43,7 @@ import { useStarred } from "@/hooks/useStarred";
  */
 function SectorPill({ sector, industry }: { sector?: string; industry?: string }) {
   if (!sector) {
-    return <span className="text-muted-foreground/50">—</span>;
+    return <span className="text-faint">—</span>;
   }
   const style = getSectorStyle(sector);
   const Icon = style.icon;
@@ -102,9 +103,8 @@ function formatDelta(f: EnrichedNQFiling): { text: string; className: string; so
   if (f.deltaType === "NO CHANGE")
     return { text: "+0%", className: "text-muted-foreground", sortValue: 0 };
   if (f.deltaPct !== null) {
-    const sign = f.deltaPct > 0 ? "+" : "";
     const cls = f.deltaPct > 0 ? "text-positive" : "text-negative";
-    return { text: `${sign}${f.deltaPct.toFixed(1)}%`, className: cls, sortValue: f.deltaPct };
+    return { text: formatPct(f.deltaPct, true), className: cls, sortValue: f.deltaPct };
   }
   return { text: "NEW", className: "text-positive", sortValue: Infinity };
 }
@@ -189,7 +189,11 @@ function FilingCard({
         <div>
           <div className="metric-label">Port. %</div>
           <div className="font-mono text-sm text-muted-foreground mt-0.5">
-            {f.quarterPortfolioPct !== null ? `${f.quarterPortfolioPct.toFixed(2)}%` : "—"}
+            {f.quarterPortfolioPct !== null
+              ? `${f.quarterPortfolioPct.toFixed(2)}%`
+              : f.estimatedPortfolioPct !== null
+                ? `~${f.estimatedPortfolioPct.toFixed(2)}%`
+                : "—"}
           </div>
         </div>
         <div>
@@ -371,12 +375,10 @@ export default function Dashboard() {
                     <span className={`h-1.5 w-1.5 rounded-full ${bg}`} />
                     {label}
                   </span>
-                  <Icon className="h-3.5 w-3.5 text-muted-foreground/60" />
+                  <Icon className="h-3.5 w-3.5 icon-faint" />
                 </div>
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className={`metric-value ${count > 0 ? text : "text-muted-foreground/40"}`}>
-                    {count}
-                  </span>
+                  <span className={`metric-value ${count > 0 ? text : "text-faint"}`}>{count}</span>
                   <span className="font-mono text-xs tabular-nums text-muted-foreground">
                     {share}%
                   </span>
@@ -403,11 +405,11 @@ export default function Dashboard() {
       />
 
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
-        <Input
-          placeholder="Search fund, manager, ticker, company…"
+        <SearchInput
+          label="Search fund, manager, ticker, company"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:w-64 bg-card border-border"
+          wrapperClassName="w-full sm:w-64"
         />
         <Select value={fundFilter} onValueChange={setFundFilter}>
           <SelectTrigger className="w-full sm:w-48 bg-card border-border">
@@ -433,9 +435,7 @@ export default function Dashboard() {
       </div>
 
       {isLoading ? (
-        <div className="surface flex items-center gap-2 text-muted-foreground py-12 justify-center">
-          <Loader2 className="h-5 w-5 animate-spin" /> Loading and enriching filings…
-        </div>
+        <LoadingState message="Loading and enriching filings…" className="surface" />
       ) : (
         <>
           {/* Mobile: compact sort bar (the table's clickable headers are gone here) */}
@@ -588,10 +588,19 @@ export default function Dashboard() {
                               <span className="badge-nochange">NO CHANGE</span>
                             )}
                           </td>
-                          <td className="p-3 text-right font-mono text-muted-foreground">
+                          <td
+                            className="p-3 text-right font-mono text-muted-foreground"
+                            title={
+                              f.quarterPortfolioPct === null && f.estimatedPortfolioPct !== null
+                                ? "Estimated weight over the fund's merged portfolio (new position)"
+                                : undefined
+                            }
+                          >
                             {f.quarterPortfolioPct !== null
                               ? `${f.quarterPortfolioPct.toFixed(2)}%`
-                              : "—"}
+                              : f.estimatedPortfolioPct !== null
+                                ? `~${f.estimatedPortfolioPct.toFixed(2)}%`
+                                : "—"}
                           </td>
                           <td className="p-3 text-right font-mono">
                             {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}

@@ -10,8 +10,11 @@ import {
   parseValueString,
   formatValue,
   aggregateHoldingsByTicker,
+  getNonQuarterlyFilings,
+  type HedgeFund,
   type QuarterlyHolding,
 } from "@/lib/dataService";
+import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TickerLink, CompanyLink, formatFundName } from "@/components/EntityLinks";
 import { FundLogo } from "@/components/FundLogo";
@@ -25,44 +28,128 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 
-import {
-  Search,
-  ArrowLeft,
-  Loader2,
-  Wallet,
-  Filter,
-  SortAsc,
-  DollarSign,
-  Star,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Clock, Wallet, Filter, SortAsc, DollarSign, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStarred } from "@/hooks/useStarred";
 import { StarButton } from "@/components/StarButton";
 
 // ────────────────────────── Fund Grid ──────────────────────────
 
+interface FundMeta {
+  aum: number;
+  latestQuarter: string | null;
+}
+
+/**
+ * One clickable fund tile, shared by every FundGrid tab: logo, names, star,
+ * optional AUM rank, AUM line and the latest-quarter chip (highlighted when
+ * the fund has already filed the most recent quarter).
+ */
+function FundCard({
+  fund,
+  meta,
+  overallLatestQuarter,
+  rank,
+  starred,
+  onToggleStar,
+  onOpen,
+}: {
+  fund: HedgeFund;
+  meta: FundMeta | undefined;
+  overallLatestQuarter: string | null;
+  rank?: number;
+  starred: boolean;
+  onToggleStar: () => void;
+  onOpen: () => void;
+}) {
+  const latestQuarter = meta?.latestQuarter ?? null;
+  const isCurrent = latestQuarter !== null && latestQuarter === overallLatestQuarter;
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className="kpi-card cursor-pointer"
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <div className="rounded-md border border-border bg-neutral-200 p-1 shrink-0">
+          <FundLogo fundName={fund.fund} url={fund.url} size={28} className="rounded-md" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold truncate">{fund.denomination}</p>
+              <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <StarButton active={starred} onClick={onToggleStar} size={14} className="mt-0.5" />
+              {rank !== undefined && (
+                <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                  #{rank}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-2 mt-1.5">
+            {meta !== undefined && (
+              <p className="text-xs font-mono text-muted-foreground">
+                AUM {meta.aum > 0 ? formatValue(meta.aum) : "$0"}
+              </p>
+            )}
+            {latestQuarter && (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono font-medium ${
+                  isCurrent
+                    ? "border-[hsl(var(--positive))]/40 bg-[hsl(var(--positive))]/10 text-[hsl(var(--positive))]"
+                    : "border-border text-muted-foreground"
+                }`}
+                title={
+                  isCurrent
+                    ? "This fund has already filed the most recent quarter"
+                    : "Latest quarter this fund has filed"
+                }
+              >
+                <Clock className="h-2.5 w-2.5" aria-hidden="true" />
+                {latestQuarter.replace("Q", " Q")}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FundGrid() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const { starred, toggle: toggleStar, isStarred } = useStarred("fund");
-  const [tab, setTab] = useState<"starred" | "alphabetical" | "byvalue">(() =>
-    starred.size > 0 ? "starred" : "alphabetical",
+  const [tab, setTab] = useState<"starred" | "updated" | "alphabetical" | "byvalue">(() =>
+    starred.size > 0 ? "starred" : "updated",
   );
 
   const { data: funds = [], isLoading } = useQuery({
     queryKey: ["hedgeFunds"],
     queryFn: getHedgeFunds,
   });
+  const { latestQuarter: overallLatestQuarter } = useAvailableQuarters();
 
-  // Load AUM for each fund (latest quarter)
-  const { data: fundAumMap = new Map<string, number>() } = useQuery({
-    queryKey: ["fundAumMap", funds.length],
+  // Load AUM + latest filed quarter for each fund (single sweep, cached).
+  const { data: fundMetaMap = new Map<string, FundMeta>() } = useQuery({
+    queryKey: ["fundMetaMap", funds.length],
     queryFn: async () => {
-      const aumMap = new Map<string, number>();
+      const metaMap = new Map<string, FundMeta>();
       await Promise.all(
         funds.map(async (fund) => {
           try {
@@ -73,15 +160,31 @@ function FundGrid() {
             const total = holdings
               .filter((h) => h.cusip !== "Total")
               .reduce((sum, h) => sum + parseValueString(h.value), 0);
-            aumMap.set(fund.fund, total);
+            metaMap.set(fund.fund, { aum: total, latestQuarter: latest });
           } catch {
             /* skip */
           }
         }),
       );
-      return aumMap;
+      return metaMap;
     },
     enabled: funds.length > 0,
+  });
+
+  // Latest non-quarterly filing date per fund: day-level tiebreaker for the
+  // Last Updated ordering (a 13D/G or Form 4 is fresher evidence than a 13F).
+  const { data: nqLatestByFund = new Map<string, string>() } = useQuery({
+    queryKey: ["nqLatestByFund"],
+    queryFn: async () => {
+      const filings = await getNonQuarterlyFilings();
+      const map = new Map<string, string>();
+      for (const f of filings) {
+        const current = map.get(f.fund);
+        if (!current || f.filingDate > current) map.set(f.fund, f.filingDate);
+      }
+      return map;
+    },
+    staleTime: 10 * 60 * 1000,
   });
 
   const starredFunds = useMemo(() => {
@@ -91,19 +194,55 @@ function FundGrid() {
   }, [funds, starred]);
 
   const filtered = useMemo(() => {
+    // Primary key: the latest filed quarter (what the card's chip shows), so
+    // every current-quarter filer leads. Non-quarterly recency only breaks
+    // ties within the same quarter.
+    const lastUpdatedOf = (fund: HedgeFund): string => {
+      const quarter = fundMetaMap.get(fund.fund)?.latestQuarter ?? "";
+      const nq = nqLatestByFund.get(fund.fund) ?? "";
+      return quarter + "|" + nq;
+    };
     let list = funds;
     if (search) {
       list = list.filter((f) => matchesQuery(search, f.fund, f.manager, f.denomination));
     }
     if (tab === "byvalue") {
       list = [...list].sort(
-        (a, b) => (fundAumMap.get(b.fund) || 0) - (fundAumMap.get(a.fund) || 0),
+        (a, b) => (fundMetaMap.get(b.fund)?.aum || 0) - (fundMetaMap.get(a.fund)?.aum || 0),
+      );
+    } else if (tab === "updated") {
+      list = [...list].sort(
+        (a, b) =>
+          lastUpdatedOf(b).localeCompare(lastUpdatedOf(a)) ||
+          a.denomination.localeCompare(b.denomination),
       );
     } else {
       list = [...list].sort((a, b) => a.denomination.localeCompare(b.denomination));
     }
     return list;
-  }, [funds, search, tab, fundAumMap]);
+  }, [funds, search, tab, fundMetaMap, nqLatestByFund]);
+
+  const renderCards = (list: HedgeFund[], withRank = false) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
+      {list.map((fund, i) => (
+        <FundCard
+          key={fund.cik}
+          fund={fund}
+          meta={fundMetaMap.get(fund.fund)}
+          overallLatestQuarter={overallLatestQuarter ?? null}
+          rank={withRank ? i + 1 : undefined}
+          starred={isStarred(fund.fund)}
+          onToggleStar={() => toggleStar(fund.fund)}
+          onOpen={() => navigate(fundPath(fund.fund))}
+        />
+      ))}
+      {list.length === 0 && (
+        <p className="col-span-full text-center text-muted-foreground py-8">
+          No funds match your search.
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6 max-w-screen-2xl">
@@ -128,6 +267,9 @@ function FundGrid() {
                 </span>
               </TabsTrigger>
             )}
+            <TabsTrigger value="updated" className="gap-1.5">
+              <Clock className="h-3.5 w-3.5" /> Last Updated
+            </TabsTrigger>
             <TabsTrigger value="alphabetical" className="gap-1.5">
               <SortAsc className="h-3.5 w-3.5" /> Alphabetical
             </TabsTrigger>
@@ -135,210 +277,35 @@ function FundGrid() {
               <DollarSign className="h-3.5 w-3.5" /> AUM
             </TabsTrigger>
           </TabsList>
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search fund or manager…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-card border-border"
-            />
-          </div>
+          <SearchInput
+            label="Search fund or manager"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            wrapperClassName="w-full sm:w-72"
+          />
         </div>
 
         {/* Starred tab */}
         <TabsContent value="starred">
           {starredFunds.length === 0 ? (
-            <div className="surface p-12 text-center mt-4">
-              <Star className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-muted-foreground">No starred funds yet.</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">
-                Click the ★ icon on any fund to add it here.
-              </p>
-            </div>
+            <EmptyState
+              className="mt-4"
+              icon={Star}
+              title="No starred funds yet."
+              description="Click the ★ icon on any fund to add it here."
+            />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
-              {starredFunds.map((fund) => {
-                const aum = fundAumMap.get(fund.fund);
-                return (
-                  <div
-                    key={fund.cik}
-                    role="button"
-                    tabIndex={0}
-                    className="kpi-card cursor-pointer"
-                    onClick={() => navigate(fundPath(fund.fund))}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        navigate(fundPath(fund.fund));
-                      }
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-md border border-border bg-neutral-200 p-1 shrink-0">
-                        <FundLogo
-                          fundName={fund.fund}
-                          url={fund.url}
-                          size={28}
-                          className="rounded-md"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold truncate">{fund.denomination}</p>
-                            <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
-                          </div>
-                          <StarButton
-                            active={true}
-                            onClick={() => toggleStar(fund.fund)}
-                            size={14}
-                            className="mt-0.5 shrink-0"
-                          />
-                        </div>
-                        {aum !== undefined && (
-                          <p className="text-xs font-mono text-muted-foreground mt-1.5">
-                            AUM {aum > 0 ? formatValue(aum) : "$0"}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            renderCards(starredFunds)
           )}
         </TabsContent>
 
         {isLoading ? (
-          <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
-            <Loader2 className="h-5 w-5 animate-spin" /> Loading funds…
-          </div>
+          <LoadingState message="Loading funds…" />
         ) : (
           <>
-            <TabsContent value="alphabetical">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
-                {filtered.map((fund) => {
-                  const aum = fundAumMap.get(fund.fund);
-                  return (
-                    <div
-                      key={fund.cik}
-                      role="button"
-                      tabIndex={0}
-                      className="kpi-card cursor-pointer"
-                      onClick={() => navigate(fundPath(fund.fund))}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          navigate(fundPath(fund.fund));
-                        }
-                      }}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="rounded-md border border-border bg-neutral-200 p-1 shrink-0">
-                          <FundLogo
-                            fundName={fund.fund}
-                            url={fund.url}
-                            size={28}
-                            className="rounded-md"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold truncate">{fund.denomination}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {fund.manager}
-                              </p>
-                            </div>
-                            <StarButton
-                              active={isStarred(fund.fund)}
-                              onClick={() => toggleStar(fund.fund)}
-                              size={14}
-                              className="mt-0.5 shrink-0"
-                            />
-                          </div>
-                          {aum !== undefined && (
-                            <p className="text-xs font-mono text-muted-foreground mt-1.5">
-                              AUM {aum > 0 ? formatValue(aum) : "$0"}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <p className="col-span-full text-center text-muted-foreground py-8">
-                    No funds match your search.
-                  </p>
-                )}
-              </div>
-            </TabsContent>
-            <TabsContent value="byvalue">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
-                {filtered.map((fund, i) => {
-                  const aum = fundAumMap.get(fund.fund);
-                  return (
-                    <div
-                      key={fund.cik}
-                      role="button"
-                      tabIndex={0}
-                      className="kpi-card cursor-pointer"
-                      onClick={() => navigate(fundPath(fund.fund))}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          navigate(fundPath(fund.fund));
-                        }
-                      }}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="rounded-md border border-border bg-neutral-200 p-1 shrink-0">
-                          <FundLogo
-                            fundName={fund.fund}
-                            url={fund.url}
-                            size={28}
-                            className="rounded-md"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold truncate">{fund.denomination}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {fund.manager}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <StarButton
-                                active={isStarred(fund.fund)}
-                                onClick={() => toggleStar(fund.fund)}
-                                size={14}
-                                className="mt-0.5"
-                              />
-                              <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
-                                #{i + 1}
-                              </span>
-                            </div>
-                          </div>
-                          {aum !== undefined && (
-                            <p className="text-xs font-mono text-muted-foreground mt-1.5">
-                              AUM {aum > 0 ? formatValue(aum) : "$0"}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <p className="col-span-full text-center text-muted-foreground py-8">
-                    No funds match your search.
-                  </p>
-                )}
-              </div>
-            </TabsContent>
+            <TabsContent value="updated">{renderCards(filtered)}</TabsContent>
+            <TabsContent value="alphabetical">{renderCards(filtered)}</TabsContent>
+            <TabsContent value="byvalue">{renderCards(filtered, true)}</TabsContent>
           </>
         )}
       </Tabs>
@@ -663,11 +630,7 @@ function FundDetail({ fundName }: { fundName: string }) {
   const quarterLabel = selectedQuarter ? selectedQuarter.replace("Q", " Q") : "—";
 
   if (quartersLoading) {
-    return (
-      <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading available quarters…
-      </div>
-    );
+    return <LoadingState message="Loading available quarters…" />;
   }
 
   if (availableQuarters.length === 0) {
@@ -820,13 +783,12 @@ function FundDetail({ fundName }: { fundName: string }) {
           )}
 
           {isLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
-              <Loader2 className="h-5 w-5 animate-spin" /> Loading holdings for {quarterLabel}…
-            </div>
+            <LoadingState message={`Loading holdings for ${quarterLabel}…`} />
           ) : isError ? (
-            <div className="surface p-8 text-center text-muted-foreground">
-              No data available for {fundName} in {quarterLabel}. Try a different quarter.
-            </div>
+            <EmptyState
+              padding="sm"
+              title={`No data available for ${fundName} in ${quarterLabel}. Try a different quarter.`}
+            />
           ) : (
             <>
               {/* Mobile: sort chips + card list */}

@@ -11,8 +11,8 @@ import AIEmptyState from "@/components/ai/AIEmptyState";
 
 import { Button } from "@/components/ui/button";
 import ModelSelector from "@/components/ModelSelector";
-import { Brain, ChevronDown, ChevronUp, Search, Info } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Brain, ChevronDown, ChevronUp, Search } from "lucide-react";
+import { ColumnHeader } from "@/components/ui/ColumnHeader";
 
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -58,43 +58,6 @@ interface RankedStock {
   netBuyers: number;
   highConvictionCount: number;
   reasoning?: string;
-}
-
-type Align = "left" | "center" | "right";
-
-function ColumnHeader({
-  label,
-  tooltip,
-  align = "left",
-  className = "",
-}: {
-  label: string;
-  tooltip: string;
-  align?: Align;
-  className?: string;
-}) {
-  const alignClass =
-    align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
-  const wrapperJustify =
-    align === "center" ? "justify-center" : align === "right" ? "justify-end" : "justify-start";
-  return (
-    <th className={`${alignClass} p-3 font-medium ${className}`}>
-      <span className={`inline-flex items-center gap-1 ${wrapperJustify}`}>
-        {label}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
-          </TooltipTrigger>
-          <TooltipContent
-            side="top"
-            className="max-w-[300px] text-xs font-normal normal-case tracking-normal"
-          >
-            <p>{tooltip}</p>
-          </TooltipContent>
-        </Tooltip>
-      </span>
-    </th>
-  );
 }
 
 function ScoreBadge({ score, invert = false }: { score: number; invert?: boolean }) {

@@ -21,23 +21,22 @@ import {
   Settings2,
   Users,
   ExternalLink,
-  Search,
   Trash2,
   AlertTriangle,
   Undo2,
   UserX,
   Plus,
-  Info,
   Pencil,
   Check,
   X,
   Eye,
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { ColumnHeader } from "@/components/ui/ColumnHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { LoadingState } from "@/components/ui/LoadingState";
 import {
   Dialog,
   DialogContent,
@@ -87,25 +86,6 @@ const CikLink = ({ cik }: { cik: string }) => (
   >
     {cik} <ExternalLink className="h-2.5 w-2.5" />
   </a>
-);
-
-const ColumnHeader = ({ label, tooltip }: { label: string; tooltip: string }) => (
-  <th className="text-left p-3 font-medium">
-    <span className="inline-flex items-center gap-1">
-      {label}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
-        </TooltipTrigger>
-        <TooltipContent
-          side="top"
-          className="max-w-[280px] text-xs font-normal normal-case tracking-normal"
-        >
-          <p>{tooltip}</p>
-        </TooltipContent>
-      </Tooltip>
-    </span>
-  </th>
 );
 
 type FundRow = {
@@ -549,15 +529,13 @@ export default function FundsConfig() {
         /* ── Active Funds ── */
         <div className="space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-0 sm:max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search fund, manager, CIK…"
-                value={fundSearch}
-                onChange={(e) => setFundSearch(e.target.value)}
-                className="pl-8 bg-card border-border"
-              />
-            </div>
+            <SearchInput
+              label="Search fund, manager, CIK"
+              size="sm"
+              value={fundSearch}
+              onChange={(e) => setFundSearch(e.target.value)}
+              wrapperClassName="flex-1 min-w-0 sm:max-w-sm"
+            />
             <span className="text-xs text-muted-foreground">
               {filteredFunds.length} / {funds.length} funds
             </span>
@@ -580,9 +558,7 @@ export default function FundsConfig() {
           </div>
 
           {fundsLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-            </div>
+            <LoadingState message="Loading…" size="sm" />
           ) : (
             <>
               {/* Mobile: card list */}
@@ -711,6 +687,7 @@ export default function FundsConfig() {
                                     className="h-7 w-7 text-positive hover:text-positive hover:bg-positive/10"
                                     onClick={saveEdit}
                                     title="Save"
+                                    aria-label="Save"
                                     disabled={!isEditDraftValid()}
                                   >
                                     <Check className="h-3.5 w-3.5" />
@@ -721,6 +698,7 @@ export default function FundsConfig() {
                                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                     onClick={cancelEdit}
                                     title="Cancel"
+                                    aria-label="Cancel"
                                   >
                                     <X className="h-3.5 w-3.5" />
                                   </Button>
@@ -808,15 +786,13 @@ export default function FundsConfig() {
         /* ── Excluded Funds ── */
         <div className="space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-0 sm:max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search excluded fund, manager, URL…"
-                value={excludedSearch}
-                onChange={(e) => setExcludedSearch(e.target.value)}
-                className="pl-8 bg-card border-border"
-              />
-            </div>
+            <SearchInput
+              label="Search excluded fund, manager, URL"
+              size="sm"
+              value={excludedSearch}
+              onChange={(e) => setExcludedSearch(e.target.value)}
+              wrapperClassName="flex-1 min-w-0 sm:max-w-sm"
+            />
             <span className="text-xs text-muted-foreground">
               {filteredExcluded.length} / {excludedFunds.length} excluded
             </span>
@@ -830,9 +806,7 @@ export default function FundsConfig() {
           </div>
 
           {excludedLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-            </div>
+            <LoadingState message="Loading…" size="sm" />
           ) : filteredExcluded.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
               No excluded funds found.

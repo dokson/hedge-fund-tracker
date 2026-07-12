@@ -1,6 +1,7 @@
 import Papa from "papaparse";
 import { DATABASE_URL, IS_GH_PAGES_MODE, BASE_PATH } from "./config";
 import { parseQuarters, type Quarter } from "./quarters";
+import { withSmartScores } from "./smartScore";
 
 export type { Quarter } from "./quarters";
 
@@ -199,6 +200,11 @@ export interface StockQuarterAnalysis {
   ownershipDeltaAvg: number;
   fundConcentrationAvg: number;
   delta: number; // percentage or Infinity for all-new
+  /** On-the-fly 1-10 institutional composite (see lib/smartScore); set by the quarter loaders. */
+  smartScore?: number;
+  scoreBreadth?: number | null;
+  scoreMomentum?: number | null;
+  scoreConviction?: number | null;
 }
 
 // ---------- CSV fetch + parse helper ----------
@@ -260,7 +266,7 @@ export function formatValue(n: number): string {
 
 export function formatPct(n: number, showSign = false): string {
   if (!isFinite(n)) return "NEW";
-  const sign = showSign && n > 0 ? "+" : "";
+  const sign = showSign && n >= 0 ? "+" : "";
   return `${sign}${n.toFixed(1)}%`;
 }
 
@@ -679,25 +685,27 @@ export async function fetchQuarterAnalysis(
     Delta?: number;
   }
   const raw = (await response.json()) as RawAnalysisRow[];
-  return raw.map((r) => ({
-    ticker: r.Ticker ?? "",
-    company: r.Company ?? "",
-    totalValue: r.Total_Value ?? 0,
-    totalDeltaValue: r.Total_Delta_Value ?? 0,
-    maxPortfolioPct: r.Max_Portfolio_Pct ?? 0,
-    avgPortfolioPct: r.Avg_Portfolio_Pct ?? 0,
-    buyerCount: r.Buyer_Count ?? 0,
-    sellerCount: r.Seller_Count ?? 0,
-    holderCount: r.Holder_Count ?? 0,
-    newHolderCount: r.New_Holder_Count ?? 0,
-    closeCount: r.Close_Count ?? 0,
-    highConvictionCount: r.High_Conviction_Count ?? 0,
-    netBuyers: r.Net_Buyers ?? 0,
-    buyerSellerRatio: r.Buyer_Seller_Ratio ?? 0,
-    ownershipDeltaAvg: r.Ownership_Delta_Avg ?? 0,
-    fundConcentrationAvg: r.Avg_Fund_Concentration ?? 0,
-    delta: r.Delta ?? 0,
-  }));
+  return withSmartScores(
+    raw.map((r) => ({
+      ticker: r.Ticker ?? "",
+      company: r.Company ?? "",
+      totalValue: r.Total_Value ?? 0,
+      totalDeltaValue: r.Total_Delta_Value ?? 0,
+      maxPortfolioPct: r.Max_Portfolio_Pct ?? 0,
+      avgPortfolioPct: r.Avg_Portfolio_Pct ?? 0,
+      buyerCount: r.Buyer_Count ?? 0,
+      sellerCount: r.Seller_Count ?? 0,
+      holderCount: r.Holder_Count ?? 0,
+      newHolderCount: r.New_Holder_Count ?? 0,
+      closeCount: r.Close_Count ?? 0,
+      highConvictionCount: r.High_Conviction_Count ?? 0,
+      netBuyers: r.Net_Buyers ?? 0,
+      buyerSellerRatio: r.Buyer_Seller_Ratio ?? 0,
+      ownershipDeltaAvg: r.Ownership_Delta_Avg ?? 0,
+      fundConcentrationAvg: r.Avg_Fund_Concentration ?? 0,
+      delta: r.Delta ?? 0,
+    })),
+  );
 }
 
 /**
@@ -1013,8 +1021,10 @@ export async function runQuarterAnalysis(
       });
     }
 
-    // Steps 3 & 4: fund flags + stock-level aggregation + derived metrics.
-    const results = aggregateStockLevel([...fundTickerMap.values()]);
+    // Steps 3 & 4: fund flags + stock-level aggregation + derived metrics,
+    // then the on-the-fly smart score (kept OUT of the golden-pinned
+    // aggregateStockLevel so the Python/TS equivalence fixture is untouched).
+    const results = withSmartScores(aggregateStockLevel([...fundTickerMap.values()]));
 
     onProgress?.("Done", 100);
     return results;
@@ -1026,6 +1036,101 @@ export async function runQuarterAnalysis(
 /**
  * Returns all fund-level holdings for a specific ticker in a quarter.
  */
+/**
+ * Overlays recent non-quarterly filings (13D/G, Form 4) onto the 13F holdings
+ * of one ticker — the client-side mirror of the backend's latest-quarter merge.
+ * Fresher share counts replace stale 13F rows, zero-share filings close them,
+ * and funds appearing only via a non-quarterly filing gain a NEW row.
+ */
+export function mergeNonQuarterlyHoldings(
+  holdings: FundTickerHolding[],
+  nqFilings: EnrichedNQFiling[],
+): FundTickerHolding[] {
+  const merged = new Map(holdings.map((h) => [h.fund, { ...h }]));
+
+  for (const filing of nqFilings) {
+    const existing = merged.get(filing.fund);
+
+    if (existing && existing.shares > 0) {
+      // The fund filed a 13F this quarter: recompute the delta against it.
+      if (filing.shares === 0) {
+        merged.set(filing.fund, {
+          ...existing,
+          shares: 0,
+          deltaShares: -existing.shares,
+          value: 0,
+          deltaValue: -existing.value,
+          delta: "CLOSE",
+          isBuyer: false,
+          isSeller: true,
+          isHolder: false,
+          isNew: false,
+          isClosed: true,
+        });
+        continue;
+      }
+      const value = parseValueString(filing.value);
+      const deltaShares = filing.shares - existing.shares;
+      const deltaPct = (deltaShares / existing.shares) * 100;
+      merged.set(filing.fund, {
+        ...existing,
+        shares: filing.shares,
+        deltaShares,
+        value,
+        deltaValue: value - existing.value,
+        sharesDeltaPct: deltaPct,
+        delta: formatPct(deltaPct, true),
+        isBuyer: deltaShares > 0,
+        isSeller: deltaShares < 0,
+        isHolder: true,
+        isNew: false,
+        isClosed: false,
+      });
+      continue;
+    }
+
+    // No 13F row this quarter: the enrichment already computed the delta
+    // against the fund's OWN latest filed quarter — trust it (a fund that has
+    // not filed yet is not opening a NEW position when it tops up an old one).
+    const held = filing.quarterShares !== null && filing.quarterShares > 0;
+    if (filing.shares === 0 && !held) continue;
+
+    const value = parseValueString(filing.value);
+    const isNew = !held;
+    const isClosed = filing.shares === 0;
+    const deltaShares = filing.deltaShares ?? filing.shares;
+    const deltaValue = isNew || filing.shares === 0 ? value : (value * deltaShares) / filing.shares;
+    merged.set(filing.fund, {
+      fund: filing.fund,
+      ticker: filing.ticker,
+      company: filing.company,
+      shares: filing.shares,
+      deltaShares,
+      value,
+      deltaValue,
+      portfolioPct: filing.quarterPortfolioPct ?? filing.estimatedPortfolioPct ?? 0,
+      portfolioPctRank: 0,
+      sharesDeltaPct: filing.deltaPct ?? (isNew ? 100 : 0),
+      fundConcentrationRatio: 0,
+      delta: isClosed
+        ? "CLOSE"
+        : isNew
+          ? "NEW"
+          : filing.deltaPct !== null
+            ? formatPct(filing.deltaPct, true)
+            : "NO CHANGE",
+      isBuyer: !isClosed && deltaShares > 0,
+      isSeller: isClosed || deltaShares < 0,
+      isHolder: !isClosed,
+      isNew,
+      isClosed,
+      isHighConviction: false,
+    });
+  }
+
+  return [...merged.values()];
+}
+
 export async function runStockAnalysis(
   ticker: string,
   quarter: string,
@@ -1119,6 +1224,18 @@ export async function runStockAnalysis(
         `Scanned ${Math.min(i + batchSize, fundNames.length)}/${fundNames.length} funds`,
         pct,
       );
+    }
+
+    // The latest quarter's view overlays fresher 13D/G + Form 4 activity, so a
+    // stock bought after the last 13F round still shows its holders (mirrors
+    // the backend's latest-quarter merge).
+    const quarters = await getAvailableQuarters();
+    if (quarter === quarters.at(-1)) {
+      onProgress?.("Merging non-quarterly filings…", 96);
+      const nqFilings = (await getEnrichedNQFilings()).filter((f) => f.ticker === ticker);
+      const merged = mergeNonQuarterlyHoldings(results, nqFilings);
+      onProgress?.("Done", 100);
+      return merged.sort((a, b) => b.shares - a.shares);
     }
 
     onProgress?.("Done", 100);
@@ -1224,6 +1341,70 @@ export interface EnrichedNQFiling extends NonQuarterlyFiling {
   deltaType: "NEW" | "INCREASE" | "DECREASE" | "CLOSED" | "NO CHANGE" | "UNKNOWN";
   deltaPct: number | null; // percentage change vs quarter
   quarterPortfolioPct: number | null;
+  /** For NEW positions: weight over the fund's merged portfolio (13F total + this position). */
+  estimatedPortfolioPct: number | null;
+}
+
+/** A fund's latest-13F view: per-ticker positions plus the filing's declared total value. */
+export interface FundQuarterSnapshot {
+  tickerMap: Map<string, { shares: number; portfolioPct: number }>;
+  totalValue: number;
+}
+
+/**
+ * Computes the delta of one non-quarterly filing against the fund's latest 13F
+ * snapshot. NEW positions get an estimated portfolio weight over the merged
+ * total (mirrors the backend, which recomputes weights after the merge).
+ */
+export function enrichNQFiling(
+  f: NonQuarterlyFiling,
+  fundData: FundQuarterSnapshot | undefined,
+): EnrichedNQFiling {
+  if (!fundData) {
+    return {
+      ...f,
+      quarterShares: 0,
+      deltaShares: f.shares,
+      deltaType: f.shares === 0 ? "CLOSED" : "NEW",
+      deltaPct: null,
+      quarterPortfolioPct: null,
+      estimatedPortfolioPct: null,
+    };
+  }
+
+  const qHolding = fundData.tickerMap.get(f.ticker);
+  const qShares = qHolding ? qHolding.shares : 0;
+  const qPct = qHolding ? qHolding.portfolioPct : null;
+  const delta = f.shares - qShares;
+
+  let deltaType: EnrichedNQFiling["deltaType"];
+  if (f.shares === 0) {
+    deltaType = "CLOSED";
+  } else if (qShares === 0) {
+    deltaType = "NEW";
+  } else if (delta > 0) {
+    deltaType = "INCREASE";
+  } else if (delta < 0) {
+    deltaType = "DECREASE";
+  } else {
+    deltaType = "NO CHANGE";
+  }
+
+  let estimatedPortfolioPct: number | null = null;
+  if (deltaType === "NEW" && fundData.totalValue > 0) {
+    const valueNum = parseValueString(f.value);
+    estimatedPortfolioPct = (valueNum / (fundData.totalValue + valueNum)) * 100;
+  }
+
+  return {
+    ...f,
+    quarterShares: qShares,
+    deltaShares: delta,
+    deltaType,
+    deltaPct: qShares > 0 ? (delta / qShares) * 100 : null,
+    quarterPortfolioPct: qPct,
+    estimatedPortfolioPct,
+  };
 }
 
 /**
@@ -1260,11 +1441,11 @@ export async function getEnrichedNQFilings(
 
     // Load quarterly holdings for each fund using its OWN latest quarter (which may be
     // older than the overall latest quarter, e.g. early in a Q1 13F filing window).
-    // Map: fund → ticker → { shares, portfolioPct } (aggregated across CUSIPs)
-    const fundQuarterlyMap = new Map<
-      string,
-      Map<string, { shares: number; portfolioPct: number }>
-    >();
+    const emptySnapshot = (): FundQuarterSnapshot => ({
+      tickerMap: new Map(),
+      totalValue: 0,
+    });
+    const fundQuarterlyMap = new Map<string, FundQuarterSnapshot>();
     const batchSize = 10;
 
     for (let i = 0; i < uniqueFunds.length; i += batchSize) {
@@ -1275,35 +1456,34 @@ export async function getEnrichedNQFilings(
             const fundQuarters = await getFundAvailableQuarters(fundName);
             const fundLatest = fundQuarters[fundQuarters.length - 1];
             if (!fundLatest) {
-              return {
-                fundName,
-                tickerMap: new Map<string, { shares: number; portfolioPct: number }>(),
-              };
+              return { fundName, snapshot: emptySnapshot() };
             }
             const holdings = await getFundQuarterlyHoldings(fundLatest, fundName);
-            const tickerMap = new Map<string, { shares: number; portfolioPct: number }>();
+            const snapshot = emptySnapshot();
             for (const h of holdings) {
-              if (h.cusip !== "Total" && h.ticker) {
-                const existing = tickerMap.get(h.ticker);
+              if (h.cusip === "Total") {
+                snapshot.totalValue = parseValueString(h.value);
+              } else if (h.ticker) {
+                const existing = snapshot.tickerMap.get(h.ticker);
                 if (existing) {
                   existing.shares += h.shares;
                   existing.portfolioPct += h.portfolioPct;
                 } else {
-                  tickerMap.set(h.ticker, { shares: h.shares, portfolioPct: h.portfolioPct });
+                  snapshot.tickerMap.set(h.ticker, {
+                    shares: h.shares,
+                    portfolioPct: h.portfolioPct,
+                  });
                 }
               }
             }
-            return { fundName, tickerMap };
+            return { fundName, snapshot };
           } catch {
-            return {
-              fundName,
-              tickerMap: new Map<string, { shares: number; portfolioPct: number }>(),
-            };
+            return { fundName, snapshot: emptySnapshot() };
           }
         }),
       );
-      for (const { fundName, tickerMap } of results) {
-        fundQuarterlyMap.set(fundName, tickerMap);
+      for (const { fundName, snapshot } of results) {
+        fundQuarterlyMap.set(fundName, snapshot);
       }
       const pct = Math.round(15 + (i / uniqueFunds.length) * 80);
       onProgress?.(
@@ -1317,51 +1497,7 @@ export async function getEnrichedNQFilings(
     // Enrich each filing, filtering out NO CHANGE (delta = 0%)
     const enriched: EnrichedNQFiling[] = [];
     for (const f of filings) {
-      const tickerMap = fundQuarterlyMap.get(f.fund);
-      let entry: EnrichedNQFiling;
-
-      if (!tickerMap) {
-        entry = {
-          ...f,
-          quarterShares: 0,
-          deltaShares: f.shares,
-          deltaType: f.shares === 0 ? ("CLOSED" as const) : ("NEW" as const),
-          deltaPct: null,
-          quarterPortfolioPct: null,
-        };
-      } else {
-        const qHolding = tickerMap.get(f.ticker);
-        const qShares = qHolding ? qHolding.shares : 0;
-        const qPct = qHolding ? qHolding.portfolioPct : null;
-        const nqShares = f.shares;
-        const delta = nqShares - qShares;
-
-        let deltaType: EnrichedNQFiling["deltaType"];
-        if (nqShares === 0) {
-          deltaType = "CLOSED";
-        } else if (qShares === 0) {
-          deltaType = "NEW";
-        } else if (delta > 0) {
-          deltaType = "INCREASE";
-        } else if (delta < 0) {
-          deltaType = "DECREASE";
-        } else {
-          deltaType = "NO CHANGE";
-        }
-
-        const deltaPct = qShares > 0 ? (delta / qShares) * 100 : null;
-
-        entry = {
-          ...f,
-          quarterShares: qShares,
-          deltaShares: delta,
-          deltaType,
-          deltaPct,
-          quarterPortfolioPct: qPct,
-        };
-      }
-
-      // Filter out NO CHANGE positions (delta = 0%)
+      const entry = enrichNQFiling(f, fundQuarterlyMap.get(f.fund));
       if (entry.deltaType !== "NO CHANGE") {
         enriched.push(entry);
       }

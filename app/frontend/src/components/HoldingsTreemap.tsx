@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { formatPct } from "@/lib/dataService";
 
 function formatTreemapValue(n: number): string {
   const abs = Math.abs(n);
@@ -76,11 +77,7 @@ function TreemapTooltip({
   const translate = `translate(${flipX ? "-100%" : "0"}, ${flipY ? "-100%" : "0"})`;
 
   const noChange = !isNew && item.deltaPct === 0;
-  const deltaLabel = isNew
-    ? "NEW"
-    : noChange
-      ? "NO CHANGE"
-      : `${item.deltaPct > 0 ? "+" : ""}${item.deltaPct.toFixed(1)}%`;
+  const deltaLabel = isNew ? "NEW" : noChange ? "NO CHANGE" : formatPct(item.deltaPct, true);
   const deltaTone = isNew
     ? "text-[hsl(var(--positive))]"
     : down

@@ -14,7 +14,7 @@ cd hedge-fund-tracker
 
 # 2. Install
 pipenv install --dev
-cd app/frontend && npm install --legacy-peer-deps && cd ../..
+cd app/frontend && npm install && cd ../..
 pipenv run pre-commit install         # auto-runs lint on commit
 
 # 3. Branch

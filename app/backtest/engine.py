@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 
 import pandas as pd
 
+from app.analysis.smart_scores import score_core
 from app.analysis.stocks import (
     _aggregate_stock_data,
     _calculate_derived_metrics,
@@ -91,6 +92,9 @@ def build_screen(
     stock qualifies.
     """
     df = (analysis_fn or _prepare_quarter_pit)(quarter)
+    if spec.sort_column == "Smart_Score" and "Smart_Score" not in df.columns:
+        # Derived lazily from the frame itself (works for injected frames too).
+        df = df.assign(Smart_Score=score_core(df))
     selected = select_screen(df, spec, threshold=threshold, top_n=top_n)
     tickers = [str(t) for t in selected["Ticker"].tolist()]
     weights = [float(w) for w in selected["Avg_Portfolio_Pct"].tolist()]
