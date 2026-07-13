@@ -81,7 +81,7 @@
     "jsdom": "^29.1.1",
     "oxlint": "^1.73.0",
     "oxlint-tsgolint": "^0.24.0",
-    "postcss": "^8.5.17",
+    "postcss": "^8.5.19",
     "prettier": "^3.9.5",
     "typescript": "^7.0.2",
     "vite": "^8.1.4",
