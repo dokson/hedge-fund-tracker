@@ -580,4 +580,4 @@ See [LICENSE](LICENSE) for the code terms and [LICENSE-DOCS](LICENSE-DOCS) for t
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=dokson/hedge-fund-tracker)](https://www.star-history.com/?repos=dokson/hedge-fund-tracker)
+[![Star History Chart](https://api.star-history.com/chart?repos=dokson/hedge-fund-tracker&type=date&legend=top-left&sealed_token=0KV9GWxIUSvM8AmXhsEoRw0bTbOC9tdRmhfAZskDt2TIIcq0Z2CztCb8v_GWCwWhFdqRCU4aUmFbI82raH7Lrh24xNy8Q63KxIAF5ZP_gLm3dROs3hp6lw)](https://www.star-history.com/?repos=dokson%2Fhedge-fund-tracker&type=date&legend=top-left)
