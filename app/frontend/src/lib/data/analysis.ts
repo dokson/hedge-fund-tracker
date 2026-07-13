@@ -53,6 +53,15 @@ export async function fetchQuarterAnalysis(
   const body: unknown = await response.json();
   if (!Array.isArray(body)) throw new Error("Malformed quarter analysis: expected an array");
   const raw = body as RawAnalysisRow[];
+  // JSON has no ±Infinity: the backend serializer nulls it out. An all-new
+  // stock's delta IS Infinity (same rule as aggregateStockLevel) — rebuild it
+  // instead of flattening to 0%, which would mislabel NEW positions.
+  const rebuildDelta = (r: RawAnalysisRow): number => {
+    if (r.Delta != null) return r.Delta;
+    const allNew =
+      (r.New_Holder_Count ?? 0) === (r.Holder_Count ?? 0) && (r.Close_Count ?? 0) === 0;
+    return allNew ? Infinity : 0;
+  };
   return withSmartScores(
     raw.map((r) => ({
       ticker: r.Ticker ?? "",
@@ -71,7 +80,7 @@ export async function fetchQuarterAnalysis(
       buyerSellerRatio: r.Buyer_Seller_Ratio ?? 0,
       ownershipDeltaAvg: r.Ownership_Delta_Avg ?? 0,
       fundConcentrationAvg: r.Avg_Fund_Concentration ?? 0,
-      delta: r.Delta ?? 0,
+      delta: rebuildDelta(r),
     })),
   );
 }

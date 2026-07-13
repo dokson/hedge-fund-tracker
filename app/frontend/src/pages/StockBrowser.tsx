@@ -756,19 +756,19 @@ export default function StockBrowser() {
                       <InfoTooltip text="Composite 1-10 score: the mean of the Breadth, Momentum and Conviction percentiles, rescaled. Computed on the current quarter's merged view (13F + recent 13D/G and Form 4)." />
                     </span>
                   </span>
-                  <span className="text-left p-3 pl-4 font-medium border-l border-border/50">
+                  <span className="text-left p-3 pl-4 font-medium">
                     <span className="inline-flex items-center gap-1">
                       Breadth
                       <InfoTooltip text="Percentile rank of how many tracked funds hold the stock (Holder Count) — 0 to 100." />
                     </span>
                   </span>
-                  <span className="text-left p-3 pl-4 font-medium border-l border-border/50">
+                  <span className="text-left p-3 pl-4 font-medium">
                     <span className="inline-flex items-center gap-1">
                       Momentum
                       <InfoTooltip text="Percentile rank of net institutional buying pressure (Net Buyers) — 0 to 100." />
                     </span>
                   </span>
-                  <span className="text-left p-3 pl-4 font-medium border-l border-border/50">
+                  <span className="text-left p-3 pl-4 font-medium">
                     <span className="inline-flex items-center gap-1">
                       Conviction
                       <InfoTooltip text="Percentile rank of average portfolio allocation across holders (Avg Portfolio %), plus a capped bonus per high-conviction new entry — 0 to 100." />

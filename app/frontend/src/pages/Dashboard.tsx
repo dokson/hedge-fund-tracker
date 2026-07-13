@@ -495,7 +495,7 @@ export default function Dashboard() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
+                  <tr className="border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                     <th className="text-left p-3 font-medium">Ticker</th>
                     <th className="text-left p-3 font-medium">Company</th>
                     <th className="text-left p-3 font-medium">Sector</th>
@@ -519,7 +519,7 @@ export default function Dashboard() {
                     </th>
                     <th
                       className="text-right p-3 font-medium"
-                      title="Position weight in the fund's last 13F portfolio"
+                      title="Position weight in the fund's last 13F portfolio; ~ marks an estimated weight for positions known only from a 13D/G or Form 4 filing"
                     >
                       Portfolio %
                     </th>

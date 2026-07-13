@@ -39,6 +39,10 @@ export function Delta({ value, mode, format, size = "md", className = "" }: Delt
   let display: string;
   if (format) {
     display = format(value);
+  } else if (isZero) {
+    // A literal zero is "no activity", not a +0.0% move — label it like the
+    // categorical NO CHANGE state the filing tables use.
+    display = "NO CHANGE";
   } else if (mode === "currency") {
     display = `${isPositive && !isInfinity ? "+" : ""}${formatValue(value)}`;
   } else {
@@ -49,7 +53,7 @@ export function Delta({ value, mode, format, size = "md", className = "" }: Delt
     <span
       className={`inline-flex items-center gap-1 font-mono ${textSize} ${colorClass} ${className}`}
     >
-      <Icon className={iconSize} aria-hidden="true" />
+      {!isZero && <Icon className={iconSize} aria-hidden="true" />}
       {display}
     </span>
   );

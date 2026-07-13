@@ -52,7 +52,9 @@ function faqStaticSeo(enabled: boolean): Plugin {
   return {
     name: "faq-static-seo",
     apply: "build",
-    closeBundle() {
+    // writeBundle (not closeBundle): with rolldown-vite the bundle is not yet
+    // flushed to disk when closeBundle fires, so dist/index.html would ENOENT.
+    writeBundle() {
       if (!enabled) return;
       const distDir = path.resolve(__dirname, "dist");
       const template = readFileSync(path.resolve(distDir, "index.html"), "utf-8");

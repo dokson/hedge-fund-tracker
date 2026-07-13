@@ -57,7 +57,6 @@ export interface RawModel {
 export interface RawSectorHierarchy {
   Sector: string;
   Industry: string;
-  Count: string;
 }
 
 export interface RawPerformanceRow {
@@ -163,7 +162,6 @@ export interface AIModel {
 export interface SectorHierarchyEntry {
   sector: string;
   industry: string;
-  count: number;
 }
 
 // ---------- Analysis types ----------

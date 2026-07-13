@@ -26,9 +26,9 @@ const STOCKS_CSV = `"CUSIP","Ticker","Company","Industry"
 "00000000A","BLANK","No Industry Co",""
 `;
 
-const HIERARCHY_CSV = `"Sector","Industry","Count"
-"Technology","Consumer Electronics","2"
-"Technology","Software - Infrastructure","3"
+const HIERARCHY_CSV = `"Sector","Industry"
+"Technology","Consumer Electronics"
+"Technology","Software - Infrastructure"
 `;
 
 describe("getStocks", () => {

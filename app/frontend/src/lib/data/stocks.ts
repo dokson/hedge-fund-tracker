@@ -34,12 +34,10 @@ export async function getSectorHierarchy(): Promise<SectorHierarchyEntry[]> {
     const raw = await fetchCSV<RawSectorHierarchy>("/database/sector_hierarchy.csv", [
       "Sector",
       "Industry",
-      "Count",
     ] satisfies readonly (keyof RawSectorHierarchy)[]);
     return raw.map((r) => ({
       sector: r.Sector,
       industry: r.Industry,
-      count: parseInt(r.Count, 10) || 0,
     }));
   });
 }

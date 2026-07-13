@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
+  fetchQuarterAnalysis,
   runQuarterAnalysis,
   getQuarterFundList,
   formatValue,
@@ -15,6 +16,7 @@ import { performanceFor } from "@/lib/routes";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { TickerLink, CompanyLink } from "@/components/EntityLinks";
 import { Delta } from "@/components/Delta";
+import { SmartScoreBadge } from "@/components/SmartScoreBadge";
 import {
   Select,
   SelectContent,
@@ -35,13 +37,29 @@ import { StarredFilterToggle } from "@/components/StarredFilterToggle";
 
 type SortKey = NumericStockKey;
 
+type CellAlign = "left" | "center" | "right";
+
+// Literal class lookup (a template like `text-${align}` is invisible to
+// Tailwind's scanner). Values default to center so figures sit under their
+// header label; the entity columns (Ticker/Company) stay left-aligned.
+const ALIGN_TEXT: Record<CellAlign, string> = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+};
+const ALIGN_FLEX: Record<CellAlign, string> = {
+  left: "",
+  center: "flex justify-center",
+  right: "flex justify-end",
+};
+
 function SortableHeader({
   label,
   sortKey,
   currentKey,
   currentDir,
   onSort,
-  align = "right",
+  align = "center",
   tooltip,
 }: {
   label: string;
@@ -49,13 +67,13 @@ function SortableHeader({
   currentKey: SortKey;
   currentDir: "asc" | "desc";
   onSort: (k: SortKey) => void;
-  align?: "left" | "right";
+  align?: CellAlign;
   tooltip?: string;
 }) {
   const indicator = currentKey === sortKey ? (currentDir === "desc" ? " ↓" : " ↑") : "";
   return (
     <th
-      className={`text-${align} p-3 font-medium cursor-pointer hover:text-foreground`}
+      className={`${ALIGN_TEXT[align]} p-3 font-medium cursor-pointer hover:text-foreground`}
       onClick={() => onSort(sortKey)}
     >
       <span className="inline-flex items-center gap-1">
@@ -78,18 +96,20 @@ function AnalysisTable({
   disableFilters = false,
   deltaSign,
 }: {
-  data: StockQuarterAnalysis[];
+  data: readonly StockQuarterAnalysis[];
   defaultSort: SortKey;
   defaultDir?: "asc" | "desc";
   columns: {
     key: SortKey;
     label: string;
-    align?: "left" | "right";
+    align?: CellAlign;
     format?: (v: number, row: StockQuarterAnalysis) => string;
     colorFn?: (v: number) => string;
     tooltip?: string;
     /** Render as Delta cell (icon + value) instead of plain colored text. */
     deltaMode?: "currency" | "percent";
+    /** Full custom cell (e.g. the Smart Score badge); wins over format/deltaMode. */
+    render?: (row: StockQuarterAnalysis) => React.ReactNode;
   }[];
   defaultMinHolders?: number;
   defaultFilterInfinite?: boolean;
@@ -237,7 +257,9 @@ function AnalysisTable({
                       <div key={col.key} className="min-w-0">
                         <div className="metric-label truncate">{col.label}</div>
                         <div className="mt-0.5 font-mono text-sm">
-                          {col.deltaMode && typeof rawVal === "number" ? (
+                          {col.render ? (
+                            col.render(s)
+                          ) : col.deltaMode && typeof rawVal === "number" ? (
                             <Delta value={rawVal} mode={col.deltaMode} />
                           ) : (
                             <span
@@ -276,7 +298,7 @@ function AnalysisTable({
                     currentKey={sortKey}
                     currentDir={sortDir}
                     onSort={toggleSort}
-                    align={col.align || "right"}
+                    align={col.align ?? "center"}
                     tooltip={col.tooltip}
                   />
                 ))}
@@ -310,14 +332,19 @@ function AnalysisTable({
                       />
                     </td>
                     {columns.map((col) => {
+                      const align = col.align ?? "center";
                       const rawVal = s[col.key];
+                      if (col.render) {
+                        return (
+                          <td key={col.key} className={`p-3 ${ALIGN_TEXT[align]}`}>
+                            <div className={ALIGN_FLEX[align]}>{col.render(s)}</div>
+                          </td>
+                        );
+                      }
                       if (col.deltaMode && typeof rawVal === "number") {
                         return (
-                          <td
-                            key={col.key}
-                            className={`p-3 text-${col.align || "right"} font-mono`}
-                          >
-                            <div className={col.align === "right" ? "flex justify-end" : ""}>
+                          <td key={col.key} className={`p-3 ${ALIGN_TEXT[align]} font-mono`}>
+                            <div className={ALIGN_FLEX[align]}>
                               <Delta value={rawVal} mode={col.deltaMode} />
                             </div>
                           </td>
@@ -328,7 +355,7 @@ function AnalysisTable({
                       return (
                         <td
                           key={col.key}
-                          className={`p-3 text-${col.align || "right"} font-mono ${colorClass}`}
+                          className={`p-3 ${ALIGN_TEXT[align]} font-mono ${colorClass}`}
                         >
                           {display}
                         </td>
@@ -347,7 +374,7 @@ function AnalysisTable({
 
 const netColor = (v: number) => (v > 0 ? "delta-positive" : v < 0 ? "delta-negative" : "");
 
-const DEFAULT_TAB = "avgportfolio";
+const DEFAULT_TAB = "smartscore";
 
 export default function QuarterlyTrends() {
   const { quarters, latestQuarter } = useAvailableQuarters();
@@ -377,14 +404,21 @@ export default function QuarterlyTrends() {
 
   const activeFundFilter = filterStarredFunds && starredFunds.size > 0 ? starredFunds : undefined;
 
+  // Unfiltered view: same loader AND same query key as the stock page
+  // (backend frame first, client fallback), so the smart score a stock shows
+  // here is identical to its detail-page badge. The starred-funds filter is
+  // client-only, so that variant keeps its own key and computation.
   const { data: rawData = [], isLoading } = useQuery({
-    queryKey: [
-      "quarterAnalysis",
-      quarter,
-      activeFundFilter ? [...activeFundFilter].sort().join(",") : "all",
-    ],
-    queryFn: () =>
-      runQuarterAnalysis(quarter!, (msg, pct) => setProgress({ msg, pct }), activeFundFilter),
+    queryKey: activeFundFilter
+      ? ["quarterAnalysis", quarter, [...activeFundFilter].sort().join(",")]
+      : ["quarterAnalysis", quarter],
+    queryFn: async () => {
+      const onProgress = (msg: string, pct: number) => setProgress({ msg, pct });
+      if (activeFundFilter) return runQuarterAnalysis(quarter!, onProgress, activeFundFilter);
+      return (
+        (await fetchQuarterAnalysis(quarter!)) ?? (await runQuarterAnalysis(quarter!, onProgress))
+      );
+    },
     enabled: !!quarter,
     staleTime: 10 * 60 * 1000,
   });
@@ -536,7 +570,12 @@ export default function QuarterlyTrends() {
                 {
                   key: "smartScore",
                   label: "Score",
-                  format: (v) => (Number.isFinite(v) ? v.toFixed(1) : "—"),
+                  render: (row) =>
+                    row.smartScore != null ? (
+                      <SmartScoreBadge score={row.smartScore} size="sm" />
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    ),
                   tooltip:
                     "Composite 1-10 smart score: mean of the Breadth, Momentum and Conviction percentiles (institutional signals only).",
                 },
