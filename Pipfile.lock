@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "1778782f83bcb5e9a172127e58083a50e89ef5ddadbe403497098cd8f6e0daa1"
+            "sha256": "63d7d3d18b16845ecfdd6c34eca466b20e4ba3c1f3aecdfb3afffc1e5560a05d"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -2162,11 +2162,11 @@
     "develop": {
         "anyio": {
             "hashes": [
-                "sha256:4e5533c5b8ff0a24f5d7a176cbe6877129cd183893f66b537f8f227d10527d72",
-                "sha256:8d648a3544c1a700e3ff78615cd679e4c5c3f149904287e73687b2596963629e"
+                "sha256:9f505dda5ac9f0c8309b5e8bd445a8c2bf7246f3ce950121e45ea15bc41d1494",
+                "sha256:cfa139f3ed1a23ee8f88a145ddb5ac7605b8bbfd8592baacd7ce3d8bb4313c7f"
             ],
             "markers": "python_version >= '3.10'",
-            "version": "==4.14.1"
+            "version": "==4.14.2"
         },
         "ast-serialize": {
             "hashes": [
@@ -2339,20 +2339,20 @@
         },
         "httpcore2": {
             "hashes": [
-                "sha256:5ce35188de461d31e8d000bfb8ef8bf22c6c16587a211e5571deaa5e9bdf842a",
-                "sha256:88aa170137c17328d5ac44234f9fd10706466d5fb347f3edac4d39b91137b09d"
+                "sha256:1452f589fe23f55b44546cd884294c41a29330af902bc0b71a761fd52d18f92b",
+                "sha256:6dc0fedf329a52a990930a5579edfebaea81118ea700ea0dd7de2b5e5be49efc"
             ],
             "markers": "python_version >= '3.10'",
-            "version": "==2.5.0"
+            "version": "==2.7.0"
         },
         "httpx2": {
             "hashes": [
-                "sha256:3d2d4d9cf4b61f1a1f46a95947cfdb47e80cb56a2f91c6256ac8f58e4891df41",
-                "sha256:e2df9cb4611021527ff8a675b1c320b610a2ec397acc8d6fe6e91df2d9b33c29"
+                "sha256:8b30709aed5c8465b0dd3b95c09ce301c8f79e7e7a2d00ab0af551e0d0375b07",
+                "sha256:ed2a2719c696789e09493bd8e2bec3d8bd925cc6e26b68389ec25ade132f7bf4"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==2.5.0"
+            "version": "==2.7.0"
         },
         "identify": {
             "hashes": [
