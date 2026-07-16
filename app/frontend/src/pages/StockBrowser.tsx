@@ -46,8 +46,7 @@ const VALID_TABS = ["score", "starred", "byvalue", "sectors", "alphabetical"] as
 const SCORE_GRID_COLS =
   "grid grid-cols-[3rem_5rem_minmax(0,1fr)_6.5rem_minmax(4.5rem,7rem)_minmax(4.5rem,7rem)_minmax(4.5rem,7rem)]";
 
-// Shared column template for the windowed "By Value" grid so the sticky header
-// and every virtualized row align. Kept as one literal so Tailwind emits it.
+// Same rationale as SCORE_GRID_COLS.
 const VALUE_GRID_COLS =
   "grid grid-cols-[3rem_5rem_minmax(0,1fr)_minmax(6.5rem,auto)_minmax(6rem,auto)_4rem_4.5rem_8rem]";
 
@@ -216,9 +215,7 @@ export default function StockBrowser() {
   // least once. Once visited, they stay in the tree so switching tabs is instant.
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set([initialTab]));
 
-  // Two effects below sync local state with the URL (external system) — the
-  // canonical setState-in-effect use-case. Param consumption in tick 1 + the
-  // setActiveTab short-circuit guarantee no cascading renders.
+  // Syncs local state from the URL; guarded to avoid cascading renders.
   /* oxlint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const param = searchParams.get("industry");
@@ -292,14 +289,12 @@ export default function StockBrowser() {
     return new Set(sorted.slice(0, alphaReveal).map((s) => s.ticker));
   }, [quarterData, alphaReveal]);
 
-  // Starred stocks
   const starredStocks = useMemo(() => {
     return uniqueStocks
       .filter((s) => starred.has(s.ticker))
       .sort((a, b) => a.ticker.localeCompare(b.ticker));
   }, [uniqueStocks, starred]);
 
-  // Alphabetical filtering
   const filtered = useMemo(() => {
     let list = uniqueStocks;
     if (topTickersByValue && !search) {
@@ -517,7 +512,6 @@ export default function StockBrowser() {
           </TabsTrigger>
         </TabsList>
 
-        {/* ── Starred tab ── */}
         <TabsContent value="starred" className="space-y-4">
           {starredStocks.length === 0 ? (
             <EmptyState
@@ -559,7 +553,6 @@ export default function StockBrowser() {
           )}
         </TabsContent>
 
-        {/* ── Alphabetical tab ── */}
         <TabsContent value="alphabetical" className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
             <SearchInput
@@ -702,7 +695,6 @@ export default function StockBrowser() {
                 </p>
               </div>
 
-              {/* Mobile: windowed card list */}
               <VirtualList
                 className="md:hidden max-h-[70vh] pr-1"
                 items={scoreRanked}
@@ -742,7 +734,6 @@ export default function StockBrowser() {
                 )}
               />
 
-              {/* Desktop: windowed grid "table" */}
               <div className="surface overflow-hidden hidden md:block">
                 <div
                   className={`${SCORE_GRID_COLS} items-center border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider`}
@@ -904,7 +895,7 @@ export default function StockBrowser() {
                     )}
                   />
 
-                  {/* Desktop: windowed grid "table" (header outside the scroll area) */}
+                  {/* Header stays outside the scroll area. */}
                   <div className="surface overflow-hidden hidden md:block">
                     <div
                       className={`${VALUE_GRID_COLS} items-center border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider`}

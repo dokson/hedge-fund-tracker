@@ -256,6 +256,10 @@ def my_function():
 
 Not inline `"""description"""`. No exceptions.
 
+### Inline comments
+
+Default to no inline comments — clear naming should carry the WHAT. Only add one when the WHY is non-obvious: a hidden constraint, a subtle invariant, a workaround for a specific bug, behavior that would surprise a reader. Never restate what the next line already says, never leave stale/obvious `# TODO`s, and never reference the current task, PR, or issue number (that belongs in the commit message, not the code). Keep the ones you do write to a single short line — no comment blocks.
+
 ### Language
 
 All code, comments, docstrings, commit messages, and user-facing strings: **English only**.

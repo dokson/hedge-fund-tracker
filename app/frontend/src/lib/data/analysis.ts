@@ -134,7 +134,6 @@ export function aggregateStockLevel(holdings: FundTickerHolding[]): StockQuarter
       existing.newHolderCount += fth.isNew ? 1 : 0;
       existing.closeCount += fth.isClosed ? 1 : 0;
       existing.highConvictionCount += fth.isHighConviction ? 1 : 0;
-      // Accumulation velocity: only buyers who aren't new
       if (fth.isBuyer && !fth.isNew && fth.sharesDeltaPct !== 0) {
         existing._sumDeltaPct += fth.sharesDeltaPct;
         existing._countDeltaPct += 1;
@@ -215,7 +214,7 @@ export async function runQuarterAnalysis(
     const tickerNameMap = new Map(stocks.map((s) => [s.ticker, s.company]));
     onProgress?.(`Loading ${fundNames.length} funds…`, 10);
 
-    // Load all fund CSVs in parallel (batched to avoid rate limits)
+    // Batched to avoid rate limits.
     const batchSize = 20;
     const allHoldings: { fund: string; h: QuarterlyHolding }[] = [];
 
@@ -243,7 +242,6 @@ export async function runQuarterAnalysis(
 
     onProgress?.("Aggregating data…", 85);
 
-    // Step 1: Aggregate by Fund+Ticker (multiple CUSIPs → single entry)
     const fundTickerMap = new Map<string, FundTickerHolding>();
 
     for (const { fund, h } of allHoldings) {
@@ -282,8 +280,7 @@ export async function runQuarterAnalysis(
       }
     }
 
-    // Step 2: Calculate flags (replicates _calculate_fund_level_flags)
-    // First compute portfolio rank per fund
+    // Mirrors _calculate_fund_level_flags.
     const fundGroups = new Map<string, FundTickerHolding[]>();
     for (const fth of fundTickerMap.values()) {
       const arr = fundGroups.get(fth.fund) || [];
@@ -292,16 +289,13 @@ export async function runQuarterAnalysis(
     }
 
     for (const holdings of fundGroups.values()) {
-      // Sort by portfolioPct descending to assign rank
       const sorted = [...holdings].sort((a, b) => b.portfolioPct - a.portfolioPct);
-      // Fund concentration: sum of top 10 positions
       const top10Sum = sorted.slice(0, 10).reduce((s, h) => s + h.portfolioPct, 0);
 
       sorted.forEach((fth, idx) => {
         fth.portfolioPctRank = idx + 1;
         fth.fundConcentrationRatio = top10Sum;
 
-        // Shares delta pct (velocity of accumulation, only for existing positions)
         const prevShares = fth.shares - fth.deltaShares;
         fth.sharesDeltaPct =
           prevShares > 0 && fth.shares > 0 ? (fth.deltaShares / prevShares) * 100 : 0;
@@ -437,7 +431,6 @@ export async function runStockAnalysis(
           try {
             const fundName = fileNameToFundName(fileName);
             const holdings = await getFundQuarterlyHoldings(quarter, fundName);
-            // Filter for this ticker, aggregate across CUSIPs
             const tickerHoldings = holdings.filter(
               (h) => h.ticker === ticker && h.cusip !== "Total",
             );
@@ -461,7 +454,6 @@ export async function runStockAnalysis(
             const isNew = shares > 0 && shares === deltaShares;
             const isClosed = shares === 0;
 
-            // Compute delta string
             let delta: string;
             if (isClosed) delta = "CLOSE";
             else if (isNew) delta = "NEW";
@@ -546,7 +538,6 @@ export async function runFundAnalysis(
 
     onProgress?.("Aggregating by ticker…", 50);
 
-    // Aggregate by ticker (multiple CUSIPs → single entry)
     const tickerMap = new Map<string, FundTickerHolding>();
     for (const h of holdings) {
       if (h.cusip === "Total") continue;
@@ -584,7 +575,6 @@ export async function runFundAnalysis(
       }
     }
 
-    // Calculate flags and ranks
     const allHoldings = [...tickerMap.values()];
     allHoldings.sort((a, b) => b.portfolioPct - a.portfolioPct);
     const top10Sum = allHoldings.slice(0, 10).reduce((s, h) => s + h.portfolioPct, 0);
@@ -603,7 +593,6 @@ export async function runFundAnalysis(
       fth.sharesDeltaPct =
         prevShares > 0 && fth.shares > 0 ? (fth.deltaShares / prevShares) * 100 : 0;
 
-      // Recalculate delta string from aggregated values
       if (fth.shares === 0) fth.delta = "CLOSE";
       else if (fth.deltaShares === 0) fth.delta = "NO CHANGE";
       else if (fth.shares > 0 && fth.shares === fth.deltaShares) fth.delta = "NEW";

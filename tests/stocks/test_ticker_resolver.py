@@ -225,6 +225,66 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
                 self.assertEqual(result.loc[idx, "Ticker"], expected)
         self.assertEqual(mock_save.call_count, 2)
 
+    @patch("app.stocks.ticker_resolver.resolve_industry")
+    @patch("app.stocks.ticker_resolver.save_stock")
+    @patch("app.stocks.ticker_resolver.YFinance.get_company")
+    @patch("app.stocks.ticker_resolver.YFinance.get_ticker")
+    @patch("app.stocks.ticker_resolver.load_stocks")
+    def test_new_cusip_for_known_ticker_inherits_company_and_industry(
+        self,
+        mock_load,
+        mock_get_ticker,
+        mock_get_company,
+        mock_save,
+        mock_resolve_industry,
+    ):
+        """
+        A new CUSIP resolving to a known ticker inherits the existing Company
+        and Industry instead of re-resolving them (ticker→company uniqueness).
+        """
+        stocks = pd.DataFrame(
+            {"Ticker": ["ACME"], "Company": ["Acme Corp"], "Industry": ["Widgets"]},
+            index=["111111111"],
+        )
+        stocks.index.name = "CUSIP"
+        mock_load.return_value = stocks
+        mock_get_ticker.return_value = "ACME"
+        mock_get_company.return_value = "ACME CORPORATION"
+        df = pd.DataFrame({"CUSIP": ["222222222"], "Company": ["Acme Corporation"]})
+
+        result = TickerResolver.resolve_ticker(df)
+
+        self.assertEqual(result.loc[0, "Ticker"], "ACME")
+        mock_save.assert_called_once_with("222222222", "ACME", "Acme Corp", industry="Widgets")
+        mock_get_company.assert_not_called()
+        mock_resolve_industry.assert_not_called()
+
+    @patch("app.stocks.ticker_resolver.resolve_industry")
+    @patch("app.stocks.ticker_resolver.save_stock")
+    @patch("app.stocks.ticker_resolver.YFinance.get_company")
+    @patch("app.stocks.ticker_resolver.YFinance.get_ticker")
+    @patch("app.stocks.ticker_resolver.load_stocks")
+    def test_new_cusip_for_known_ticker_defaults_missing_industry_to_empty(
+        self,
+        mock_load,
+        mock_get_ticker,
+        mock_get_company,
+        mock_save,
+        mock_resolve_industry,
+    ):
+        """
+        Inheriting from a row without an Industry saves an empty string, not NaN.
+        """
+        mock_load.return_value = _cached_stocks("111111111", "ACME", "Acme Corp")
+        mock_get_ticker.return_value = "ACME"
+        mock_get_company.return_value = "ACME CORPORATION"
+        df = pd.DataFrame({"CUSIP": ["222222222"], "Company": ["Acme Corporation"]})
+
+        TickerResolver.resolve_ticker(df)
+
+        mock_save.assert_called_once_with("222222222", "ACME", "Acme Corp", industry="")
+        mock_resolve_industry.assert_not_called()
+
     @patch("app.stocks.ticker_resolver.open_issue")
     @patch("app.stocks.ticker_resolver.save_stock")
     @patch("app.stocks.ticker_resolver.TradingView.get_company")

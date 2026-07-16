@@ -243,12 +243,10 @@ def save_stock(
             The Sector is not stored — derive it via database/sector_hierarchy.csv.
     """
     try:
-        # Use csv.writer to properly handle quoting, ensuring all fields are enclosed in double quotes.
         with stocks_lock():
-            # Double-check if the CUSIP was already added by another process/thread while we were waiting for the lock.
+            # Double-checked locking: re-check after acquiring the lock.
             stocks_df = load_stocks()
             if not stocks_df.empty and cusip in stocks_df.index:
-                # Already exists, skip appending
                 return
 
             stocks_path = Path(_db.DB_FOLDER) / _db.STOCKS_FILE
@@ -306,12 +304,8 @@ def clean_stocks(filepath: str | None = None) -> None:
         all_stock_cusips = set(stocks_df["CUSIP"])
         all_filing_cusips: set[str] = set()
 
-        # 1. Collect CUSIPs from every quarterly fund CSV.
-        # Hot path: this used to call load_quarterly_data() which reads every
-        # column of every fund CSV (then concats) — ~600 files × full schema
-        # only to extract the CUSIP column. Now we stream usecols=["CUSIP"] in
-        # parallel across all quarters/funds; the work is pure I/O so a
-        # ThreadPoolExecutor scales near-linearly with the file count.
+        # Stream usecols=["CUSIP"] in parallel instead of loading full fund CSVs —
+        # this used to read every column of ~600 files just to extract CUSIP.
         def _cusips_from_file(file_path: str) -> set[str]:
             cusips = pd.read_csv(file_path, usecols=["CUSIP"], dtype=str)["CUSIP"]
             return {c for c in cusips.dropna() if c != "Total"}
@@ -325,22 +319,18 @@ def clean_stocks(filepath: str | None = None) -> None:
             for partial in pool.map(_cusips_from_file, all_files):
                 all_filing_cusips.update(partial)
 
-        # 2. Collect all CUSIPs from non-quarterly filings
         non_quarterly = _db.load_non_quarterly_data()
         if not non_quarterly.empty:
             all_filing_cusips.update(non_quarterly["CUSIP"].dropna().unique())
 
-        # 3. Find orphan CUSIPs (present in stocks.csv but not in any filings)
         orphan_cusips = all_stock_cusips - all_filing_cusips
 
         if not orphan_cusips:
             return
 
-        # 4. Filter orphans to find only those belonging to Tickers with more than one CUSIP
         ticker_cusip_counts = stocks_df.groupby("Ticker")["CUSIP"].nunique()
         tickers_with_multiple_cusips = ticker_cusip_counts[ticker_cusip_counts > 1].index
 
-        # Isolate orphan CUSIPs that belong to these tickers
         final_orphans_df = stocks_df[
             (stocks_df["CUSIP"].isin(orphan_cusips))
             & (stocks_df["Ticker"].isin(tickers_with_multiple_cusips))
@@ -360,11 +350,9 @@ def clean_stocks(filepath: str | None = None) -> None:
 
         orphan_cusips_to_remove = set(final_orphans_df["CUSIP"])
 
-        # 5. Remove orphans and save
         from app.utils.pd import atomic_to_csv
 
         with stocks_lock():
-            # Reload to ensure we have the latest data before saving
             current_stocks_df = pd.read_csv(filepath, dtype=str, keep_default_na=False).fillna("")
             cleaned_df = current_stocks_df[
                 ~current_stocks_df["CUSIP"].isin(orphan_cusips_to_remove)

@@ -71,17 +71,14 @@ def xml_to_dataframe_13f(xml_content):
 
     df = pd.DataFrame(data, columns=columns)
 
-    # Filter out options to keep only shares
     df = df[df["Put/Call"] == ""].drop("Put/Call", axis=1)
 
     # PRN (principal-amount) rows are kept on purpose: the saved per-fund CSV
     # must stay a faithful record of the filing, debt positions included.
     # Equity-only views belong to the analysis layer on top.
 
-    # Filter out 0 values
     df = df[(df["Value"] != "0") & (df["Shares"] != "0")]
 
-    # Data cleaning
     df["Company"] = df["Company"].str.strip().str.replace(r"\s+", " ", regex=True)
     df["CUSIP"] = df["CUSIP"].str.upper()
     df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
@@ -97,25 +94,18 @@ def xml_to_dataframe_13f(xml_content):
         df = df[~unparseable_mask]
     df["Shares"] = df["Shares"].astype(int)
 
-    # --- Smart Value Scaling (Heuristic-based) ---
-    # SEC rules for XML filings technically require full dollar amounts, but many funds still report in thousands, while others use full dollars.
-    # THRESHOLD: If the median stock price in the portfolio is below $0.50, it is mathematically certain the filing is reported in thousands.
-    # Most institutional holdings trade between $10 and $1000. In 'thousands' format, a $100 stock appears as $0.10.
+    # Some funds report Value in thousands instead of full dollars (SEC XML
+    # spec requires full dollars). Median implied price < $0.50 across an
+    # institutional portfolio is only possible if scaled by 1000.
     implied_prices = (df["Value"] / df["Shares"].replace(0, pd.NA)).dropna()
     if implied_prices.empty:
-        # Empty/all-NaN filing: no prices to reason about, skip the scaling heuristic.
         return df
     median_price = float(implied_prices.median())
     PRICE_THRESHOLD = 0.50
 
     if median_price < PRICE_THRESHOLD:
-        # Case: Filing in thousands -> Scale up to full dollars
         df["Value"] = df["Value"] * 1000
-    else:
-        # Case: Filing already in full dollars
-        pass
 
-    # Dedup by CUSIP
     return df.groupby(["CUSIP"], as_index=False).agg(
         {"Company": "max", "Value": "sum", "Shares": "sum"}
     )
@@ -152,7 +142,6 @@ def xml_to_dataframe_schedule(xml_content):
 
     df = pd.DataFrame(data, columns=columns)
 
-    # Data cleaning
     df["Company"] = df["Company"].str.replace(r"\s+", " ", regex=True)
     df["CUSIP"] = df["CUSIP"].str.upper()
     df["CIK"] = df["CIK"].str.strip()
@@ -226,7 +215,6 @@ def xml_to_dataframe_4(xml_content):
 
     df = pd.DataFrame(data, columns=columns)
 
-    # Data cleaning
     df["Company"] = df["Company"].str.replace(r"\s+", " ", regex=True)
     df["Ticker"] = df["Ticker"].str.replace(r"[^a-zA-Z0-9]", "", regex=True).str.upper()
     df["CIK"] = df["CIK"].str.strip()

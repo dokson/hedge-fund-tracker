@@ -49,9 +49,7 @@ class TickerResolver:
             company = row["Company"]
             ticker = None
 
-            # If CUSIP is not in our local database, try to resolve it
             if cusip not in stocks.index:
-                # Strategy: Try each library to find the ticker
                 for library in libraries:
                     try:
                         ticker = library.get_ticker(cusip, company_name=company)
@@ -66,53 +64,54 @@ class TickerResolver:
                         )
                         continue
 
-                # If a ticker was found, try to resolve the company name
                 if ticker:
-                    company_name = None
-                    for library in libraries:
-                        try:
-                            company_name = library.get_company(cusip, ticker=ticker)
-                            if company_name:
-                                break
-                        except Exception:
-                            continue
+                    # A known ticker (CUSIP change) inherits its existing Company/Industry,
+                    # preserving the ticker→company uniqueness invariant.
+                    existing = stocks[stocks["Ticker"] == ticker]
+                    if not existing.empty:
+                        company_name = existing.iloc[0]["Company"]
+                        industry = existing.iloc[0].get("Industry", "")
+                        industry = "" if pd.isna(industry) else industry
+                    else:
+                        company_name = None
+                        for library in libraries:
+                            try:
+                                company_name = library.get_company(cusip, ticker=ticker)
+                                if company_name:
+                                    break
+                            except Exception:
+                                continue
 
-                    company_name = company_name or company
+                        company_name = company_name or company
 
-                    if not company_name:
-                        # Fallback logging if company name is still missing
-                        subject = f"Company not found for CUSIP '{cusip}'"
-                        body = f"Could not find any company for the CUSIP: {cusip} / Ticker: '{ticker}'."
-                        open_issue(subject, body)
+                        if not company_name:
+                            subject = f"Company not found for CUSIP '{cusip}'"
+                            body = f"Could not find any company for the CUSIP: {cusip} / Ticker: '{ticker}'."
+                            open_issue(subject, body)
 
-                    # Resolve the Industry through the chained fallback:
-                    # yfinance → same-Company in stocks.csv → Groq LLM. Empty on
-                    # full miss so the row is still saved; the AI backfill can
-                    # revisit it. Sector is not stored — derive it via
-                    # database/sector_hierarchy.csv.
-                    industry = resolve_industry(ticker, company_name)
+                        # Resolve the Industry through the chained fallback:
+                        # yfinance → same-Company in stocks.csv → Groq LLM. Empty on
+                        # full miss so the row is still saved; the AI backfill can
+                        # revisit it. Sector is not stored — derive it via
+                        # database/sector_hierarchy.csv.
+                        industry = resolve_industry(ticker, company_name)
 
-                    # Update local database
-                    # Note: We're acting on a copy of 'stocks' from load_stocks(), but save_stock updates the file.
+                    # save_stock persists; 'stocks' here is just an in-memory copy.
                     stocks.loc[cusip, "Ticker"] = ticker
                     stocks.loc[cusip, "Company"] = company_name
                     stocks.loc[cusip, "Industry"] = industry
                     save_stock(cusip, ticker, company_name, industry=industry)
                 else:
-                    # Critical failure: No ticker found across all libraries
                     subject = f"Ticker not found for CUSIP '{cusip}'"
                     body = f"Could not resolve ticker for CUSIP: {cusip} / Company: '{company}'"
                     open_issue(subject, body)
 
-            # If CUSIP is already in database, use that info
             if cusip in stocks.index:
                 ticker = stocks.loc[cusip, "Ticker"]
 
-            # Update the row in the input DataFrame
-            # Extract scalar if it's a Series (defensive)
+            # pandas can return a Series when the index has duplicate CUSIPs.
             df.at[index, "Ticker"] = ticker.iloc[0] if isinstance(ticker, Series) else ticker
 
-            # If input company name was empty, fill it from DB
             if company == "":
                 df.at[index, "Company"] = stocks.loc[cusip, "Company"]
 
@@ -141,7 +140,6 @@ class TickerResolver:
             if not old_symbol or not new_symbol:
                 continue
 
-            # Find all CUSIPs with the old ticker
             matching = stocks[stocks["Ticker"] == old_symbol]
             for cusip in matching.index:
                 stocks.at[cusip, "Ticker"] = new_symbol
@@ -182,7 +180,6 @@ class TickerResolver:
         """
         stocks = load_stocks().copy()
 
-        # Create a mapping from Ticker to the first CUSIP found
         ticker_to_cusip_map = (
             stocks.reset_index()
             .drop_duplicates(subset="Ticker", keep="first")
@@ -190,13 +187,10 @@ class TickerResolver:
             .to_dict()
         )
 
-        # 1. Map existing tickers to CUSIPs. Force object dtype so subsequent
-        # .loc assignments of strings or None don't fight pandas ≥2.2's strict
-        # block manager (which would otherwise upcast all-NaN columns to
-        # float64 and refuse string assignments).
+        # astype(object): pandas ≥2.2 upcasts all-NaN columns to float64 and
+        # blocks string .loc assignments otherwise.
         df["CUSIP"] = df["Ticker"].map(ticker_to_cusip_map).astype(object)
 
-        # 2. Identify rows with stocks that are not in database
         missing_stocks = df["CUSIP"].isnull() & df["Ticker"].notna()
 
         if missing_stocks.any():
