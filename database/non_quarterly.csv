@@ -1,4 +1,5 @@
 "Fund","CUSIP","Ticker","Company","Shares","Value","Avg_Price","Date","Filing_Date"
+"Segra","91688R108","URG","General Fusion Inc.","6302213","8.26M","1.31","2026-07-13","2026-07-17"
 "Helikon","450047303","IRS","IRSA Inversiones y Representaciones SA","4906222","75.7M","15.43","2026-06-30","2026-07-09"
 "Helikon","64782A107","NEWP","NEW PACIFIC METALS CORP.","18438377","74.31M","4.03","2026-06-30","2026-07-09"
 "Helikon","68616T109","ORE","Orezone Gold Corp","83054336","190.19M","2.29","2026-06-30","2026-07-09"
@@ -12,6 +13,7 @@
 "Redwood","67623C307","OPI","Office Properties Income Trust","4324000","951.28K","0.22","2026-06-17","2026-06-25"
 "Madison Avenue","36315X101","LKFT","Lakefront Biotherapeutics NV","3606203","104.26M","28.91","2026-06-15","2026-06-23"
 "Gendell Jeffrey","44951W106","IESC","IES Holdings, Inc.","10406559","7.84B","753.28","2026-06-12","2026-06-16"
+"Segra","98386P102","XE","X-Energy, Inc.","15129629","321.05M","21.22","2026-06-09","2026-07-17"
 "LM","38500T200","GTE","GRAN TIERRA ENERGY INC.","272550","2.14M","7.87","2026-06-05","2026-06-09"
 "Gator","902952100","GROW","U S GLOBAL INVESTORS INC","1121593","2.93M","2.61","2026-06-02","2026-06-04"
 "Kopernik","811916105","SA","Seabridge Gold Inc.","11044218","366.01M","33.14","2026-05-31","2026-06-04"
