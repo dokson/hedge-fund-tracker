@@ -10,6 +10,9 @@
   "files.eol": "\n",
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
+  "files.associations": {
+    "Pipfile": "toml"
+  },
 
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff",
@@ -20,12 +23,11 @@
     }
   },
   "ruff.organizeImports": true,
-  "python.terminal.activateEnvironment": true,
+  "python.terminal.activateEnvironment": false,
   "python.testing.unittestEnabled": true,
   "python.testing.pytestEnabled": false,
   "python.testing.cwd": "${workspaceFolder}",
   "python.testing.unittestArgs": ["-v", "-s", "./tests", "-p", "test*.py"],
-  "python.analysis.typeCheckingMode": "basic",
 
   "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
   "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
@@ -46,8 +48,8 @@
     "editor.rulers": []
   },
 
-  "typescript.tsdk": "app/frontend/node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "js/ts.tsdk.path": "app/frontend/node_modules/typescript/lib",
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
   "prettier.requireConfig": true,
 
   "search.exclude": {

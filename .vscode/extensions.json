@@ -10,7 +10,9 @@
     "redhat.vscode-yaml",
     "ms-azuretools.vscode-docker",
     "github.vscode-github-actions",
-    "mikestead.dotenv"
+    "mikestead.dotenv",
+    "mechatroner.rainbow-csv",
+    "vitest.explorer"
   ],
   "unwantedRecommendations": [
     "ms-python.black-formatter",
