@@ -135,7 +135,9 @@ def xml_to_dataframe_schedule(xml_content):
         shares = _get_tag_text(reporting_person, "aggregateamountowned") or _get_tag_text(
             reporting_person, "reportingpersonbeneficiallyownedaggregatenumberofshares"
         )
-        owner_cik = _get_tag_text(reporting_person, "rptownercik")
+        owner_cik = _get_tag_text(reporting_person, "rptownercik") or _get_tag_text(
+            reporting_person, "reportingpersoncik"
+        )
         owner_name = _get_tag_text(reporting_person, "reportingpersonname")
 
         data.append([company, cusip, cik, shares, owner_cik, owner_name, date])

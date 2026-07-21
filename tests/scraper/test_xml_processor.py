@@ -214,6 +214,43 @@ class TestXmlToDataframeSchedule(unittest.TestCase):
         self.assertEqual(row["Owner"], "BIG FUND LP")
         self.assertEqual(row["Date"], pd.Timestamp("2026-03-15"))
 
+    NEW_SCHEMA_XML = """
+    <edgarSubmission>
+      <formData>
+        <coverPageHeader>
+          <dateOfEvent>04/22/2026</dateOfEvent>
+          <issuerInfo>
+            <issuerCIK>0001234567</issuerCIK>
+            <issuerCusips><issuerCusipNumber>123456789</issuerCusipNumber></issuerCusips>
+            <issuerName>Target Corp</issuerName>
+          </issuerInfo>
+        </coverPageHeader>
+        <reportingPersons>
+          <reportingPersonInfo>
+            <reportingPersonCIK>0007654321</reportingPersonCIK>
+            <reportingPersonName>Doe Jane</reportingPersonName>
+            <aggregateAmountOwned>54364.00</aggregateAmountOwned>
+          </reportingPersonInfo>
+        </reportingPersons>
+      </formData>
+    </edgarSubmission>
+    """
+
+    def test_new_schema_reporting_person_cik_is_parsed(self):
+        """
+        The current EDGAR schedule schema nests the owner CIK in
+        <reportingPersonCIK>; it must populate Owner_CIK so CIK-based fund
+        matching works when the owner name differs from the denomination.
+        """
+        df = xml_to_dataframe_schedule(self.NEW_SCHEMA_XML)
+
+        self.assertEqual(len(df), 1)
+        row = df.iloc[0]
+        self.assertEqual(row["Owner_CIK"], "0007654321")
+        self.assertEqual(row["Owner"], "DOE JANE")
+        self.assertEqual(row["Shares"], 54364)
+        self.assertEqual(row["CUSIP"], "123456789")
+
     def test_non_numeric_shares_coerced_to_zero(self):
         """
         A missing/garbage aggregate amount becomes 0 rather than crashing the
