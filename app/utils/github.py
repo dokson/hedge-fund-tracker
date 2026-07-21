@@ -96,13 +96,15 @@ def open_issue(subject, body):
         )
         print_error()
         return
-    repo_owner, _repo_name = split
+    repo_owner, repo_name = split
 
     headers = {
         # Bearer is the form GitHub recommends for PATs and fine-grained tokens
         # since 2022; `token` still works but is deprecated for the latter.
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github.v3+json",
+        # GitHub rejects requests without a User-Agent (403); curl_cffi sends none.
+        "User-Agent": repo_name,
     }
 
     try:

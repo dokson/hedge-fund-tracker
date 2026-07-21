@@ -195,6 +195,35 @@ class TestGithub(unittest.TestCase):
     @patch("app.utils.github.requests.get")
     @patch("app.utils.github.requests.post")
     @patch("app.utils.github.os.getenv")
+    def test_sends_user_agent_header(self, mock_getenv, mock_post, mock_get):
+        """
+        GitHub's REST API rejects requests without a User-Agent (HTTP 403) and
+        curl_cffi sends none by default, so both calls must set one explicitly.
+        """
+        mock_getenv.side_effect = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_TOKEN": "test_token",
+            "GITHUB_REPOSITORY": "repo/hedge-fund-tracker",
+        }.get
+
+        mock_search_response = MagicMock()
+        mock_search_response.json.return_value = {"total_count": 0}
+        mock_get.return_value = mock_search_response
+
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"html_url": "https://example.com/i/1"}
+        mock_post.return_value = mock_response
+
+        with self.assertLogs("app.utils.github", level="INFO"):
+            open_issue("Subject", "Body")
+
+        for call in (mock_get.call_args, mock_post.call_args):
+            self.assertTrue(call.kwargs["headers"].get("User-Agent"))
+
+    @patch("app.utils.github.requests.get")
+    @patch("app.utils.github.requests.post")
+    @patch("app.utils.github.os.getenv")
     def test_retries_without_assignees_when_owner_is_not_assignable(
         self, mock_getenv, mock_post, mock_get
     ):
