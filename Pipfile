@@ -11,7 +11,7 @@ alembic = "~=1.18"
 asyncpg = "~=0.31"
 beautifulsoup4 = "~=4.15"
 cryptography = "~=49.0"
-curl-cffi = "~=0.16"
+curl-cffi = "~=0.16.0b1"
 fastapi = "~=0.139"
 fastapi-users = {extras = ["sqlalchemy"], version = "~=15.0"}
 fastapi-users-db-sqlalchemy = "~=7.0"
@@ -33,7 +33,7 @@ uvicorn = "~=0.51"
 uvloop = {version = "==0.22.1", markers = "sys_platform != 'win32'"}
 watchfiles = "~=1.2"
 websockets = "~=16.1"
-yfinance = "~=1.5"
+yfinance = {git = "https://github.com/dokson/yfinance.git", ref = "fix/curl-cffi-cache-attr-detection"}
 
 [dev-packages]
 coverage = "~=7.15"
