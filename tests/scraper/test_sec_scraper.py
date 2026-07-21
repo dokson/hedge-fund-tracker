@@ -5,10 +5,13 @@ from unittest.mock import MagicMock, patch
 from bs4 import BeautifulSoup
 from curl_cffi import requests
 from curl_cffi.requests.exceptions import HTTPError, RequestException
+from tenacity import wait_combine, wait_random
 
 from app.scraper.sec_scraper import (
+    _RETRY_ATTEMPTS,
     SEC_HOST,
     USER_AGENT,
+    _attempt_request,
     _build_session,
     _create_search_url,
     _get_accepted,
@@ -109,7 +112,7 @@ class TestSecScraper(unittest.TestCase):
         response = _get_request("http://test.com")
 
         self.assertIsNone(response)
-        self.assertEqual(mock_get_session.return_value.get.call_count, 5)
+        self.assertEqual(mock_get_session.return_value.get.call_count, _RETRY_ATTEMPTS)
 
     @patch("app.scraper.sec_scraper._get_session")
     def test_get_request_does_not_retry_permanent_4xx(self, mock_get_session):
@@ -141,7 +144,16 @@ class TestSecScraper(unittest.TestCase):
         response = _get_request("http://test.com")
 
         self.assertIsNone(response)
-        self.assertEqual(mock_get_session.return_value.get.call_count, 5)
+        self.assertEqual(mock_get_session.return_value.get.call_count, _RETRY_ATTEMPTS)
+
+    def test_retry_wait_uses_jitter(self):
+        """
+        The wait strategy must keep a random jitter component so retries 429'd
+        together don't back off in lockstep and collide again.
+        """
+        wait = _attempt_request.retry.wait
+        self.assertIsInstance(wait, wait_combine)
+        self.assertTrue(any(isinstance(w, wait_random) for w in wait.wait_funcs))
 
     def test_create_search_url(self):
         """Test _create_search_url generates correct URLs."""
@@ -263,6 +275,48 @@ class TestSecScraper(unittest.TestCase):
 
             # Verify we only attempted to scrape 2 times, not 4
             self.assertEqual(mock_scrape.call_count, 2)
+
+    @patch("app.scraper.sec_scraper._get_request")
+    def test_fetch_latest_two_returns_none_when_a_windowed_filing_fails_to_scrape(
+        self, mock_get_request
+    ):
+        """
+        Two filings available but one fails to scrape (e.g. 429): return None,
+        not a partial list, so the caller skips the fund instead of rewriting
+        every position as NEW against an empty previous quarter.
+        """
+        search_html = """
+        <a id="documentsbutton" href="/doc1">Format</a>
+        <a id="documentsbutton" href="/doc2">Format</a>
+        """
+        mock_search_response = MagicMock()
+        mock_search_response.text = search_html
+        mock_get_request.return_value = mock_search_response
+
+        with patch("app.scraper.sec_scraper._scrape_filing") as mock_scrape:
+            mock_scrape.side_effect = [{"id": 1, "date": "2023-06-30"}, None]
+
+            filings = fetch_latest_two_13f_filings("CIK123")
+
+            self.assertIsNone(filings)
+
+    @patch("app.scraper.sec_scraper._get_request")
+    def test_fetch_latest_two_returns_single_filing_when_only_one_exists(self, mock_get_request):
+        """
+        A genuinely new fund with a single 13F-HR is not an error: one available
+        tag that scrapes cleanly returns a one-element list.
+        """
+        mock_search_response = MagicMock()
+        mock_search_response.text = '<a id="documentsbutton" href="/doc1">Format</a>'
+        mock_get_request.return_value = mock_search_response
+
+        with patch("app.scraper.sec_scraper._scrape_filing") as mock_scrape:
+            mock_scrape.side_effect = [{"id": 1, "date": "2023-06-30"}]
+
+            filings = fetch_latest_two_13f_filings("CIK123")
+
+            assert filings is not None
+            self.assertEqual(len(filings), 1)
 
     @patch("app.scraper.sec_scraper._get_request")
     def test_fetch_non_quarterly_after_date(self, mock_get_request):

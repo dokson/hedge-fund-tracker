@@ -8,7 +8,7 @@ from typing import Any
 from bs4 import BeautifulSoup
 from curl_cffi import requests
 from curl_cffi.requests import exceptions as curl_exc
-from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential, wait_random
 
 from app.scraper.rate_limiter import RateLimiter
 from app.utils.logger import get_logger, log_safe
@@ -141,10 +141,15 @@ class _PermanentHTTPError(Exception):
     """
 
 
+# The random term desynchronizes retries so requests 429'd together by SEC (a
+# shared cloud IP fails in bursts) don't back off in lockstep and collide again.
+_RETRY_ATTEMPTS = 5
+
+
 @retry(
     retry=retry_if_result(lambda value: value is None),
-    wait=wait_exponential(multiplier=1, min=2, max=8),
-    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=2, max=8) + wait_random(0, 3),
+    stop=stop_after_attempt(_RETRY_ATTEMPTS),
     retry_error_callback=lambda rs: None,
     before_sleep=lambda rs: logger.progress(
         "Retrying request for '%s' in %.0fs... (Attempt #%d)",
@@ -347,8 +352,15 @@ def fetch_latest_two_13f_filings(cik, offset=0):
     filings = []
     for tag in document_tags[offset : offset + 2]:
         filing_data = _scrape_filing(tag, "13F-HR")
-        if filing_data:
-            filings.append(filing_data)
+        if filing_data is None:
+            # A partial list would make the caller compare against an empty previous
+            # quarter and rewrite every position as NEW; signal an error instead.
+            logger.warning(
+                "Could not scrape a 13F-HR filing for CIK %s; skipping to avoid a degraded comparison.",
+                log_safe(cik),
+            )
+            return None
+        filings.append(filing_data)
 
     return filings
 
