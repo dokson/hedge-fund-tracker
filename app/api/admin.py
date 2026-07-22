@@ -11,6 +11,8 @@ handler convention.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
@@ -18,6 +20,9 @@ from fastapi.responses import StreamingResponse
 from app.api.common import _require_cusip, _require_ticker
 from app.api.sse import _make_sse_stream
 from app.auth.dependencies import require_local_or_superuser
+
+if TYPE_CHECKING:
+    from app.stocks.ticker_changes import ApplyReport, TickerChangeReport
 
 # Fetch jobs and database corrections are operator-only in a production posture.
 router = APIRouter(tags=["admin"], dependencies=[Depends(require_local_or_superuser)])
@@ -115,8 +120,8 @@ async def update_cusip_ticker_endpoint(request: Request) -> dict[str, str]:
     return {"message": f"CUSIP {cusip} ticker updated to {new_ticker}"}
 
 
-@router.get("/api/detect-ticker-changes")
-def detect_ticker_changes_endpoint() -> dict:
+@router.get("/api/detect-ticker-changes", response_model=None)
+def detect_ticker_changes_endpoint() -> TickerChangeReport:
     """
     Fetches recent symbol changes from NASDAQ and returns those applicable to stocks.csv.
     """
@@ -125,8 +130,8 @@ def detect_ticker_changes_endpoint() -> dict:
     return detect_applicable_ticker_changes()
 
 
-@router.post("/api/apply-ticker-changes")
-def apply_ticker_changes_endpoint() -> dict:
+@router.post("/api/apply-ticker-changes", response_model=None)
+def apply_ticker_changes_endpoint() -> ApplyReport:
     """
     Detects and applies all applicable ticker changes from NASDAQ across the entire database.
     """

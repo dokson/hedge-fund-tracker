@@ -1,4 +1,5 @@
 import os
+import time
 
 from curl_cffi import requests
 from curl_cffi.requests.exceptions import RequestException
@@ -69,8 +70,12 @@ class OpenFIGI(FinanceLibrary):
         """
         Looks up a CUSIP and returns the best-matching record, preferring
         Common Stock and similar equity-like security types.
+
+        Restricted to the US composite exchange: without exchCode the API can
+        return a foreign listing's symbol first, which is useless for this
+        US-equity database and poisons ticker comparisons.
         """
-        results = OpenFIGI._post([{"idType": "ID_CUSIP", "idValue": cusip}])
+        results = OpenFIGI._post([{"idType": "ID_CUSIP", "idValue": cusip, "exchCode": "US"}])
         if not results:
             return None
 
@@ -82,11 +87,49 @@ class OpenFIGI(FinanceLibrary):
         if not data:
             return None
 
+        return OpenFIGI._best_record(data)
+
+    @staticmethod
+    def _best_record(data: list[dict]) -> dict:
+        """
+        Returns the record with a preferred equity-like security type, or the
+        first record when none qualifies.
+        """
         for item in data:
             if item.get("securityType") in OpenFIGI.PREFERRED_SECURITY_TYPES:
                 return item
-
         return data[0]
+
+    @staticmethod
+    def map_cusips(cusips: list[str]) -> dict[str, dict]:
+        """
+        Maps many CUSIPs to their best US-listing record in batched requests.
+
+        Batch size and pacing follow OpenFIGI's job limits (100 jobs/request
+        with an API key, 10 without). Unresolved CUSIPs and failed batches are
+        omitted from the result, so callers see only confirmed mappings.
+        """
+        batch_size = 100 if OpenFIGI.API_KEY else 10
+        pause = 0.3 if OpenFIGI.API_KEY else 2.6
+        total_batches = -(-len(cusips) // batch_size)
+        records: dict[str, dict] = {}
+        for batch_index, start in enumerate(range(0, len(cusips), batch_size)):
+            if start:
+                time.sleep(pause)
+            if batch_index and batch_index % 10 == 0:
+                logger.progress("OpenFIGI mapping: batch %d/%d", batch_index, total_batches)
+            chunk = cusips[start : start + batch_size]
+            payload = [
+                {"idType": "ID_CUSIP", "idValue": cusip, "exchCode": "US"} for cusip in chunk
+            ]
+            responses = OpenFIGI._post(payload)
+            if not responses:
+                continue
+            for cusip, response in zip(chunk, responses, strict=False):
+                data = response.get("data") if isinstance(response, dict) else None
+                if data:
+                    records[cusip] = OpenFIGI._best_record(data)
+        return records
 
     @staticmethod
     def get_ticker(cusip: str, **kwargs) -> str | None:

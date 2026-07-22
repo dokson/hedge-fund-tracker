@@ -347,45 +347,54 @@ def run_cusip_ticker_update():
 
 def run_auto_ticker_update():
     """
-    8. Automatically detects and applies recent ticker symbol changes from NASDAQ.
+    8. Automatically detects and applies recent ticker symbol changes from NASDAQ,
+    then optionally reconciles the whole stocks.csv against OpenFIGI.
 
-    Fetches the NASDAQ symbol change history, cross-references with stocks.csv,
-    and updates all matching tickers across the entire database (stocks.csv, quarterly filings, non-quarterly filings).
+    The NASDAQ feed only covers its own recent window; the OpenFIGI pass finds
+    older renames by mapping every tracked CUSIP to its current US symbol.
     """
     horizontal_rule()
     print_centered("AUTO TICKER UPDATE (NASDAQ)")
     horizontal_rule()
+    _run_nasdaq_ticker_update()
+    horizontal_rule()
+    _run_figi_reconciliation()
+
+
+def _run_nasdaq_ticker_update():
+    """
+    Detects and applies ticker changes from the NASDAQ symbol-change feed.
+    """
     print("Fetching recent symbol changes from NASDAQ...")
 
-    from app.stocks.libraries.nasdaq import Nasdaq
+    from app.stocks.ticker_changes import detect_applicable_ticker_changes
 
-    changes = Nasdaq.get_symbol_changes()
+    result = detect_applicable_ticker_changes()
 
-    if not changes:
+    if not result["total_changes"]:
         print("❌ Could not fetch symbol changes from NASDAQ.")
         return
 
-    from app.database import find_cusips_for_ticker
+    applicable = result["applicable"]
 
-    applicable = []
-    for change in changes:
-        old_symbol = change.get("oldSymbol", "")
-        new_symbol = change.get("newSymbol", "")
-        company_name = change.get("companyName", "")
-        matching = find_cusips_for_ticker(old_symbol)
-        if matching:
-            applicable.append((old_symbol, new_symbol, company_name, matching))
+    for skipped in result["skipped"]:
+        print(
+            f"  🚫 {skipped['oldSymbol']} → {skipped['newSymbol']} skipped — {skipped['reason']} "
+            f"(NASDAQ: '{skipped['companyName']}', tracked: '{', '.join(skipped['trackedCompanies'])}')"
+        )
 
     if not applicable:
         print(
-            f"✅ No ticker changes apply to the {len(changes)} changes found. stocks.csv is up to date."
+            f"✅ No ticker changes apply to the {result['total_changes']} changes found. stocks.csv is up to date."
         )
         return
 
     print(f"Found {len(applicable)} applicable change(s):")
-    for old, new, company, stocks in applicable:
-        for stock in stocks:
-            print(f"  🔄 {old} → {new} (CUSIP {stock['CUSIP']}) — {company}")
+    for change in applicable:
+        for cusip in change["cusips"]:
+            print(
+                f"  🔄 {change['oldSymbol']} → {change['newSymbol']} (CUSIP {cusip}) — {change['companyName']}"
+            )
 
     horizontal_rule()
     confirm = input("Apply these changes? (y/N): ").strip().lower()
@@ -395,11 +404,69 @@ def run_auto_ticker_update():
 
     from app.stocks.libraries.yfinance import YFinance
 
-    for old, new, nasdaq_company, _ in applicable:
-        company = YFinance.get_company("", ticker=new) or nasdaq_company
-        update_ticker(old, new, new_company=company)
+    for change in applicable:
+        company = YFinance.get_company("", ticker=change["newSymbol"]) or change["companyName"]
+        update_ticker(change["oldSymbol"], change["newSymbol"], new_company=company)
 
     print_centered("All ticker changes applied successfully", "-")
+
+
+def _run_figi_reconciliation():
+    """
+    Optionally reconciles every stocks.csv CUSIP against OpenFIGI's current US
+    symbol and applies the confirmed stale-ticker renames.
+    """
+    from app.stocks.libraries.openfigi import OpenFIGI
+
+    prompt = "Run full OpenFIGI reconciliation of stocks.csv? (y/N): "
+    if input(prompt).strip().lower() != "y":
+        return
+
+    if not OpenFIGI.API_KEY:
+        print("🚨 No OPENFIGI_API_KEY set: this will take ~1 hour at unauthenticated rate limits.")
+        if input("Continue anyway? (y/N): ").strip().lower() != "y":
+            return
+
+    from app.stocks.ticker_changes import detect_stale_tickers
+
+    print("Reconciling all CUSIPs against OpenFIGI (a minute or two with an API key)...")
+    result = detect_stale_tickers()
+    print(
+        f"Checked {result['checked']} rows ({result['resolved']} resolved by OpenFIGI): "
+        f"{len(result['candidates'])} stale ticker(s) found."
+    )
+
+    if not result["candidates"]:
+        return
+
+    for c in result["candidates"]:
+        print(f"  🔄 {c['oldTicker']} → {c['newTicker']} (CUSIP {c['cusip']}) — {c['company']}")
+
+    horizontal_rule()
+    choice = input("Apply changes? (a = all / c = choose per change / N = none): ").strip().lower()
+    if choice not in ("a", "c"):
+        print("Cancelled.")
+        return
+
+    to_apply = result["candidates"]
+    if choice == "c":
+        to_apply = [
+            c
+            for c in to_apply
+            if input(f"Apply {c['oldTicker']} → {c['newTicker']} ({c['company']})? (y/N): ")
+            .strip()
+            .lower()
+            == "y"
+        ]
+
+    if not to_apply:
+        print("Nothing selected.")
+        return
+
+    for c in to_apply:
+        update_ticker_for_cusip(c["cusip"], c["newTicker"])
+
+    print_centered(f"{len(to_apply)} stale ticker(s) updated successfully", "-")
 
 
 def run_delete_fund():
