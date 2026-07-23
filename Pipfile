@@ -15,10 +15,10 @@ curl-cffi = "~=0.16.0b1"
 fastapi = "~=0.139"
 fastapi-users = {extras = ["sqlalchemy"], version = "~=15.0"}
 fastapi-users-db-sqlalchemy = "~=7.0"
-google-genai = "~=2.13"
+google-genai = "~=2.14"
 httptools = {version = "==0.8.0", markers = "sys_platform != 'win32'"}
 lxml = "~=6.1"
-openai = "~=2.47"
+openai = "~=2.48"
 pandas = "~=3.0"
 psutil = "~=7.2"
 python-dotenv = "~=1.2"
@@ -37,12 +37,12 @@ yfinance = {git = "https://github.com/dokson/yfinance.git", ref = "fix/curl-cffi
 
 [dev-packages]
 coverage = "~=7.15"
-httpx2 = "~=2.7"
+httpx2 = "~=2.9"
 mypy = "~=2.3"
 pandas-stubs = "~=3.0"
 pre-commit = "~=4.6"
 pyright = "~=1.1"
-ruff = "~=0.15"
+ruff = "~=0.16"
 types-tabulate = "~=0.10"
 
 [pipenv]
