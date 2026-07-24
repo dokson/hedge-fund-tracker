@@ -2333,20 +2333,20 @@
         },
         "httpcore2": {
             "hashes": [
-                "sha256:03077a578e26d6166d831f68319326bf1d92cb851946292d2158a85e9da1896a",
-                "sha256:e51e54521809628d2014da8d67eecd4de738d54f556d646069fa9cb63fc9a9dc"
+                "sha256:4d8acbf8b306f48c9d6046591fd5ba4037d1b1b1000d140fc2c3eab1e9a0c0e2",
+                "sha256:6182472379e855fe4221246a2bb7ecede403bc61c6798062ae1787d051ccde26"
             ],
             "markers": "python_version >= '3.10'",
-            "version": "==2.9.0"
+            "version": "==2.9.1"
         },
         "httpx2": {
             "hashes": [
-                "sha256:85e33a04e7b0ad24044a62affa916140f363f19ba38e15fbc7e6aba1f1fb2775",
-                "sha256:cc8e82fa3dc02fa91586dc6ccb3c9bd802a5a48adf4626d66553e793de67cbb4"
+                "sha256:1820fe14a9ab1107bfeff39259987429450b070ec0ff38cc87eb0d8c97fdc71a",
+                "sha256:1932a768737e3666291582833da748cc4e563c337cf96706fccc04fa6e58764a"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==2.9.0"
+            "version": "==2.9.1"
         },
         "identify": {
             "hashes": [
