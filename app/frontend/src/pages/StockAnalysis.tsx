@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
 import { useQuery } from "@tanstack/react-query";
@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Brain, Loader2, Filter } from "lucide-react";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { StockPriceChart } from "@/components/StockPriceChart";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Progress } from "@/components/ui/progress";
 
 /**

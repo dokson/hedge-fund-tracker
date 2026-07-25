@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import GlobalSearch from "@/components/GlobalSearch";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 import { APP_VERSION, BASE_PATH, IS_GH_PAGES_MODE } from "@/lib/config";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { cn } from "@/lib/utils";

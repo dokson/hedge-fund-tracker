@@ -221,18 +221,18 @@ class TestDetectApplicableTickerChanges(unittest.TestCase):
     @patch(f"{_MODULE}.Nasdaq")
     def test_skips_changes_with_mismatched_company(self, mock_nasdaq, mock_find, mock_figi):
         """
-        A ticker collision (NASDAQ change for an unrelated company reusing a
-        tracked ticker) is excluded from applicable and reported as skipped:
-        OpenFIGI still maps the tracked CUSIP to the old symbol and the
-        company names are unrelated.
+        A ticker collision is excluded from applicable and reported as skipped:
+        the names are unrelated AND the new symbol is already tracked under a
+        different CUSIP, so the change would overwrite a distinct security.
         """
         mock_figi.get_ticker.return_value = "OLD1"
         mock_nasdaq.get_symbol_changes.return_value = [
             {"oldSymbol": "OLD1", "newSymbol": "NEW1", "companyName": "Thematic New Issue ETF"},
         ]
-        mock_find.return_value = [
-            {"CUSIP": "C1", "Ticker": "OLD1", "Company": "Orbital Rocket Technologies Corp"}
-        ]
+        mock_find.side_effect = lambda symbol: {
+            "OLD1": [{"CUSIP": "C1", "Ticker": "OLD1", "Company": "Orbital Rocket Technologies"}],
+            "NEW1": [{"CUSIP": "C2", "Ticker": "NEW1", "Company": "Thematic New Issue ETF"}],
+        }.get(symbol, [])
 
         result = detect_applicable_ticker_changes()
 
@@ -240,10 +240,119 @@ class TestDetectApplicableTickerChanges(unittest.TestCase):
         self.assertEqual(len(result["skipped"]), 1)
         self.assertEqual(result["skipped"][0]["oldSymbol"], "OLD1")
         self.assertEqual(result["skipped"][0]["cusips"], ["C1"])
-        self.assertEqual(
-            result["skipped"][0]["trackedCompanies"], ["Orbital Rocket Technologies Corp"]
-        )
-        self.assertIn("company name", result["skipped"][0]["reason"])
+        self.assertEqual(result["skipped"][0]["trackedCompanies"], ["Orbital Rocket Technologies"])
+        self.assertIn("already tracked", result["skipped"][0]["reason"])
+
+    @patch(f"{_MODULE}.find_cusips_for_ticker")
+    @patch(f"{_MODULE}.Nasdaq")
+    def test_accepts_renamed_company_when_new_symbol_is_untracked(
+        self, mock_nasdaq, mock_find, mock_figi
+    ):
+        """
+        A genuine rebrand looks exactly like a collision by name alone, so a
+        name mismatch is not enough to skip: when the destination symbol is not
+        tracked under any other CUSIP, the change is applicable.
+        """
+        mock_figi.get_ticker.return_value = "OLD1"
+        mock_nasdaq.get_symbol_changes.return_value = [
+            {
+                "oldSymbol": "OLD1",
+                "newSymbol": "NEW1",
+                "companyName": "Ridgeline Compute Holdings Inc",
+            },
+        ]
+        mock_find.side_effect = lambda symbol: {
+            "OLD1": [{"CUSIP": "C1", "Ticker": "OLD1", "Company": "Cutter Lane Capital Inc"}],
+        }.get(symbol, [])
+
+        result = detect_applicable_ticker_changes()
+
+        self.assertEqual(result["skipped"], [])
+        self.assertEqual(len(result["applicable"]), 1)
+        self.assertEqual(result["applicable"][0]["newSymbol"], "NEW1")
+
+    @patch(f"{_MODULE}.find_cusips_for_ticker")
+    @patch(f"{_MODULE}.Nasdaq")
+    def test_skips_changes_effective_long_ago(self, mock_nasdaq, mock_find, mock_figi):
+        """
+        A long-past change describes a previous occupant of the ticker: the feed
+        keeps reporting it, but the symbol has since been reassigned to the
+        security we track, so applying it would rename the wrong company.
+        """
+        mock_figi.get_ticker.return_value = None
+        mock_nasdaq.get_symbol_changes.return_value = [
+            {
+                "oldSymbol": "OLD1",
+                "newSymbol": "NEW1",
+                "companyName": "Thematic New Issue ETF",
+                "effective": "01/09/2020",
+            },
+        ]
+        mock_find.side_effect = lambda symbol: {
+            "OLD1": [{"CUSIP": "C1", "Ticker": "OLD1", "Company": "Orbital Rocket Technologies"}],
+        }.get(symbol, [])
+
+        result = detect_applicable_ticker_changes()
+
+        self.assertEqual(result["applicable"], [])
+        self.assertEqual(len(result["skipped"]), 1)
+        self.assertIn("effective", result["skipped"][0]["reason"])
+
+    @patch(f"{_MODULE}.find_cusips_for_ticker")
+    @patch(f"{_MODULE}.Nasdaq")
+    def test_accepts_changes_with_unparseable_or_absent_effective_date(
+        self, mock_nasdaq, mock_find, mock_figi
+    ):
+        """
+        A missing or malformed effective date must not silently drop a change:
+        staleness is only asserted when the date actually parses.
+        """
+        mock_figi.get_ticker.return_value = None
+        mock_nasdaq.get_symbol_changes.return_value = [
+            {
+                "oldSymbol": "OLD1",
+                "newSymbol": "NEW1",
+                "companyName": "Cutter Lane Capital Inc",
+                "effective": "not-a-date",
+            },
+            {"oldSymbol": "OLD2", "newSymbol": "NEW2", "companyName": "Cutter Lane Capital Inc"},
+        ]
+        mock_find.side_effect = lambda symbol: {
+            "OLD1": [{"CUSIP": "C1", "Ticker": "OLD1", "Company": "Cutter Lane Capital Inc"}],
+            "OLD2": [{"CUSIP": "C2", "Ticker": "OLD2", "Company": "Cutter Lane Capital Inc"}],
+        }.get(symbol, [])
+
+        result = detect_applicable_ticker_changes()
+
+        self.assertEqual(result["skipped"], [])
+        self.assertEqual(len(result["applicable"]), 2)
+
+    @patch(f"{_MODULE}.find_cusips_for_ticker")
+    @patch(f"{_MODULE}.Nasdaq")
+    def test_accepts_rename_when_new_symbol_resolves_to_the_tracked_cusip(
+        self, mock_nasdaq, mock_find, mock_figi
+    ):
+        """
+        The destination symbol already resolving to the SAME CUSIP is the
+        change having landed in stocks.csv already, not a collision.
+        """
+        mock_figi.get_ticker.return_value = "OLD1"
+        mock_nasdaq.get_symbol_changes.return_value = [
+            {
+                "oldSymbol": "OLD1",
+                "newSymbol": "NEW1",
+                "companyName": "Ridgeline Compute Holdings Inc",
+            },
+        ]
+        mock_find.side_effect = lambda symbol: {
+            "OLD1": [{"CUSIP": "C1", "Ticker": "OLD1", "Company": "Cutter Lane Capital Inc"}],
+            "NEW1": [{"CUSIP": "C1", "Ticker": "NEW1", "Company": "Cutter Lane Capital Inc"}],
+        }.get(symbol, [])
+
+        result = detect_applicable_ticker_changes()
+
+        self.assertEqual(result["skipped"], [])
+        self.assertEqual(len(result["applicable"]), 1)
 
     @patch(f"{_MODULE}.find_cusips_for_ticker")
     @patch(f"{_MODULE}.Nasdaq")
@@ -400,9 +509,10 @@ class TestApplyTickerChanges(unittest.TestCase):
         mock_nasdaq.get_symbol_changes.return_value = [
             {"oldSymbol": "OLD1", "newSymbol": "NEW1", "companyName": "Thematic New Issue ETF"},
         ]
-        mock_find.return_value = [
-            {"CUSIP": "C1", "Ticker": "OLD1", "Company": "Orbital Rocket Technologies Corp"}
-        ]
+        mock_find.side_effect = lambda symbol: {
+            "OLD1": [{"CUSIP": "C1", "Ticker": "OLD1", "Company": "Orbital Rocket Technologies"}],
+            "NEW1": [{"CUSIP": "C2", "Ticker": "NEW1", "Company": "Thematic New Issue ETF"}],
+        }.get(symbol, [])
 
         result = apply_ticker_changes()
 

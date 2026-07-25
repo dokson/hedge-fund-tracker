@@ -14,7 +14,7 @@ import ModelSelector from "@/components/ModelSelector";
 import { Brain, ChevronDown, ChevronUp, Search } from "lucide-react";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import sampleRanking from "@/data/sampleRanking.json";

@@ -6,6 +6,7 @@ unit-testable without FastAPI and reusable from the CLI.
 """
 
 import re
+from datetime import date, datetime
 from difflib import SequenceMatcher
 from typing import TypedDict
 
@@ -17,6 +18,12 @@ from app.stocks.utils.identifiers import normalize_ticker
 from app.utils.logger import get_logger, log_safe
 
 logger = get_logger(__name__)
+
+# NASDAQ's feed carries years of history, and symbols get reassigned to new
+# issuers once freed. Beyond this age a reported change is far more likely to
+# describe the ticker's previous occupant than a rename of what we track — the
+# filings-fetch job runs several times a day, so genuine changes are seen fresh.
+_MAX_CHANGE_AGE_DAYS = 90
 
 
 class TickerChange(TypedDict):
@@ -167,16 +174,34 @@ def _norm_symbol(symbol: str) -> str:
     return re.sub(r"[^A-Z0-9]", "", symbol.upper())
 
 
-def _verify_change(entry: TickerChange, matching: list[dict]) -> str | None:
+def _effective_age_days(effective: str, today: date) -> int | None:
     """
-    Verifies a candidate ticker change against OpenFIGI (CUSIP identity) with
-    the company-name guard as fallback. Returns None when the change is
-    verified, otherwise the reason it must be skipped.
+    Age in days of a NASDAQ change's effective date, or None when the feed
+    omits it or the format is unrecognised.
+    """
+    for fmt in ("%m/%d/%Y", "%Y-%m-%d"):
+        try:
+            return (today - datetime.strptime(effective, fmt).date()).days
+        except ValueError:
+            continue
+    return None
+
+
+def _verify_change(entry: TickerChange, matching: list[dict], age_days: int | None) -> str | None:
+    """
+    Verifies a candidate ticker change against OpenFIGI (CUSIP identity), then
+    the change's age, the company-name guard, and finally whether the
+    destination symbol is free. Returns None when the change is verified,
+    otherwise the reason it must be skipped.
 
     OpenFIGI mapping the tracked CUSIP to the new symbol confirms the change
     even when the company was renamed; a mapping to any third symbol rejects
-    it. When OpenFIGI is unavailable or still reports the old symbol (it can
-    lag a fresh change), the decision falls back to the name guard.
+    it. Absent that, a name mismatch is NOT decisive: a genuine rebrand looks
+    exactly like a collision by name alone. Two signals resolve it instead —
+    a long-past effective date means the change describes a previous occupant
+    of the ticker (symbols get reassigned, so the old change would rename the
+    wrong company), and a destination symbol already tracked under a different
+    CUSIP means applying it would collide with a distinct security.
     """
     old_norm, new_norm = _norm_symbol(entry["oldSymbol"]), _norm_symbol(entry["newSymbol"])
     figi_symbols = {
@@ -190,7 +215,15 @@ def _verify_change(entry: TickerChange, matching: list[dict]) -> str | None:
         return "OpenFIGI maps the tracked CUSIP to a different ticker"
     if any(company_names_match(s["Company"], entry["companyName"]) for s in matching):
         return None
-    return "NASDAQ company name does not match the tracked company"
+    if age_days is not None and age_days > _MAX_CHANGE_AGE_DAYS:
+        return (
+            f"change was effective {age_days} days ago, so the symbol has likely been "
+            "reassigned since"
+        )
+    tracked_cusips = set(entry["cusips"])
+    if any(s["CUSIP"] not in tracked_cusips for s in find_cusips_for_ticker(entry["newSymbol"])):
+        return "new symbol is already tracked under a different CUSIP"
+    return None
 
 
 def _classify_changes(changes: list[dict]) -> tuple[list[TickerChange], list[SkippedChange]]:
@@ -203,11 +236,13 @@ def _classify_changes(changes: list[dict]) -> tuple[list[TickerChange], list[Ski
     """
     applicable: list[TickerChange] = []
     skipped: list[SkippedChange] = []
+    today = date.today()
     for change in changes:
         old_symbol = change.get("oldSymbol", "")
         matching = find_cusips_for_ticker(old_symbol)
         if not matching:
             continue
+        age_days = _effective_age_days(change.get("effective", ""), today)
         entry: TickerChange = {
             "oldSymbol": old_symbol,
             "newSymbol": change.get("newSymbol", ""),
@@ -215,7 +250,7 @@ def _classify_changes(changes: list[dict]) -> tuple[list[TickerChange], list[Ski
             "cusips": [s["CUSIP"] for s in matching],
             "trackedCompanies": [s["Company"] for s in matching],
         }
-        reason = _verify_change(entry, matching)
+        reason = _verify_change(entry, matching, age_days)
         if reason is None:
             applicable.append(entry)
         else:

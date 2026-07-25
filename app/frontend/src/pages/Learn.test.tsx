@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 
 import Learn from "./Learn";
 import { FAQ_META, FAQ_SECTIONS } from "@/lib/faqContent";

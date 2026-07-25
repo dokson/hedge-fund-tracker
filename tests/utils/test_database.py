@@ -386,6 +386,36 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(df_after.loc["123", "Industry"], df_before.loc["123", "Industry"])
         self.assertEqual(df_after.loc["456", "Industry"], df_before.loc["456", "Industry"])
 
+    def test_save_stocks_normalizes_company_names(self):
+        """
+        save_stocks is the single write chokepoint for stocks.csv, so provider
+        padding cannot reach the file through any caller: descriptors, the comma
+        before a legal suffix and a one-word abbreviation's trailing period are
+        all removed on the way out.
+        """
+        from app.database import save_stocks
+
+        df = load_stocks()
+        df.loc["123", "Company"] = "Cutter Lane Holdings, Inc. Common Stock"
+        df.loc["456", "Company"] = "Orbital Rocket L.P."
+        save_stocks(df)
+
+        reloaded = load_stocks()
+        self.assertEqual(reloaded.loc["123", "Company"], "Cutter Lane Holdings Inc")
+        self.assertEqual(reloaded.loc["456", "Company"], "Orbital Rocket L.P.")
+
+    def test_save_stock_normalizes_the_appended_company_name(self):
+        """
+        The single-row append is a second write path (it bypasses save_stocks),
+        and it is the one that inserts newly discovered stocks, so it must
+        normalize too.
+        """
+        from app.database import save_stock
+
+        save_stock("999", "NEWT", "Ridgeline Compute, Inc. Common Stock", "Software - Application")
+
+        self.assertEqual(load_stocks().loc["999", "Company"], "Ridgeline Compute Inc")
+
     def test_find_cusips_for_ticker_does_not_break_on_industry_column(self):
         """
         find_cusips_for_ticker reads stocks.csv via csv.DictReader; the added

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router";
 import { isQuarter } from "@/lib/quarters";
 import { useQuery } from "@tanstack/react-query";
 import {

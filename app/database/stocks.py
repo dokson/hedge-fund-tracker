@@ -243,6 +243,9 @@ def save_stock(
             The Sector is not stored — derive it via database/sector_hierarchy.csv.
     """
     try:
+        from app.stocks.utils.identifiers import normalize_company_name
+
+        company = normalize_company_name(company)
         with stocks_lock():
             # Double-checked locking: re-check after acquiring the lock.
             stocks_df = load_stocks()
@@ -276,12 +279,22 @@ def save_stocks(stocks_df: pd.DataFrame, filepath: str | None = None) -> None:
     Takes the stocks lock (a concurrent ``save_stock`` append between the
     caller's read and this write would otherwise be clobbered) and writes
     atomically so a crash mid-write cannot truncate the file.
+
+    Company names are normalized here rather than at each caller, so provider
+    padding ("... Common Stock", "Foo, Inc.") cannot reach the file however the
+    frame was assembled. ``save_stock`` normalizes its own appended row — the
+    two together are the only writers.
     """
     if filepath is None:
         filepath = str(Path(_db.DB_FOLDER) / _db.STOCKS_FILE)
     try:
+        from app.stocks.utils.identifiers import normalize_company_name
         from app.utils.pd import atomic_to_csv, escape_csv_text_columns
 
+        if "Company" in stocks_df.columns:
+            stocks_df = stocks_df.assign(
+                Company=stocks_df["Company"].astype(str).map(normalize_company_name)
+            )
         with stocks_lock():
             atomic_to_csv(escape_csv_text_columns(stocks_df), filepath, quoting=csv.QUOTE_ALL)
     except Exception:

@@ -28,7 +28,7 @@
 [![Radix UI](https://img.shields.io/github/package-json/dependency-version/dokson/hedge-fund-tracker/%40radix-ui%2Freact-dialog?filename=app%2Ffrontend%2Fpackage.json&style=for-the-badge&logo=radix-ui&label=Radix&logoColor=white&color=161618)](https://www.radix-ui.com/)
 [![Lucide](https://img.shields.io/github/package-json/dependency-version/dokson/hedge-fund-tracker/lucide-react?filename=app%2Ffrontend%2Fpackage.json&style=for-the-badge&logo=lucide&label=Lucide&logoColor=white&color=F56565)](https://lucide.dev/)
 [![TanStack Query](https://img.shields.io/npm/v/%40tanstack/react-query?style=for-the-badge&logo=reactquery&logoColor=white&label=TanStack%20Query&color=FF4154)](https://tanstack.com/query/latest)
-[![React Router](https://img.shields.io/npm/v/react-router-dom?style=for-the-badge&logo=reactrouter&logoColor=white&label=React%20Router&color=CA4245)](https://reactrouter.com/)
+[![React Router](https://img.shields.io/npm/v/react-router?style=for-the-badge&logo=reactrouter&logoColor=white&label=React%20Router&color=CA4245)](https://reactrouter.com/)
 
 
 **If this tool is helping you, please ⭐ the repo!** It really helps discoverability.

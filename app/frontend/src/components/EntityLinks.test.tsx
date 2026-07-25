@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { CompanyLink, TickerLink } from "./EntityLinks";

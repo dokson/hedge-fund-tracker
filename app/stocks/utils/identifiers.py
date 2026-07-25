@@ -72,3 +72,56 @@ def normalize_ticker(raw: str) -> str:
     head = head.replace("/", "")
     match = _BOND_TRAILING_DIGITS.match(head)
     return match.group(1) if match else head
+
+
+# Security-type descriptor providers append to the issuer name. Stripped only
+# from the end, so a share class ("... Class A Common Stock") keeps its class.
+_SECURITY_DESCRIPTOR = re.compile(
+    r"\s+(?:(?:american|global)\s+)?(?:depositary|depository)\s+(?:shares|receipts)$"
+    r"|\s+(?:common|ordinary)\s+(?:stock|shares)$",
+    re.IGNORECASE,
+)
+
+# Legal-entity suffix tokens, possibly chained ("S.A.B. de C.V.", "SAPI de CV").
+_LEGAL_SUFFIX_TOKEN = (
+    r"(?:Inc|Incorporated|Corp|Corporation|Co|Ltd|Limited|LLC|L\.L\.C|LP|L\.P|LLP|PLC|P\.L\.C"
+    r"|N\.V|NV|B\.V|BV|S\.A\.B|S\.A|SAB|SAPI|SA|C\.V|CV|GmbH|AG|SE|AB|ASA|AS|OYJ|S\.p\.A|SpA"
+    r"|Trust|de)\.?"
+)
+# Anchored at end-of-string so commas inside firm names, descriptive lists and
+# dates ("Tweedy, Browne", "Gold, Natural Resources", "February 17, 2045") stay.
+_COMMA_BEFORE_LEGAL_SUFFIX = re.compile(
+    rf",(\s+{_LEGAL_SUFFIX_TOKEN}(?:\s+{_LEGAL_SUFFIX_TOKEN})*)$",
+    re.IGNORECASE,
+)
+
+
+# Only a one-word abbreviation ("Inc.", "Corp.", "Co."): requiring whitespace
+# before the token leaves multi-dot forms ("L.P.", "S.A.B. de C.V.") intact,
+# since their final token is preceded by a period rather than a space.
+_TRAILING_ABBREVIATION_PERIOD = re.compile(r"\s([A-Za-z]{2,})\.$")
+
+
+def normalize_company_name(raw: str) -> str:
+    """
+    Normalizes a provider-supplied company name for storage in stocks.csv.
+
+    Three cleanups, all driven by how providers pad names: the trailing
+    security-type descriptor is dropped (the CUSIP already identifies the
+    security, so "Common Stock" / "Ordinary Shares" / "American Depositary
+    Shares" carry nothing), the comma before a legal-entity suffix is removed,
+    and a trailing period is dropped from a one-word abbreviation. The last two
+    follow the convention the file already overwhelmingly uses.
+
+    Examples:
+        "Grandstand Limited Ordinary Shares"  → "Grandstand Limited"
+        "PowerCompute, Inc. Common Stock"     → "PowerCompute Inc"
+        "Ridgeline Compute Class A Common Stock" → "Ridgeline Compute Class A"
+        "Orbital Rocket L.P."                → unchanged (multi-dot abbreviation)
+        "Tweedy, Browne Insider + Value ETF"  → unchanged (semantic comma)
+    """
+    name = " ".join(raw.split())
+    while (stripped := _SECURITY_DESCRIPTOR.sub("", name)) != name:
+        name = stripped
+    name = _COMMA_BEFORE_LEGAL_SUFFIX.sub(r"\1", name)
+    return _TRAILING_ABBREVIATION_PERIOD.sub(r" \1", name).strip()

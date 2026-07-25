@@ -84,9 +84,13 @@ These are real incidents — read before changing code in these areas.
 
 - **Stale frontend dist served silently.** The dev server auto-rebuilds when `frontend/src/` mtimes are newer than `dist/index.html`. If you bypass `pipenv run app` and serve dist directly, edits to `.tsx` or `src/data/*.json` are invisible. Trust the auto-rebuild or run `pipenv run build-frontend` explicitly.
 
+- **`npm run build:gh-pages` leaves `dist/` unusable for the local server, and the auto-rebuild won't fix it.** The gh-pages build emits asset paths under `/hedge-fund-tracker/`; the local server has no such prefix, so the SPA fallback returns `index.html` for every asset and the browser reports `Failed to load module script … MIME type ('text/html')` on a blank page. The staleness check compares `src/` mtimes against `dist/index.html` — the fresh gh-pages dist is *newer*, so `pipenv run app` skips the rebuild and serves it anyway. After any gh-pages build, run `npm run build` before serving locally.
+
 - **`oxlint`'s `ignorePatterns` are relative to the CWD, not to `.oxlintrc.json`'s location.** Running `npx oxlint` from the repo root (even with `--config app/frontend/.oxlintrc.json`) does NOT ignore `src/components/ui/**` or `scripts/**` — false positives appear in vendored shadcn/ui files and build scripts that are meant to be excluded. Always run oxlint from `app/frontend` (`npm run lint`, or CI's `working-directory: app/frontend`), never from the repo root.
 
 - **SSE stdout capture is per-request.** `app/api/sse.py` installs a `_ContextAwareStdout` wrapper at module import (so it must stay on the boot path — `app/server.py` imports it) that consults a `ContextVar` on every `write()`. Concurrent SSE streams are isolated via `contextvars` — no global lock. Don't reintroduce `sys.stdout = ...` redirections, and don't bind a logger handler to a fixed stream (the project logger resolves `sys.stdout` lazily on every emit — see "Logging conventions"). Both patterns break isolation.
+
+- **A NASDAQ name mismatch does NOT mean a ticker change is bogus.** A genuine rebrand or reverse merger changes the company name, so it is indistinguishable from a ticker collision by name alone — gating on the name guard silently dropped legitimate renames. `_verify_change` in `app/stocks/ticker_changes.py` resolves it with two further signals: the change's `effective` date (NASDAQ's feed carries years of history, and freed symbols get reassigned, so a change older than `_MAX_CHANGE_AGE_DAYS` describes the ticker's *previous* occupant, not what we track), and whether the destination symbol is already tracked under a different CUSIP (a real collision). Don't collapse these back into the name check.
 
 - **Wrong `Denomination` breaks non-quarterly merging.** 13D/G and Form 4 filings match by *legal name string*, not CIK. The `Denomination` column in `hedge_funds.csv` must be exact. Mismatch = silent gap in non-quarterly view.
 
@@ -124,7 +128,7 @@ These are real incidents — read before changing code in these areas.
 
 React 19 + TypeScript + Vite, served by FastAPI (`app/server.py`). `pipenv run app` starts the server on the first free port from 8000, builds dist if stale, opens browser. `--cli` falls back to terminal menu.
 
-**Frontend stack**: React 19, TypeScript, Vite, Tailwind, shadcn/ui (subset), Recharts, TanStack Query, react-router-dom.
+**Frontend stack**: React 19, TypeScript, Vite, Tailwind, shadcn/ui (subset), Recharts, TanStack Query, react-router.
 
 **SSE pattern** (`_make_sse_stream`): runs the target in a background thread, captures stdout via a context-local queue (see `_ContextAwareStdout` + `_request_log_q`), streams each line as `data: {"type": "log", ...}`, sends final `{"type": "result", ...}` then closes. Concurrent streams isolated via `contextvars` — no shared lock.
 

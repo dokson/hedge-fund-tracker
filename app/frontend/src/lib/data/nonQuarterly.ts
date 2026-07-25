@@ -6,6 +6,7 @@
 import { cachedFetch, fetchCSV } from "./fetch";
 import { parseValueString } from "./format";
 import { getFundAvailableQuarters, getFundQuarterlyHoldings } from "./quarterData";
+import { getStocks } from "./stocks";
 import type {
   EnrichedNQFiling,
   FundQuarterSnapshot,
@@ -13,8 +14,15 @@ import type {
   RawNonQuarterly,
 } from "./types";
 
+/**
+ * non_quarterly.csv keeps the company name exactly as it appears in the filing,
+ * which carries provider/filer padding ("..., Inc. Common Stock"). stocks.csv is
+ * the canonical normalized CUSIP → Company map, so it wins for display; filings
+ * whose CUSIP is not tracked yet keep the as-filed name.
+ */
 export async function getNonQuarterlyFilings(): Promise<NonQuarterlyFiling[]> {
   return cachedFetch("non_quarterly", async () => {
+    const companyByCusip = new Map((await getStocks()).map((s) => [s.cusip, s.company] as const));
     const raw = await fetchCSV<RawNonQuarterly>("/database/non_quarterly.csv", [
       "Fund",
       "CUSIP",
@@ -30,7 +38,7 @@ export async function getNonQuarterlyFilings(): Promise<NonQuarterlyFiling[]> {
       fund: r.Fund,
       cusip: r.CUSIP,
       ticker: r.Ticker,
-      company: r.Company,
+      company: companyByCusip.get(r.CUSIP) ?? r.Company,
       shares: parseInt(r.Shares, 10) || 0,
       value: r.Value,
       avgPrice: r.Avg_Price,

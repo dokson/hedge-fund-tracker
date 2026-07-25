@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Building2, ChartCandlestick, Loader2, Search, SearchX, User } from "lucide-react";
 
 import { CompanyLogo } from "@/components/CompanyLogo";

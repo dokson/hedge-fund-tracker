@@ -10,7 +10,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 function Logo({ className = "" }: { className?: string }) {
   return <img src={`${BASE_PATH}/logo.png`} alt="Hedge Fund Tracker" className={className} />;

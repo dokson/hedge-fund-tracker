@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link } from "react-router";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { stockPath } from "@/lib/routes";
