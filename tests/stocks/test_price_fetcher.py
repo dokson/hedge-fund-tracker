@@ -22,9 +22,10 @@ class TestPriceFetcher(unittest.TestCase):
         """
         libraries = PriceFetcher.get_libraries()
 
-        self.assertEqual(len(libraries), 3)
+        self.assertEqual(len(libraries), 4)
         self.assertEqual(libraries[1].__name__, "TradingView")
         self.assertEqual(libraries[2].__name__, "Nasdaq")
+        self.assertEqual(libraries[3].__name__, "StockAnalysis")
 
     # --- get_current_price ---
 
@@ -82,12 +83,18 @@ class TestPriceFetcher(unittest.TestCase):
 
     @patch("app.stocks.price_fetcher.TradingView.get_current_price")
     @patch("app.stocks.price_fetcher.YFinance.get_current_price")
-    def test_get_current_price_returns_none_when_all_libraries_raise(self, mock_yf, mock_tv):
+    @patch("app.stocks.price_fetcher.StockAnalysis.get_current_price")
+    @patch("app.stocks.price_fetcher.Nasdaq.get_current_price")
+    def test_get_current_price_returns_none_when_all_libraries_raise(
+        self, mock_nasdaq, mock_sa, mock_yf, mock_tv
+    ):
         """
         Returns None (not an exception) when every library raises.
         """
         mock_yf.side_effect = Exception("API down")
         mock_tv.side_effect = Exception("Also down")
+        mock_nasdaq.return_value = None
+        mock_sa.return_value = None
 
         price = PriceFetcher.get_current_price("AAPL")
 
@@ -148,12 +155,18 @@ class TestPriceFetcher(unittest.TestCase):
 
     @patch("app.stocks.price_fetcher.TradingView.get_avg_price")
     @patch("app.stocks.price_fetcher.YFinance.get_avg_price")
-    def test_get_avg_price_returns_none_when_all_libraries_fail(self, mock_yf, mock_tv):
+    @patch("app.stocks.price_fetcher.StockAnalysis.get_avg_price")
+    @patch("app.stocks.price_fetcher.Nasdaq.get_avg_price")
+    def test_get_avg_price_returns_none_when_all_libraries_fail(
+        self, mock_nasdaq, mock_sa, mock_yf, mock_tv
+    ):
         """
         Returns None when no library can provide the historical price.
         """
         mock_yf.return_value = None
         mock_tv.return_value = None
+        mock_nasdaq.return_value = None
+        mock_sa.return_value = None
 
         price = PriceFetcher.get_avg_price("AAPL", date(2099, 12, 25))
 

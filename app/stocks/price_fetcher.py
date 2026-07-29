@@ -1,6 +1,6 @@
 from datetime import date
 
-from app.stocks.libraries import FinanceLibrary, Nasdaq, TradingView, YFinance
+from app.stocks.libraries import FinanceLibrary, Nasdaq, StockAnalysis, TradingView, YFinance
 from app.utils.logger import get_logger, log_safe
 
 logger = get_logger(__name__)
@@ -16,7 +16,7 @@ class PriceFetcher:
         """
         Returns an ordered list of FinanceLibrary classes for price fetching.
         """
-        return [YFinance, TradingView, Nasdaq]
+        return [YFinance, TradingView, Nasdaq, StockAnalysis]
 
     @staticmethod
     def get_current_price(ticker: str) -> float | None:

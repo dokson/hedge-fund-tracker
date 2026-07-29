@@ -9,6 +9,7 @@ from app.stocks.libraries.base_library import FinanceLibrary
 from app.stocks.libraries.fmp import FMP
 from app.stocks.libraries.nasdaq import Nasdaq
 from app.stocks.libraries.openfigi import OpenFIGI
+from app.stocks.libraries.stockanalysis import StockAnalysis
 from app.stocks.libraries.trading_view import TradingView
 from app.stocks.libraries.yfinance import YFinance
 
@@ -18,6 +19,7 @@ __all__ = [
     "FMP",
     "Nasdaq",
     "OpenFIGI",
+    "StockAnalysis",
     "TradingView",
     "YFinance",
 ]
