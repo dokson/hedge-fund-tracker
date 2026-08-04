@@ -11,7 +11,7 @@ alembic = "~=1.18"
 asyncpg = "~=0.31"
 beautifulsoup4 = "~=4.15"
 cryptography = "~=50.0"
-curl-cffi = "~=0.16.0b2"
+curl-cffi = "~=0.16.0"
 fastapi = "~=0.141"
 fastapi-users = {extras = ["sqlalchemy"], version = "~=15.0"}
 fastapi-users-db-sqlalchemy = "~=7.0"
