@@ -1,3 +1,5 @@
+from typing import cast
+
 import pandas as pd
 from pandas import Series
 
@@ -15,6 +17,13 @@ from app.utils.github import open_issue
 from app.utils.logger import get_logger, log_safe
 
 logger = get_logger(__name__)
+
+
+def _scalar[T](value: T | Series) -> T:
+    """
+    Returns the first element when pandas yields a Series for a duplicated CUSIP index.
+    """
+    return cast(T, value.iloc[0]) if isinstance(value, Series) else value
 
 
 class TickerResolver:
@@ -109,11 +118,10 @@ class TickerResolver:
             if cusip in stocks.index:
                 ticker = stocks.loc[cusip, "Ticker"]
 
-            # pandas can return a Series when the index has duplicate CUSIPs.
-            df.at[index, "Ticker"] = ticker.iloc[0] if isinstance(ticker, Series) else ticker
+            df.at[index, "Ticker"] = _scalar(ticker)
 
             if company == "":
-                df.at[index, "Company"] = stocks.loc[cusip, "Company"]
+                df.at[index, "Company"] = _scalar(stocks.loc[cusip, "Company"])
 
         return df
 

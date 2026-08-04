@@ -201,6 +201,23 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
 
         self.assertEqual(result.loc[0, "Company"], "Apple Inc")
 
+    @patch("app.stocks.ticker_resolver.load_stocks")
+    def test_fills_empty_company_when_cusip_is_duplicated_in_database(self, mock_load):
+        """
+        Fills an empty company field with a scalar when the cached CUSIP appears on several rows.
+        """
+        stocks = pd.DataFrame(
+            {"Ticker": ["AAPL", "AAPL"], "Company": ["Apple Inc", "Apple Inc"]},
+            index=["037833100", "037833100"],
+        )
+        stocks.index.name = "CUSIP"
+        mock_load.return_value = stocks
+        df = pd.DataFrame({"CUSIP": ["037833100"], "Company": [""], "Ticker": ["AAPL"]})
+
+        result = TickerResolver.resolve_ticker(df)
+
+        self.assertEqual(result.loc[0, "Company"], "Apple Inc")
+
     @patch("app.stocks.ticker_resolver.save_stock")
     @patch("app.stocks.ticker_resolver.YFinance.get_company")
     @patch("app.stocks.ticker_resolver.YFinance.get_ticker")
