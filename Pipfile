@@ -7,7 +7,7 @@ name = "pypi"
 python_version = "3.13"
 
 [packages]
-alembic = "~=1.18"
+alembic = "~=1.19"
 asyncpg = "~=0.31"
 beautifulsoup4 = "~=4.15"
 cryptography = "~=50.0"
@@ -18,7 +18,7 @@ fastapi-users-db-sqlalchemy = "~=7.0"
 google-genai = "~=2.16"
 httptools = {version = "==0.8.0", markers = "sys_platform != 'win32' or platform_machine == 'AMD64'"}
 lxml = "~=6.1"
-openai = "~=2.52"
+openai = "~=2.53"
 pandas = "~=3.0"
 psutil = "~=7.2"
 python-dotenv = "~=1.2"
