@@ -55,7 +55,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
-    "lucide-react": "^1.30.0",
+    "lucide-react": "^1.31.0",
     "next-themes": "^0.4.6",
     "papaparse": "^5.5.4",
     "react": "^19.2.8",
@@ -64,7 +64,7 @@
     "react-is": "^19.2.8",
     "react-router": "^8.3.0",
     "recharts": "^3.10.1",
-    "sonner": "^2.0.7",
+    "sonner": "^2.0.8",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.2.1",
     "tailwindcss-animate": "^1.0.7"
