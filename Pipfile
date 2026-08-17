@@ -15,10 +15,10 @@ curl-cffi = "~=0.16.0"
 fastapi = "~=0.141"
 fastapi-users = {extras = ["sqlalchemy"], version = "~=15.0"}
 fastapi-users-db-sqlalchemy = "~=7.0"
-google-genai = "~=2.17"
+google-genai = "~=2.18"
 httptools = {version = "==0.8.0", markers = "sys_platform != 'win32' or platform_machine == 'AMD64'"}
 lxml = "~=6.1"
-openai = "~=2.54"
+openai = "~=3.0"
 pandas = "~=3.0"
 psutil = "~=7.2"
 python-dotenv = "~=1.2"
@@ -33,7 +33,7 @@ uvicorn = "~=0.52"
 uvloop = {version = "==0.22.1", markers = "sys_platform != 'win32'"}
 watchfiles = "~=1.2"
 websockets = "~=16.1"
-yfinance = "~=1.5"
+yfinance = "~=1.6"
 
 [dev-packages]
 coverage = "~=7.15"
