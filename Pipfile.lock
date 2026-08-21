@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "dc9f99aba1d6797ca20054511af2c5c403ace7343ff18498b387ed138d5e8241"
+            "sha256": "4af27ebee060b9e76abaf2eba3771fff22ce145b594754ce77150379db3ae5f5"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -2488,20 +2488,20 @@
         },
         "httpcore2": {
             "hashes": [
-                "sha256:13c0cc3d1919d4f28457f60cd2c2abe04113a8af184ccf1142811beba936f9dc",
-                "sha256:7df06cfb34070cae4f7c89be69dc1095eca138e9704ceffb98d25c1912ab6f01"
+                "sha256:7e04258ce01013d7d615e5b910a3b27fac937d7a95038227e79652b4ba3b4ceb",
+                "sha256:9293522bba0aa7c4c8e9e3f040c16575bd8868e155a77fa30c7a9085a5eae648"
             ],
             "markers": "python_version >= '3.10'",
-            "version": "==2.10.0"
+            "version": "==2.12.0"
         },
         "httpx2": {
             "hashes": [
-                "sha256:5e3194a432701e1cc6f69a8b1b2fa199ef907013fede8d9a09a2c5b7b8141a18",
-                "sha256:8741d7329fe2c7885fc9ceb61c8217acfb87a85f75723714b89ebf7ad7196338"
+                "sha256:7631fe9887a8a2275f4a2540e053aa670fcc50742864a9ae7c66e609fdcf12cf",
+                "sha256:cc8b6eecb8661c146b8f89a60e97456ee086e91a784ed31ac450c3a9e613dd36"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==2.10.0"
+            "version": "==2.12.0"
         },
         "identify": {
             "hashes": [
@@ -2513,11 +2513,11 @@
         },
         "idna": {
             "hashes": [
-                "sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2",
-                "sha256:ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848"
+                "sha256:5e0811a4383b21dc5838069f801c4fb62113b7447663d2530d2bd6e77b49bf15",
+                "sha256:815e7be7a7806d54abb586dc943addc79e8b2ee16915059658cbeff4b1b43bf4"
             ],
             "markers": "python_version >= '3.9'",
-            "version": "==3.18"
+            "version": "==3.19"
         },
         "librt": {
             "hashes": [
