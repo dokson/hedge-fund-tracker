@@ -55,7 +55,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
-    "lucide-react": "^1.32.0",
+    "lucide-react": "^1.33.0",
     "next-themes": "^0.4.6",
     "papaparse": "^5.6.0",
     "react": "^19.2.8",
@@ -76,7 +76,7 @@
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@vitejs/plugin-react": "^6.0.5",
+    "@vitejs/plugin-react": "^6.1.0",
     "autoprefixer": "^10.5.4",
     "jsdom": "^30.0.1",
     "oxlint": "^1.79.0",
@@ -84,7 +84,7 @@
     "postcss": "^8.5.26",
     "prettier": "^3.9.6",
     "typescript": "^7.0.2",
-    "vite": "^8.2.1",
+    "vite": "^8.2.2",
     "vitest": "^4.1.11"
   },
   "overrides": {
