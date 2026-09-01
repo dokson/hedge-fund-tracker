@@ -58,7 +58,7 @@ updates:
           - "minor"
           - "patch"
 
-  # Docker base images: Dockerfile (node:22-slim, python:3.13-slim) and
+  # Docker base images: Dockerfile (node:22-slim, python:3.14-slim) and
   # docker-compose.yml (postgres:16-alpine).
   - package-ecosystem: "docker"
     directory: "/"

@@ -17,7 +17,7 @@ SEC EDGAR → app/scraper/ → app/analysis/ → app/ai/ (Promise Scores) → we
 
 ## Running Python tooling (must read)
 
-**Always run Python tooling through the pipenv venv** — `pipenv run <cmd>` (or `python -m pipenv run <cmd>` if `pipenv` is not on PATH, common on Windows; if a venv is already active in the shell its python lacks pipenv — use `py -3.13 -m pipenv run <cmd>`). The system Python lacks `pandas-stubs` and `fastapi_users` — running tests/pyright outside the venv produces import errors and ~150 false type errors. Sanity-check at session start: `python -m pipenv --venv`.
+**Always run Python tooling through the pipenv venv** — `pipenv run <cmd>` (or `python -m pipenv run <cmd>` if `pipenv` is not on PATH, common on Windows; if a venv is already active in the shell its python lacks pipenv — use `py -3.14 -m pipenv run <cmd>`). The system Python lacks `pandas-stubs` and `fastapi_users` — running tests/pyright outside the venv produces import errors and ~150 false type errors. Sanity-check at session start: `python -m pipenv --venv`.
 
 A `PreToolUse` hook in `.claude/settings.json` (script: `.claude/scripts/enforce_pipenv.py`) blocks bare invocations of `pyright`/`ruff`/`mypy`/`pytest` and `python -m <those>` when not preceded by `pipenv run`.
 
@@ -25,7 +25,7 @@ A `PreToolUse` hook in `.claude/settings.json` (script: `.claude/scripts/enforce
 
 ```bash
 # First-time setup
-# Requires Python 3.13 (see Pipfile)
+# Requires Python 3.14 (see Pipfile)
 pipenv install
 cp .env.example .env                        # all keys optional; app degrades gracefully
 cd app/frontend && npm install && cd ../..

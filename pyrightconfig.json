@@ -13,7 +13,7 @@
     "**/node_modules",
     "app/frontend"
   ],
-  "pythonVersion": "3.13",
+  "pythonVersion": "3.14",
   "typeCheckingMode": "basic",
   "useLibraryCodeForTypes": true,
   "reportMissingImports": "error",

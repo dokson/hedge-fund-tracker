@@ -1,5 +1,5 @@
 [tool.ruff]
-target-version = "py313"
+target-version = "py314"
 line-length = 100
 extend-exclude = [
     "__llmcache__",
@@ -40,9 +40,12 @@ ignore = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+# Bootstrap script: the pre-push hook runs it with whatever `python` is on
+# PATH, so it must parse on interpreters older than the py314 target.
+exclude = ["scripts/run_typechecks.py"]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 ignore_missing_imports = true
 warn_unused_ignores = true
 warn_redundant_casts = true

@@ -58,7 +58,7 @@ class PriceCache:
                     continue
                 try:
                     cache[(row["ticker"], row["date"])] = float(value)
-                except (ValueError, KeyError):
+                except ValueError, KeyError:
                     continue
         return cache
 

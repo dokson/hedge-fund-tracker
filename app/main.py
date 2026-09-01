@@ -594,7 +594,7 @@ def run_ai_due_diligence():
                     target_price_val = float(target_price)
                     potential_upside = ((target_price_val - current_price) / current_price) * 100
                     potential_upside_str = f" ({format_percentage(potential_upside, True)})"
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass  # Ignore if conversion fails
 
             print(f"Target Price (3 months): {target_price or 'N/A'}{potential_upside_str}")

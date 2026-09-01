@@ -70,8 +70,8 @@ def get_database_strategy(
     return DatabaseStrategy(access_token_db, lifetime_seconds=SESSION_LIFETIME_SECONDS)  # type: ignore[type-var]
 
 
-auth_backend = AuthenticationBackend(
+auth_backend = AuthenticationBackend(  # type: ignore[type-var]
     name="cookie-db",
     transport=cookie_transport,
     get_strategy=get_database_strategy,  # pyright: ignore[reportArgumentType]
-)  # type: ignore[type-var]
+)

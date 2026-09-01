@@ -31,7 +31,7 @@ def get_version() -> str:
         version = data.get("version")
         if isinstance(version, str) and version.strip():
             return version.strip()
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         pass
     return "0.0.0"
 

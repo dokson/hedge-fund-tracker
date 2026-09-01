@@ -102,7 +102,7 @@ def _llm_classify(ticker: str, company: str) -> str | None:
 
     try:
         content = response.json()["choices"][0]["message"]["content"].strip()
-    except (KeyError, ValueError, IndexError):
+    except KeyError, ValueError, IndexError:
         return None
 
     cleaned = re.sub(r"^[`\"']+|[`\"']+$", "", content).strip()

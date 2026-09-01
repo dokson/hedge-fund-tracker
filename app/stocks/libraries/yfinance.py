@@ -129,7 +129,7 @@ class YFinance(FinanceLibrary):
                     return symbol
             logger.warning("YFinance: No ticker found for CUSIP %s.", log_safe(cusip))
             return None
-        except (RequestException, ValueError):
+        except RequestException, ValueError:
             logger.error(
                 "Failed to get ticker for CUSIP %s using YFinance", log_safe(cusip), exc_info=True
             )

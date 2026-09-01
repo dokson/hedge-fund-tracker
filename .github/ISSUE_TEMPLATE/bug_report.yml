@@ -138,8 +138,8 @@ body:
     id: python
     attributes:
       label: Python version
-      description: Output of `python --version`. Project targets 3.13.
-      placeholder: "3.13.1"
+      description: Output of `python --version`. Project targets 3.14.
+      placeholder: "3.14.7"
 
   - type: input
     id: node

@@ -193,7 +193,7 @@ async def serve_spa(full_path: str) -> FileResponse:
             file_path = _safe_frontend_path(full_path)
             if file_path.exists() and file_path.is_file():
                 return FileResponse(str(file_path))
-    except (HTTPException, ValueError, OSError):
+    except HTTPException, ValueError, OSError:
         pass
 
     # Fallback to index.html for SPA routes (React Router handles the rest)

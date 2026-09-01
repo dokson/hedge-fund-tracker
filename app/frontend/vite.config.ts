@@ -6,8 +6,8 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
 
-import { ROUTES } from "./src/lib/routes";
-import { FAQ_LAST_UPDATED, FAQ_META, FAQ_SECTIONS } from "./src/lib/faqContent";
+import { ROUTES } from "./src/lib/routes.ts";
+import { FAQ_LAST_UPDATED, FAQ_META, FAQ_SECTIONS } from "./src/lib/faqContent.ts";
 import {
   buildBreadcrumbJsonLd,
   buildFaqJsonLd,
@@ -15,12 +15,14 @@ import {
   renderFaqStaticHtml,
   SITE_BASE,
   SITE_ORIGIN,
-} from "./src/lib/seo";
+} from "./src/lib/seo.ts";
 
 // Single source-of-truth for the app version: app/frontend/package.json. The
 // backend reads the same field at request time (see app/utils/version.py) so
 // every surface (sidebar footer, server /health, GH release tag) agrees.
-const pkg: unknown = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf-8"));
+const pkg: unknown = JSON.parse(
+  readFileSync(path.resolve(import.meta.dirname, "package.json"), "utf-8"),
+);
 if (
   typeof pkg !== "object" ||
   pkg === null ||
@@ -56,7 +58,7 @@ function faqStaticSeo(enabled: boolean): Plugin {
     // flushed to disk when closeBundle fires, so dist/index.html would ENOENT.
     writeBundle() {
       if (!enabled) return;
-      const distDir = path.resolve(__dirname, "dist");
+      const distDir = path.resolve(import.meta.dirname, "dist");
       const template = readFileSync(path.resolve(distDir, "index.html"), "utf-8");
 
       const html = renderFaqStaticHtml({
@@ -148,7 +150,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: { "@": path.resolve(import.meta.dirname, "./src") },
   },
   test: {
     globals: true,

@@ -8,8 +8,8 @@
  * SITE_ORIGIN to the domain and SITE_BASE to "" — keep SITE_BASE in sync with
  * BASE_PATH in config.ts).
  */
-import type { FaqSection } from "./faqContent";
-import { FAQ_LAST_UPDATED, FAQ_META } from "./faqContent";
+import type { FaqSection } from "./faqContent.ts";
+import { FAQ_LAST_UPDATED, FAQ_META } from "./faqContent.ts";
 
 /** Canonical site origin (scheme + host), no trailing slash. */
 export const SITE_ORIGIN = "https://dokson.github.io";

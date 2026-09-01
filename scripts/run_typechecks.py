@@ -11,26 +11,62 @@ non-zero if either fails, so the git pre-push hook blocks the push.
 
 Both checkers always run (the script does not stop at the first failure) so a
 single push surfaces every type error at once.
+
+This module is a *bootstrap*: the pre-push hook launches it with whatever
+`python` is on PATH, which is not the project venv and may be older than the
+project's own Python. It must therefore parse on those interpreters, so it
+stays on conservative syntax and is excluded from the formatter's py314
+rewrites in pyproject.toml. Keep it dependency-free and stdlib-only.
 """
 
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
+from pathlib import Path
+
+_PIPFILE = Path(__file__).resolve().parents[1] / "Pipfile"
 
 # Silence pipenv's "running within a virtual environment" courtesy notice so the
 # hook output stays focused on the checker results.
 _ENV = {**os.environ, "PIPENV_VERBOSITY": "-1"}
 
-# Candidate ways to invoke pipenv, most-to-least conventional. The Windows
-# launcher fallback handles the common case where `python` is the project venv
-# (no pipenv installed inside it).
-_PIPENV_CANDIDATES: list[list[str]] = [
-    ["pipenv"],
-    ["python", "-m", "pipenv"],
-    ["py", "-3.13", "-m", "pipenv"],
-]
+
+def _project_python_version(pipfile: Path = _PIPFILE) -> str | None:
+    """
+    Return the `python_version` declared in `pipfile`, or None if unreadable.
+
+    Read rather than hardcoded: a stale pin makes the versioned launcher
+    candidate fall through silently, so the hook quietly stops running the
+    checks CI runs.
+    """
+    try:
+        content = pipfile.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+    match = re.search(r'^\s*python_version\s*=\s*"([^"]+)"', content, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def _pipenv_candidates(pipfile: Path = _PIPFILE) -> list[list[str]]:
+    """
+    Return pipenv invocations to try, most-to-least conventional.
+
+    The Windows launcher fallbacks handle the common case where `python` is the
+    project venv, which has no pipenv installed inside it.
+    """
+    candidates: list[list[str]] = [["pipenv"], ["python", "-m", "pipenv"]]
+
+    version = _project_python_version(pipfile)
+    if version is not None:
+        candidates.append(["py", f"-{version}", "-m", "pipenv"])
+    candidates.append(["py", "-m", "pipenv"])
+
+    return candidates
+
 
 # Mirrors the commands in .github/workflows/lint.yml and run-tests.yml.
 _CHECKS: list[tuple[str, list[str]]] = [
@@ -44,7 +80,7 @@ def _resolve_pipenv() -> list[str] | None:
     """
     Return the first pipenv invocation whose `--version` succeeds, or None.
     """
-    for base in _PIPENV_CANDIDATES:
+    for base in _pipenv_candidates():
         try:
             result = subprocess.run(
                 [*base, "--version"],
@@ -67,7 +103,7 @@ def main() -> int:
     if pipenv is None:
         print(
             "pre-push: could not locate pipenv (tried: "
-            f"{', '.join(' '.join(c) for c in _PIPENV_CANDIDATES)}).\n"
+            f"{', '.join(' '.join(c) for c in _pipenv_candidates())}).\n"
             "Install pipenv or run pyright/mypy manually before pushing.",
             file=sys.stderr,
         )
