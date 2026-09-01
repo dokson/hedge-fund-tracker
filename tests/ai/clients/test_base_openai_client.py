@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-import httpx
+import httpx2 as httpx
 from openai import BadRequestError
 from tenacity import RetryError
 
