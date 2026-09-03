@@ -79,11 +79,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Run the package scripts rather than re-spelling the commands here, so
+      # CI and `npm run check` can never drift apart on a flag.
       - name: oxlint
-        run: npx oxlint --type-aware --deny-warnings
+        run: npm run lint
 
       - name: Prettier check
-        run: npx prettier --check .
+        run: npm run format:check
 
       - name: TypeScript type check
-        run: npx tsc -b --noEmit
+        run: npm run type-check

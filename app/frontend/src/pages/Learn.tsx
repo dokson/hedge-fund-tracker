@@ -59,6 +59,35 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
+/**
+ * The search box's value together with the URL hash it was typed under. Storing
+ * the pair is what lets a later hash change drop a filter hiding its target
+ * without an effect writing back into state.
+ */
+type TypedQuery = {
+  readonly hash: string | null;
+  readonly value: string;
+};
+
+/**
+ * Accordion items opened by hand, valid only for the query/hash basis they were
+ * toggled under; any change to that basis falls back to the derived open set.
+ */
+type ManualOpen = {
+  readonly basis: string;
+  readonly items: readonly string[];
+};
+
+/**
+ * The URL hash wins over the search box: navigating to a question the current
+ * filter would hide clears the filter rather than showing an empty page.
+ */
+function clearFilterHiding(query: string, hashItemId: string | null): string {
+  if (!query.trim() || !hashItemId) return query;
+  const item = ITEMS_BY_ID.get(hashItemId);
+  return item && !matchesQuery(query, item.question, ...item.answer) ? "" : query;
+}
+
 function filterSections(sections: FaqSection[], query: string): FaqSection[] {
   if (!query.trim()) return sections;
   return sections
@@ -157,9 +186,8 @@ export default function Learn() {
     jsonLd,
   });
 
-  const [query, setQuery] = useState("");
-  const [openItems, setOpenItems] = useState<string[]>([]);
-  const [pendingItem, setPendingItem] = useState<string | null>(null);
+  const [typedQuery, setTypedQuery] = useState<TypedQuery>({ hash: null, value: "" });
+  const [manualOpen, setManualOpen] = useState<ManualOpen | null>(null);
   const [activeSection, setActiveSection] = useState(FAQ_SECTIONS[0]?.id);
   const sectionRefs = useRef(new Map<string, HTMLElement>());
   const rootRef = useRef<HTMLDivElement>(null);
@@ -172,6 +200,12 @@ export default function Learn() {
     return ITEMS_BY_ID.has(id) ? id : null;
   }, [hash]);
 
+  const query =
+    typedQuery.hash === hashItemId
+      ? typedQuery.value
+      : clearFilterHiding(typedQuery.value, hashItemId);
+  const setQuery = (value: string) => setTypedQuery({ hash: hashItemId, value });
+
   const sections = useMemo(() => filterSections(FAQ_SECTIONS, query), [query]);
   const totalQuestions = QUESTION_NUMBERS.size;
   const matchCount = useMemo(
@@ -179,30 +213,21 @@ export default function Learn() {
     [sections],
   );
 
-  // Read through a ref inside the search effect below: that effect must react
-  // to the query alone, while the hash effect owns hash transitions.
-  const hashItemRef = useRef(hashItemId);
-  hashItemRef.current = hashItemId;
+  // A search expands every match (the answers are what is being searched), no
+  // search leaves only the hash-pinned question open. Derived during render
+  // rather than synchronised by an effect, so the deep-linked item is already
+  // expanded in the first commit.
+  const openBasis = JSON.stringify([query.trim(), hashItemId]);
+  const openItems = useMemo<readonly string[]>(() => {
+    if (manualOpen?.basis === openBasis) return manualOpen.items;
+    if (query.trim()) return sections.flatMap((s) => s.items.map((i) => i.id));
+    return hashItemId ? [hashItemId] : [];
+  }, [manualOpen, openBasis, query, sections, hashItemId]);
 
-  // A search expands every match (the answers are what is being searched), and
-  // clearing it collapses back — except for an item pinned by the URL hash.
-  useEffect(() => {
-    if (query.trim()) setOpenItems(sections.flatMap((s) => s.items.map((i) => i.id)));
-    else setOpenItems(hashItemRef.current ? [hashItemRef.current] : []);
-  }, [query, sections]);
-
-  // Deep link to a single question: clear a filter that would hide it, open it,
-  // then scroll and move focus to its trigger once it has rendered.
+  // Scrolling and focus are the one genuinely external thing a deep link does,
+  // so they stay in an effect — keyed on the hash, which is what changed.
   useEffect(() => {
     if (!hashItemId) return;
-    const item = ITEMS_BY_ID.get(hashItemId);
-    setQuery((q) => (q.trim() && item && !matchesQuery(q, item.question, ...item.answer) ? "" : q));
-    setOpenItems((prev) => (prev.includes(hashItemId) ? prev : [...prev, hashItemId]));
-    setPendingItem(hashItemId);
-  }, [hashItemId]);
-
-  useEffect(() => {
-    if (!pendingItem) return;
     let cancelled = false;
     let frame = 0;
     let attempts = 0;
@@ -218,7 +243,7 @@ export default function Learn() {
     // painted frame, scroll, then correct once layout has settled.
     const run = () => {
       if (cancelled) return;
-      const trigger = document.getElementById(pendingItem);
+      const trigger = document.getElementById(hashItemId);
       if (!trigger) {
         if (attempts++ > 30) return;
         frame = requestAnimationFrame(run);
@@ -228,11 +253,10 @@ export default function Learn() {
       scrollTo(trigger, reduced ? "auto" : "smooth");
       // preventScroll: focus()'s own scrolling would fight the one above.
       trigger.focus({ preventScroll: true });
-      setPendingItem(null);
 
       const settle = () => {
         if (cancelled) return;
-        const el = document.getElementById(pendingItem);
+        const el = document.getElementById(hashItemId);
         if (!el) return;
         const target = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
         const parentTop = getScrollParent(el)?.getBoundingClientRect().top ?? 0;
@@ -257,7 +281,7 @@ export default function Learn() {
       cancelled = true;
       cancelAnimationFrame(frame);
     };
-  }, [pendingItem]);
+  }, [hashItemId]);
 
   const scrollToSection = (id: string, behavior: ScrollBehavior) => {
     // scrollIntoView's own "smooth" ignores the CSS reduced-motion override
@@ -385,10 +409,10 @@ export default function Learn() {
               section={section}
               open={openItems.filter((id) => section.items.some((i) => i.id === id))}
               onOpenChange={(sectionItemIds, next) =>
-                setOpenItems((prev) => [
-                  ...prev.filter((id) => !sectionItemIds.includes(id)),
-                  ...next,
-                ])
+                setManualOpen({
+                  basis: openBasis,
+                  items: [...openItems.filter((id) => !sectionItemIds.includes(id)), ...next],
+                })
               }
               registerRef={(id, el) => {
                 if (el) sectionRefs.current.set(id, el);
