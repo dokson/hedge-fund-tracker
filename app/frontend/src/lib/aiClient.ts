@@ -17,13 +17,6 @@ export interface AIProvider {
 
 export const AI_PROVIDERS: AIProvider[] = [
   {
-    id: "github",
-    name: "GitHub Models",
-    envKey: "GITHUB_TOKEN",
-    link: "https://github.com/settings/tokens",
-    hint: "ghp_…",
-  },
-  {
     id: "google",
     name: "Google AI Studio",
     envKey: "GOOGLE_API_KEY",

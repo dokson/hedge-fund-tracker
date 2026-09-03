@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
-import { Building2, ChartCandlestick, Loader2, Search, SearchX, User } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { FundLogo } from "@/components/FundLogo";
@@ -9,6 +9,12 @@ import { MAX_PER_GROUP, type SearchHit, score } from "@/components/globalSearchU
 import { getHedgeFunds, getStocks } from "@/lib/dataService";
 import { stockPath, fundPath } from "@/lib/routes";
 
+const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+
+/**
+ * One combobox over tickers, CUSIPs, companies, funds, CIKs and managers;
+ * results are a listbox walked with the arrow keys, and Ctrl/⌘ K focuses it.
+ */
 export default function GlobalSearch({
   focusOnMount = false,
   onNavigate,
@@ -21,6 +27,7 @@ export default function GlobalSearch({
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -34,7 +41,6 @@ export default function GlobalSearch({
     queryFn: getHedgeFunds,
   });
 
-  // Group hits by kind so we can display section headers
   const grouped = useMemo(() => {
     const q = query.trim();
     if (!q || q.length < 1) return null;
@@ -47,9 +53,6 @@ export default function GlobalSearch({
     const bestByCompany = new Map<string, number>();
     for (const s of stocks) {
       if (!s.ticker) continue;
-      // Ticker + CUSIP both surface in the Tickers group: typing a CUSIP
-      // jumps to the corresponding stock the same way a ticker does. A row
-      // can have multiple legacy CUSIPs — bestByTicker keeps the best score.
       const tickerScore = score(q, s.ticker);
       const cusipScore = s.cusip ? score(q, s.cusip) : -1;
       const bestStockScore =
@@ -90,8 +93,6 @@ export default function GlobalSearch({
     const managerHits: { hit: SearchHit; rank: number }[] = [];
     for (const f of funds) {
       const fundScore = score(q, f.fund);
-      // Fund CIKs (10-digit zero-padded) also surface in the Funds group so an
-      // analyst pasting a CIK from SEC EDGAR lands on the right fund.
       const cikScore = f.cik ? score(q, f.cik) : -1;
       const bestFundScore =
         fundScore >= 0 && cikScore >= 0
@@ -128,19 +129,15 @@ export default function GlobalSearch({
     };
   }, [query, stocks, funds]);
 
-  // Flat list for keyboard navigation
   const flatHits = useMemo<SearchHit[]>(() => {
     if (!grouped) return [];
     return [...grouped.tickers, ...grouped.companies, ...grouped.funds, ...grouped.managers];
   }, [grouped]);
 
-  // Autofocus when mounted inside the mobile search sheet so the keyboard
-  // opens immediately without a second tap.
   useEffect(() => {
     if (focusOnMount) inputRef.current?.focus();
   }, [focusOnMount]);
 
-  // Cmd+K / Ctrl+K to focus the input
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -152,7 +149,6 @@ export default function GlobalSearch({
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Click outside closes the dropdown
   useEffect(() => {
     const handler = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -192,16 +188,9 @@ export default function GlobalSearch({
   };
 
   const isLoading = stocksLoading || fundsLoading;
-  const hasResults = Boolean(
-    grouped &&
-    (grouped.tickers.length ||
-      grouped.companies.length ||
-      grouped.funds.length ||
-      grouped.managers.length),
-  );
+  const hasResults = flatHits.length > 0;
+  const expanded = open && query.trim().length > 0;
 
-  // Offsets of each group's first item in the flat list — used to align the
-  // keyboard-navigated activeIndex with the visually highlighted row.
   const offsets = grouped
     ? {
         tickers: 0,
@@ -211,13 +200,25 @@ export default function GlobalSearch({
       }
     : { tickers: 0, companies: 0, funds: 0, managers: 0 };
 
+  const optionId = (i: number) => `${listId}-opt-${i}`;
+  const groupCount = grouped
+    ? [grouped.tickers, grouped.companies, grouped.funds, grouped.managers].filter((g) => g.length)
+        .length
+    : 0;
+
   return (
     <div ref={containerRef} className="relative w-full max-w-md">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="relative flex items-center h-9 rounded-md border border-input bg-background transition-colors duration-[120ms] focus-within:border-primary">
+        <Search aria-hidden="true" className="ml-2.5 mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
         <input
           ref={inputRef}
           type="text"
+          role="combobox"
+          aria-label="Search ticker, CUSIP, company, fund, CIK or manager"
+          aria-expanded={expanded}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={expanded && hasResults ? optionId(activeIndex) : undefined}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -226,121 +227,118 @@ export default function GlobalSearch({
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder="Search ticker, CUSIP, company, fund, CIK or manager…"
-          className="w-full h-9 pl-9 pr-12 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          placeholder="ticker, cusip, fund, manager"
+          // No `focus:outline-none`: Tailwind emits it into the `utilities`
+          // layer, which beats the `@layer base` :focus-visible ring in
+          // index.css, leaving a 1px border tint as the only indicator.
+          className="w-full h-full bg-transparent pr-16 text-[13px] text-foreground placeholder:text-muted-foreground"
         />
-        <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-          ⌘K
+        <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 rounded-sm border border-border px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground">
+          {IS_MAC ? "⌘K" : "Ctrl K"}
         </kbd>
       </div>
 
-      {open && query.trim() && (
-        <div className="absolute left-0 right-0 mt-1 max-h-96 overflow-auto rounded-md border border-border bg-popover shadow-md z-50 text-sm">
-          {isLoading && (
-            <div className="flex items-center gap-2 px-3 py-3 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading index…
+      <div aria-live="polite" className="sr-only">
+        {expanded && !isLoading
+          ? hasResults
+            ? `${flatHits.length} results in ${groupCount} groups`
+            : "No matches"
+          : ""}
+      </div>
+
+      <ul
+        id={listId}
+        role="listbox"
+        aria-label="Search results"
+        hidden={!expanded}
+        className="absolute left-0 right-0 mt-1 max-h-96 overflow-auto rounded-md border border-border bg-popover shadow-md z-50 text-[13px]"
+      >
+        {expanded && isLoading && (
+          <li className="flex items-center gap-2 px-3 py-3 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading index…
+          </li>
+        )}
+        {expanded && !isLoading && !hasResults && (
+          <li className="px-3 py-4">
+            <div className="text-foreground">
+              No match for <span className="font-medium">&ldquo;{query.trim()}&rdquo;</span>
             </div>
-          )}
-          {!isLoading && !hasResults && (
-            <div className="flex flex-col items-center gap-2 px-4 py-6 text-center">
-              <SearchX className="h-6 w-6 text-muted-foreground/60" aria-hidden="true" />
-              <div className="text-sm text-foreground">
-                No matches for{" "}
-                <span className="font-mono font-semibold">&ldquo;{query.trim()}&rdquo;</span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Try a ticker, company name, fund or manager.
-              </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Try a ticker, company name, fund or manager.
             </div>
-          )}
-          {!isLoading && hasResults && grouped && (
-            <>
-              {grouped.tickers.length > 0 && (
-                <Group label="Tickers" icon={<ChartCandlestick className="h-3.5 w-3.5" />}>
-                  {grouped.tickers.map((hit, i) => (
-                    <Row
-                      key={`t-${hit.kind === "ticker" ? hit.ticker : ""}`}
-                      hit={hit}
-                      active={activeIndex === offsets.tickers + i}
-                      onClick={() => navigateToHit(hit)}
-                      onMouseEnter={() => setActiveIndex(offsets.tickers + i)}
-                    />
-                  ))}
-                </Group>
-              )}
-              {grouped.companies.length > 0 && (
-                <Group label="Companies" icon={<Building2 className="h-3.5 w-3.5" />}>
-                  {grouped.companies.map((hit, i) => (
-                    <Row
-                      key={`c-${hit.kind === "company" ? hit.ticker : ""}`}
-                      hit={hit}
-                      active={activeIndex === offsets.companies + i}
-                      onClick={() => navigateToHit(hit)}
-                      onMouseEnter={() => setActiveIndex(offsets.companies + i)}
-                    />
-                  ))}
-                </Group>
-              )}
-              {grouped.funds.length > 0 && (
-                <Group label="Funds" icon={<Building2 className="h-3.5 w-3.5" />}>
-                  {grouped.funds.map((hit, i) => (
-                    <Row
-                      key={`f-${hit.kind === "fund" ? hit.fund : ""}`}
-                      hit={hit}
-                      active={activeIndex === offsets.funds + i}
-                      onClick={() => navigateToHit(hit)}
-                      onMouseEnter={() => setActiveIndex(offsets.funds + i)}
-                    />
-                  ))}
-                </Group>
-              )}
-              {grouped.managers.length > 0 && (
-                <Group label="Managers" icon={<User className="h-3.5 w-3.5" />}>
-                  {grouped.managers.map((hit, i) => (
-                    <Row
-                      key={`m-${hit.kind === "manager" ? hit.fund : ""}`}
-                      hit={hit}
-                      active={activeIndex === offsets.managers + i}
-                      onClick={() => navigateToHit(hit)}
-                      onMouseEnter={() => setActiveIndex(offsets.managers + i)}
-                    />
-                  ))}
-                </Group>
-              )}
-            </>
-          )}
-        </div>
-      )}
+          </li>
+        )}
+        {expanded && !isLoading && hasResults && grouped && (
+          <>
+            <Group label="Tickers" hits={grouped.tickers} />
+            {grouped.tickers.map((hit, i) => (
+              <Row
+                key={`t-${hit.kind === "ticker" ? hit.ticker : ""}`}
+                id={optionId(offsets.tickers + i)}
+                hit={hit}
+                active={activeIndex === offsets.tickers + i}
+                onClick={() => navigateToHit(hit)}
+                onMouseEnter={() => setActiveIndex(offsets.tickers + i)}
+              />
+            ))}
+            <Group label="Companies" hits={grouped.companies} />
+            {grouped.companies.map((hit, i) => (
+              <Row
+                key={`c-${hit.kind === "company" ? hit.ticker : ""}`}
+                id={optionId(offsets.companies + i)}
+                hit={hit}
+                active={activeIndex === offsets.companies + i}
+                onClick={() => navigateToHit(hit)}
+                onMouseEnter={() => setActiveIndex(offsets.companies + i)}
+              />
+            ))}
+            <Group label="Funds" hits={grouped.funds} />
+            {grouped.funds.map((hit, i) => (
+              <Row
+                key={`f-${hit.kind === "fund" ? hit.fund : ""}`}
+                id={optionId(offsets.funds + i)}
+                hit={hit}
+                active={activeIndex === offsets.funds + i}
+                onClick={() => navigateToHit(hit)}
+                onMouseEnter={() => setActiveIndex(offsets.funds + i)}
+              />
+            ))}
+            <Group label="Managers" hits={grouped.managers} />
+            {grouped.managers.map((hit, i) => (
+              <Row
+                key={`m-${hit.kind === "manager" ? hit.fund : ""}`}
+                id={optionId(offsets.managers + i)}
+                hit={hit}
+                active={activeIndex === offsets.managers + i}
+                onClick={() => navigateToHit(hit)}
+                onMouseEnter={() => setActiveIndex(offsets.managers + i)}
+              />
+            ))}
+          </>
+        )}
+      </ul>
     </div>
   );
 }
 
-function Group({
-  label,
-  icon,
-  children,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
+/** A group label inside the listbox. Presentational. */
+function Group({ label, hits }: { label: string; hits: SearchHit[] }) {
+  if (hits.length === 0) return null;
   return (
-    <div>
-      <div className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border bg-muted/30">
-        {icon}
-        {label}
-      </div>
-      <ul>{children}</ul>
-    </div>
+    <li role="presentation" className="px-3 pt-2 pb-1 text-[11px] text-muted-foreground">
+      {label}
+    </li>
   );
 }
 
 function Row({
+  id,
   hit,
   active,
   onClick,
   onMouseEnter,
 }: {
+  id: string;
   hit: SearchHit;
   active: boolean;
   onClick: () => void;
@@ -365,29 +363,28 @@ function Row({
 
   return (
     <li
+      id={id}
       role="option"
       aria-selected={active}
       onMouseEnter={onMouseEnter}
       onMouseDown={(event) => {
-        // Use mouseDown so the click registers before the input blur closes the dropdown.
+        // mouseDown so the click registers before the input blur closes the list.
         event.preventDefault();
         onClick();
       }}
-      className={`flex items-center gap-3 px-3 py-2 cursor-pointer ${
-        active ? "bg-accent text-accent-foreground" : "hover:bg-accent/60"
+      className={`flex items-center gap-3 px-3 py-1.5 cursor-pointer ${
+        active ? "bg-muted text-foreground" : ""
       }`}
     >
       {(hit.kind === "ticker" || hit.kind === "company") && (
-        <CompanyLogo ticker={hit.ticker} size={22} />
+        <CompanyLogo ticker={hit.ticker} size={20} />
       )}
       {(hit.kind === "fund" || hit.kind === "manager") && (
-        <FundLogo fundName={hit.fund} url={hit.url} size={22} className="rounded" />
+        <FundLogo fundName={hit.fund} url={hit.url} size={20} />
       )}
-      <div className="min-w-0 flex-1">
-        <div className={`truncate font-medium ${active ? "" : "text-foreground"}`}>{primary}</div>
-        <div className={`truncate text-xs ${active ? "opacity-80" : "text-muted-foreground"}`}>
-          {secondary}
-        </div>
+      <div className="min-w-0 flex-1 flex items-baseline gap-3">
+        <span className="truncate font-medium">{primary}</span>
+        <span className="truncate text-xs text-muted-foreground">{secondary}</span>
       </div>
     </li>
   );

@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router";
+import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getHedgeFunds } from "@/lib/dataService";
 import { CompanyLogo } from "@/components/CompanyLogo";
@@ -6,6 +6,16 @@ import { FundLogo } from "@/components/FundLogo";
 import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
 import { stockPath, fundPath } from "@/lib/routes";
+
+/**
+ * These are real `<Link>`s, not `role="link"` spans: an anchor with an href is
+ * what makes middle-click, cmd-click, "open in new tab" and "copy link
+ * address" work, and what puts the target in the status bar.
+ *
+ * `min-h-6` on each is SC 2.5.8: in stacked table rows the cell links were
+ * 17-22px tall, under the 24px minimum, and too close together for the
+ * spacing exception to rescue them.
+ */
 
 /** Convert CSV-filename fund name (with underscores) to display name */
 // oxlint-disable-next-line react/only-export-components
@@ -53,31 +63,22 @@ export function CompanyLink({
    */
   showStar?: boolean;
 }) {
-  const navigate = useNavigate();
   const link = (
-    <span
-      role="link"
-      tabIndex={0}
+    <Link
+      to={stockPath(ticker)}
       title={title ?? company}
-      className={`company-link ${className}`}
-      onClick={(e) => {
-        e.stopPropagation();
-        void navigate(stockPath(ticker));
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          e.stopPropagation();
-          void navigate(stockPath(ticker));
-        }
-      }}
+      className={`company-link min-w-0 min-h-6 ${className}`}
+      onClick={(e) => e.stopPropagation()}
     >
       {company}
-    </span>
+    </Link>
   );
   if (!showStar) return link;
   return (
-    <span className="inline-flex items-center gap-2 align-middle">
+    // `min-w-0 max-w-full`: without them this inline-flex is sized by its
+    // content, so on a phone the star + company name pushed the whole column
+    // past the viewport instead of letting `.company-link` truncate.
+    <span className="inline-flex min-w-0 max-w-full items-center gap-2 align-middle">
       <InlineStockStar ticker={ticker} />
       {link}
     </span>
@@ -98,27 +99,15 @@ export function TickerLink({
   className?: string;
   showLogo?: boolean;
 }) {
-  const navigate = useNavigate();
   return (
-    <span
-      role="link"
-      tabIndex={0}
-      className={`ticker-pill ${className}`}
-      onClick={(e) => {
-        e.stopPropagation();
-        void navigate(stockPath(ticker));
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          e.stopPropagation();
-          void navigate(stockPath(ticker));
-        }
-      }}
+    <Link
+      to={stockPath(ticker)}
+      className={`ticker-pill min-h-6 ${className}`}
+      onClick={(e) => e.stopPropagation()}
     >
       {showLogo && <CompanyLogo ticker={ticker} size={16} />}
       <span>{ticker}</span>
-    </span>
+    </Link>
   );
 }
 
@@ -128,7 +117,6 @@ export function TickerLink({
  * the primary entity. For inline contexts (lists, paragraphs) prefer FundLink.
  */
 export function FundCell({ fundName, className = "" }: { fundName: string; className?: string }) {
-  const navigate = useNavigate();
   const { data: funds } = useQuery({ queryKey: ["hedgeFunds"], queryFn: getHedgeFunds });
   const fund = funds?.find((f) => f.fund === fundName);
   // Tables use the short canonical name (CSV `Fund` column) to keep cells
@@ -137,27 +125,16 @@ export function FundCell({ fundName, className = "" }: { fundName: string; class
 
   return (
     <div className={`flex items-center gap-2.5 min-w-0 ${className}`}>
-      <FundLogo fundName={fundName} url={fund?.url} size={16} className="rounded-sm mt-0.5" />
+      <FundLogo fundName={fundName} url={fund?.url} size={16} className="mt-0.5" />
       <div className="flex flex-col min-w-0 leading-tight">
-        <span
-          role="link"
-          tabIndex={0}
+        <Link
+          to={fundPath(fundName)}
           title={fund?.denomination || display}
-          className="font-semibold text-foreground hover:text-primary focus-visible:text-primary focus-visible:outline-none transition-colors cursor-pointer truncate"
-          onClick={(e) => {
-            e.stopPropagation();
-            void navigate(fundPath(fundName));
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              e.stopPropagation();
-              void navigate(fundPath(fundName));
-            }
-          }}
+          className="inline-flex min-h-6 items-center font-semibold text-foreground hover:text-primary-text focus-visible:text-primary-text transition-colors truncate"
+          onClick={(e) => e.stopPropagation()}
         >
           {display}
-        </span>
+        </Link>
         {fund?.manager && (
           <span className="text-xs text-muted-foreground truncate">{fund.manager}</span>
         )}
@@ -175,26 +152,14 @@ export function FundLink({
   displayName?: string;
   className?: string;
 }) {
-  const navigate = useNavigate();
   const denomination = useFundDenomination(fundName);
   return (
-    <span
-      role="link"
-      tabIndex={0}
-      className={`fund-link ${className}`}
-      onClick={(e) => {
-        e.stopPropagation();
-        void navigate(fundPath(fundName));
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          e.stopPropagation();
-          void navigate(fundPath(fundName));
-        }
-      }}
+    <Link
+      to={fundPath(fundName)}
+      className={`fund-link inline-flex min-h-6 items-center ${className}`}
+      onClick={(e) => e.stopPropagation()}
     >
       {displayName || denomination}
-    </span>
+    </Link>
   );
 }

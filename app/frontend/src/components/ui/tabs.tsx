@@ -5,16 +5,14 @@ import { cn } from "@/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
 
+/** Underline tabs: the active one carries a 2px primary rule. */
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
-    className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
-      className,
-    )}
+    className={cn("inline-flex items-stretch gap-4 border-b border-border", className)}
     {...props}
   />
 ));
@@ -27,7 +25,11 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium cursor-pointer ring-offset-background transition-all hover:bg-background/60 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary data-[state=active]:hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      // Keyed off BOTH aria-selected and data-state. A `<TooltipTrigger asChild>`
+      // wrapper passes its own data-state ("closed") down, and Radix's Tabs trigger
+      // spreads incoming props AFTER its own data-state, so data-[state=active]
+      // silently never matches. aria-selected is not clobbered that way.
+      "inline-flex items-center justify-center whitespace-nowrap h-9 px-1 -mb-px text-[13px] font-normal text-muted-foreground cursor-pointer border-b-2 border-transparent transition-colors duration-[120ms] hover:text-foreground aria-selected:border-primary aria-selected:text-foreground aria-selected:font-medium data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50",
       className,
     )}
     {...props}
@@ -41,10 +43,7 @@ const TabsContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.Content
     ref={ref}
-    className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-      className,
-    )}
+    className={cn("mt-3 focus-visible:outline-none", className)}
     {...props}
   />
 ));

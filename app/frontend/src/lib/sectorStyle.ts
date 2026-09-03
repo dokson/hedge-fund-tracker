@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import {
   Apple,
   BarChart3,
@@ -13,112 +14,63 @@ import {
   Zap,
 } from "lucide-react";
 
+/**
+ * Sector colours are theme tokens, so both themes keep AA on their own
+ * surfaces. Every real sector carries a hue; the neutral is reserved for a
+ * sector the registry does not know. Consecutive registry entries never share
+ * a token, so neighbouring rows in a sector list stay distinguishable.
+ */
+export type SectorToken =
+  | "chart-1"
+  | "chart-2"
+  | "chart-3"
+  | "chart-4"
+  | "chart-5"
+  | "chart-6"
+  | "chart-7"
+  | "muted-foreground";
+
 export interface SectorStyle {
   icon: React.ElementType;
-  /** Tailwind text-color class for foreground (icon + label). */
-  color: string;
-  /** Tailwind bg-color class for filled chips. */
-  bg: string;
-  /** Tailwind border-color class. */
-  border: string;
-  /** Tailwind bg-color class for the small dot used in outline chips. */
-  dot: string;
+  /** The bare CSS variable name, e.g. "chart-1". */
+  token: SectorToken;
+  /** The resolved colour, ready for an inline style. */
+  cssVar: string;
+}
+
+/** Shape of the sector tag: the neutral chip, sentence case, no border. */
+export const SECTOR_PILL = "chip sector-pill gap-1";
+
+/**
+ * The hue goes inline, never in a class: a class built from the token would be
+ * assembled at runtime and Tailwind's scanner would never emit it. It reaches
+ * the icon alone through `--sector-hue`; the label reads on the neutral chip,
+ * because a hue over a 15% wash of itself cannot reach 4.5:1.
+ */
+export function sectorPillStyle(style: SectorStyle): CSSProperties {
+  return { "--sector-hue": style.cssVar } as CSSProperties;
+}
+
+function fromToken(icon: React.ElementType, token: SectorToken): SectorStyle {
+  return { icon, token, cssVar: `hsl(var(--${token}))` };
 }
 
 export const SECTOR_STYLE: Record<string, SectorStyle> = {
-  Technology: {
-    icon: Cpu,
-    color: "text-blue-400",
-    bg: "bg-blue-950/40",
-    border: "border-blue-700",
-    dot: "bg-blue-400",
-  },
-  "Financial Services": {
-    icon: BarChart3,
-    color: "text-emerald-400",
-    bg: "bg-emerald-950/40",
-    border: "border-emerald-700",
-    dot: "bg-emerald-400",
-  },
-  Healthcare: {
-    icon: Heart,
-    color: "text-pink-400",
-    bg: "bg-pink-950/40",
-    border: "border-pink-700",
-    dot: "bg-pink-400",
-  },
-  "Consumer Cyclical": {
-    icon: ShoppingCart,
-    color: "text-yellow-400",
-    bg: "bg-yellow-950/40",
-    border: "border-yellow-700",
-    dot: "bg-yellow-400",
-  },
-  "Consumer Defensive": {
-    icon: Apple,
-    color: "text-orange-400",
-    bg: "bg-orange-950/40",
-    border: "border-orange-700",
-    dot: "bg-orange-400",
-  },
-  "Communication Services": {
-    icon: Radio,
-    color: "text-purple-400",
-    bg: "bg-purple-950/40",
-    border: "border-purple-700",
-    dot: "bg-purple-400",
-  },
-  Industrials: {
-    icon: Factory,
-    color: "text-sky-400",
-    bg: "bg-sky-950/40",
-    border: "border-sky-700",
-    dot: "bg-sky-400",
-  },
-  Energy: {
-    icon: Zap,
-    color: "text-amber-400",
-    bg: "bg-amber-950/40",
-    border: "border-amber-700",
-    dot: "bg-amber-400",
-  },
-  Utilities: {
-    icon: Plug,
-    color: "text-teal-400",
-    bg: "bg-teal-950/40",
-    border: "border-teal-700",
-    dot: "bg-teal-400",
-  },
-  "Real Estate": {
-    icon: Building2,
-    color: "text-indigo-400",
-    bg: "bg-indigo-950/40",
-    border: "border-indigo-700",
-    dot: "bg-indigo-400",
-  },
-  "Basic Materials": {
-    icon: Mountain,
-    color: "text-slate-400",
-    bg: "bg-slate-900/60",
-    border: "border-slate-600",
-    dot: "bg-slate-400",
-  },
-  ETF: {
-    icon: Layers,
-    color: "text-zinc-300",
-    bg: "bg-zinc-900/60",
-    border: "border-zinc-600",
-    dot: "bg-zinc-300",
-  },
+  Technology: fromToken(Cpu, "chart-1"),
+  "Financial Services": fromToken(BarChart3, "chart-2"),
+  Healthcare: fromToken(Heart, "chart-3"),
+  "Consumer Cyclical": fromToken(ShoppingCart, "chart-4"),
+  "Consumer Defensive": fromToken(Apple, "chart-5"),
+  "Communication Services": fromToken(Radio, "chart-1"),
+  Industrials: fromToken(Factory, "chart-6"),
+  Energy: fromToken(Zap, "chart-4"),
+  Utilities: fromToken(Plug, "chart-2"),
+  "Real Estate": fromToken(Building2, "chart-5"),
+  "Basic Materials": fromToken(Mountain, "chart-3"),
+  ETF: fromToken(Layers, "chart-7"),
 };
 
-export const DEFAULT_SECTOR_STYLE: SectorStyle = {
-  icon: Layers,
-  color: "text-muted-foreground",
-  bg: "bg-muted/40",
-  border: "border-border",
-  dot: "bg-muted-foreground",
-};
+export const DEFAULT_SECTOR_STYLE: SectorStyle = fromToken(Layers, "muted-foreground");
 
 export function getSectorStyle(sector: string | undefined | null): SectorStyle {
   if (!sector) return DEFAULT_SECTOR_STYLE;

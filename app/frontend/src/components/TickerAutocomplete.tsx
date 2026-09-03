@@ -9,6 +9,7 @@ interface TickerAutocompleteProps {
   onSubmit?: () => void;
   onValidChange?: (valid: boolean) => void;
   className?: string;
+  id?: string;
   placeholder?: string;
 }
 
@@ -18,6 +19,7 @@ export default function TickerAutocomplete({
   onSubmit,
   onValidChange,
   className = "",
+  id,
   placeholder = "NVDA",
 }: TickerAutocompleteProps) {
   const [open, setOpen] = useState(false);
@@ -107,6 +109,7 @@ export default function TickerAutocomplete({
   return (
     <div ref={wrapperRef} className="relative">
       <Input
+        id={id}
         value={value}
         onChange={(e) => {
           onChange(e.target.value.toUpperCase());
@@ -116,14 +119,18 @@ export default function TickerAutocomplete({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className={`w-24 ${className} font-mono uppercase placeholder:normal-case placeholder:font-sans ${
-          showError ? "border-destructive focus-visible:ring-destructive" : ""
+          showError ? "border-destructive" : ""
         }`}
       />
       {showError && (
-        <p className="text-[10px] text-destructive mt-0.5 absolute">Ticker not found</p>
+        <p className="text-[11px] text-destructive mt-0.5 absolute">Ticker not found</p>
       )}
       {open && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 w-64 rounded-md border border-border bg-popover shadow-md overflow-hidden">
+        <div
+          role="listbox"
+          aria-label="Ticker suggestions"
+          className="absolute z-50 mt-1 w-64 overflow-hidden rounded-md border border-border bg-popover shadow-md"
+        >
           {suggestions.map(([ticker, company], idx) => {
             const isHighlighted = idx === highlightIdx;
             return (
@@ -133,7 +140,7 @@ export default function TickerAutocomplete({
                 aria-selected={isHighlighted}
                 tabIndex={-1}
                 className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer transition-colors ${
-                  isHighlighted ? "bg-primary text-primary-foreground" : "hover:bg-accent/50"
+                  isHighlighted ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                 }`}
                 onMouseDown={() => selectTicker(ticker)}
                 onMouseEnter={() => setHighlightIdx(idx)}

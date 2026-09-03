@@ -7,7 +7,7 @@ This project ships from `master` and is released as it evolves; only the latest 
 
 | Version | Supported |
 | ------- | --------- |
-| Latest release (`v1.2.x`) | ✅ |
+| Latest release (`v2.0.x`) | ✅ |
 | `master` (HEAD) | ✅ |
 | Older releases | ❌ |
 
@@ -35,7 +35,9 @@ Please include:
 
 ## Scope
 
-This is a **local-first, single-user tool** that retrieves public SEC EDGAR filings and runs analysis on your own machine (or a static GitHub Pages build with no backend).
+The supported posture is a **local-first, single-user tool** that retrieves public SEC EDGAR filings and runs analysis on your own machine (or a static GitHub Pages build with no backend). In that mode the app binds to loopback and has no accounts.
+
+**Experimental multi-user stack.** The repository also contains an unfinished multi-user path: `fastapi-users` cookie sessions backed by database access tokens (`app/auth/`), a Postgres schema and Alembic migrations (`app/db/`), envelope-encrypted BYOK provider keys under a master KEK (`app/security/envelope.py`), and the four secrets the Docker Compose stack requires (`POSTGRES_PASSWORD`, `MASTER_KEY`, `RESET_PASSWORD_TOKEN_SECRET`, `VERIFICATION_TOKEN_SECRET`). This is **experimental and not the supported production mode**: it has not been hardened for internet exposure and should not be deployed publicly yet. Security findings in it are still welcome and will be triaged like any other report — just say which components your report concerns, since fixes there may land as behavior changes rather than advisories.
 
 In scope:
 
@@ -46,7 +48,7 @@ In scope:
 
 Out of scope (by design):
 
-- The local web UI's admin endpoints are **unauthenticated by design** — the app binds to loopback and is intended for single-user local use. Exposing it to an untrusted network is unsupported and not a vulnerability in itself.
+- In local mode, the web UI's admin endpoints are **unauthenticated by design** — the app binds to loopback and is intended for single-user local use. Exposing it to an untrusted network is unsupported and not a vulnerability in itself.
 - Issues requiring a malicious local user who already has filesystem access.
 - Rate limits or data gaps inherent to the upstream SEC EDGAR / third-party data sources.
 

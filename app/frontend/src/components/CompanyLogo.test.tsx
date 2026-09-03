@@ -27,18 +27,28 @@ describe("buildLogoUrl", () => {
 });
 
 describe("CompanyLogo", () => {
-  it("renders an img with the ticker as alt text", () => {
-    const { getByRole } = render(<CompanyLogo ticker="AAPL" size={48} />);
-    const img = getByRole("img") as HTMLImageElement;
+  // The logo is decorative by default: it always sits beside the ticker or the
+  // company name, so `alt={ticker}` announced the ticker twice (axe
+  // `image-redundant-alt`, SC 1.1.1). `decorative={false}` restores the name
+  // for a logo that stands alone.
+  it("renders a decorative img by default", () => {
+    const { container } = render(<CompanyLogo ticker="AAPL" size={48} />);
+    const img = container.querySelector("img")!;
 
-    expect(img.alt).toBe("AAPL");
+    expect(img.alt).toBe("");
     expect(img.width).toBe(48);
     expect(img.src).toContain("financialmodelingprep.com/symbol/AAPL.png");
   });
 
+  it("names the img when it is not decorative", () => {
+    const { getByRole } = render(<CompanyLogo ticker="AAPL" decorative={false} />);
+
+    expect((getByRole("img") as HTMLImageElement).alt).toBe("AAPL");
+  });
+
   it("falls back to a colored initial-letter avatar when the image fails to load", () => {
-    const { getAllByRole } = render(<CompanyLogo ticker="UNKNOWN" />);
-    const img = getAllByRole("img")[0];
+    const { container, getAllByRole } = render(<CompanyLogo ticker="UNKNOWN" decorative={false} />);
+    const img = container.querySelector("img")!;
 
     fireEvent.error(img);
 
@@ -46,6 +56,13 @@ describe("CompanyLogo", () => {
     expect(avatar).toBeDefined();
     expect(avatar?.getAttribute("aria-label")).toBe("UNKNOWN logo");
     expect(avatar?.textContent).toBe("UNKN");
+  });
+
+  it("hides the fallback avatar from AT when decorative", () => {
+    const { container } = render(<CompanyLogo ticker="UNKNOWN" />);
+    fireEvent.error(container.querySelector("img")!);
+
+    expect(container.querySelector("[aria-hidden='true']")?.textContent).toBe("UNKN");
   });
 
   it("renders a placeholder immediately when no ticker is provided", () => {

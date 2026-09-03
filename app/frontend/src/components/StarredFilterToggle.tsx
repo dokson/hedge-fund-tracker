@@ -1,5 +1,6 @@
 import { Star, Users, Building2, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 /**
  * "Consider Starred only" filter row — two toggle chips (Funds / Stocks) bound
@@ -26,9 +27,9 @@ export function StarredFilterToggle({
 }) {
   if (fundsCount === 0 && stocksCount === 0) return null;
   return (
-    <div className={`flex flex-wrap items-center gap-3 ${className}`}>
-      <span className="text-xs text-muted-foreground flex items-center gap-1">
-        <Star className="h-3 w-3" fill="currentColor" /> Consider Starred only:
+    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Star className="h-3.5 w-3.5 text-warning" fill="currentColor" /> Consider starred only:
       </span>
       <ToggleChip
         icon={Users}
@@ -62,20 +63,20 @@ function ToggleChip({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
       onClick={() => count > 0 && onClick()}
       disabled={count === 0}
       aria-pressed={active}
-      className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors ${
-        active
-          ? "bg-primary text-primary-foreground border-primary"
-          : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
-      } disabled:opacity-40 disabled:cursor-not-allowed`}
+      className={active ? "border-primary text-foreground" : "text-muted-foreground"}
     >
-      <Icon className="h-3 w-3" /> {label}
-      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 leading-none">
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+      <Badge variant="secondary" className="h-4 px-1 py-0 text-[11px] leading-none">
         {count}
       </Badge>
-    </button>
+    </Button>
   );
 }

@@ -18,10 +18,11 @@ export function StarButton({ active, onClick, className, size = 16 }: StarButton
         onClick();
       }}
       className={cn(
-        "inline-flex items-center justify-center rounded-sm p-1 -m-1 transition-colors hover:text-yellow-500",
-        active ? "text-yellow-500" : "icon-faint hover:text-yellow-500/70",
+        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm transition-colors hover:bg-muted hover:text-warning",
+        active ? "text-warning" : "icon-faint",
         className,
       )}
+      aria-pressed={active}
       aria-label={active ? "Remove from starred" : "Add to starred"}
     >
       <Star size={size} fill={active ? "currentColor" : "none"} strokeWidth={active ? 0 : 1.5} />

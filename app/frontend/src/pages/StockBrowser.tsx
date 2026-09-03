@@ -9,24 +9,14 @@ import {
   type Stock,
   type StockQuarterAnalysis,
 } from "@/lib/dataService";
-import { smartScoreToneClass, percentileBarClass } from "@/lib/smartScore";
+import { smartScoreToneClass } from "@/lib/smartScore";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  LayoutGrid,
-  SortAsc,
-  X,
-  TrendingDown,
-  TrendingUp,
-  DollarSign,
-  CandlestickChart,
-  Gauge,
-  Star,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, LayoutGrid, SortAsc, X, DollarSign, Gauge, Star } from "lucide-react";
 import SectorHeatmap from "@/components/SectorHeatmap";
 import YFinanceClassificationTreeVisual from "@/components/YFinanceClassificationTreeVisual";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
@@ -36,7 +26,9 @@ import { SmartScoreBadge } from "@/components/SmartScoreBadge";
 import { TickerLink } from "@/components/EntityLinks";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { matchesQuery } from "@/lib/utils";
-import { stockPath } from "@/lib/routes";
+import { stockPath, ROUTES } from "@/lib/routes";
+import { canonicalUrl } from "@/lib/seo";
+import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { VirtualList } from "@/components/ui/VirtualList";
 
 const ALPHABET = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -50,21 +42,14 @@ const SCORE_GRID_COLS =
 const VALUE_GRID_COLS =
   "grid grid-cols-[3rem_5rem_minmax(0,1fr)_minmax(6.5rem,auto)_minmax(6rem,auto)_4rem_4.5rem_8rem]";
 
-/** Podium accent for the top 3 Score-tab ranks; ranks 4+ stay plain mono text. */
-const PODIUM_RANK_CLASS: Record<number, string> = {
-  1: "border-amber-500/40 bg-amber-500/10 text-amber-500",
-  2: "border-slate-400/40 bg-slate-400/10 text-slate-400",
-  3: "border-orange-700/40 bg-orange-700/10 text-orange-700 dark:text-orange-400",
-};
+// The div-based header of a windowed grid, styled like `thead th`.
+const GRID_HEADER_CLASS = "items-center border-b border-border text-xs text-muted-foreground";
 
+/** Rank cell. Podium ranks are the same muted number, one weight heavier. */
 function RankBadge({ rank }: { rank: number }) {
-  const podiumClass = PODIUM_RANK_CLASS[rank];
-  if (!podiumClass) {
-    return <span className="font-mono text-xs text-muted-foreground">{rank}</span>;
-  }
   return (
     <span
-      className={`inline-flex h-5 w-5 items-center justify-center rounded-full border font-mono text-[10px] font-bold ${podiumClass}`}
+      className={`text-xs tabular-nums text-muted-foreground${rank <= 3 ? " font-semibold" : ""}`}
     >
       {rank}
     </span>
@@ -73,34 +58,24 @@ function RankBadge({ rank }: { rank: number }) {
 
 /**
  * Inline 0-100 percentile meter for a Smart Score sub-component (Breadth,
- * Momentum, Conviction) — a filled track instead of a bare number, so each
- * row visually reads as "score built from these parts" rather than an
- * unrelated set of stats.
+ * Momentum, Conviction): a filled track next to the number, so each row reads
+ * as "score built from these parts". One colour: the number carries the value.
  */
 function PercentileBar({ label, value }: { label?: string; value: number | null }) {
   return (
     <div className="flex items-center gap-1.5 min-w-0">
       {label && <span className="metric-label w-20 shrink-0">{label}</span>}
-      <div className="h-1 flex-1 min-w-[2rem] rounded-full bg-muted overflow-hidden">
-        {value !== null && (
-          <div
-            className={`h-full rounded-full ${percentileBarClass(value)}`}
-            style={{ width: `${value}%` }}
-          />
-        )}
+      <div className="h-1 flex-1 min-w-[2rem] rounded-sm bg-muted overflow-hidden">
+        {value !== null && <div className="h-full bg-primary" style={{ width: `${value}%` }} />}
       </div>
-      <span className="font-mono text-xs text-muted-foreground tabular-nums w-6 text-right shrink-0">
+      <span className="text-xs text-muted-foreground tabular-nums w-6 text-right shrink-0">
         {value === null ? "—" : Math.round(value)}
       </span>
     </div>
   );
 }
 
-/**
- * Mobile card for one "By Value" row. The seven-column table can't fit a phone,
- * so below `md` each ranked stock collapses to a card: rank + ticker + star on
- * top, company beneath, a three-up stats footer, and the relative-size bar.
- */
+/** Mobile row for one "By Value" entry: the seven-column table can't fit a phone. */
 function ValueStockCard({
   stock,
   rank,
@@ -131,61 +106,52 @@ function ValueStockCard({
           onOpen();
         }
       }}
-      className="surface p-3.5 cursor-pointer"
+      className="border-b border-border py-2 cursor-pointer hover:bg-muted/60"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-mono text-xs text-muted-foreground shrink-0">#{rank}</span>
+          <span className="text-xs tabular-nums text-muted-foreground shrink-0">#{rank}</span>
           <TickerLink ticker={stock.ticker} />
           {smartScore !== undefined && (
-            <span
-              className={`font-mono text-xs font-semibold shrink-0 ${smartScoreToneClass(smartScore)}`}
-            >
+            <span className={`text-xs shrink-0 ${smartScoreToneClass(smartScore)}`}>
               {smartScore.toFixed(1)}
             </span>
           )}
         </div>
-        <StarButton active={starred} onClick={onToggleStar} size={16} />
+        <StarButton active={starred} onClick={onToggleStar} size={24} />
       </div>
-      <div className="company-link cursor-default mt-2 text-sm" title={stock.company}>
+      <div className="company-link cursor-default mt-1 text-sm" title={stock.company}>
         {stock.company}
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-        <div>
-          <div className="metric-label">Value</div>
-          <div className="font-mono text-sm text-foreground mt-0.5">
-            {formatValue(stock.totalValue)}
-          </div>
-        </div>
-        <div>
-          <div className="metric-label">Δ Value</div>
-          <div
-            className={`font-mono text-sm mt-0.5 inline-flex items-center justify-center gap-1 ${isPositiveDelta ? "delta-positive" : "delta-negative"}`}
-          >
-            {isPositiveDelta ? (
-              <TrendingUp className="h-3 w-3" />
-            ) : (
-              <TrendingDown className="h-3 w-3" />
-            )}
-            {formatValue(Math.abs(stock.totalDeltaValue))}
-          </div>
-        </div>
-        <div>
-          <div className="metric-label">Funds</div>
-          <div className="font-mono text-sm text-muted-foreground mt-0.5">{stock.holderCount}</div>
-        </div>
+      <div className="status-line mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+        <span>
+          <span className="k">Value:</span> {formatValue(stock.totalValue)}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span className={isPositiveDelta ? "delta-positive" : "delta-negative"}>
+          <span className="k">Δ Value:</span> {isPositiveDelta ? "+" : "−"}
+          {formatValue(Math.abs(stock.totalDeltaValue))}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>
+          <span className="k">Funds:</span> {stock.holderCount}
+        </span>
       </div>
-      <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
-        <div
-          className="h-full rounded-full bg-primary/60 transition-all"
-          style={{ width: `${barPct}%` }}
-        />
+      <div className="mt-2 h-1 rounded-sm bg-muted overflow-hidden" aria-hidden="true">
+        <div className="h-full bg-primary" style={{ width: `${barPct}%` }} />
       </div>
     </div>
   );
 }
 
 export default function StockBrowser() {
+  usePageMeta({
+    title: pageTitle("Stocks"),
+    description:
+      "Every stock held by the tracked hedge funds, browsable by name, sector or Smart Score, with institutional value and holder count.",
+    canonical: canonicalUrl(ROUTES.stocks),
+  });
+
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [activeLetter, setActiveLetter] = useState<string | null>(null);
@@ -253,9 +219,10 @@ export default function StockBrowser() {
       setValueSortDir("desc");
     }
   }
-  function valueSortIndicator(key: typeof valueSortKey) {
-    if (valueSortKey !== key) return null;
-    return valueSortDir === "desc" ? " ↓" : " ↑";
+  function ValueSortArrow({ column }: { column: typeof valueSortKey }) {
+    if (valueSortKey !== column) return null;
+    const Icon = valueSortDir === "desc" ? ArrowDown : ArrowUp;
+    return <Icon className="ml-1 inline-block h-3 w-3 align-[-1px]" aria-hidden="true" />;
   }
 
   const { data: stocks = [], isLoading } = useQuery({
@@ -479,10 +446,7 @@ export default function StockBrowser() {
   return (
     <div className="space-y-6 max-w-screen-2xl">
       <div>
-        <span className="eyebrow">Tracked universe</span>
-        <h1 className="page-title mt-1.5">
-          <CandlestickChart className="page-title-icon" /> Stocks
-        </h1>
+        <h1 className="page-title">Stocks</h1>
         <p className="text-sm text-muted-foreground mt-1.5">
           Browse {uniqueStocks.length.toLocaleString()} tracked securities
         </p>
@@ -496,9 +460,7 @@ export default function StockBrowser() {
           {starred.size > 0 && (
             <TabsTrigger value="starred" className="gap-1.5 group">
               <Star className="h-3.5 w-3.5" fill="currentColor" /> Starred
-              <span className="ml-1 text-[10px] font-mono bg-primary/20 text-primary group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground px-1.5 py-0.5 rounded-full leading-none">
-                {starred.size}
-              </span>
+              <span className="ml-1 text-xs tabular-nums leading-none">({starred.size})</span>
             </TabsTrigger>
           )}
           <TabsTrigger value="byvalue" className="gap-1.5">
@@ -520,13 +482,13 @@ export default function StockBrowser() {
               description="Click the ★ icon on any stock to add it here."
             />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-border border border-border">
               {starredStocks.map((stock) => (
                 <div
                   key={stock.ticker}
                   role="button"
                   tabIndex={0}
-                  className="kpi-card cursor-pointer py-2.5 px-3"
+                  className="bg-card cursor-pointer py-2.5 px-3 hover:bg-muted/60"
                   onClick={() => navigate(stockPath(stock.ticker))}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -536,16 +498,14 @@ export default function StockBrowser() {
                   }}
                 >
                   <div className="flex items-center gap-3">
-                    <CompanyLogo ticker={stock.ticker} size={28} className="rounded-md" />
+                    <CompanyLogo ticker={stock.ticker} size={28} />
                     <div className="flex flex-col min-w-0 leading-tight flex-1">
-                      <span className="font-mono font-semibold text-sm text-primary">
-                        {stock.ticker}
-                      </span>
+                      <span className="text-sm font-medium text-foreground">{stock.ticker}</span>
                       <span className="company-link text-xs cursor-default" title={stock.company}>
                         {stock.company}
                       </span>
                     </div>
-                    <StarButton active={true} onClick={() => toggleStar(stock.ticker)} size={14} />
+                    <StarButton active={true} onClick={() => toggleStar(stock.ticker)} size={24} />
                   </div>
                 </div>
               ))}
@@ -567,20 +527,18 @@ export default function StockBrowser() {
                   Showing top {alphaReveal.toLocaleString()} of{" "}
                   {uniqueStocks.length.toLocaleString()} by value
                 </span>
-                <span aria-hidden="true">·</span>
                 <button
                   type="button"
-                  className="underline hover:text-foreground transition-colors"
+                  className="inline-flex h-7 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors duration-[120ms] hover:bg-muted hover:text-foreground"
                   onClick={() =>
                     setAlphaReveal((n) => Math.min(n + ALPHA_CHUNK, uniqueStocks.length))
                   }
                 >
                   Show {ALPHA_CHUNK.toLocaleString()} more
                 </button>
-                <span aria-hidden="true">·</span>
                 <button
                   type="button"
-                  className="underline hover:text-foreground transition-colors"
+                  className="inline-flex h-7 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors duration-[120ms] hover:bg-muted hover:text-foreground"
                   onClick={() => setAlphaReveal(uniqueStocks.length)}
                 >
                   Show all
@@ -589,13 +547,15 @@ export default function StockBrowser() {
             )}
           </div>
 
-          <div className="grid grid-cols-9 sm:grid-cols-[repeat(28,1fr)] gap-1 sm:gap-0.5">
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by first letter">
             <button
+              type="button"
               onClick={() => setActiveLetter(null)}
-              className={`py-1.5 text-xs font-mono rounded transition-colors ${
+              aria-pressed={activeLetter === null}
+              className={`h-8 rounded-sm px-2 text-xs font-medium transition-colors ${
                 activeLetter === null
                   ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               All
@@ -603,11 +563,13 @@ export default function StockBrowser() {
             {ALPHABET.map((letter) => (
               <button
                 key={letter}
+                type="button"
                 onClick={() => setActiveLetter(activeLetter === letter ? null : letter)}
-                className={`py-1.5 text-xs font-mono rounded transition-colors ${
+                aria-pressed={activeLetter === letter}
+                className={`h-8 w-8 rounded-sm text-xs font-medium transition-colors ${
                   activeLetter === letter
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 {letter}
@@ -623,11 +585,11 @@ export default function StockBrowser() {
             <div className="space-y-6">
               {[...grouped.entries()].map(([letter, items]) => (
                 <div key={letter}>
-                  <h2 className="text-sm font-bold text-muted-foreground mb-2 sticky top-0 bg-background py-1 border-b border-border">
+                  <h2 className="section-title mb-2 sticky top-0 bg-background py-1 border-b border-border">
                     {letter}
-                    <span className="ml-2 text-xs font-normal">({items.length})</span>
+                    <span className="ml-2 text-muted-foreground">({items.length})</span>
                   </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-border border border-border">
                     {items.map((stock) => (
                       <div
                         key={`${stock.cusip}-${stock.ticker}`}
@@ -640,7 +602,7 @@ export default function StockBrowser() {
                           contentVisibility: "auto",
                           containIntrinsicSize: "auto 56px",
                         }}
-                        className="kpi-card cursor-pointer py-2.5 px-3"
+                        className="bg-card cursor-pointer py-2.5 px-3 hover:bg-muted/60"
                         onClick={() => navigate(stockPath(stock.ticker))}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
@@ -650,9 +612,9 @@ export default function StockBrowser() {
                         }}
                       >
                         <div className="flex items-center gap-3">
-                          <CompanyLogo ticker={stock.ticker} size={28} className="rounded-md" />
+                          <CompanyLogo ticker={stock.ticker} size={28} />
                           <div className="flex flex-col min-w-0 leading-tight flex-1">
-                            <span className="font-mono font-semibold text-sm text-primary">
+                            <span className="text-sm font-medium text-foreground">
                               {stock.ticker}
                             </span>
                             <span
@@ -665,7 +627,7 @@ export default function StockBrowser() {
                           <StarButton
                             active={isStarred(stock.ticker)}
                             onClick={() => toggleStar(stock.ticker)}
-                            size={14}
+                            size={24}
                           />
                         </div>
                       </div>
@@ -712,7 +674,7 @@ export default function StockBrowser() {
                           void navigate(stockPath(s.ticker));
                         }
                       }}
-                      className="surface p-3.5 cursor-pointer"
+                      className="border-b border-border py-2 cursor-pointer hover:bg-muted/60"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 min-w-0">
@@ -721,10 +683,10 @@ export default function StockBrowser() {
                         </div>
                         <SmartScoreBadge score={s.smartScore ?? 1} size="sm" />
                       </div>
-                      <div className="company-link cursor-default mt-2 text-sm" title={s.company}>
+                      <div className="company-link cursor-default mt-1 text-sm" title={s.company}>
                         {s.company}
                       </div>
-                      <div className="mt-3 space-y-1.5">
+                      <div className="mt-2 space-y-1">
                         <PercentileBar label="Breadth" value={s.scoreBreadth ?? null} />
                         <PercentileBar label="Momentum" value={s.scoreMomentum ?? null} />
                         <PercentileBar label="Conviction" value={s.scoreConviction ?? null} />
@@ -734,32 +696,34 @@ export default function StockBrowser() {
                 )}
               />
 
-              <div className="surface overflow-hidden hidden md:block">
-                <div
-                  className={`${SCORE_GRID_COLS} items-center border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider`}
-                >
-                  <span className="text-left p-3 font-medium">#</span>
-                  <span className="text-left p-3 font-medium">Ticker</span>
-                  <span className="text-left p-3 font-medium">Company</span>
-                  <span className="text-right p-3 pr-4 font-medium">
+              <div
+                className="surface hidden md:block"
+                role="region"
+                aria-label="Stocks ranked by Smart Score"
+              >
+                <div className={`${SCORE_GRID_COLS} ${GRID_HEADER_CLASS}`}>
+                  <span className="text-left p-3">#</span>
+                  <span className="text-left p-3">Ticker</span>
+                  <span className="text-left p-3">Company</span>
+                  <span className="text-right p-3 pr-4">
                     <span className="inline-flex items-center justify-end gap-1">
                       Score
                       <InfoTooltip text="Composite 1-10 score: the mean of the Breadth, Momentum and Conviction percentiles, rescaled. Computed on the current quarter's merged view (13F + recent 13D/G and Form 4)." />
                     </span>
                   </span>
-                  <span className="text-left p-3 pl-4 font-medium">
+                  <span className="text-left p-3 pl-4">
                     <span className="inline-flex items-center gap-1">
                       Breadth
                       <InfoTooltip text="Percentile rank of how many tracked funds hold the stock (Holder Count) — 0 to 100." />
                     </span>
                   </span>
-                  <span className="text-left p-3 pl-4 font-medium">
+                  <span className="text-left p-3 pl-4">
                     <span className="inline-flex items-center gap-1">
                       Momentum
                       <InfoTooltip text="Percentile rank of net institutional buying pressure (Net Buyers) — 0 to 100." />
                     </span>
                   </span>
-                  <span className="text-left p-3 pl-4 font-medium">
+                  <span className="text-left p-3 pl-4">
                     <span className="inline-flex items-center gap-1">
                       Conviction
                       <InfoTooltip text="Percentile rank of average portfolio allocation across holders (Avg Portfolio %), plus a capped bonus per high-conviction new entry — 0 to 100." />
@@ -795,7 +759,7 @@ export default function StockBrowser() {
                         <StarButton
                           active={isStarred(s.ticker)}
                           onClick={() => toggleStar(s.ticker)}
-                          size={14}
+                          size={24}
                         />
                         <span className="company-link cursor-default truncate" title={s.company}>
                           {s.company}
@@ -835,10 +799,11 @@ export default function StockBrowser() {
                       setIndustryFilter(null);
                       setSectorFilter(null);
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium hover:bg-primary/15 transition-colors"
+                    className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors duration-[120ms] hover:bg-muted hover:text-foreground"
+                    aria-label={`Clear filter ${industryFilter ?? sectorFilter}`}
                   >
                     {industryFilter ?? sectorFilter}
-                    <X className="h-3 w-3" aria-label="Clear filter" />
+                    <X className="h-3 w-3" aria-hidden="true" />
                   </button>
                   <span className="text-xs text-muted-foreground">
                     · {valueRanked.length} stock{valueRanked.length === 1 ? "" : "s"}
@@ -846,13 +811,15 @@ export default function StockBrowser() {
                 </div>
               )}
               {!quarterLoading && heatmapData.length > 0 && !industryFilter && !sectorFilter && (
-                <div className="surface p-5">
-                  <h3 className="section-title mb-3 text-sm">Top 20 by Institutional Value</h3>
-                  <HoldingsTreemap
-                    data={heatmapData}
-                    onClickTicker={(t) => navigate(stockPath(t))}
-                    height={300}
-                  />
+                <div className="frame">
+                  <h2 className="frame-title">Top 20 by Institutional Value</h2>
+                  <div className="p-3">
+                    <HoldingsTreemap
+                      data={heatmapData}
+                      onClickTicker={(t) => navigate(stockPath(t))}
+                      height={300}
+                    />
+                  </div>
                 </div>
               )}
               <div className="flex flex-col sm:flex-row gap-4 items-start justify-between">
@@ -896,43 +863,44 @@ export default function StockBrowser() {
                   />
 
                   {/* Header stays outside the scroll area. */}
-                  <div className="surface overflow-hidden hidden md:block">
-                    <div
-                      className={`${VALUE_GRID_COLS} items-center border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider`}
-                    >
-                      <span className="text-left p-3 font-medium">#</span>
-                      <span className="text-left p-3 font-medium">Ticker</span>
-                      <span className="text-left p-3 font-medium">Company</span>
-                      <button
-                        type="button"
-                        className="text-right p-3 font-medium uppercase cursor-pointer hover:text-foreground whitespace-nowrap"
-                        onClick={() => toggleValueSort("totalValue")}
-                      >
-                        Total Value{valueSortIndicator("totalValue")}
-                      </button>
-                      <button
-                        type="button"
-                        className="text-right p-3 font-medium uppercase cursor-pointer hover:text-foreground whitespace-nowrap"
-                        onClick={() => toggleValueSort("totalDeltaValue")}
-                      >
-                        Δ Value{valueSortIndicator("totalDeltaValue")}
-                      </button>
-                      <button
-                        type="button"
-                        className="text-right p-3 font-medium uppercase cursor-pointer hover:text-foreground whitespace-nowrap"
-                        onClick={() => toggleValueSort("holderCount")}
-                      >
-                        Funds{valueSortIndicator("holderCount")}
-                      </button>
-                      <button
-                        type="button"
-                        className="text-right p-3 font-medium uppercase cursor-pointer hover:text-foreground whitespace-nowrap"
-                        onClick={() => toggleValueSort("smartScore")}
-                        title="Smart Score: composite of institutional and analyst signals (1-10)"
-                      >
-                        Score{valueSortIndicator("smartScore")}
-                      </button>
-                      <span className="p-3 font-medium">Relative Size</span>
+                  <div
+                    className="surface hidden md:block"
+                    role="region"
+                    aria-label="Stocks ranked by institutional value"
+                  >
+                    <div className={`${VALUE_GRID_COLS} ${GRID_HEADER_CLASS}`}>
+                      <span className="text-left p-3">#</span>
+                      <span className="text-left p-3">Ticker</span>
+                      <span className="text-left p-3">Company</span>
+                      {(
+                        [
+                          ["totalValue", "Total Value", undefined],
+                          ["totalDeltaValue", "Δ Value", undefined],
+                          ["holderCount", "Funds", undefined],
+                          [
+                            "smartScore",
+                            "Score",
+                            "Smart Score: composite of institutional and analyst signals (1-10)",
+                          ],
+                        ] as const
+                      ).map(([key, label, title]) => (
+                        <span
+                          key={key}
+
+                          className="text-right p-0"
+                        >
+                          <button
+                            type="button"
+                            className="w-full p-3 text-right whitespace-nowrap hover:text-foreground hover:bg-muted/60"
+                            onClick={() => toggleValueSort(key)}
+                            title={title}
+                          >
+                            {label}
+                            <ValueSortArrow column={key} />
+                          </button>
+                        </span>
+                      ))}
+                      <span className="p-3">Relative Size</span>
                     </div>
                     <VirtualList
                       className="max-h-[70vh]"
@@ -956,7 +924,7 @@ export default function StockBrowser() {
                               }
                             }}
                           >
-                            <span className="p-3 font-mono text-xs text-muted-foreground">
+                            <span className="p-3 text-xs tabular-nums text-muted-foreground">
                               {i + 1}
                             </span>
                             <span className="p-3">
@@ -966,7 +934,7 @@ export default function StockBrowser() {
                               <StarButton
                                 active={isStarred(stock.ticker)}
                                 onClick={() => toggleStar(stock.ticker)}
-                                size={14}
+                                size={24}
                               />
                               <span
                                 className="company-link cursor-default truncate"
@@ -975,39 +943,31 @@ export default function StockBrowser() {
                                 {stock.company}
                               </span>
                             </span>
-                            <span className="p-3 text-right font-mono font-medium">
+                            <span className="p-3 text-right font-mono">
                               {formatValue(stock.totalValue)}
                             </span>
                             <span
                               className={`p-3 text-right font-mono text-xs ${isPositiveDelta ? "delta-positive" : "delta-negative"}`}
                             >
-                              <span className="inline-flex items-center gap-1 justify-end">
-                                {isPositiveDelta ? (
-                                  <TrendingUp className="h-3 w-3" />
-                                ) : (
-                                  <TrendingDown className="h-3 w-3" />
-                                )}
-                                {formatValue(Math.abs(stock.totalDeltaValue))}
-                              </span>
+                              {isPositiveDelta ? "+" : "−"}
+                              {formatValue(Math.abs(stock.totalDeltaValue))}
                             </span>
                             <span className="p-3 text-right font-mono text-xs text-muted-foreground">
                               {stock.holderCount}
                             </span>
                             <span className="p-3 text-right font-mono text-xs">
                               {stock.smartScore !== undefined ? (
-                                <span
-                                  className={`font-semibold ${smartScoreToneClass(stock.smartScore)}`}
-                                >
+                                <span className={smartScoreToneClass(stock.smartScore)}>
                                   {stock.smartScore.toFixed(1)}
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground">—</span>
                               )}
                             </span>
-                            <span className="p-3">
-                              <span className="block h-2 rounded-full bg-muted overflow-hidden">
+                            <span className="p-3" aria-hidden="true">
+                              <span className="block h-1 rounded-sm bg-muted overflow-hidden">
                                 <span
-                                  className="block h-full rounded-full bg-primary/60 transition-all"
+                                  className="block h-full bg-primary"
                                   style={{ width: `${barPct}%` }}
                                 />
                               </span>

@@ -29,6 +29,11 @@ class PromiseScoreValidator:
     # invert the ranking (e.g. rewarding institutional selling).
     NEGATIVE_METRICS: frozenset[str] = frozenset({"Seller_Count", "Close_Count"})
 
+    # The prompt asks for 6-10 metrics: fewer makes the score a near-tie on one
+    # axis, more spreads weight across correlated breadth metrics.
+    MIN_METRICS: int = 6
+    MAX_METRICS: int = 10
+
     def __init__(self, top_n_stocks: int = 30, weight_tolerance: float = 0.05):
         self.top_n_stocks = top_n_stocks
         self.weight_tolerance = weight_tolerance
@@ -80,3 +85,27 @@ class PromiseScoreValidator:
             list: A list of invalid metric names. An empty list signifies all metrics are valid.
         """
         return [m for m in metrics if m not in PromiseScoreValidator.AVAILABLE_METRICS]
+
+    @staticmethod
+    def validate_metric_count(weights: dict) -> str:
+        """
+        Checks that the number of weighted metrics is within MIN_METRICS..MAX_METRICS.
+
+        Args:
+            weights (dict): A dictionary where keys are metric names and values are their weights.
+
+        Returns:
+            str: An error message, or an empty string when the count is valid.
+        """
+        count = len(weights)
+        if count < PromiseScoreValidator.MIN_METRICS:
+            return (
+                f"AI returned {count} metrics, fewer than the required minimum of "
+                f"{PromiseScoreValidator.MIN_METRICS}"
+            )
+        if count > PromiseScoreValidator.MAX_METRICS:
+            return (
+                f"AI returned {count} metrics, more than the allowed maximum of "
+                f"{PromiseScoreValidator.MAX_METRICS}"
+            )
+        return ""

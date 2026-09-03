@@ -19,18 +19,13 @@ export interface SmartScoreView {
  */
 export function smartScoreToneClass(score: number): string {
   if (score >= HIGH_SCORE) return "text-[hsl(var(--positive))]";
-  if (score >= MID_SCORE) return "text-amber-500";
+  if (score >= MID_SCORE) return "text-[hsl(var(--warning))]";
   return "text-[hsl(var(--negative))]";
 }
 
-/**
- * Full chip styling (border + background + text) for the same score buckets.
- */
+/** Chip styling for the same score buckets: the neutral chip, no border. */
 export function smartScoreChipClass(score: number): string {
-  if (score >= HIGH_SCORE)
-    return "border-[hsl(var(--positive))]/40 bg-[hsl(var(--positive))]/10 text-[hsl(var(--positive))]";
-  if (score >= MID_SCORE) return "border-amber-500/40 bg-amber-500/10 text-amber-500";
-  return "border-[hsl(var(--negative))]/40 bg-[hsl(var(--negative))]/10 text-[hsl(var(--negative))]";
+  return `chip ${smartScoreToneClass(score)}`;
 }
 
 /**
@@ -39,7 +34,7 @@ export function smartScoreChipClass(score: number): string {
  */
 export function percentileBarClass(value: number): string {
   if (value >= HIGH_SCORE * 10) return "bg-[hsl(var(--positive))]";
-  if (value >= MID_SCORE * 10) return "bg-amber-500";
+  if (value >= MID_SCORE * 10) return "bg-[hsl(var(--warning))]";
   return "bg-[hsl(var(--negative))]";
 }
 

@@ -11,8 +11,9 @@ import {
 } from "@/lib/dataService";
 import type { Quarter } from "@/lib/quarters";
 import { STRATEGY_BY_TAB, STRATEGY_DEFS_PERF_ORDER, isStrategyTab } from "@/lib/strategies";
-import { seriesColor } from "@/lib/seriesColors";
-import { performanceFor } from "@/lib/routes";
+import { performanceFor, ROUTES } from "@/lib/routes";
+import { canonicalUrl } from "@/lib/seo";
+import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { TickerLink, CompanyLink } from "@/components/EntityLinks";
 import { Delta } from "@/components/Delta";
@@ -28,8 +29,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, BarChart3, Filter, LineChart, ArrowUpRight } from "lucide-react";
+import { BarChart3, Filter, LineChart, ArrowUpRight, ArrowUp, ArrowDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { TableFrame } from "@/components/ui/TableFrame";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { useStarred } from "@/hooks/useStarred";
@@ -70,15 +73,29 @@ function SortableHeader({
   align?: CellAlign;
   tooltip?: string;
 }) {
-  const indicator = currentKey === sortKey ? (currentDir === "desc" ? " ↓" : " ↑") : "";
+  const active = currentKey === sortKey;
   return (
     <th
-      className={`${ALIGN_TEXT[align]} p-3 font-medium cursor-pointer hover:text-foreground`}
-      onClick={() => onSort(sortKey)}
+      scope="col"
+      aria-sort={active ? (currentDir === "desc" ? "descending" : "ascending") : "none"}
+      className={`${ALIGN_TEXT[align]} px-3 py-2`}
     >
       <span className="inline-flex items-center gap-1">
-        {label}
-        {indicator}
+        <button
+          type="button"
+          onClick={() => onSort(sortKey)}
+          // min-w-6: a two-character label ("Δ%") left the button 18px wide,
+          // under the 24px minimum (SC 2.5.8).
+          className={`inline-flex min-w-6 items-center justify-center gap-1 h-7 hover:text-foreground ${active ? "text-foreground" : ""}`}
+        >
+          {label}
+          {active &&
+            (currentDir === "desc" ? (
+              <ArrowDown aria-hidden="true" className="h-3 w-3 shrink-0" />
+            ) : (
+              <ArrowUp aria-hidden="true" className="h-3 w-3 shrink-0" />
+            ))}
+        </button>
         {tooltip && <InfoTooltip text={tooltip} />}
       </span>
     </th>
@@ -166,18 +183,19 @@ function AnalysisTable({
       <div
         className={`flex flex-wrap items-center gap-4 text-sm ${disableFilters ? "opacity-40 pointer-events-none" : ""}`}
       >
-        <span className="text-xs text-muted-foreground flex items-center gap-1">
-          <Filter className="h-3 w-3" /> Filters:
+        <span className="control-label flex items-center gap-1">
+          <Filter className="h-3 w-3" aria-hidden="true" /> Filters:
         </span>
         <div className="flex items-center gap-2">
           <Label htmlFor="minHolders" className="text-xs text-muted-foreground whitespace-nowrap">
             Min Holders
           </Label>
-          <div className="flex items-center h-8 rounded-md border border-border bg-card overflow-hidden">
+          <div className="flex h-9 items-center rounded-md border border-input bg-background">
             <button
               type="button"
+              aria-label="Decrease minimum holders"
               onClick={() => setMinHolders(Math.max(0, minHolders - 1))}
-              className="px-2 h-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm"
+              className="w-9 h-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm"
             >
               −
             </button>
@@ -187,29 +205,34 @@ function AnalysisTable({
               min={0}
               value={minHolders}
               onChange={(e) => setMinHolders(parseInt(e.target.value) || 0)}
-              className="w-10 h-full border-0 bg-transparent text-xs text-center p-0 rounded-none focus-visible:ring-0"
+              className="w-10 h-full border-0 bg-transparent text-xs text-center p-0"
             />
             <button
               type="button"
+              aria-label="Increase minimum holders"
               onClick={() => setMinHolders(minHolders + 1)}
-              className="px-2 h-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm"
+              className="w-9 h-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm"
             >
               +
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Label htmlFor="excludeInf" className="text-xs text-muted-foreground whitespace-nowrap">
-            Exclude NEW
-          </Label>
+        {/* The whole label is the target, not the 36x20 switch: 20px is under
+            the 24px minimum and the next filter group is 8px away, so the
+            spacing exception does not rescue it either (SC 2.5.8). */}
+        <Label
+          htmlFor="excludeInf"
+          className="flex min-h-6 cursor-pointer items-center gap-2 text-xs text-muted-foreground whitespace-nowrap"
+        >
+          Exclude NEW
           <Switch id="excludeInf" checked={filterInfinite} onCheckedChange={setFilterInfinite} />
-        </div>
+        </Label>
         <div className="flex items-center gap-2">
           <Label htmlFor="limit" className="text-xs text-muted-foreground whitespace-nowrap">
             Show top
           </Label>
           <Select value={String(limit)} onValueChange={(v) => setLimit(parseInt(v))}>
-            <SelectTrigger className="w-20 h-8 bg-card border-border text-xs">
+            <SelectTrigger id="limit" className="w-20 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -225,38 +248,38 @@ function AnalysisTable({
         </span>
       </div>
 
-      {/* Mobile: card list (the dynamic multi-metric table can't fit a phone) */}
-      <div className="md:hidden space-y-3">
+      {/* Mobile: ranked frame rows (the dynamic multi-metric table can't fit a phone) */}
+      <ol className="md:hidden border-t border-border" aria-label="Ranked stocks">
         {sorted.length === 0 ? (
-          <div className="surface p-8 text-center text-muted-foreground">No data available.</div>
+          <li className="py-8 text-center text-muted-foreground">No data available.</li>
         ) : (
           sorted.map((s, index) => {
             const deltaVal = deltaColumn ? (s[deltaColumn.key] ?? null) : null;
             return (
-              <div key={s.ticker} className="surface p-3.5">
+              <li key={s.ticker} className="border-b border-border/60 py-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono text-xs text-muted-foreground shrink-0">
-                      #{index + 1}
+                    <span className="text-xs text-muted-foreground shrink-0 w-[3ch] text-right">
+                      {index + 1}
                     </span>
                     <TickerLink ticker={s.ticker} />
                   </div>
                   {deltaColumn && typeof deltaVal === "number" && (
-                    <span className="shrink-0 font-mono">
+                    <span className="shrink-0">
                       <Delta value={deltaVal} mode={deltaColumn.deltaMode ?? "percent"} />
                     </span>
                   )}
                 </div>
-                <div className="mt-2">
+                <div className="mt-1 pl-[calc(3ch+0.5rem)]">
                   <CompanyLink ticker={s.ticker} company={s.company} showStar />
                 </div>
-                <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-3 gap-x-2 gap-y-3">
+                <dl className="mt-2 pl-[calc(3ch+0.5rem)] grid grid-cols-3 gap-x-2 gap-y-2">
                   {metricColumns.map((col) => {
                     const rawVal = s[col.key];
                     return (
                       <div key={col.key} className="min-w-0">
-                        <div className="metric-label truncate">{col.label}</div>
-                        <div className="mt-0.5 font-mono text-sm">
+                        <dt className="metric-label truncate !text-[11px]">{col.label}</dt>
+                        <dd className="text-sm">
                           {col.render ? (
                             col.render(s)
                           ) : col.deltaMode && typeof rawVal === "number" ? (
@@ -270,26 +293,32 @@ function AnalysisTable({
                               {col.format ? col.format(rawVal ?? NaN, s) : String(rawVal)}
                             </span>
                           )}
-                        </div>
+                        </dd>
                       </div>
                     );
                   })}
-                </div>
-              </div>
+                </dl>
+              </li>
             );
           })
         )}
-      </div>
+      </ol>
 
-      {/* Desktop: full analysis table */}
-      <div className="surface overflow-hidden hidden md:block">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+      {/* Desktop: the ranked table */}
+      <div className="frame hidden md:block">
+        <TableFrame label="Ranked stocks">
+          <table className="w-full text-sm" aria-label="Ranked stocks">
             <thead>
-              <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
-                <th className="text-right p-3 font-medium w-12">#</th>
-                <th className="text-left p-3 font-medium">Ticker</th>
-                <th className="text-left p-3 font-medium">Company</th>
+              <tr className="text-xs">
+                <th scope="col" className="text-right px-3 py-2 w-12">
+                  #
+                </th>
+                <th scope="col" className="text-left px-3 py-2">
+                  Ticker
+                </th>
+                <th scope="col" className="text-left px-3 py-2">
+                  Company
+                </th>
                 {columns.map((col) => (
                   <SortableHeader
                     key={col.key}
@@ -317,9 +346,7 @@ function AnalysisTable({
               ) : (
                 sorted.map((s, index) => (
                   <tr key={s.ticker} className="data-table-row">
-                    <td className="p-3 text-right text-muted-foreground font-mono text-xs">
-                      {index + 1}
-                    </td>
+                    <td className="p-3 text-right text-muted-foreground text-xs">{index + 1}</td>
                     <td className="p-3">
                       <TickerLink ticker={s.ticker} />
                     </td>
@@ -366,7 +393,7 @@ function AnalysisTable({
               )}
             </tbody>
           </table>
-        </div>
+        </TableFrame>
       </div>
     </div>
   );
@@ -377,6 +404,13 @@ const netColor = (v: number) => (v > 0 ? "delta-positive" : v < 0 ? "delta-negat
 const DEFAULT_TAB = "smartscore";
 
 export default function QuarterlyTrends() {
+  usePageMeta({
+    title: pageTitle("Quarterly Trends"),
+    description:
+      "Consensus screens built from the quarter's 13F holdings: most held, highest conviction, biggest increases and exits across every tracked hedge fund.",
+    canonical: canonicalUrl(ROUTES.quarterly),
+  });
+
   const { quarters, latestQuarter } = useAvailableQuarters();
   const [selectedQuarter, setSelectedQuarter] = useState<Quarter | undefined>();
   const quarter = selectedQuarter ?? latestQuarter;
@@ -456,15 +490,13 @@ export default function QuarterlyTrends() {
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <span className="eyebrow">Quarter over quarter</span>
-            <h1 className="page-title mt-1.5">
-              <BarChart3 className="page-title-icon" /> Quarterly Trends
+            <h1 className="page-title">
+              <BarChart3 aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
+              Quarterly Trends
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5">
-              Cross-fund consensus signals — {data.length} stocks analyzed
-              {(filterStarredStocks || filterStarredFunds) && (
-                <span className="ml-1 text-primary">(filtered)</span>
-              )}
+              Cross-fund consensus signals for {quarter ? quarter.replace("Q", " Q") : "…"}
+              {anyStarredFilter && <span className="ml-1 text-muted-foreground">(filtered)</span>}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -472,19 +504,16 @@ export default function QuarterlyTrends() {
               <Link
                 to={performanceFor(STRATEGY_BY_TAB[activeTab].id)}
                 title={`See the ${STRATEGY_BY_TAB[activeTab].label} screen's backtested track record vs the S&P 500`}
-                className="group inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground shadow-sm transition-colors hover:border-foreground/30 hover:text-foreground"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <LineChart
-                  className="h-4 w-4"
-                  style={{ color: seriesColor(STRATEGY_BY_TAB[activeTab].id) }}
-                />
+                <LineChart className="h-4 w-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Backtested track record</span>
                 <span className="sm:hidden">Backtest</span>
-                <ArrowUpRight className="h-3.5 w-3.5 icon-faint transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
             )}
             <Select value={quarter ?? ""} onValueChange={(v) => setSelectedQuarter(v as Quarter)}>
-              <SelectTrigger className="w-36 bg-card border-border">
+              <SelectTrigger aria-label="Quarter" className="w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -500,12 +529,9 @@ export default function QuarterlyTrends() {
       </div>
 
       {isLoading ? (
-        <div className="surface p-8">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">{progress.msg}</p>
-            <Progress value={progress.pct} className="w-64" />
-          </div>
+        <div className="frame p-8 flex flex-col items-center gap-3">
+          <LoadingState size="sm" className="py-0" message={progress.msg || "Loading analysis…"} />
+          <Progress value={progress.pct} className="w-64" />
         </div>
       ) : (
         <Tabs
@@ -519,35 +545,18 @@ export default function QuarterlyTrends() {
           }}
           className="w-full"
         >
-          <TabsList className="h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
-            {STRATEGY_DEFS_PERF_ORDER.map((d) => {
-              const Icon = d.icon;
-              return (
-                <Tooltip key={d.tab}>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <TabsTrigger
-                        value={d.tab}
-                        className="gap-1.5 rounded-md border border-border bg-card shadow-sm hover:border-foreground/30 data-[state=active]:border-primary"
-                      >
-                        <Icon
-                          className="h-3.5 w-3.5"
-                          // The series accent color is tuned for the neutral inactive
-                          // background; it can't guarantee contrast against the solid
-                          // primary-blue active background, so inherit the (white)
-                          // label color instead once active.
-                          style={activeTab === d.tab ? undefined : { color: seriesColor(d.id) }}
-                        />{" "}
-                        {d.label}
-                      </TabsTrigger>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[280px] text-xs font-normal">
-                    {d.description}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
+          {/* Seven screens as underline tabs; the active one carries the primary rule. */}
+          <TabsList aria-label="Strategy screen" className="flex-wrap max-w-full">
+            {STRATEGY_DEFS_PERF_ORDER.map((d) => (
+              <Tooltip key={d.tab}>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value={d.tab}>{d.label}</TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[280px] text-xs font-normal">
+                  {d.description}
+                </TooltipContent>
+              </Tooltip>
+            ))}
           </TabsList>
 
           {/* Starred filters */}

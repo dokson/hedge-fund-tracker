@@ -6,6 +6,12 @@ interface CompanyLogoProps {
   ticker: string;
   size?: number;
   className?: string;
+  /**
+   * Default. The logo always sits beside the ticker or company name today, so
+   * naming it repeats what the adjacent text already says (SC 1.1.1, axe
+   * `image-redundant-alt`). Pass `false` only where the logo stands alone.
+   */
+  decorative?: boolean;
 }
 
 /**
@@ -26,8 +32,14 @@ function tickerHue(ticker: string): number {
  * initial-letter avatar — the ticker is the identifier, so seeing it in the
  * avatar slot is more useful than a blank grey square.
  */
-export function CompanyLogo({ ticker, size = 32, className = "" }: CompanyLogoProps) {
+export function CompanyLogo({
+  ticker,
+  size = 32,
+  className = "",
+  decorative = true,
+}: CompanyLogoProps) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   // Native loading="lazy" still fetches with a ~300px viewport margin — Chrome
   // ends up firing dozens of requests as soon as the page mounts. Gate the
   // fetch on actual intersection so a 500-card grid only fetches what's
@@ -54,7 +66,7 @@ export function CompanyLogo({ ticker, size = 32, className = "" }: CompanyLogoPr
     return (
       <div
         aria-label="Logo placeholder"
-        className={`bg-muted rounded ${className}`}
+        className={`rounded-sm border border-border bg-muted ${className}`}
         style={{ width: size, height: size, flexShrink: 0 }}
       />
     );
@@ -68,9 +80,10 @@ export function CompanyLogo({ ticker, size = 32, className = "" }: CompanyLogoPr
     const fontSize = Math.max(8, Math.round((size * 0.9) / Math.max(initials.length, 2)));
     return (
       <div
-        role="img"
-        aria-label={`${ticker} logo`}
-        className={`rounded flex items-center justify-center font-mono font-semibold select-none ${className}`}
+        role={decorative ? undefined : "img"}
+        aria-hidden={decorative || undefined}
+        aria-label={decorative ? undefined : `${ticker} logo`}
+        className={`flex items-center justify-center rounded-sm border border-border font-semibold tabular-nums select-none ${className}`}
         style={{
           width: size,
           height: size,
@@ -91,20 +104,22 @@ export function CompanyLogo({ ticker, size = 32, className = "" }: CompanyLogoPr
       <div
         ref={placeholderRef}
         aria-hidden="true"
-        className={`bg-muted/30 rounded ${className}`}
+        className={`rounded-sm bg-muted/30 ${className}`}
         style={{ width: size, height: size, flexShrink: 0 }}
       />
     );
   }
 
+  // Logos ship on white; the plate keeps them legible on the dark board.
   return (
     <img
       src={buildLogoUrl(ticker, size)}
-      alt={ticker}
+      alt={decorative ? "" : ticker}
       width={size}
       height={size}
       onError={() => setFailed(true)}
-      className={`rounded object-contain ${className}`}
+      onLoad={() => setLoaded(true)}
+      className={`rounded-sm border border-border object-contain ${loaded ? "bg-white p-px" : "bg-card"} ${className}`}
       style={{ width: size, height: size, flexShrink: 0 }}
       loading="lazy"
     />

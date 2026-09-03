@@ -19,7 +19,7 @@ interface DeltaProps {
 /**
  * Uniform delta cell across all tables and headers. Positive values get the
  * positive token + TrendingUp; negative values get the negative token +
- * TrendingDown; exact zero is muted with a flat dash. NEW / CLOSE special
+ * TrendingDown; exact zero is muted with Minus. NEW / CLOSE special
  * states are not handled here — those are categorical, not numeric, and
  * keep their existing badge treatment.
  */
@@ -34,7 +34,7 @@ export function Delta({ value, mode, format, size = "md", className = "" }: Delt
       : "delta-negative";
   const Icon = isZero ? Minus : isPositive || isInfinity ? TrendingUp : TrendingDown;
   const iconSize = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
-  const textSize = size === "sm" ? "text-[11px]" : "text-xs";
+  const textSize = size === "sm" ? "text-xs" : "text-[13px]";
 
   let display: string;
   if (format) {
@@ -51,9 +51,9 @@ export function Delta({ value, mode, format, size = "md", className = "" }: Delt
 
   return (
     <span
-      className={`inline-flex items-center gap-1 font-mono ${textSize} ${colorClass} ${className}`}
+      className={`inline-flex items-center gap-1 tabular-nums ${textSize} ${colorClass} ${className}`}
     >
-      {!isZero && <Icon className={iconSize} aria-hidden="true" />}
+      <Icon className={iconSize} aria-hidden="true" />
       {display}
     </span>
   );

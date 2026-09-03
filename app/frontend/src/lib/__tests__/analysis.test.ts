@@ -85,7 +85,7 @@ describe("generateExcludedFundsCSV", () => {
 describe("generateModelsCSV", () => {
   it("should generate CSV with header and model rows", () => {
     const models: AIModel[] = [
-      { id: "gpt-4o", description: "GPT-4o", client: "GitHub" },
+      { id: "llama-3.1-8b-instant", description: "Llama 3.1 8B", client: "Groq" },
       { id: "gemini-2.0-flash", description: "Gemini 2.0 Flash", client: "Google" },
     ];
 
@@ -94,7 +94,7 @@ describe("generateModelsCSV", () => {
 
     expect(lines).toHaveLength(3);
     expect(lines[0]).toBe('"ID","Description","Client"');
-    expect(lines[1]).toContain("gpt-4o");
+    expect(lines[1]).toContain("llama-3.1-8b-instant");
     expect(lines[2]).toContain("Google");
   });
 });

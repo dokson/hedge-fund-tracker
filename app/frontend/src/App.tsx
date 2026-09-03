@@ -1,10 +1,9 @@
 import { lazy, Suspense, type ReactNode } from "react";
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router";
-import { Loader2 } from "lucide-react";
+import { LoadingState } from "@/components/ui/LoadingState";
 import DashboardLayout from "@/components/DashboardLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Dashboard from "@/pages/Dashboard";
@@ -39,11 +38,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const RouteFallback = () => (
-  <div className="flex items-center justify-center py-16 text-muted-foreground">
-    <Loader2 className="h-5 w-5 animate-spin" />
-  </div>
-);
+const RouteFallback = () => <LoadingState message="Loading screen" />;
 
 // Must live inside BrowserRouter: keys the boundary on the pathname so
 // navigating away from a crashed page recovers automatically.
@@ -55,7 +50,6 @@ const RoutedErrorBoundary = ({ children }: { children: ReactNode }) => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
       <Sonner />
       <BrowserRouter basename={BASE_PATH || "/"}>
         <DashboardLayout>

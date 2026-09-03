@@ -23,7 +23,6 @@ from pathlib import Path
 import pandas as pd
 
 from app.ai.clients import (
-    GitHubClient,
     GoogleAIClient,
     GroqClient,
     HuggingFaceClient,
@@ -97,7 +96,6 @@ def load_models(filepath: str | None = None) -> list:
     if filepath is None:
         filepath = str(Path(DB_FOLDER) / MODELS_FILE)
     client_map = {
-        "GitHub": GitHubClient,
         "Google": GoogleAIClient,
         "Groq": GroqClient,
         "HuggingFace": HuggingFaceClient,
@@ -105,6 +103,16 @@ def load_models(filepath: str | None = None) -> list:
     }
     try:
         df = pd.read_csv(filepath, keep_default_na=False)
+        # Rows naming a retired/unknown provider are dropped rather than
+        # yielding a NaN client that blows up at call time.
+        unknown = ~df["Client"].isin(client_map)
+        if unknown.any():
+            logger.warning(
+                "Skipping %d model(s) with unsupported client(s): %s",
+                int(unknown.sum()),
+                sorted(set(df.loc[unknown, "Client"])),
+            )
+            df = df[~unknown]
         df["Client"] = df["Client"].map(client_map)
         return df.to_dict("records")
     except Exception:

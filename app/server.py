@@ -173,10 +173,22 @@ async def health_check() -> dict[str, str]:
 # ── Static frontend ────────────────────────────────────────────────────────────
 
 
+def _is_spa_route(path: str) -> bool:
+    """True only for extension-less, non-API paths, i.e. React Router routes.
+
+    A missing static file (a stale hashed bundle after a rebuild) must 404 rather
+    than receive index.html: the browser would parse HTML as a module, the page
+    stays blank and nothing shows up in the network log.
+    """
+    if path.startswith(("/api/", "/database/")):
+        return False
+    return "." not in path.rsplit("/", 1)[-1]
+
+
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> Response:
-    # For 404s on non-API routes, serve the SPA index.html (React Router handles routing)
-    if exc.status_code == 404 and not request.url.path.startswith(("/api/", "/database/")):
+    # For 404s on app routes, serve the SPA index.html (React Router handles routing)
+    if exc.status_code == 404 and _is_spa_route(request.url.path):
         index = _FRONTEND_ROOT / "index.html"
         if index.exists():
             return FileResponse(str(index))
@@ -195,6 +207,10 @@ async def serve_spa(full_path: str) -> FileResponse:
                 return FileResponse(str(file_path))
     except HTTPException, ValueError, OSError:
         pass
+
+    # Static assets never fall back: a missing file is a 404, not the SPA shell.
+    if not _is_spa_route("/" + full_path):
+        raise HTTPException(status_code=404, detail="Not Found")
 
     # Fallback to index.html for SPA routes (React Router handles the rest)
     index = _FRONTEND_ROOT / "index.html"

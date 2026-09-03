@@ -4,6 +4,7 @@ import { useElementSize } from "@/hooks/useElementSize";
 import {
   AreaChart,
   Area,
+  CartesianGrid,
   ComposedChart,
   Bar,
   XAxis,
@@ -16,7 +17,9 @@ import {
 } from "recharts";
 import { Loader2, TrendingUp, TrendingDown, Activity, BarChart3 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
+import { GRID, NEGATIVE, NEUTRAL, POSITIVE, chartAnimationActive } from "@/lib/seriesColors";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { PanelTitle } from "@/components/ui/PanelTitle";
 
 type RangeKey = "YTD" | "1Y" | "3Y" | "5Y" | "MAX";
 type ChartMode = "area" | "candles";
@@ -31,8 +34,10 @@ const RANGES: ReadonlyArray<{ key: RangeKey; label: string; period: string }> = 
   { key: "MAX", label: "Max", period: "max" },
 ];
 
-const UP_COLOR = "hsl(142, 60%, 45%)";
-const DOWN_COLOR = "hsl(0, 65%, 55%)";
+const UP_COLOR = POSITIVE;
+const DOWN_COLOR = NEGATIVE;
+const AXIS_TICK = { fill: NEUTRAL, fontSize: 11 };
+const CURSOR = { stroke: NEUTRAL, strokeOpacity: 0.4, strokeDasharray: "2 4" };
 
 async function fetchPriceHistory(ticker: string, period: string): Promise<Candle[]> {
   if (!API_BASE) throw new Error("offline");
@@ -214,9 +219,11 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
 
   if (!API_BASE && !staticData) {
     return (
-      <div className="surface p-5">
-        <h3 className="section-title text-sm">Price History</h3>
-        <p className="mt-2 text-xs text-muted-foreground">
+      <div className="frame">
+        <div className="frame-title">
+          <PanelTitle>Price history</PanelTitle>
+        </div>
+        <p className="px-3 py-3 text-xs text-muted-foreground">
           Live price history requires the local Python backend (yfinance). It is not available on
           the static GitHub Pages build — clone the repo and run the app locally to view this chart.
         </p>
@@ -226,7 +233,6 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
 
   const positive = stats ? stats.change >= 0 : true;
   const lineColor = positive ? UP_COLOR : DOWN_COLOR;
-  const gradientId = `priceGradient-${ticker}-${positive ? "up" : "down"}`;
 
   const headerPositive = positive;
   const yDomain: [number, number] | undefined = stats
@@ -246,17 +252,11 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
     )
       return null;
 
-    // Inner wrapper: shifts the tooltip to the top-right of the cursor (translateY pulls it above
-    // the cursor's vertical position; recharts already places it to the right of the cursor).
+    // translateY pulls the tooltip above the cursor; recharts already places it to the right.
+    const tooltipClass =
+      "rounded-md border border-border bg-popover px-3 py-2 text-xs text-foreground shadow-md tabular-nums";
     const tooltipBox: React.CSSProperties = {
-      background: "hsl(var(--card))",
-      border: "1px solid hsl(var(--border))",
-      borderRadius: 6,
-      padding: "8px 12px",
-      fontSize: 12,
-      color: "hsl(var(--foreground))",
       lineHeight: 1.6,
-      fontFamily: "var(--font-mono)",
       transform: "translateY(calc(-100% - 12px))",
     };
 
@@ -264,7 +264,7 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
     if (isDragging && selectionStats) {
       const sel = selectionStats;
       return (
-        <div style={tooltipBox}>
+        <div className={tooltipClass} style={tooltipBox}>
           <div style={{ color: "hsl(var(--muted-foreground))" }}>
             {fmtDateFull(sel.start.date)} → {fmtDateFull(sel.end.date)}
           </div>
@@ -285,7 +285,7 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
     const delta = ((p.close - baseline) / baseline) * 100;
     const isUp = p.close >= p.open;
     return (
-      <div style={tooltipBox}>
+      <div className={tooltipClass} style={tooltipBox}>
         <div style={{ color: "hsl(var(--muted-foreground))" }}>{fmtDateFull(p.date)}</div>
         {mode === "candles" ? (
           <div
@@ -314,15 +314,15 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
   };
 
   return (
-    <div className="surface p-5">
-      <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
+    <div className="frame">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-3 py-2">
         <div>
-          <h3 className="section-title text-sm">Price History</h3>
+          <span className="section-title">Price history</span>
           {stats && (
             <div className="flex items-baseline gap-3 mt-1 flex-wrap">
-              <span className="text-2xl font-bold font-mono">${stats.last.toFixed(2)}</span>
+              <span className="text-xl font-semibold tabular-nums">${stats.last.toFixed(2)}</span>
               <span
-                className={`text-sm font-mono inline-flex items-center gap-1 ${
+                className={`inline-flex items-center gap-1 text-[13px] tabular-nums ${
                   headerPositive ? "delta-positive" : "delta-negative"
                 }`}
               >
@@ -361,176 +361,162 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
             onValueChange={(v) => setRange(v)}
             options={RANGES.map((r) => ({
               value: r.key,
-              label: <span className="font-mono">{r.label}</span>,
+              label: <span className="tabular-nums">{r.label}</span>,
             }))}
           />
         </div>
       </div>
 
-      <div
-        ref={containerRef}
-        className="h-[320px] w-full select-none cursor-crosshair"
-        onDragStart={(e) => e.preventDefault()}
-        style={{ touchAction: "none" }}
-      >
-        {isLoading ? (
-          <div className="h-full flex items-center justify-center text-muted-foreground gap-2 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading price history…
-          </div>
-        ) : isError || series.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-            Price history unavailable for {ticker}.
-          </div>
-        ) : !size ? null : mode === "candles" ? (
-          <ComposedChart
-            width={size.width}
-            height={size.height}
-            data={candleSeries}
-            margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-          >
-            <XAxis
-              dataKey="date"
-              tickFormatter={fmtDateShort}
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              minTickGap={48}
-            />
-            <YAxis
-              tickFormatter={fmtCurrency}
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              width={56}
-              domain={yDomain ?? ["auto", "auto"]}
-            />
-            {stats && !selectionStats && (
-              <ReferenceLine
-                y={stats.first}
-                stroke="hsl(var(--muted-foreground))"
-                strokeDasharray="3 3"
-                strokeOpacity={0.4}
+      <div className="p-3">
+        <div
+          ref={containerRef}
+          className="h-[320px] w-full cursor-crosshair select-none"
+          onDragStart={(e) => e.preventDefault()}
+          style={{ touchAction: "none" }}
+        >
+          {isLoading ? (
+            <div className="h-full flex items-center justify-center text-muted-foreground gap-2 text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading price history…
+            </div>
+          ) : isError || series.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+              Price history unavailable for {ticker}.
+            </div>
+          ) : !size ? null : mode === "candles" ? (
+            <ComposedChart
+              width={size.width}
+              height={size.height}
+              data={candleSeries}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+            >
+              <CartesianGrid stroke={GRID} strokeWidth={1} vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickFormatter={fmtDateShort}
+                tick={AXIS_TICK}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={48}
               />
-            )}
-            {selectionStats && (
-              <>
-                <ReferenceArea
-                  x1={selectionStats.start.date}
-                  x2={selectionStats.end.date}
-                  fill={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
-                  fillOpacity={0.08}
-                />
-                <ReferenceLine
-                  x={selectionStats.start.date}
-                  stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
-                  strokeDasharray="3 3"
-                  strokeOpacity={0.6}
-                />
-                <ReferenceLine
-                  x={selectionStats.end.date}
-                  stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
-                  strokeDasharray="3 3"
-                  strokeOpacity={0.6}
-                />
-              </>
-            )}
-            <Tooltip
-              cursor={{
-                stroke: "hsl(var(--muted-foreground))",
-                strokeOpacity: 0.4,
-                strokeDasharray: "3 3",
-              }}
-              content={renderTooltip}
-            />
-            <Bar
-              dataKey="range"
-              shape={(props: CandleShapeProps) => <Candlestick {...props} />}
-              isAnimationActive={false}
-            />
-          </ComposedChart>
-        ) : (
-          <AreaChart
-            width={size.width}
-            height={size.height}
-            data={series}
-            margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-          >
-            <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={lineColor} stopOpacity={0.32} />
-                <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <XAxis
-              dataKey="date"
-              tickFormatter={fmtDateShort}
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              minTickGap={48}
-            />
-            <YAxis
-              tickFormatter={fmtCurrency}
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              width={56}
-              domain={["auto", "auto"]}
-            />
-            {stats && !selectionStats && (
-              <ReferenceLine
-                y={stats.first}
-                stroke="hsl(var(--muted-foreground))"
-                strokeDasharray="3 3"
-                strokeOpacity={0.4}
+              <YAxis
+                tickFormatter={fmtCurrency}
+                tick={AXIS_TICK}
+                axisLine={false}
+                tickLine={false}
+                width={56}
+                domain={yDomain ?? ["auto", "auto"]}
               />
-            )}
-            {selectionStats && (
-              <>
-                <ReferenceArea
-                  x1={selectionStats.start.date}
-                  x2={selectionStats.end.date}
-                  fill={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
-                  fillOpacity={0.12}
-                />
+              {stats && !selectionStats && (
                 <ReferenceLine
-                  x={selectionStats.start.date}
-                  stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
-                  strokeDasharray="3 3"
-                  strokeOpacity={0.6}
+                  y={stats.first}
+                  stroke={NEUTRAL}
+                  strokeDasharray="2 4"
+                  strokeOpacity={0.4}
                 />
+              )}
+              {selectionStats && (
+                <>
+                  <ReferenceArea
+                    x1={selectionStats.start.date}
+                    x2={selectionStats.end.date}
+                    fill={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                    fillOpacity={0.08}
+                  />
+                  <ReferenceLine
+                    x={selectionStats.start.date}
+                    stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                    strokeDasharray="2 4"
+                    strokeOpacity={0.6}
+                  />
+                  <ReferenceLine
+                    x={selectionStats.end.date}
+                    stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                    strokeDasharray="2 4"
+                    strokeOpacity={0.6}
+                  />
+                </>
+              )}
+              <Tooltip cursor={CURSOR} content={renderTooltip} />
+              <Bar
+                dataKey="range"
+                shape={(props: CandleShapeProps) => <Candlestick {...props} />}
+                isAnimationActive={false}
+              />
+            </ComposedChart>
+          ) : (
+            <AreaChart
+              width={size.width}
+              height={size.height}
+              data={series}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+            >
+              <CartesianGrid stroke={GRID} strokeWidth={1} vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickFormatter={fmtDateShort}
+                tick={AXIS_TICK}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={48}
+              />
+              <YAxis
+                tickFormatter={fmtCurrency}
+                tick={AXIS_TICK}
+                axisLine={false}
+                tickLine={false}
+                width={56}
+                domain={["auto", "auto"]}
+              />
+              {stats && !selectionStats && (
                 <ReferenceLine
-                  x={selectionStats.end.date}
-                  stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
-                  strokeDasharray="3 3"
-                  strokeOpacity={0.6}
+                  y={stats.first}
+                  stroke={NEUTRAL}
+                  strokeDasharray="2 4"
+                  strokeOpacity={0.4}
                 />
-              </>
-            )}
-            <Tooltip
-              cursor={{
-                stroke: "hsl(var(--muted-foreground))",
-                strokeOpacity: 0.4,
-                strokeDasharray: "3 3",
-              }}
-              content={renderTooltip}
-            />
-            <Area
-              type="monotone"
-              dataKey="close"
-              stroke={lineColor}
-              strokeWidth={2}
-              fill={`url(#${gradientId})`}
-              animationDuration={400}
-            />
-          </AreaChart>
-        )}
+              )}
+              {selectionStats && (
+                <>
+                  <ReferenceArea
+                    x1={selectionStats.start.date}
+                    x2={selectionStats.end.date}
+                    fill={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                    fillOpacity={0.12}
+                  />
+                  <ReferenceLine
+                    x={selectionStats.start.date}
+                    stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                    strokeDasharray="2 4"
+                    strokeOpacity={0.6}
+                  />
+                  <ReferenceLine
+                    x={selectionStats.end.date}
+                    stroke={selectionStats.positive ? UP_COLOR : DOWN_COLOR}
+                    strokeDasharray="2 4"
+                    strokeOpacity={0.6}
+                  />
+                </>
+              )}
+              <Tooltip cursor={CURSOR} content={renderTooltip} />
+              <Area
+                type="monotone"
+                dataKey="close"
+                stroke={lineColor}
+                strokeWidth={2}
+                fill="none"
+                dot={false}
+                isAnimationActive={chartAnimationActive()}
+                animationDuration={400}
+              />
+            </AreaChart>
+          )}
+        </div>
       </div>
     </div>
   );

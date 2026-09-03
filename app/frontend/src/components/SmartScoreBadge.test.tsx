@@ -22,6 +22,6 @@ describe("SmartScoreBadge", () => {
 
   it("uses the neutral tone for mid scores", () => {
     const { container } = render(<SmartScoreBadge score={5.5} />);
-    expect((container.firstElementChild as HTMLElement).className).toContain("amber");
+    expect((container.firstElementChild as HTMLElement).className).toContain("warning");
   });
 });

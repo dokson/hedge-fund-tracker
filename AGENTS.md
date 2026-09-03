@@ -13,7 +13,7 @@ SEC EDGAR → app/scraper/ → app/analysis/ → app/ai/ (Promise Scores) → we
                   database/ (CSV files)
 ```
 
-**The angle that makes this tool different**: 13F-only trackers show data 45+ days stale. We merge 13D/G (≤10 days) and Form 4 (≤2 business days) on top of quarterly snapshots, so the consensus view reflects recent institutional activity.
+**The angle that makes this tool different**: 13F-only trackers show data 45+ days stale. We merge 13D/G (13D ≤5 business days; 13G varies, see *Data freshness limits*) and Form 4 (≤2 business days) on top of quarterly snapshots, so the consensus view reflects recent institutional activity.
 
 ## Running Python tooling (must read)
 
@@ -163,7 +163,7 @@ Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `datab
 - **`app/scraper/`** — SEC EDGAR retrieval. `sec_scraper.py` fetches 13F-HR, 13D/G, Form 4 with tenacity retries + custom User-Agent. `xml_processor.py` parses 13F XML into DataFrames.
 - **`app/analysis/`** — `quarterly_report.py` (delta shares/values, NEW/CLOSE positions), `stocks.py` (multi-fund consensus), `non_quarterly.py` (13D/G + Form 4 integration), `performance_evaluator.py` (HBR), `smart_scores.py` (the smart-score core: composite 1-10 from **institutional signals only** — breadth/momentum percentiles + conviction with a capped +10/high-conviction-entry bonus; deliberately NO sell-side analyst inputs, that's the product stance. Pure compute, NO persistence: the backtest derives it per point-in-time frame and the UI mirrors it in TS (`lib/smartScore.ts`) on the fly, like every other consensus metric).
 - **`app/stocks/`** — CUSIP→Ticker via fallback chain: yfinance → OpenFIGI → TradingView. Reverse ticker→CUSIP (Form 4 path) via FMP (requires `FMP_API_KEY`). Industry classification via `app/stocks/classification.py::resolve_industry`: yfinance → same-Company match in stocks.csv → Groq LLM (free, picks from `sector_hierarchy.csv` vocabulary). Maintains `stocks.csv`. `PriceFetcher` uses a separate chain: yfinance → TradingView → Nasdaq (Nasdaq covers mutual funds others miss).
-- **`app/ai/`** — Multi-provider LLM. `agent.py` runs **two-phase analysis**: (1) AI picks metric weights for current market, (2) AI computes scores using those weights. Retries up to 7× on invalid response. Clients in `clients/`: GitHub Models, Google Gemini, Groq, HuggingFace, OpenRouter.
+- **`app/ai/`** — Multi-provider LLM. `agent.py` runs **two-phase analysis**: (1) AI picks metric weights for current market, (2) AI computes scores using those weights. Retries up to 7× on invalid response. Clients in `clients/`: Google Gemini, Groq, HuggingFace, OpenRouter.
 - **`app/backtest/`** — Strategy backtester. `strategies.py` defines the seven `/quarterly` screens as `StrategySpec`s (Smart Score first, then Avg Portfolio, Consensus Buys, New Consensus, Big Bets, Increasing, Decreasing) — each mirrors its tab's default sort + filters; all but Avg Portfolio take **top 30**. Smart Score ranks by the score core the engine derives lazily on each point-in-time frame (`app/analysis/smart_scores.py::score_core`). `engine.py` reconstructs each screen point-in-time per quarter (reusing `app/analysis/stocks.py` aggregation — NOT the non-quarterly-merged view), weights every screen by `Avg_Portfolio_Pct` normalized to 100% (so strategies differ in *what* they hold, not *how* it's weighted), holds filing-date→next-filing, and computes returns vs the **S&P 500** (`BENCHMARKS`, extensible to more indices; `run_backtest`, long-format rows); `min_holders_for_quarter` = round(funds/10) per quarter. `price_cache.py` persists `(ticker, date)→price` (gitignored `__pricecache__/`) so regeneration after a fund-list change is near-instant. `report.py` writes `database/performance.csv`. Run via `pipenv run gen-strategy` or updater option 11. Compute is offline → the CSV is bundled for GH Pages; the `/performance` page only reads it (no PriceFetcher in TS).
 - **`app/api/`** — FastAPI routers, each `include_router`'d by `app/server.py`: `ai.py` (Promise Score / due-diligence, blocking + SSE), `admin.py` (filing fetches, ticker/CUSIP corrections, NASDAQ ticker-change apply, quarter-gap report), plus `me.py`/`api_keys.py`/`starred.py`. Shared infra lives in `common.py` (rate limiter, request validation, JSON-safe serialization) and `sse.py` (the per-request stdout-capture wrapper — imported on the boot path so it installs once). `server.py` keeps only app setup, static-file/SPA serving, and the quarter-listing routes.
 - **`app/database/`** — CSV data-access layer, a package split into `quarters.py` (quarter discovery + 13F loaders), `stocks.py` (stocks.csv CRUD, the stocks lock, ticker cascades), `funds.py` (hedge-fund add/delete/restore). The package `__init__` owns the shared constants (`DB_FOLDER`, `*_FILE`) + path-safety helpers and re-exports everything, so `from app.database import X` is unchanged. Submodules read `DB_FOLDER` as `_db.DB_FOLDER` (call-time) so tests can monkeypatch it.
@@ -285,7 +285,8 @@ All code, comments, docstrings, commit messages, and user-facing strings: **Engl
 ## Data freshness limits
 
 - **13F**: filed within 45 days of quarter-end → 45+ days old when public
-- **13D/G**: filed within ~10 days of trigger event
+- **13D**: filed within 5 business days of the acquisition; amendments within 2 business days (17 CFR 240.13d-1(a), 240.13d-2(a), as amended by Release 33-11253). The pre-2024 "10 days" is superseded — do not reintroduce it
+- **13G**: not uniformly fast. A passive investor files within 5 business days; a Qualified Institutional Investor files 45 days after the end of the calendar quarter, i.e. the same lag as a 13F (240.13d-1(b)(2), (c)(2))
 - **Form 4**: filed within ~2 business days
 
 The tool merges non-quarterly into quarterly views to compensate for 13F lag, but understand the inherent gaps:
@@ -299,8 +300,7 @@ Copy `.env.example` → `.env`. All keys optional:
 
 | Var | What it enables |
 |---|---|
-| `GITHUB_TOKEN` | GitHub Models provider (free tier) — recommended minimum |
-| `GOOGLE_API_KEY` | Google Gemini |
+| `GOOGLE_API_KEY` | Google Gemini — the default AI provider |
 | `GROQ_API_KEY` | Groq (free) |
 | `HF_TOKEN` | HuggingFace Inference API |
 | `OPENROUTER_API_KEY` | OpenRouter aggregator |

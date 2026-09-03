@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
@@ -15,8 +15,10 @@ import {
 import type { SmartScoreView } from "@/lib/smartScore";
 import { SmartScorePanel } from "@/components/SmartScorePanel";
 import { SmartScoreBadge } from "@/components/SmartScoreBadge";
-import { stocksByIndustry, aiDiligenceFor } from "@/lib/routes";
-import { getSectorStyle } from "@/lib/sectorStyle";
+import { stocksByIndustry, aiDiligenceFor, stockPath } from "@/lib/routes";
+import { canonicalUrl } from "@/lib/seo";
+import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
+import { getSectorStyle, sectorPillStyle, SECTOR_PILL } from "@/lib/sectorStyle";
 import type { Quarter } from "@/lib/quarters";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { FundCell } from "@/components/EntityLinks";
@@ -30,60 +32,119 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { MeasuredChart } from "@/components/MeasuredChart";
 import { Button } from "@/components/ui/button";
-import { Brain, Loader2, Filter } from "lucide-react";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { TableFrame } from "@/components/ui/TableFrame";
+import { ArrowDown, ArrowUp, Brain, ChevronDown, Loader2 } from "lucide-react";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { StockPriceChart } from "@/components/StockPriceChart";
+import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { useNavigate } from "react-router";
 import { Progress } from "@/components/ui/progress";
 
-/**
- * Mobile card for one holder row. Below `md` the six-column holders table is
- * replaced by these: rank + fund on the headline with the portfolio weight, a
- * three-up footer for Value / Δ% / Δ Value.
- */
+type SortKey = "shares" | "value" | "deltaValue" | "portfolioPct";
+type SortDir = "asc" | "desc";
+type HoldingFilter = "all" | "buyers" | "sellers" | "new" | "closed";
+
+const HOLDING_FILTER_OPTIONS: readonly { value: HoldingFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "buyers", label: "Buyers" },
+  { value: "new", label: "New" },
+  { value: "sellers", label: "Sellers" },
+  { value: "closed", label: "Sold out" },
+];
+
+const TOOLTIP_STYLE = {
+  background: "hsl(var(--popover))",
+  border: "1px solid hsl(var(--border))",
+  borderRadius: "var(--radius)",
+  boxShadow: "0 2px 8px rgba(0,0,0,.35)",
+  fontSize: 12,
+  color: "hsl(var(--foreground))",
+  padding: "6px 10px",
+  lineHeight: 1.6,
+} as const;
+
+function signed(n: number, digits = 0) {
+  return `${n > 0 ? "+" : ""}${n.toFixed(digits)}`;
+}
+
+function deltaClass(n: number) {
+  return n > 0 ? "delta-positive" : n < 0 ? "delta-negative" : "";
+}
+
+/** One status cell: label over value, in the shared hairline grid. */
+function StatusCell({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className="bg-card p-3">
+      <p className="metric-label">{label}</p>
+      <p className={`metric-value ${className}`}>{value}</p>
+    </div>
+  );
+}
+
+/** Dot legend under a chart, so the colours are named, not only seen. */
+function ChartLegend({ items }: { items: readonly { swatch: string; label: string }[] }) {
+  return (
+    <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      {items.map((it) => (
+        <li key={it.label} className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ background: it.swatch }}
+          />
+          {it.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Mobile row for one holder: the six-column table does not fit a phone. */
 function StockHolderCard({ h, rank }: { h: FundTickerHolding; rank: number }) {
   const deltaNum =
     h.delta === "NEW" ? Infinity : h.delta === "CLOSE" ? -100 : parseFloat(h.delta) || 0;
   return (
-    <div className="surface p-3.5">
+    <li className="border-b border-border py-2">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-mono text-xs text-muted-foreground shrink-0">#{rank}</span>
           <FundCell fundName={h.fund} />
         </div>
-        <span className="font-mono text-sm font-semibold shrink-0">
-          {h.portfolioPct.toFixed(2)}%
+        <span className="font-mono text-sm shrink-0">{h.portfolioPct.toFixed(2)}%</span>
+      </div>
+      <div className="status-line mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+        <span>
+          <span className="k">Value:</span> {formatValue(h.value)}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>
+          <span className="k">Δ%:</span>{" "}
+          {h.isNew ? (
+            <span className="badge-new">NEW</span>
+          ) : h.isClosed ? (
+            <span className="badge-closed">CLOSE</span>
+          ) : deltaNum === 0 ? (
+            <span className="badge-nochange">NO CHANGE</span>
+          ) : (
+            <span className={deltaNum > 0 ? "delta-positive" : "delta-negative"}>{h.delta}</span>
+          )}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>
+          <span className="k">Δ Value:</span>{" "}
+          <span className={deltaClass(h.deltaValue)}>{formatValue(h.deltaValue)}</span>
         </span>
       </div>
-      <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-3 gap-2 text-center">
-        <div>
-          <div className="metric-label">Value</div>
-          <div className="font-mono text-sm text-foreground mt-0.5">{formatValue(h.value)}</div>
-        </div>
-        <div>
-          <div className="metric-label">Δ%</div>
-          <div className="font-mono text-sm mt-0.5">
-            {h.isNew ? (
-              <span className="badge-new">NEW</span>
-            ) : h.isClosed ? (
-              <span className="badge-closed">CLOSE</span>
-            ) : deltaNum === 0 ? (
-              <span className="badge-nochange">—</span>
-            ) : (
-              <span className={deltaNum > 0 ? "delta-positive" : "delta-negative"}>{h.delta}</span>
-            )}
-          </div>
-        </div>
-        <div>
-          <div className="metric-label">Δ Value</div>
-          <div
-            className={`font-mono text-sm mt-0.5 ${h.deltaValue > 0 ? "delta-positive" : h.deltaValue < 0 ? "delta-negative" : "text-muted-foreground"}`}
-          >
-            {formatValue(h.deltaValue)}
-          </div>
-        </div>
-      </div>
-    </div>
+    </li>
   );
 }
 
@@ -131,37 +192,70 @@ export default function StockAnalysis() {
   const sectorStyle = getSectorStyle(sector);
   const SectorIcon = sectorStyle.icon;
 
-  // Compute KPIs from holdings
   const company = holdings[0]?.company || ticker;
-  const totalValue = holdings.reduce((s, h) => s + h.value, 0);
-  const totalDeltaValue = holdings.reduce((s, h) => s + h.deltaValue, 0);
-  const avgPtfPct =
-    holdings.length > 0 ? holdings.reduce((s, h) => s + h.portfolioPct, 0) / holdings.length : 0;
-  const maxPtfPct = holdings.length > 0 ? Math.max(...holdings.map((h) => h.portfolioPct)) : 0;
-  const buyerCount = holdings.filter((h) => h.isBuyer).length;
-  const sellerCount = holdings.filter((h) => h.isSeller).length;
-  const holderCount = holdings.filter((h) => h.isHolder).length;
-  const newHolderCount = holdings.filter((h) => h.isNew).length;
-  const closeCount = holdings.filter((h) => h.isClosed).length;
-  const netBuyers = buyerCount - sellerCount;
-  const bsRatio = sellerCount > 0 ? buyerCount / sellerCount : Infinity;
 
-  const previousTotal = totalValue - totalDeltaValue;
-  const deltaPct =
-    holderCount === newHolderCount && closeCount === 0
-      ? Infinity
-      : previousTotal !== 0
-        ? (totalDeltaValue / previousTotal) * 100
-        : 0;
+  usePageMeta({
+    title: pageTitle(company === ticker ? ticker : `${ticker} · ${company}`),
+    description: `Which hedge funds hold ${company} (${ticker}), how much, and how those positions moved quarter over quarter, from SEC 13F filings.`,
+    canonical: canonicalUrl(stockPath(ticker)),
+  });
 
-  const existingBuyers = buyerCount - newHolderCount;
-  const existingSellers = sellerCount - closeCount;
+  // One pass over holdings for every KPI the page shows.
+  const kpi = useMemo(() => {
+    let totalValue = 0;
+    let totalDeltaValue = 0;
+    let ptfSum = 0;
+    let maxPtfPct = 0;
+    let buyerCount = 0;
+    let sellerCount = 0;
+    let holderCount = 0;
+    let newHolderCount = 0;
+    let closeCount = 0;
+    let totalValueBought = 0;
+    let totalValueSold = 0;
+    for (const h of holdings) {
+      totalValue += h.value;
+      totalDeltaValue += h.deltaValue;
+      ptfSum += h.portfolioPct;
+      if (h.portfolioPct > maxPtfPct) maxPtfPct = h.portfolioPct;
+      if (h.isBuyer) buyerCount++;
+      if (h.isSeller) sellerCount++;
+      if (h.isHolder) holderCount++;
+      if (h.isNew) newHolderCount++;
+      if (h.isClosed) closeCount++;
+      if (h.deltaValue > 0) totalValueBought += h.deltaValue;
+      else totalValueSold -= h.deltaValue;
+    }
+    const previousTotal = totalValue - totalDeltaValue;
+    const deltaPct =
+      holderCount === newHolderCount && closeCount === 0
+        ? Infinity
+        : previousTotal !== 0
+          ? (totalDeltaValue / previousTotal) * 100
+          : 0;
+    return {
+      totalValue,
+      totalDeltaValue,
+      deltaPct,
+      avgPtfPct: holdings.length > 0 ? ptfSum / holdings.length : 0,
+      maxPtfPct,
+      buyerCount,
+      sellerCount,
+      holderCount,
+      newHolderCount,
+      closeCount,
+      netBuyers: buyerCount - sellerCount,
+      bsRatio: sellerCount > 0 ? buyerCount / sellerCount : Infinity,
+      totalValueBought,
+      totalValueSold,
+    };
+  }, [holdings]);
 
   const sentimentData = [
     {
       label: "Buyers",
-      buyers: existingBuyers,
-      new: newHolderCount,
+      buyers: kpi.buyerCount - kpi.newHolderCount,
+      new: kpi.newHolderCount,
       sellers: 0,
       closed: 0,
     },
@@ -169,34 +263,21 @@ export default function StockAnalysis() {
       label: "Sellers",
       buyers: 0,
       new: 0,
-      sellers: existingSellers,
-      closed: closeCount,
+      sellers: kpi.sellerCount - kpi.closeCount,
+      closed: kpi.closeCount,
     },
   ];
 
-  // Value bought vs sold
-  const totalValueBought = holdings
-    .filter((h) => h.deltaValue > 0)
-    .reduce((s, h) => s + h.deltaValue, 0);
-  const totalValueSold = Math.abs(
-    holdings.filter((h) => h.deltaValue < 0).reduce((s, h) => s + h.deltaValue, 0),
-  );
-
   const valueFlowData = [
-    { label: "Value Bought", value: totalValueBought, fill: "hsl(var(--positive))" },
-    { label: "Value Sold", value: totalValueSold, fill: "hsl(var(--negative))" },
+    { label: "Value Bought", value: kpi.totalValueBought, fill: "hsl(var(--positive))" },
+    { label: "Value Sold", value: kpi.totalValueSold, fill: "hsl(var(--negative))" },
   ];
 
-  // Sort columns
-  const [sortKey, setSortKey] = useState<"shares" | "value" | "deltaValue" | "portfolioPct">(
-    "portfolioPct",
-  );
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [holdingFilter, setHoldingFilter] = useState<
-    "all" | "buyers" | "sellers" | "new" | "closed"
-  >("all");
+  const [sortKey, setSortKey] = useState<SortKey>("portfolioPct");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [holdingFilter, setHoldingFilter] = useState<HoldingFilter>("all");
 
-  function toggleSort(key: typeof sortKey) {
+  function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
       setSortKey(key);
@@ -204,8 +285,13 @@ export default function StockAnalysis() {
     }
   }
 
-  function sortIndicator(key: typeof sortKey) {
-    return sortKey === key ? (sortDir === "desc" ? " ↓" : " ↑") : "";
+  function SortArrow({ column }: { column: SortKey }) {
+    if (sortKey !== column) return null;
+    const Icon = sortDir === "desc" ? ArrowDown : ArrowUp;
+    return <Icon className="ml-1 inline-block h-3 w-3 align-[-1px]" aria-hidden="true" />;
+  }
+  function ariaSort(key: SortKey) {
+    return sortKey === key ? (sortDir === "desc" ? "descending" : "ascending") : "none";
   }
 
   const sortedHoldings = (() => {
@@ -232,30 +318,45 @@ export default function StockAnalysis() {
     return list;
   })();
 
+  const holdersTitle = `Holders by Shares (${holdings.length} funds)`;
+  const sortableTh = (keyName: SortKey, label: string) => (
+    <th scope="col" aria-sort={ariaSort(keyName)} className="text-right p-0">
+      <button
+        type="button"
+        onClick={() => toggleSort(keyName)}
+        className="w-full p-3 text-right whitespace-nowrap hover:text-foreground hover:bg-muted"
+      >
+        {label}
+        <SortArrow column={keyName} />
+      </button>
+    </th>
+  );
+
   return (
     <div className="space-y-5 max-w-screen-2xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-start gap-4">
-          <div className="rounded-lg border border-border bg-neutral-200 p-1.5 shadow-sm ring-1 ring-border/50 shrink-0">
-            <CompanyLogo ticker={ticker} size={44} className="rounded-md" />
+          <div className="border border-border bg-card p-1.5 shrink-0">
+            <CompanyLogo ticker={ticker} size={44} />
           </div>
           <div className="flex flex-col gap-2 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold font-mono tracking-tight leading-none">{ticker}</h1>
-              <span className="text-lg font-medium text-foreground/95 leading-none tracking-tight">
-                {company}
-              </span>
-              <StarButton active={isStarred(ticker)} onClick={() => toggleStar(ticker)} size={20} />
+              <h1 className="page-title">
+                {ticker}
+                <span className="text-base font-normal text-muted-foreground">{company}</span>
+              </h1>
+              <StarButton active={isStarred(ticker)} onClick={() => toggleStar(ticker)} size={24} />
               {smartScore && <SmartScoreBadge score={smartScore.smartScore} />}
             </div>
             {(sector || industry) && (
               <div className="flex items-center gap-2 flex-wrap text-xs">
                 {sector && (
                   <span
-                    className={`inline-flex items-center gap-1.5 rounded-full border ${sectorStyle.border} ${sectorStyle.bg} ${sectorStyle.color} px-2.5 py-1 font-medium`}
+                    className={SECTOR_PILL}
+                    style={sectorPillStyle(sectorStyle)}
                     title={`Yahoo Finance sector: ${sector}`}
                   >
-                    <SectorIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    <SectorIcon className="h-3 w-3" aria-hidden="true" />
                     {sector}
                   </span>
                 )}
@@ -263,13 +364,9 @@ export default function StockAnalysis() {
                   <button
                     type="button"
                     onClick={() => navigate(stocksByIndustry(industry))}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card hover:bg-muted/40 hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    className="inline-flex h-7 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors duration-[120ms] hover:bg-muted hover:text-foreground"
                     title={`Browse all ${industry} stocks`}
                   >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${sectorStyle.dot}`}
-                      aria-hidden="true"
-                    />
                     {industry}
                   </button>
                 )}
@@ -279,7 +376,10 @@ export default function StockAnalysis() {
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <Select value={quarter ?? ""} onValueChange={(v) => setSelectedQuarter(v as Quarter)}>
-            <SelectTrigger className="flex-1 sm:flex-none sm:w-36 bg-card border-border">
+            <SelectTrigger
+              className="flex-1 sm:flex-none sm:w-36 bg-card border-border"
+              aria-label="Quarter"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -292,10 +392,10 @@ export default function StockAnalysis() {
           </Select>
           <Button
             variant="outline"
-            className="h-10 flex-1 sm:flex-none whitespace-nowrap"
+            className="h-9 flex-1 sm:flex-none whitespace-nowrap text-magenta"
             onClick={() => navigate(aiDiligenceFor(ticker))}
           >
-            <Brain className="h-4 w-4 mr-1" /> AI Due Diligence
+            <Brain className="h-4 w-4" aria-hidden="true" /> AI Due Diligence
           </Button>
         </div>
       </div>
@@ -307,7 +407,7 @@ export default function StockAnalysis() {
       {isLoading ? (
         <div className="surface p-8">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
             <p className="text-sm text-muted-foreground">{progress.msg}</p>
             <Progress value={progress.pct} className="w-64" />
           </div>
@@ -319,318 +419,294 @@ export default function StockAnalysis() {
         </div>
       ) : (
         <>
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="kpi-card">
-              <p className="metric-label">Total Held</p>
-              <p className="text-xl font-bold font-mono mt-1">{formatValue(totalValue)}</p>
+          <section aria-labelledby="flow-heading" className="space-y-2">
+            <h2 id="flow-heading" className="section-title">
+              Institutional flow, {quarter?.replace("Q", " Q")}
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border">
+              <StatusCell label="Total Held" value={formatValue(kpi.totalValue)} />
+              <StatusCell
+                label="Δ Value"
+                value={formatValue(kpi.totalDeltaValue)}
+                className={deltaClass(kpi.totalDeltaValue)}
+              />
+              <StatusCell
+                label="Δ %"
+                value={formatPct(kpi.deltaPct, true)}
+                className={deltaClass(kpi.deltaPct)}
+              />
+              <StatusCell
+                label="Net Buyers"
+                value={`${signed(kpi.netBuyers)} (${kpi.buyerCount}/${kpi.sellerCount})`}
+                className={deltaClass(kpi.netBuyers)}
+              />
             </div>
-            <div className="kpi-card">
-              <p className="metric-label">Δ Value</p>
-              <p
-                className={`text-xl font-bold font-mono mt-1 ${totalDeltaValue > 0 ? "delta-positive" : totalDeltaValue < 0 ? "delta-negative" : ""}`}
-              >
-                {formatValue(totalDeltaValue)}
-              </p>
-            </div>
-            <div className="kpi-card">
-              <p className="metric-label">Δ %</p>
-              <p
-                className={`text-xl font-bold font-mono mt-1 ${deltaPct > 0 ? "delta-positive" : deltaPct < 0 ? "delta-negative" : ""}`}
-              >
-                {formatPct(deltaPct, true)}
-              </p>
-            </div>
-            <div className="kpi-card">
-              <p className="metric-label">Avg Ptf % / Max Ptf %</p>
-              <p className="text-xl font-bold font-mono mt-1">
-                {avgPtfPct.toFixed(2)}% / {maxPtfPct.toFixed(1)}%
-              </p>
-            </div>
-          </div>
+            <details className="frame group">
+              <summary className="frame-title cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                More flow metrics
+                <ChevronDown
+                  className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180"
+                  aria-hidden="true"
+                />
+              </summary>
+              <div className="m-3 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-px bg-border border border-border">
+                <StatusCell label="Holders" value={kpi.holderCount} />
+                <StatusCell label="Buyers" value={kpi.buyerCount} className="delta-positive" />
+                <StatusCell label="New" value={kpi.newHolderCount} className="delta-positive" />
+                <StatusCell label="Sellers" value={kpi.sellerCount} className="delta-negative" />
+                <StatusCell label="Sold Out" value={kpi.closeCount} className="delta-negative" />
+                <StatusCell
+                  label="B/S Ratio"
+                  value={isFinite(kpi.bsRatio) ? kpi.bsRatio.toFixed(1) + "x" : "∞"}
+                />
+                <StatusCell
+                  label="Avg / Max Ptf %"
+                  value={`${kpi.avgPtfPct.toFixed(2)}% / ${kpi.maxPtfPct.toFixed(1)}%`}
+                />
+              </div>
+            </details>
+          </section>
 
-          <div className="grid grid-cols-2 lg:grid-cols-7 gap-4 items-stretch">
-            <div className="kpi-card">
-              <p className="metric-label">Holders</p>
-              <p className="text-xl font-bold font-mono mt-1">{holderCount}</p>
-            </div>
-            <button
-              type="button"
-              className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "buyers" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setHoldingFilter((f) => (f === "buyers" ? "all" : "buyers"))}
-            >
-              <p className="metric-label flex items-center gap-1">
-                Buyers <Filter className="h-3 w-3" />
-              </p>
-              <p className="text-xl font-bold font-mono mt-1 delta-positive">{buyerCount}</p>
-            </button>
-            <button
-              type="button"
-              className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "new" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setHoldingFilter((f) => (f === "new" ? "all" : "new"))}
-            >
-              <p className="metric-label flex items-center gap-1">
-                New <Filter className="h-3 w-3" />
-              </p>
-              <p className="text-xl font-bold font-mono mt-1 delta-positive">{newHolderCount}</p>
-            </button>
-            <button
-              type="button"
-              className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "sellers" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setHoldingFilter((f) => (f === "sellers" ? "all" : "sellers"))}
-            >
-              <p className="metric-label flex items-center gap-1">
-                Sellers <Filter className="h-3 w-3" />
-              </p>
-              <p className="text-xl font-bold font-mono mt-1 delta-negative">{sellerCount}</p>
-            </button>
-            <button
-              type="button"
-              className={`kpi-card cursor-pointer transition-colors text-left w-full ${holdingFilter === "closed" ? "ring-1 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setHoldingFilter((f) => (f === "closed" ? "all" : "closed"))}
-            >
-              <p className="metric-label flex items-center gap-1">
-                Sold Out <Filter className="h-3 w-3" />
-              </p>
-              <p className="text-xl font-bold font-mono mt-1 delta-negative">{closeCount}</p>
-            </button>
-            <div className="kpi-card">
-              <p className="metric-label">Net Buyers</p>
-              <p
-                className={`text-xl font-bold font-mono mt-1 ${netBuyers > 0 ? "delta-positive" : netBuyers < 0 ? "delta-negative" : ""}`}
-              >
-                {netBuyers >= 0 ? "+" : ""}
-                {netBuyers}
-              </p>
-            </div>
-            <div className="kpi-card">
-              <p className="metric-label">B/S Ratio</p>
-              <p className="text-xl font-bold font-mono mt-1">
-                {isFinite(bsRatio) ? bsRatio.toFixed(1) + "x" : "∞"}
-              </p>
-            </div>
-          </div>
+          {/* The static build has no backend: no chart, and no apology card either. */}
+          {!IS_GH_PAGES_MODE && <StockPriceChart ticker={ticker} />}
 
-          {/* Price history chart */}
-          <StockPriceChart ticker={ticker} />
-
-          {/* Charts row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Sentiment Chart */}
-            <div className="surface p-5">
-              <h3 className="section-title mb-4 text-sm">Buyers vs Sellers</h3>
-              <div className="h-[80px]">
-                <MeasuredChart>
-                  {({ width, height }) => (
-                    <BarChart width={width} height={height} data={sentimentData} layout="vertical">
-                      <XAxis type="number" hide />
-                      <YAxis
-                        type="category"
-                        dataKey="label"
-                        width={60}
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip
-                        cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          const row = payload[0]?.payload;
-                          const isBuyers = row.label === "Buyers";
-                          return (
-                            <div
-                              style={{
-                                background: "hsl(var(--card))",
-                                border: "1px solid hsl(var(--border))",
-                                borderRadius: 6,
-                                fontSize: 12,
-                                color: "hsl(var(--foreground))",
-                                padding: "6px 10px",
-                                lineHeight: 1.6,
-                              }}
-                            >
-                              <div>
-                                <span style={{ fontWeight: 700 }}>
-                                  {isBuyers ? "Increase" : "Decrease"}
-                                </span>{" "}
-                                : {isBuyers ? row.buyers : row.sellers}
+            <section className="frame" aria-labelledby="sentiment-heading">
+              <h2 id="sentiment-heading" className="frame-title">
+                Buyers vs Sellers
+              </h2>
+              <div className="p-3">
+                <div className="h-[80px]">
+                  <MeasuredChart>
+                    {({ width, height }) => (
+                      <BarChart
+                        width={width}
+                        height={height}
+                        data={sentimentData}
+                        layout="vertical"
+                      >
+                        <XAxis type="number" hide />
+                        <YAxis
+                          type="category"
+                          dataKey="label"
+                          width={60}
+                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip
+                          cursor={{ fill: "hsl(var(--muted))" }}
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const row = payload[0]?.payload;
+                            const isBuyers = row.label === "Buyers";
+                            return (
+                              <div style={TOOLTIP_STYLE}>
+                                <div>
+                                  <span style={{ fontWeight: 700 }}>
+                                    {isBuyers ? "Increase" : "Decrease"}
+                                  </span>{" "}
+                                  : {isBuyers ? row.buyers : row.sellers}
+                                </div>
+                                <div>
+                                  <span style={{ fontWeight: 700 }}>
+                                    {isBuyers ? "New" : "Close"}
+                                  </span>{" "}
+                                  : {isBuyers ? row.new : row.closed}
+                                </div>
                               </div>
-                              <div>
-                                <span style={{ fontWeight: 700 }}>
-                                  {isBuyers ? "New" : "Close"}
-                                </span>{" "}
-                                : {isBuyers ? row.new : row.closed}
-                              </div>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Bar
-                        dataKey="buyers"
-                        name="Buyers"
-                        stackId="a"
-                        barSize={24}
-                        fill="hsl(var(--positive))"
-                        radius={0}
-                      />
-                      <Bar
-                        dataKey="new"
-                        name="New"
-                        stackId="a"
-                        fill="hsl(var(--positive) / 0.55)"
-                        radius={[0, 6, 6, 0]}
-                      />
-                      <Bar
-                        dataKey="sellers"
-                        name="Sellers"
-                        stackId="a"
-                        fill="hsl(var(--negative))"
-                        radius={0}
-                      />
-                      <Bar
-                        dataKey="closed"
-                        name="Closed"
-                        stackId="a"
-                        fill="hsl(var(--negative) / 0.55)"
-                        radius={[0, 6, 6, 0]}
-                      />
-                    </BarChart>
-                  )}
-                </MeasuredChart>
+                            );
+                          }}
+                        />
+                        <Bar
+                          dataKey="buyers"
+                          name="Buyers"
+                          stackId="a"
+                          barSize={24}
+                          fill="hsl(var(--positive))"
+                          radius={0}
+                        />
+                        <Bar
+                          dataKey="new"
+                          name="New"
+                          stackId="a"
+                          fill="hsl(var(--positive) / 0.55)"
+                          radius={0}
+                        />
+                        <Bar
+                          dataKey="sellers"
+                          name="Sellers"
+                          stackId="a"
+                          fill="hsl(var(--negative))"
+                          radius={0}
+                        />
+                        <Bar
+                          dataKey="closed"
+                          name="Closed"
+                          stackId="a"
+                          fill="hsl(var(--negative) / 0.55)"
+                          radius={0}
+                        />
+                      </BarChart>
+                    )}
+                  </MeasuredChart>
+                </div>
+                <ChartLegend
+                  items={[
+                    {
+                      swatch: "hsl(var(--positive))",
+                      label: `Increased (${sentimentData[0].buyers})`,
+                    },
+                    { swatch: "hsl(var(--positive) / 0.55)", label: `New (${kpi.newHolderCount})` },
+                    {
+                      swatch: "hsl(var(--negative))",
+                      label: `Decreased (${sentimentData[1].sellers})`,
+                    },
+                    { swatch: "hsl(var(--negative) / 0.55)", label: `Closed (${kpi.closeCount})` },
+                  ]}
+                />
               </div>
-            </div>
+            </section>
 
-            {/* Value Bought vs Value Sold */}
-            <div className="surface p-5">
-              <h3 className="section-title mb-4 text-sm">Value Bought vs Value Sold</h3>
-              <div className="h-[80px]">
-                <MeasuredChart>
-                  {({ width, height }) => (
-                    <BarChart width={width} height={height} data={valueFlowData} layout="vertical">
-                      <XAxis type="number" hide />
-                      <YAxis
-                        type="category"
-                        dataKey="label"
-                        width={90}
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip
-                        cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                        contentStyle={{
-                          background: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: 6,
-                          fontSize: 12,
-                          color: "hsl(var(--foreground))",
-                        }}
-                        labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
-                        itemStyle={{ color: "hsl(var(--foreground))" }}
-                        formatter={(val) => [formatValue(Number(val ?? 0)), null]}
-                        separator=" : "
-                      />
-                      <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24}>
-                        {valueFlowData.map((entry) => (
-                          <Cell key={entry.fill + entry.value} fill={entry.fill} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  )}
-                </MeasuredChart>
+            <section className="frame" aria-labelledby="flow-chart-heading">
+              <h2 id="flow-chart-heading" className="frame-title">
+                Value Bought vs Value Sold
+              </h2>
+              <div className="p-3">
+                <div className="h-[80px]">
+                  <MeasuredChart>
+                    {({ width, height }) => (
+                      <BarChart
+                        width={width}
+                        height={height}
+                        data={valueFlowData}
+                        layout="vertical"
+                      >
+                        <XAxis type="number" hide />
+                        <YAxis
+                          type="category"
+                          dataKey="label"
+                          width={90}
+                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip
+                          cursor={{ fill: "hsl(var(--muted))" }}
+                          contentStyle={TOOLTIP_STYLE}
+                          labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                          itemStyle={{ color: "hsl(var(--foreground))" }}
+                          formatter={(val) => [formatValue(Number(val ?? 0)), null]}
+                          separator=" : "
+                        />
+                        <Bar dataKey="value" radius={0} barSize={24}>
+                          {valueFlowData.map((entry) => (
+                            <Cell key={entry.fill + entry.value} fill={entry.fill} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    )}
+                  </MeasuredChart>
+                </div>
+                <ChartLegend
+                  items={[
+                    {
+                      swatch: "hsl(var(--positive))",
+                      label: `Bought ${formatValue(kpi.totalValueBought)}`,
+                    },
+                    {
+                      swatch: "hsl(var(--negative))",
+                      label: `Sold ${formatValue(kpi.totalValueSold)}`,
+                    },
+                  ]}
+                />
               </div>
-            </div>
+            </section>
           </div>
 
-          {/* Fund Holdings */}
-          <div>
-            <h3 className="section-title text-sm md:hidden mb-3">
-              Holders by Shares ({holdings.length} funds)
-            </h3>
-            {/* Mobile: card list */}
-            <div className="md:hidden space-y-3">
+          <section aria-labelledby="holders-heading" className="space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <h2 id="holders-heading" className="section-title">
+                {holdersTitle}
+              </h2>
+              <SegmentedControl
+                size="sm"
+                aria-label="Filter holders"
+                value={holdingFilter}
+                onValueChange={setHoldingFilter}
+                options={HOLDING_FILTER_OPTIONS}
+              />
+            </div>
+
+            {/* Mobile: row list */}
+            <ul className="md:hidden border-t border-border">
               {sortedHoldings.map((h, i) => (
                 <StockHolderCard key={`${h.fund}-${h.delta}-${h.value}`} h={h} rank={i + 1} />
               ))}
-            </div>
-          </div>
+            </ul>
 
-          {/* Desktop: full holders table */}
-          <div className="surface overflow-hidden hidden md:block">
-            <div className="p-4 border-b border-border">
-              <h3 className="section-title text-sm">Holders by Shares ({holdings.length} funds)</h3>
+            {/* Desktop: full holders table */}
+            <div className="surface hidden md:block">
+              <TableFrame label={holdersTitle}>
+                <table className="w-full text-sm" aria-label={holdersTitle}>
+                  <thead>
+                    <tr>
+                      <th scope="col" className="text-right p-3 w-12">
+                        #
+                      </th>
+                      <th scope="col" className="text-left p-3">
+                        Fund
+                      </th>
+                      {sortableTh("portfolioPct", "Ptf %")}
+                      {sortableTh("value", "Value")}
+                      <th scope="col" className="text-right p-3">
+                        Δ%
+                      </th>
+                      {sortableTh("deltaValue", "Δ Value")}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedHoldings.map((h, i) => {
+                      const deltaNum =
+                        h.delta === "NEW"
+                          ? Infinity
+                          : h.delta === "CLOSE"
+                            ? -100
+                            : parseFloat(h.delta) || 0;
+                      return (
+                        <tr key={`${h.fund}-${h.delta}-${h.value}`} className="data-table-row">
+                          <td className="p-3 text-right text-muted-foreground font-mono text-xs">
+                            {i + 1}
+                          </td>
+                          <td className="p-3">
+                            <FundCell fundName={h.fund} />
+                          </td>
+                          <td className="p-3 text-right font-mono">{h.portfolioPct.toFixed(2)}%</td>
+                          <td className="p-3 text-right font-mono">{formatValue(h.value)}</td>
+                          <td className="p-3 text-right font-mono">
+                            {h.isNew ? (
+                              <span className="badge-new">NEW</span>
+                            ) : h.isClosed ? (
+                              <span className="badge-closed">CLOSE</span>
+                            ) : deltaNum === 0 ? (
+                              <span className="badge-nochange">NO CHANGE</span>
+                            ) : (
+                              <span className={deltaNum > 0 ? "delta-positive" : "delta-negative"}>
+                                {h.delta}
+                              </span>
+                            )}
+                          </td>
+                          <td className={`p-3 text-right font-mono ${deltaClass(h.deltaValue)}`}>
+                            {formatValue(h.deltaValue)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </TableFrame>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
-                    <th className="text-right p-3 font-medium w-12">#</th>
-                    <th className="text-left p-3 font-medium">Fund</th>
-                    <th
-                      className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
-                      onClick={() => toggleSort("portfolioPct")}
-                    >
-                      Ptf %{sortIndicator("portfolioPct")}
-                    </th>
-                    <th
-                      className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
-                      onClick={() => toggleSort("value")}
-                    >
-                      Value{sortIndicator("value")}
-                    </th>
-                    <th className="text-right p-3 font-medium">Δ%</th>
-                    <th
-                      className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
-                      onClick={() => toggleSort("deltaValue")}
-                    >
-                      Δ Value{sortIndicator("deltaValue")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedHoldings.map((h, i) => {
-                    const deltaNum =
-                      h.delta === "NEW"
-                        ? Infinity
-                        : h.delta === "CLOSE"
-                          ? -100
-                          : parseFloat(h.delta) || 0;
-                    return (
-                      <tr key={`${h.fund}-${h.delta}-${h.value}`} className="data-table-row">
-                        <td className="p-3 text-right text-muted-foreground font-mono text-xs">
-                          {i + 1}
-                        </td>
-                        <td className="p-3">
-                          <FundCell fundName={h.fund} />
-                        </td>
-                        <td className="p-3 text-right font-mono">{h.portfolioPct.toFixed(2)}%</td>
-                        <td className="p-3 text-right font-mono">{formatValue(h.value)}</td>
-                        <td className="p-3 text-right font-mono">
-                          {h.isNew ? (
-                            <span className="badge-new">NEW</span>
-                          ) : h.isClosed ? (
-                            <span className="badge-closed">CLOSE</span>
-                          ) : deltaNum === 0 ? (
-                            <span className="badge-nochange">NO CHANGE</span>
-                          ) : (
-                            <span className={deltaNum > 0 ? "delta-positive" : "delta-negative"}>
-                              {h.delta}
-                            </span>
-                          )}
-                        </td>
-                        <td
-                          className={`p-3 text-right font-mono ${h.deltaValue > 0 ? "delta-positive" : h.deltaValue < 0 ? "delta-negative" : ""}`}
-                        >
-                          {formatValue(h.deltaValue)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          </section>
         </>
       )}
     </div>

@@ -18,7 +18,6 @@ if [ ! -f /app/.env ]; then
     echo "📝 Generating .env from environment variables..."
     env_file="/app/.env"
     [ -n "$FMP_API_KEY" ]        && echo "FMP_API_KEY=$FMP_API_KEY" >> "$env_file"
-    [ -n "$GITHUB_TOKEN" ]       && echo "GITHUB_TOKEN=$GITHUB_TOKEN" >> "$env_file"
     [ -n "$GOOGLE_API_KEY" ]     && echo "GOOGLE_API_KEY=$GOOGLE_API_KEY" >> "$env_file"
     [ -n "$GROQ_API_KEY" ]       && echo "GROQ_API_KEY=$GROQ_API_KEY" >> "$env_file"
     [ -n "$HF_TOKEN" ]           && echo "HF_TOKEN=$HF_TOKEN" >> "$env_file"

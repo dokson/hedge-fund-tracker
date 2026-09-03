@@ -12,7 +12,6 @@ import {
 
 // Maps models.csv "Client" column to provider IDs used in aiClient.ts
 const CLIENT_TO_PROVIDER_ID: Record<string, string> = {
-  GitHub: "github",
   Google: "google",
   Groq: "groq",
   HuggingFace: "huggingface",
@@ -107,18 +106,16 @@ export default function ModelSelector({
 
   return (
     <Select value={effectiveValue} onValueChange={handleChange} disabled={disabled}>
-      <SelectTrigger className={`bg-card border-border ${className || "w-64"}`}>
+      <SelectTrigger aria-label="AI model" className={className || "w-64"}>
         <SelectValue placeholder="Select model…" />
       </SelectTrigger>
       <SelectContent>
         {groupedModels.map(({ providerName, models }) => (
           <div key={providerName}>
-            <div className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              {providerName}
-            </div>
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">{providerName}</div>
             {models.map((m) => (
               <SelectItem key={m.id} value={m.id}>
-                <span className="text-sm">{m.description}</span>
+                <span className="text-[13px]">{m.description}</span>
               </SelectItem>
             ))}
           </div>

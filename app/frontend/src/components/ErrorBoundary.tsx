@@ -49,18 +49,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
     return (
       <div className="flex justify-center px-4 py-16">
-        <div className="surface relative w-full max-w-xl overflow-hidden p-10 text-center">
-          <div
-            aria-hidden
-            className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-destructive/70 to-transparent"
-          />
+        <div className="frame w-full max-w-xl p-8 text-center">
           <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive opacity-60" />
-          <h2 className="text-lg font-semibold">Something went wrong</h2>
+          <h2 className="text-base font-semibold">Something went wrong</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             This page hit an unexpected error while rendering. Your data is untouched — retry, or
             navigate to another section from the sidebar.
           </p>
-          <pre className="mt-6 overflow-x-auto rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3 text-left font-mono text-xs text-destructive/90">
+          <pre className="mt-6 overflow-x-auto rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-left font-mono text-xs text-destructive">
             {error.message || error.toString()}
           </pre>
           <div className="mt-6 flex justify-center gap-3">

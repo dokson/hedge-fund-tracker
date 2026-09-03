@@ -78,6 +78,10 @@ class AnalystAgent:
         if invalid_metrics:
             raise InvalidAIResponseError(f"AI returned invalid metrics: {invalid_metrics}")
 
+        count_error = PromiseScoreValidator.validate_metric_count(parsed_weights)
+        if count_error:
+            raise InvalidAIResponseError(count_error)
+
         wrong_signs = PromiseScoreValidator.validate_weight_signs(parsed_weights)
         if wrong_signs:
             raise InvalidAIResponseError(f"AI returned wrongly signed weights: {wrong_signs}")
@@ -172,7 +176,9 @@ class AnalystAgent:
         for ticker in tickers:
             info = stocks_info.get(ticker, {})
             current_price = info.get("price")
-            industry = info.get("sector")
+            # The prompt asks the LLM to refine this into a Yahoo Finance industry,
+            # so hand it the industry when YFinance has one and the sector otherwise.
+            industry = info.get("industry") or info.get("sector")
             filing_price: float | None = None
             pct_change: float | None = None
             growth_score: float | None = None

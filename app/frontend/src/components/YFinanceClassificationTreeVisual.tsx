@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Loader2, Search } from "lucide-react";
 
 import { getSectorHierarchy } from "@/lib/dataService";
 import { Input } from "@/components/ui/input";
+import { PanelTitle } from "@/components/ui/PanelTitle";
 import { getSectorStyle } from "@/lib/sectorStyle";
 import { getIndustryIcon } from "@/lib/industryIcon";
 
@@ -57,86 +58,95 @@ export default function YFinanceClassificationTreeVisual({ onSelectIndustry }: P
   const isExpanded = (sector: string) => expanded.has(sector) || query.trim().length > 0;
 
   return (
-    <div className="surface p-5 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="section-title text-sm">Yahoo Finance Classification</h3>
-        <div className="relative w-64">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+    <div className="frame">
+      <div className="frame-title">
+        <PanelTitle>Yahoo Finance Classification</PanelTitle>
+        <div className="relative w-56">
+          <Search
+            className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search sector or industry…"
-            className="pl-8 h-8 text-xs"
+            aria-label="Search sector or industry"
+            className="pl-8 h-7 text-xs font-normal"
           />
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        {grouped.length === 0 && <p className="text-xs text-muted-foreground">No matches.</p>}
+      <ul className="p-3 space-y-1">
+        {grouped.length === 0 && <li className="text-xs text-muted-foreground">No matches.</li>}
         {grouped.map(({ sector, industries }) => {
-          const style = getSectorStyle(sector);
-          const Icon = style.icon;
+          const Icon = getSectorStyle(sector).icon;
           const open = isExpanded(sector);
           return (
-            <div
-              key={sector}
-              className={`rounded-md border ${style.border} ${style.bg} overflow-hidden`}
-            >
+            <li key={sector}>
               <button
                 type="button"
                 onClick={() => toggle(sector)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/30 transition-colors"
+                aria-expanded={open}
+                className="w-full flex items-center gap-2 px-2 h-8 text-left rounded-md hover:bg-muted transition-colors"
               >
                 {open ? (
-                  <ChevronDown className={`h-4 w-4 ${style.color}`} />
+                  <ChevronDown
+                    className="h-4 w-4 shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <ChevronRight className={`h-4 w-4 ${style.color}`} />
+                  <ChevronRight
+                    className="h-4 w-4 shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
                 )}
-                <Icon className={`h-4 w-4 ${style.color}`} />
-                <span className="font-medium text-sm text-foreground">{sector}</span>
-                <span className="ml-auto text-xs text-muted-foreground">{industries.length}</span>
+                <Icon className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span className="text-[13px] font-medium text-foreground truncate">{sector}</span>
+                <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                  {industries.length}
+                </span>
               </button>
               {open && (
-                <div className="border-t border-border/50 bg-background/30 p-2.5">
-                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {industries.map((industry) => {
-                      const IndustryIcon = getIndustryIcon(industry) ?? Icon;
-                      const inner = (
-                        <>
-                          <IndustryIcon
-                            className={`h-3.5 w-3.5 shrink-0 ${style.color} opacity-80`}
-                            aria-hidden
-                          />
-                          <span className="truncate">{industry}</span>
-                        </>
-                      );
-                      return onSelectIndustry ? (
-                        <button
-                          key={industry}
-                          type="button"
-                          onClick={() => onSelectIndustry(industry)}
-                          title={industry}
-                          className="flex items-center gap-2 rounded-md border border-transparent bg-muted/20 px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:border-border hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                          {inner}
-                        </button>
-                      ) : (
-                        <div
-                          key={industry}
-                          title={industry}
-                          className="flex items-center gap-2 rounded-md bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground"
-                        >
-                          {inner}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <ul className="ml-4 pl-3 py-1.5 border-l border-border grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {industries.map((industry) => {
+                    const IndustryIcon = getIndustryIcon(industry) ?? Icon;
+                    const inner = (
+                      <>
+                        <IndustryIcon
+                          className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <span className="truncate">{industry}</span>
+                      </>
+                    );
+                    return (
+                      <li key={industry} className="min-w-0">
+                        {onSelectIndustry ? (
+                          <button
+                            type="button"
+                            onClick={() => onSelectIndustry(industry)}
+                            title={industry}
+                            className="w-full flex items-center gap-2 rounded-md px-2 h-8 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            {inner}
+                          </button>
+                        ) : (
+                          <div
+                            title={industry}
+                            className="flex items-center gap-2 px-2 h-8 text-xs text-muted-foreground"
+                          >
+                            {inner}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </div>
   );
 }

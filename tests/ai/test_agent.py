@@ -194,7 +194,14 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         """
         Returns the parsed weights dict when the AI response is valid.
         """
-        valid_weights = {"Metric1": 0.5, "Metric2": 0.5}
+        valid_weights = {
+            "Metric1": 0.2,
+            "Metric2": 0.2,
+            "Metric3": 0.2,
+            "Metric4": 0.2,
+            "Metric5": 0.1,
+            "Metric6": 0.1,
+        }
         self.mock_ai_client.generate_content.return_value = "mock_response"
         mock_parse.return_value = valid_weights
         mock_val_weights.return_value = True
@@ -250,13 +257,20 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         downstream sum() and arithmetic don't crash with 'unsupported operand types'.
         """
         self.mock_ai_client.generate_content.return_value = "mock_response"
-        mock_parse.return_value = {"Metric1": "0.5", "Metric2": 0.5}
+        mock_parse.return_value = {
+            "Metric1": "0.2",
+            "Metric2": 0.2,
+            "Metric3": 0.2,
+            "Metric4": 0.2,
+            "Metric5": 0.1,
+            "Metric6": 0.1,
+        }
         mock_val_weights.return_value = True
         mock_val_metrics.return_value = None
 
         result = self.agent._get_promise_score_weights()
 
-        self.assertEqual(result, {"Metric1": 0.5, "Metric2": 0.5})
+        self.assertEqual(result["Metric1"], 0.2)
         for v in result.values():
             self.assertIsInstance(v, float)
 
@@ -291,6 +305,95 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
             self.agent._get_promise_score_weights()
         # validate_weights must NOT be called: rejection happens at coercion.
         mock_val_weights.assert_not_called()
+
+    @patch("app.ai.agent.PromiseScoreValidator.validate_metrics")
+    @patch("app.ai.agent.PromiseScoreValidator.validate_weights")
+    @patch("app.ai.agent.ResponseParser.extract_and_decode_toon")
+    @patch("app.ai.agent.promise_score_weights_prompt")
+    def test_too_few_metrics_trigger_retry(
+        self, mock_prompt, mock_parse, mock_val_weights, mock_val_metrics
+    ):
+        """
+        A sparse weight set passes the sum and name checks but concentrates the
+        ranking on one axis: the count constraint must reject it.
+        """
+        self.mock_ai_client.generate_content.return_value = "mock_response"
+        mock_parse.return_value = {"Metric1": 0.5, "Metric2": 0.5}
+        mock_val_weights.return_value = True
+        mock_val_metrics.return_value = None
+
+        with self.assertRaises(RetryError):
+            self.agent._get_promise_score_weights()
+
+    @patch("app.ai.agent.PromiseScoreValidator.validate_metrics")
+    @patch("app.ai.agent.PromiseScoreValidator.validate_weights")
+    @patch("app.ai.agent.ResponseParser.extract_and_decode_toon")
+    @patch("app.ai.agent.promise_score_weights_prompt")
+    def test_too_many_metrics_trigger_retry(
+        self, mock_prompt, mock_parse, mock_val_weights, mock_val_metrics
+    ):
+        """
+        More metrics than the maximum spreads weight over correlated breadth
+        signals: the count constraint must reject it.
+        """
+        self.mock_ai_client.generate_content.return_value = "mock_response"
+        mock_parse.return_value = {f"Metric{i}": 0.05 for i in range(11)}
+        mock_val_weights.return_value = True
+        mock_val_metrics.return_value = None
+
+        with self.assertRaises(RetryError):
+            self.agent._get_promise_score_weights()
+
+
+class TestComputeAutonomousScores(unittest.TestCase):
+    def setUp(self):
+        """
+        Initializes AnalystAgent with mocked quarter analysis and filing date.
+        """
+        for patcher in (
+            patch("app.ai.agent.quarter_analysis", return_value=pd.DataFrame()),
+            patch("app.ai.agent.get_quarter_date", return_value="2023-12-31"),
+        ):
+            self.addCleanup(patcher.stop)
+            patcher.start()
+        self.agent = AnalystAgent("2023Q4", ai_client=MagicMock())
+
+    @patch("app.ai.agent.PriceFetcher.get_avg_price", return_value=None)
+    @patch("app.ai.agent.YFinance.get_stocks_info")
+    def test_prefers_the_yfinance_industry(self, mock_info, mock_avg_price):
+        """
+        The prompt asks the LLM to refine a sector into an industry, so the
+        industry is handed over whenever YFinance has one.
+        """
+        mock_info.return_value = {
+            "AAPL": {"price": 150.0, "sector": "Technology", "industry": "Consumer Electronics"}
+        }
+
+        result = self.agent._compute_autonomous_scores(["AAPL"])
+
+        self.assertEqual(result["AAPL"]["Industry"], "Consumer Electronics")
+
+    @patch("app.ai.agent.PriceFetcher.get_avg_price", return_value=None)
+    @patch("app.ai.agent.YFinance.get_stocks_info")
+    def test_falls_back_to_the_sector(self, mock_info, mock_avg_price):
+        """
+        Falls back to the sector when YFinance reports no industry.
+        """
+        mock_info.return_value = {"AAPL": {"price": 150.0, "sector": "Technology"}}
+
+        result = self.agent._compute_autonomous_scores(["AAPL"])
+
+        self.assertEqual(result["AAPL"]["Industry"], "Technology")
+
+    @patch("app.ai.agent.PriceFetcher.get_avg_price", return_value=None)
+    @patch("app.ai.agent.YFinance.get_stocks_info", return_value={})
+    def test_reports_na_when_neither_is_known(self, mock_info, mock_avg_price):
+        """
+        Reports "N/A" when YFinance returns nothing for the ticker.
+        """
+        result = self.agent._compute_autonomous_scores(["AAPL"])
+
+        self.assertEqual(result["AAPL"]["Industry"], "N/A")
 
 
 class TestGetAIScores(unittest.TestCase):

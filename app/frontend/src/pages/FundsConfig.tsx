@@ -16,25 +16,23 @@ import {
 } from "@/lib/dataService";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { matchesQuery } from "@/lib/utils";
-import { fundPath } from "@/lib/routes";
+import { fundPath, ROUTES } from "@/lib/routes";
+import { canonicalUrl } from "@/lib/seo";
+import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import {
   Settings2,
-  Users,
   ExternalLink,
   Trash2,
   AlertTriangle,
   Undo2,
-  UserX,
   Plus,
   Pencil,
   Check,
   X,
-  Eye,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import {
@@ -50,21 +48,36 @@ import { toast } from "sonner";
 
 const SEC_CIK_URL = (cik: string) => `https://www.sec.gov/edgar/browse/?CIK=${cik}`;
 
+const EDIT_FIELDS = [
+  ["fund", "Fund"],
+  ["manager", "Manager"],
+  ["denomination", "Denomination"],
+  ["cik", "CIK"],
+  ["ciks", "CIKs"],
+  ["url", "Website"],
+] as const;
+
+const FIELD_LABEL: Record<string, string> = Object.fromEntries(EDIT_FIELDS);
+
 function InlineInput({
   value,
   field,
   draft,
   setDraft,
   className = "",
+  id,
 }: {
   value: string;
   field: string;
   draft: Record<string, string>;
   setDraft: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   className?: string;
+  id?: string;
 }) {
   return (
     <Input
+      id={id}
+      aria-label={id ? undefined : FIELD_LABEL[field]}
       value={draft[field] ?? value}
       onChange={(e) => {
         let val = e.target.value;
@@ -72,7 +85,7 @@ function InlineInput({
         if (field === "ciks") val = val.replace(/[^0-9,]/g, "");
         setDraft((prev) => ({ ...prev, [field]: val }));
       }}
-      className={`h-7 text-xs bg-background border-border ${className}`}
+      className={`h-7 text-xs ${className}`}
     />
   );
 }
@@ -82,9 +95,9 @@ const CikLink = ({ cik }: { cik: string }) => (
     href={SEC_CIK_URL(cik)}
     target="_blank"
     rel="noopener noreferrer"
-    className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1"
+    className="font-mono text-xs text-primary-text hover:underline inline-flex items-center gap-1"
   >
-    {cik} <ExternalLink className="h-2.5 w-2.5" />
+    {cik} <ExternalLink className="h-2.5 w-2.5" aria-hidden="true" />
   </a>
 );
 
@@ -97,19 +110,10 @@ type FundRow = {
   url: string;
 };
 
-const EDIT_FIELDS = [
-  ["fund", "Fund"],
-  ["manager", "Manager"],
-  ["denomination", "Denomination"],
-  ["cik", "CIK"],
-  ["ciks", "CIKs"],
-  ["url", "Website"],
-] as const;
-
 /**
  * Mobile card for one funds-config row, shared by the Active and Excluded tabs.
  * The 8-column admin table can't fit a phone, so below `md` each fund collapses
- * to a card. Inline editing reuses the same draft state, stacked vertically.
+ * to a frame row. Inline editing reuses the same draft state, stacked vertically.
  */
 function FundConfigCard({
   f,
@@ -142,13 +146,14 @@ function FundConfigCard({
 }) {
   if (isEditing) {
     return (
-      <div className="surface p-3.5 space-y-2.5">
+      <div className="border-b border-border py-3 space-y-2.5">
         {EDIT_FIELDS.map(([field, label]) => (
           <div key={field} className="space-y-1">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <Label htmlFor={`edit-${f.cik}-${field}`} className="control-label !text-[11px]">
               {label}
             </Label>
             <InlineInput
+              id={`edit-${f.cik}-${field}`}
               value={f[field]}
               field={field}
               draft={draft}
@@ -162,7 +167,7 @@ function FundConfigCard({
             Cancel
           </Button>
           <Button size="sm" onClick={onSave} disabled={!isDraftValid}>
-            <Check className="h-3.5 w-3.5 mr-1" /> Save
+            <Check className="h-3.5 w-3.5 mr-1" aria-hidden="true" /> Save
           </Button>
         </div>
       </div>
@@ -170,23 +175,23 @@ function FundConfigCard({
   }
 
   return (
-    <div className="surface p-3.5">
+    <div className="border-b border-border py-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           {onOpen ? (
             <button
               type="button"
               onClick={onOpen}
-              className="font-semibold fund-link text-left truncate max-w-full block"
+              className="font-medium fund-link text-left truncate max-w-full block"
             >
               {f.fund}
             </button>
           ) : (
-            <p className="font-semibold truncate">{f.fund}</p>
+            <p className="font-medium truncate">{f.fund}</p>
           )}
           <p className="text-xs text-muted-foreground truncate">{f.manager}</p>
         </div>
-        <span className="font-mono text-[10px] text-muted-foreground shrink-0">#{rank}</span>
+        <span className="font-mono text-xs text-muted-foreground shrink-0">#{rank}</span>
       </div>
       {f.denomination && (
         <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{f.denomination}</p>
@@ -198,35 +203,30 @@ function FundConfigCard({
             href={f.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline inline-flex items-center gap-1 min-w-0 max-w-[200px] truncate"
+            className="text-primary-text hover:underline inline-flex items-center gap-1 min-w-0 max-w-[200px] truncate"
           >
             {f.url.replace(/^https?:\/\/(www\.)?/, "")}
-            <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+            <ExternalLink className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
           </a>
         )}
       </div>
       {!readOnly && (
         <div className="mt-3 flex gap-2">
           <Button variant="outline" size="sm" className="flex-1" onClick={onStartEdit}>
-            <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+            <Pencil className="h-3.5 w-3.5 mr-1" aria-hidden="true" /> Edit
           </Button>
           {mode === "active" ? (
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="flex-1 text-negative hover:text-negative"
               onClick={onSecondary}
             >
-              <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+              <Trash2 className="h-3.5 w-3.5 mr-1" aria-hidden="true" /> Delete
             </Button>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 text-primary hover:text-primary hover:bg-primary/10"
-              onClick={onSecondary}
-            >
-              <Undo2 className="h-3.5 w-3.5 mr-1" /> Restore
+            <Button variant="outline" size="sm" className="flex-1" onClick={onSecondary}>
+              <Undo2 className="h-3.5 w-3.5 mr-1" aria-hidden="true" /> Restore
             </Button>
           )}
         </div>
@@ -236,6 +236,13 @@ function FundConfigCard({
 }
 
 export default function FundsConfig() {
+  usePageMeta({
+    title: pageTitle("Funds Configuration"),
+    description:
+      "Local configuration of the tracked hedge fund roster: add, exclude and restore the funds whose SEC filings are ingested.",
+    canonical: canonicalUrl(ROUTES.fundsConfig),
+  });
+
   const navigate = useNavigate();
   const [fundSearch, setFundSearch] = useState("");
   const [excludedSearch, setExcludedSearch] = useState("");
@@ -477,9 +484,9 @@ export default function FundsConfig() {
   return (
     <div className="space-y-6 max-w-screen-2xl">
       <div>
-        <span className="eyebrow">Curated list</span>
-        <h1 className="page-title mt-1.5">
-          <Settings2 className="page-title-icon" /> Hedge Funds Configuration
+        <h1 className="page-title">
+          <Settings2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Hedge Funds
+          Configuration
         </h1>
         <p className="text-sm text-muted-foreground mt-1.5">
           {IS_GH_PAGES_MODE
@@ -489,40 +496,34 @@ export default function FundsConfig() {
       </div>
 
       {IS_GH_PAGES_MODE && (
-        <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3 text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
-          <Eye className="h-4 w-4 shrink-0" />
+        <p className="text-sm text-muted-foreground" role="note">
           Read-only mode. To modify the hedge funds list, run the application locally.
-        </div>
+        </p>
       )}
 
-      {/* Tab navigation */}
-      <div className="flex gap-1 border-b border-border">
-        <button
-          onClick={() => setActiveTab("active")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
-            activeTab === "active"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Users className="h-3.5 w-3.5" /> Active Funds
-          <Badge variant="secondary" className="text-[10px] ml-1">
-            {funds.length}
-          </Badge>
-        </button>
-        <button
-          onClick={() => setActiveTab("excluded")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
-            activeTab === "excluded"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <UserX className="h-3.5 w-3.5" /> Excluded
-          <Badge variant="secondary" className="text-[10px] ml-1">
-            {excludedFunds.length}
-          </Badge>
-        </button>
+      {/* Underline tabs: active gets the primary rule and the text colour. */}
+      <div role="tablist" className="flex items-stretch gap-1 border-b border-border">
+        {(
+          [
+            ["active", "Active Funds", funds.length],
+            ["excluded", "Excluded", excludedFunds.length],
+          ] as const
+        ).map(([id, label, count]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === id}
+            onClick={() => setActiveTab(id)}
+            className={`h-9 px-3 -mb-px border-b-2 text-[13px] transition-colors duration-[120ms] cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
+              activeTab === id
+                ? "border-primary text-foreground font-medium"
+                : "border-transparent text-muted-foreground font-normal hover:text-foreground"
+            }`}
+          >
+            {label} <span className="ml-1 text-muted-foreground tabular-nums">{count}</span>
+          </button>
+        ))}
       </div>
 
       {activeTab === "active" ? (
@@ -548,21 +549,20 @@ export default function FundsConfig() {
                   setAddDialogOpen(true);
                 }}
               >
-                <Plus className="h-3.5 w-3.5" /> Add Fund
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add Fund
               </Button>
             )}
           </div>
-          <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-            📄 Source:{" "}
-            <code className="font-mono bg-muted px-1 py-0.5 rounded">database/hedge_funds.csv</code>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Source: <code className="font-mono bg-muted px-1 py-0.5">database/hedge_funds.csv</code>
+          </p>
 
           {fundsLoading ? (
             <LoadingState message="Loading…" size="sm" />
           ) : (
             <>
               {/* Mobile: card list */}
-              <div className="md:hidden space-y-3">
+              <div className="md:hidden border-t border-border">
                 {filteredFunds.map((f, idx) => (
                   <FundConfigCard
                     key={f.cik}
@@ -587,12 +587,14 @@ export default function FundsConfig() {
               </div>
 
               {/* Desktop: full table */}
-              <div className="surface overflow-hidden hidden md:block">
+              <div className="frame hidden md:block">
                 <div className="overflow-auto max-h-[60vh]">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm" aria-label="Active funds">
                     <thead className="sticky top-0 bg-card z-10">
-                      <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
-                        <th className="text-right p-3 font-medium w-12">#</th>
+                      <tr className="text-xs">
+                        <th scope="col" className="text-right p-3 w-12">
+                          #
+                        </th>
                         <ColumnHeader
                           label="Fund"
                           tooltip="Short name used to generate quarterly file names."
@@ -617,7 +619,11 @@ export default function FundsConfig() {
                           label="Website"
                           tooltip="Official fund website. Optional, must start with https://."
                         />
-                        {!IS_GH_PAGES_MODE && <th className="text-right p-3 font-medium w-24"></th>}
+                        {!IS_GH_PAGES_MODE && (
+                          <th scope="col" className="text-right p-3 w-24">
+                            <span className="sr-only">Actions</span>
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -687,7 +693,7 @@ export default function FundsConfig() {
                                     className="h-7 w-7 text-positive hover:text-positive hover:bg-positive/10"
                                     onClick={saveEdit}
                                     title="Save"
-                                    aria-label="Save"
+                                    aria-label="Save fund"
                                     disabled={!isEditDraftValid()}
                                   >
                                     <Check className="h-3.5 w-3.5" />
@@ -698,7 +704,7 @@ export default function FundsConfig() {
                                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                     onClick={cancelEdit}
                                     title="Cancel"
-                                    aria-label="Cancel"
+                                    aria-label="Cancel edit"
                                   >
                                     <X className="h-3.5 w-3.5" />
                                   </Button>
@@ -706,11 +712,14 @@ export default function FundsConfig() {
                               </>
                             ) : (
                               <>
-                                <td
-                                  className="p-3 font-medium fund-link cursor-pointer"
-                                  onClick={() => navigate(fundPath(f.fund))}
-                                >
-                                  {f.fund}
+                                <td className="p-3">
+                                  <button
+                                    type="button"
+                                    className="fund-link text-left"
+                                    onClick={() => navigate(fundPath(f.fund))}
+                                  >
+                                    {f.fund}
+                                  </button>
                                 </td>
                                 <td
                                   className="p-3 text-muted-foreground fund-link cursor-pointer"
@@ -736,10 +745,13 @@ export default function FundsConfig() {
                                       href={f.url}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-xs text-primary hover:underline inline-flex items-center gap-1 max-w-[180px] truncate"
+                                      className="text-xs text-primary-text hover:underline inline-flex items-center gap-1 max-w-[180px] truncate"
                                     >
                                       {f.url.replace(/^https?:\/\/(www\.)?/, "")}{" "}
-                                      <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                                      <ExternalLink
+                                        className="h-2.5 w-2.5 shrink-0"
+                                        aria-hidden="true"
+                                      />
                                     </a>
                                   ) : (
                                     <span className="text-xs text-muted-foreground">—</span>
@@ -750,21 +762,23 @@ export default function FundsConfig() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
                                       onClick={() => startEdit(f)}
                                       title="Edit fund"
+                                      aria-label={`Edit ${f.fund}`}
                                     >
                                       <Pencil className="h-3.5 w-3.5" />
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity text-negative hover:text-negative hover:bg-negative/10"
                                       onClick={() => {
                                         setFundToDelete(f);
                                         setDeleteDialogOpen(true);
                                       }}
                                       title="Delete fund"
+                                      aria-label={`Delete ${f.fund}`}
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
@@ -798,12 +812,12 @@ export default function FundsConfig() {
             </span>
           </div>
 
-          <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-            📄 Source:{" "}
-            <code className="font-mono bg-muted px-1 py-0.5 rounded">
+          <p className="text-xs text-muted-foreground">
+            Source:{" "}
+            <code className="font-mono bg-muted px-1 py-0.5">
               database/excluded_hedge_funds.csv
             </code>
-          </div>
+          </p>
 
           {excludedLoading ? (
             <LoadingState message="Loading…" size="sm" />
@@ -814,7 +828,7 @@ export default function FundsConfig() {
           ) : (
             <>
               {/* Mobile: card list */}
-              <div className="md:hidden space-y-3">
+              <div className="md:hidden border-t border-border">
                 {filteredExcluded.map((f, idx) => (
                   <FundConfigCard
                     key={f.cik}
@@ -838,12 +852,14 @@ export default function FundsConfig() {
               </div>
 
               {/* Desktop: full table */}
-              <div className="surface overflow-hidden hidden md:block">
+              <div className="frame hidden md:block">
                 <div className="overflow-auto max-h-[60vh]">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm" aria-label="Excluded funds">
                     <thead className="sticky top-0 bg-card z-10">
-                      <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
-                        <th className="text-right p-3 font-medium w-12">#</th>
+                      <tr className="text-xs">
+                        <th scope="col" className="text-right p-3 w-12">
+                          #
+                        </th>
                         <ColumnHeader
                           label="Fund"
                           tooltip="Short name used to generate quarterly file names."
@@ -868,7 +884,11 @@ export default function FundsConfig() {
                           label="Website"
                           tooltip="Official website URL of the excluded fund. Must start with https://."
                         />
-                        {!IS_GH_PAGES_MODE && <th className="text-right p-3 font-medium w-24"></th>}
+                        {!IS_GH_PAGES_MODE && (
+                          <th scope="col" className="text-right p-3 w-24">
+                            <span className="sr-only">Actions</span>
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -938,6 +958,7 @@ export default function FundsConfig() {
                                     className="h-7 w-7 text-positive hover:text-positive hover:bg-positive/10"
                                     onClick={saveExcludedEdit}
                                     title="Save"
+                                    aria-label="Save fund"
                                     disabled={!isExcludedDraftValid()}
                                   >
                                     <Check className="h-3.5 w-3.5" />
@@ -948,6 +969,7 @@ export default function FundsConfig() {
                                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                     onClick={cancelExcludedEdit}
                                     title="Cancel"
+                                    aria-label="Cancel edit"
                                   >
                                     <X className="h-3.5 w-3.5" />
                                   </Button>
@@ -972,10 +994,13 @@ export default function FundsConfig() {
                                       href={f.url}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-xs text-primary hover:underline inline-flex items-center gap-1 max-w-[180px] truncate"
+                                      className="text-xs text-primary-text hover:underline inline-flex items-center gap-1 max-w-[180px] truncate"
                                     >
                                       {f.url.replace(/^https?:\/\/(www\.)?/, "")}{" "}
-                                      <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                                      <ExternalLink
+                                        className="h-2.5 w-2.5 shrink-0"
+                                        aria-hidden="true"
+                                      />
                                     </a>
                                   ) : (
                                     <span className="text-xs text-muted-foreground">—</span>
@@ -986,21 +1011,23 @@ export default function FundsConfig() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
                                       onClick={() => startExcludedEdit(f)}
                                       title="Edit fund"
+                                      aria-label={`Edit ${f.fund}`}
                                     >
                                       <Pencil className="h-3.5 w-3.5" />
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary hover:bg-primary/10"
+                                      className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
                                       onClick={() => {
                                         setFundToRestore(f);
                                         setRestoreDialogOpen(true);
                                       }}
                                       title="Restore fund"
+                                      aria-label={`Restore ${f.fund}`}
                                     >
                                       <Undo2 className="h-3.5 w-3.5" />
                                     </Button>
@@ -1027,14 +1054,14 @@ export default function FundsConfig() {
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="h-5 w-5" /> Delete Hedge Fund
+                  <AlertTriangle className="h-5 w-5" aria-hidden="true" /> Delete Hedge Fund
                 </DialogTitle>
                 <DialogDescription>
                   This will move <strong>{fundToDelete?.fund}</strong> to the excluded list.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
-                <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1 text-sm">
+                <div className="rounded-md border border-border bg-card p-3 space-y-1 text-sm">
                   <div>
                     <span className="text-muted-foreground">Fund:</span> {fundToDelete?.fund}
                   </div>
@@ -1069,14 +1096,14 @@ export default function FundsConfig() {
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <Undo2 className="h-5 w-5" /> Restore Hedge Fund
+                  <Undo2 className="h-5 w-5" aria-hidden="true" /> Restore Hedge Fund
                 </DialogTitle>
                 <DialogDescription>
                   This will move <strong>{fundToRestore?.fund}</strong> back to the active list.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
-                <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1 text-sm">
+                <div className="rounded-md border border-border bg-card p-3 space-y-1 text-sm">
                   <div>
                     <span className="text-muted-foreground">Fund:</span> {fundToRestore?.fund}
                   </div>
@@ -1109,7 +1136,7 @@ export default function FundsConfig() {
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" /> Add Hedge Fund
+                  <Plus className="h-5 w-5" aria-hidden="true" /> Add Hedge Fund
                 </DialogTitle>
                 <DialogDescription>Add a new fund to the monitored list.</DialogDescription>
               </DialogHeader>
@@ -1121,10 +1148,10 @@ export default function FundsConfig() {
                     placeholder="e.g. 0001067983"
                     value={newCik}
                     onChange={(e) => setNewCik(e.target.value.replace(/[^0-9]/g, ""))}
-                    className="bg-card border-border font-mono text-sm"
+                    className="font-mono text-sm"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Central Index Key — unique SEC identifier for filing entities.
+                    Central Index Key: the unique SEC identifier for filing entities.
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -1134,7 +1161,6 @@ export default function FundsConfig() {
                     placeholder="e.g. Berkshire Hathaway"
                     value={newFundName}
                     onChange={(e) => setNewFundName(e.target.value)}
-                    className="bg-card border-border"
                   />
                   <p className="text-xs text-muted-foreground">
                     Short name used to generate quarterly file names.
@@ -1147,7 +1173,6 @@ export default function FundsConfig() {
                     placeholder="e.g. Warren Buffett"
                     value={newManager}
                     onChange={(e) => setNewManager(e.target.value)}
-                    className="bg-card border-border"
                   />
                   <p className="text-xs text-muted-foreground">
                     Portfolio manager as listed in official fund filings.
@@ -1160,7 +1185,6 @@ export default function FundsConfig() {
                     placeholder="e.g. Berkshire Hathaway Inc."
                     value={newDenomination}
                     onChange={(e) => setNewDenomination(e.target.value)}
-                    className="bg-card border-border"
                   />
                   <p className="text-xs text-muted-foreground">
                     Full legal name from SEC filings. Used to identify positions in non-quarterly
@@ -1174,7 +1198,7 @@ export default function FundsConfig() {
                     placeholder="Defaults to CIK if empty"
                     value={newCiks}
                     onChange={(e) => setNewCiks(e.target.value.replace(/[^0-9,]/g, ""))}
-                    className="bg-card border-border font-mono text-sm"
+                    className="font-mono text-sm"
                   />
                   <p className="text-xs text-muted-foreground">
                     Comma-separated list of related CIKs, if different from primary.
@@ -1187,7 +1211,6 @@ export default function FundsConfig() {
                     placeholder="https://www.example.com"
                     value={newUrl}
                     onChange={(e) => setNewUrl(e.target.value)}
-                    className="bg-card border-border"
                   />
                   <p className="text-xs text-muted-foreground">
                     Official fund website. Must start with <code>https://</code> if provided.

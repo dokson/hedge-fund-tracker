@@ -9,7 +9,10 @@ import {
   formatPct,
   type EnrichedNQFiling,
 } from "@/lib/dataService";
-import { getSectorStyle } from "@/lib/sectorStyle";
+import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
+import { ROUTES } from "@/lib/routes";
+import { canonicalUrl } from "@/lib/seo";
+import { getSectorStyle, sectorPillStyle, SECTOR_PILL } from "@/lib/sectorStyle";
 import { TickerLink, FundCell, CompanyLink } from "@/components/EntityLinks";
 import { Delta } from "@/components/Delta";
 import {
@@ -21,26 +24,14 @@ import {
 } from "@/components/ui/select";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { TableFrame } from "@/components/ui/TableFrame";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StarredFilterToggle } from "@/components/StarredFilterToggle";
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  Plus,
-  X,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  FileText,
-  type LucideIcon,
-} from "lucide-react";
 import { toInitCap, matchesQuery } from "@/lib/utils";
 import { useStarred } from "@/hooks/useStarred";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
-/**
- * Inline sector pill for the Latest Filings table. Lives as a top-level
- * component (not an IIFE inside the row) so React Compiler can optimise it.
- */
+/** Sector tag: a tinted pill in the sector's own colour, applied inline. */
 function SectorPill({ sector, industry }: { sector?: string; industry?: string }) {
   if (!sector) {
     return <span className="text-faint">—</span>;
@@ -48,10 +39,7 @@ function SectorPill({ sector, industry }: { sector?: string; industry?: string }
   const style = getSectorStyle(sector);
   const Icon = style.icon;
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border ${style.border} ${style.bg} ${style.color} px-2 py-0.5 font-medium`}
-      title={industry ?? sector}
-    >
+    <span className={SECTOR_PILL} style={sectorPillStyle(style)} title={industry ?? sector}>
       <Icon className="h-3 w-3" aria-hidden="true" />
       {sector}
     </span>
@@ -61,38 +49,11 @@ function SectorPill({ sector, industry }: { sector?: string; industry?: string }
 const FILING_TYPES = ["NEW", "INCREASE", "DECREASE", "CLOSED"] as const;
 type FilingType = (typeof FILING_TYPES)[number];
 
-const STAT_META: Record<
-  FilingType,
-  { label: string; icon: LucideIcon; bg: string; text: string; active: string }
-> = {
-  NEW: {
-    label: "New",
-    icon: Plus,
-    bg: "bg-primary",
-    text: "text-primary",
-    active: "ring-primary/40 border-primary/50 bg-primary/[0.06]",
-  },
-  INCREASE: {
-    label: "Increased",
-    icon: ArrowUpRight,
-    bg: "bg-positive",
-    text: "text-positive",
-    active: "ring-positive/40 border-positive/50 bg-positive/[0.06]",
-  },
-  DECREASE: {
-    label: "Decreased",
-    icon: ArrowDownRight,
-    bg: "bg-negative",
-    text: "text-negative",
-    active: "ring-negative/40 border-negative/50 bg-negative/[0.06]",
-  },
-  CLOSED: {
-    label: "Closed",
-    icon: X,
-    bg: "bg-closed",
-    text: "text-closed",
-    active: "ring-closed/40 border-closed/50 bg-closed/[0.06]",
-  },
+const STAT_META: Record<FilingType, { label: string; text: string }> = {
+  NEW: { label: "New", text: "text-positive" },
+  INCREASE: { label: "Increased", text: "text-positive" },
+  DECREASE: { label: "Decreased", text: "text-negative" },
+  CLOSED: { label: "Closed", text: "text-closed" },
 };
 
 function formatDelta(f: EnrichedNQFiling): { text: string; className: string; sortValue: number } {
@@ -109,10 +70,17 @@ function formatDelta(f: EnrichedNQFiling): { text: string; className: string; so
   return { text: "NEW", className: "text-positive", sortValue: Infinity };
 }
 
-type SortField = "date" | "delta" | "value" | null;
+type SortField = "date" | "delta" | "value";
 type SortDir = "asc" | "desc";
 
-function SortIcon({
+const SORT_OPTIONS: readonly { value: SortField; label: string }[] = [
+  { value: "date", label: "Date" },
+  { value: "delta", label: "Delta" },
+  { value: "value", label: "Value" },
+];
+
+/** The one sort-direction grammar on this page: a lucide arrow, never a glyph. */
+function SortArrow({
   field,
   currentField,
   direction,
@@ -121,20 +89,53 @@ function SortIcon({
   currentField: SortField;
   direction: SortDir;
 }) {
-  if (currentField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
-  return direction === "asc" ? (
-    <ArrowUp className="h-3 w-3 ml-1 text-primary" />
-  ) : (
-    <ArrowDown className="h-3 w-3 ml-1 text-primary" />
+  if (currentField !== field) return null;
+  const Icon = direction === "asc" ? ArrowUp : ArrowDown;
+  return <Icon className="ml-1 inline-block h-3 w-3 align-[-1px]" aria-hidden="true" />;
+}
+
+function ariaSort(field: SortField, currentField: SortField, direction: SortDir) {
+  if (currentField !== field) return "none";
+  return direction === "asc" ? "ascending" : "descending";
+}
+
+/** Sortable column header: the button carries the click, the th carries aria-sort. */
+function SortableTh({
+  field,
+  label,
+  align,
+  sortField,
+  sortDir,
+  onSort,
+}: {
+  field: SortField;
+  label: string;
+  align: "left" | "right";
+  sortField: SortField;
+  sortDir: SortDir;
+  onSort: (field: SortField) => void;
+}) {
+  return (
+    <th
+      scope="col"
+      aria-sort={ariaSort(field, sortField, sortDir)}
+      className={`p-0 ${align === "right" ? "text-right" : "text-left"}`}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className={`h-full w-full p-3 whitespace-nowrap hover:text-foreground hover:bg-muted ${
+          align === "right" ? "text-right" : "text-left"
+        }`}
+      >
+        {label}
+        <SortArrow field={field} currentField={sortField} direction={sortDir} />
+      </button>
+    </th>
   );
 }
 
-/**
- * Mobile equivalent of one table row. The 9-column table is unreadable on a
- * phone, so below `md` each filing becomes a self-contained card: ticker +
- * delta on the headline row, company + sector + date, the fund, and a compact
- * three-up stats footer. The left accent mirrors the table's row border.
- */
+/** Mobile row for one filing: the 9-column table does not fit a phone. */
 function FilingCard({
   f,
   sector,
@@ -144,15 +145,8 @@ function FilingCard({
   sector?: string;
   industry?: string;
 }) {
-  const borderClass =
-    f.deltaType === "CLOSED" || f.deltaType === "DECREASE"
-      ? "border-l-2 border-l-negative"
-      : f.deltaType === "NEW" || f.deltaType === "INCREASE"
-        ? "border-l-2 border-l-positive"
-        : "border-l-2 border-l-muted";
-
   return (
-    <div className={`surface p-3.5 ${borderClass}`}>
+    <li className="border-b border-border py-2">
       <div className="flex items-start justify-between gap-3">
         <TickerLink ticker={f.ticker} />
         <span className="shrink-0 font-mono">
@@ -168,46 +162,49 @@ function FilingCard({
         </span>
       </div>
 
-      <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
+      <div className="mt-1 flex items-center gap-2 flex-wrap text-xs">
         <CompanyLink ticker={f.ticker} company={toInitCap(f.company)} showStar />
       </div>
 
-      <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
+      <div className="mt-1 flex items-center gap-2 flex-wrap text-xs">
         <SectorPill sector={sector} industry={industry} />
         <span className="text-muted-foreground whitespace-nowrap">{f.date}</span>
       </div>
 
-      <div className="mt-3 pt-3 border-t border-border/60">
+      <div className="mt-2">
         <FundCell fundName={f.fund} />
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-        <div>
-          <div className="metric-label">Value</div>
-          <div className="font-mono text-sm text-foreground mt-0.5">{f.value}</div>
-        </div>
-        <div>
-          <div className="metric-label">Port. %</div>
-          <div className="font-mono text-sm text-muted-foreground mt-0.5">
-            {f.quarterPortfolioPct !== null
-              ? `${f.quarterPortfolioPct.toFixed(2)}%`
-              : f.estimatedPortfolioPct !== null
-                ? `~${f.estimatedPortfolioPct.toFixed(2)}%`
-                : "—"}
-          </div>
-        </div>
-        <div>
-          <div className="metric-label">Avg Px</div>
-          <div className="font-mono text-sm text-muted-foreground mt-0.5">
-            {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}
-          </div>
-        </div>
+      <div className="status-line mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+        <span>
+          <span className="k">Value:</span> {f.value}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>
+          <span className="k">Port. %:</span>{" "}
+          {f.quarterPortfolioPct !== null
+            ? `${f.quarterPortfolioPct.toFixed(2)}%`
+            : f.estimatedPortfolioPct !== null
+              ? `~${f.estimatedPortfolioPct.toFixed(2)}%`
+              : "—"}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>
+          <span className="k">Avg Px:</span> {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}
+        </span>
       </div>
-    </div>
+    </li>
   );
 }
 
 export default function Dashboard() {
+  usePageMeta({
+    title: pageTitle("Latest Filings"),
+    description:
+      "The newest SEC filings from every tracked hedge fund — 13F, 13D/G, Form 4 and N-Q — with position deltas, in one board.",
+    canonical: canonicalUrl(ROUTES.latest),
+  });
+
   const [search, setSearch] = useState("");
   const [fundFilter, setFundFilter] = useState("all");
   const [typeFilters, setTypeFilters] = useState<Set<string>>(() => new Set());
@@ -278,14 +275,19 @@ export default function Dashboard() {
   }, [filings]);
   const daysBack = daysBackPick ?? autoDaysBack;
 
-  const filtered = useMemo(() => {
+  // Period + fund scope, shared by the counters and the table so they never
+  // disagree. The type toggles, starred filters and search apply after.
+  const scoped = useMemo(() => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - parseInt(daysBack));
     const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return filings.filter(
+      (f) => f.date >= cutoffStr && (fundFilter === "all" || f.fund === fundFilter),
+    );
+  }, [filings, daysBack, fundFilter]);
 
-    let rows = filings.filter((f) => {
-      if (f.date < cutoffStr) return false;
-      if (fundFilter !== "all" && f.fund !== fundFilter) return false;
+  const filtered = useMemo(() => {
+    let rows = scoped.filter((f) => {
       if (typeFilters.size > 0 && !typeFilters.has(f.deltaType)) return false;
       if (filterStarredFunds && starredFunds.size > 0 && !starredFunds.has(f.fund)) return false;
       if (filterStarredStocks && starredStocks.size > 0 && !starredStocks.has(f.ticker))
@@ -295,29 +297,25 @@ export default function Dashboard() {
       return true;
     });
 
-    if (sortField) {
-      rows = [...rows].sort((a, b) => {
-        let cmp = 0;
-        if (sortField === "date") {
-          cmp = a.date.localeCompare(b.date);
-        } else if (sortField === "delta") {
-          cmp = formatDelta(a).sortValue - formatDelta(b).sortValue;
-        } else if (sortField === "value") {
-          cmp = parseValueString(a.value) - parseValueString(b.value);
-        }
-        return sortDir === "asc" ? cmp : -cmp;
-      });
-    }
+    rows = [...rows].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === "date") {
+        cmp = a.date.localeCompare(b.date);
+      } else if (sortField === "delta") {
+        cmp = formatDelta(a).sortValue - formatDelta(b).sortValue;
+      } else {
+        cmp = parseValueString(a.value) - parseValueString(b.value);
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
 
     return rows;
   }, [
-    filings,
-    fundFilter,
+    scoped,
     typeFilters,
     search,
     sortField,
     sortDir,
-    daysBack,
     filterStarredFunds,
     filterStarredStocks,
     starredFunds,
@@ -327,71 +325,81 @@ export default function Dashboard() {
 
   const counts = useMemo(() => {
     const c = { NEW: 0, INCREASE: 0, DECREASE: 0, CLOSED: 0 };
-    for (const f of filings) {
+    for (const f of scoped) {
       if (f.deltaType in c) c[f.deltaType as keyof typeof c]++;
     }
     return c;
-  }, [filings]);
+  }, [scoped]);
 
   const totalCount = FILING_TYPES.reduce((s, t) => s + counts[t], 0);
+  const periodLabel = daysBack === "30" ? "last 30 days" : "all filings";
 
   return (
     <div className="space-y-6 max-w-screen-2xl">
       <div>
-        <span className="eyebrow">Recent activity</span>
-        <h1 className="page-title mt-1.5">
-          <FileText className="page-title-icon" /> Latest Filings
-        </h1>
+        <h1 className="page-title">Latest Filings</h1>
         <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">
-          Last 30 days 13D/G and Form 4 — latest filing per position, delta vs last 13F quarter
+          13D/G and Form 4, latest filing per position, delta vs last 13F quarter
         </p>
       </div>
 
       {!isLoading && filings.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {FILING_TYPES.map((type) => {
-            const isActive = typeFilters.has(type);
-            const { label, icon: Icon, bg, text, active } = STAT_META[type];
-            const count = counts[type];
-            const share = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
-            const toggle = () =>
-              setTypeFilters((prev) => {
-                const next = new Set(prev);
-                if (next.has(type)) next.delete(type);
-                else next.add(type);
-                return next;
-              });
-            return (
-              <button
-                key={type}
-                onClick={toggle}
-                aria-pressed={isActive}
-                className={`surface flex flex-col gap-3 p-4 text-left transition-colors ${
-                  isActive ? `ring-2 ${active}` : "hover:border-border"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="metric-label flex items-center gap-1.5">
-                    <span className={`h-1.5 w-1.5 rounded-full ${bg}`} />
-                    {label}
+        <div>
+          <p className="status-line mb-1">
+            <span className="k">Filings, {periodLabel}:</span> {totalCount}
+            {fundFilter !== "all" && (
+              <>
+                {" "}
+                <span aria-hidden="true">·</span> <span className="k">Fund:</span>{" "}
+                {fundFilter.replace(/_/g, " ")}
+              </>
+            )}
+          </p>
+          <div
+            className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border"
+            role="group"
+            aria-label="Filter by filing type"
+          >
+            {FILING_TYPES.map((type) => {
+              const isActive = typeFilters.has(type);
+              const { label, text } = STAT_META[type];
+              const count = counts[type];
+              const share = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
+              const toggle = () =>
+                setTypeFilters((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(type)) next.delete(type);
+                  else next.add(type);
+                  return next;
+                });
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={toggle}
+                  aria-pressed={isActive}
+                  className={`relative p-3 text-left transition-colors ${
+                    isActive ? "bg-muted" : "bg-card hover:bg-muted/60"
+                  }`}
+                >
+                  <span className="metric-label block">{label}</span>
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span className={`metric-value ${count > 0 ? text : "text-faint"}`}>
+                      {count}
+                    </span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{share}%</span>
                   </span>
-                  <Icon className="h-3.5 w-3.5 icon-faint" />
-                </div>
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className={`metric-value ${count > 0 ? text : "text-faint"}`}>{count}</span>
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                    {share}%
-                  </span>
-                </div>
-                <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full ${count > 0 ? bg : "bg-transparent"}`}
-                    style={{ width: `${share}%` }}
-                  />
-                </div>
-              </button>
-            );
-          })}
+                  {/* Pressed state: the 2px primary bar, the same signal the nav uses. */}
+                  {isActive && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-0 bottom-0 h-0.5 bg-primary"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -412,7 +420,7 @@ export default function Dashboard() {
           wrapperClassName="w-full sm:w-64"
         />
         <Select value={fundFilter} onValueChange={setFundFilter}>
-          <SelectTrigger className="w-full sm:w-48 bg-card border-border">
+          <SelectTrigger aria-label="Fund" className="w-full sm:w-48 bg-card border-border">
             <SelectValue placeholder="All Funds" />
           </SelectTrigger>
           <SelectContent>
@@ -438,101 +446,101 @@ export default function Dashboard() {
         <LoadingState message="Loading and enriching filings…" className="surface" />
       ) : (
         <>
-          {/* Mobile: compact sort bar (the table's clickable headers are gone here) */}
+          {/* Mobile: sort strip (the table's sortable headers are gone here) */}
           <div className="md:hidden flex items-center gap-2 overflow-x-auto">
-            <span className="text-xs text-muted-foreground shrink-0">Sort</span>
-            {(
-              [
-                ["date", "Date"],
-                ["delta", "Delta"],
-                ["value", "Value"],
-              ] as const
-            ).map(([field, label]) => {
-              const isActive = sortField === field;
-              return (
-                <button
-                  key={field}
-                  onClick={() => toggleSort(field)}
-                  aria-pressed={isActive}
-                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors shrink-0 ${
-                    isActive
-                      ? "border-primary/50 bg-primary/10 text-primary"
-                      : "border-border bg-card text-muted-foreground"
-                  }`}
-                >
-                  {label}
-                  {isActive &&
-                    (sortDir === "asc" ? (
-                      <ArrowUp className="h-3 w-3" />
-                    ) : (
-                      <ArrowDown className="h-3 w-3" />
-                    ))}
-                </button>
-              );
-            })}
+            <span className="status-line shrink-0">
+              <span className="k">Sort:</span>
+            </span>
+            <SegmentedControl
+              size="sm"
+              aria-label="Sort filings"
+              value={sortField}
+              onValueChange={toggleSort}
+              options={SORT_OPTIONS.map((o) => ({
+                value: o.value,
+                title: o.label,
+                label: (
+                  <span className="inline-flex items-center">
+                    {o.label}
+                    <SortArrow field={o.value} currentField={sortField} direction={sortDir} />
+                  </span>
+                ),
+              }))}
+            />
           </div>
 
-          {/* Mobile: card list */}
-          <div className="md:hidden space-y-3">
+          {/* Mobile: row list */}
+          <div className="md:hidden">
             {filtered.length === 0 ? (
               <div className="surface p-8 text-center text-muted-foreground">
                 No filings match your filters.
               </div>
             ) : (
-              filtered.map((f, i) => (
-                <FilingCard
-                  key={`${f.cusip}-${f.fund}-${f.date}-${f.deltaType}-${f.shares ?? i}`}
-                  f={f}
-                  sector={tickerMeta.get(f.ticker)?.sector}
-                  industry={tickerMeta.get(f.ticker)?.industry}
-                />
-              ))
+              <ul className="border-t border-border">
+                {filtered.map((f, i) => (
+                  <FilingCard
+                    key={`${f.cusip}-${f.fund}-${f.date}-${f.deltaType}-${f.shares ?? i}`}
+                    f={f}
+                    sector={tickerMeta.get(f.ticker)?.sector}
+                    industry={tickerMeta.get(f.ticker)?.industry}
+                  />
+                ))}
+              </ul>
             )}
           </div>
 
           {/* Desktop: full data table */}
-          <div className="surface overflow-hidden hidden md:block">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+          <div className="surface hidden md:block">
+            <TableFrame label={`Latest filings, ${periodLabel}`}>
+              <table className="w-full text-sm" aria-label={`Latest filings, ${periodLabel}`}>
                 <thead>
-                  <tr className="border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                    <th className="text-left p-3 font-medium">Ticker</th>
-                    <th className="text-left p-3 font-medium">Company</th>
-                    <th className="text-left p-3 font-medium">Sector</th>
-                    <th className="text-left p-3 font-medium">Fund</th>
-                    <th
-                      className="text-left p-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
-                      onClick={() => toggleSort("date")}
-                    >
-                      <span className="inline-flex items-center">
-                        Date <SortIcon field="date" currentField={sortField} direction={sortDir} />
-                      </span>
+                  <tr className="whitespace-nowrap">
+                    <th scope="col" className="text-left p-3">
+                      Ticker
                     </th>
-                    <th
-                      className="text-right p-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
-                      onClick={() => toggleSort("delta")}
-                    >
-                      <span className="inline-flex items-center justify-end">
-                        Delta{" "}
-                        <SortIcon field="delta" currentField={sortField} direction={sortDir} />
-                      </span>
+                    <th scope="col" className="text-left p-3">
+                      Company
                     </th>
+                    <th scope="col" className="text-left p-3">
+                      Sector
+                    </th>
+                    <th scope="col" className="text-left p-3">
+                      Fund
+                    </th>
+                    <SortableTh
+                      field="date"
+                      label="Date"
+                      align="left"
+                      sortField={sortField}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableTh
+                      field="delta"
+                      label="Delta"
+                      align="right"
+                      sortField={sortField}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
                     <th
-                      className="text-right p-3 font-medium"
+                      scope="col"
+                      className="text-right p-3"
                       title="Position weight in the fund's last 13F portfolio; ~ marks an estimated weight for positions known only from a 13D/G or Form 4 filing"
                     >
                       Portfolio %
                     </th>
-                    <th className="text-right p-3 font-medium">Avg Price</th>
-                    <th
-                      className="text-right p-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
-                      onClick={() => toggleSort("value")}
-                    >
-                      <span className="inline-flex items-center justify-end">
-                        Value{" "}
-                        <SortIcon field="value" currentField={sortField} direction={sortDir} />
-                      </span>
+                    <th scope="col" className="text-right p-3">
+                      Avg Price
                     </th>
+                    <SortableTh
+                      field="value"
+                      label="Value"
+                      align="right"
+                      sortField={sortField}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
                   </tr>
                 </thead>
                 <tbody>
@@ -543,76 +551,67 @@ export default function Dashboard() {
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((f, i) => {
-                      const borderClass =
-                        f.deltaType === "CLOSED" || f.deltaType === "DECREASE"
-                          ? "border-l-2 border-l-negative"
-                          : f.deltaType === "NEW" || f.deltaType === "INCREASE"
-                            ? "border-l-2 border-l-positive"
-                            : "border-l-2 border-l-muted";
-
-                      return (
-                        <tr
-                          key={`${f.cusip}-${f.fund}-${f.date}-${f.deltaType}-${f.shares ?? i}`}
-                          className={`data-table-row ${borderClass}`}
+                    filtered.map((f, i) => (
+                      <tr
+                        key={`${f.cusip}-${f.fund}-${f.date}-${f.deltaType}-${f.shares ?? i}`}
+                        className="data-table-row"
+                      >
+                        <td className="p-3">
+                          <TickerLink ticker={f.ticker} />
+                        </td>
+                        <td className="p-3">
+                          <CompanyLink
+                            ticker={f.ticker}
+                            company={toInitCap(f.company)}
+                            className="max-w-[180px] xl:max-w-[260px]"
+                            showStar
+                          />
+                        </td>
+                        <td className="p-3 text-xs whitespace-nowrap">
+                          <SectorPill
+                            sector={tickerMeta.get(f.ticker)?.sector}
+                            industry={tickerMeta.get(f.ticker)?.industry}
+                          />
+                        </td>
+                        <td className="p-3">
+                          <FundCell fundName={f.fund} />
+                        </td>
+                        <td className="p-3 text-muted-foreground whitespace-nowrap">{f.date}</td>
+                        <td className="p-3 text-right font-mono">
+                          {f.deltaType === "NEW" ? (
+                            <span className="badge-new">NEW</span>
+                          ) : f.deltaType === "CLOSED" ? (
+                            <span className="badge-closed">CLOSE</span>
+                          ) : f.deltaPct !== null ? (
+                            <Delta value={f.deltaPct} mode="percent" />
+                          ) : (
+                            <span className="badge-nochange">NO CHANGE</span>
+                          )}
+                        </td>
+                        <td
+                          className="p-3 text-right font-mono text-muted-foreground"
+                          title={
+                            f.quarterPortfolioPct === null && f.estimatedPortfolioPct !== null
+                              ? "Estimated weight over the fund's merged portfolio (new position)"
+                              : undefined
+                          }
                         >
-                          <td className="p-3">
-                            <TickerLink ticker={f.ticker} />
-                          </td>
-                          <td className="p-3">
-                            <CompanyLink
-                              ticker={f.ticker}
-                              company={toInitCap(f.company)}
-                              className="max-w-[180px] xl:max-w-[260px]"
-                              showStar
-                            />
-                          </td>
-                          <td className="p-3 text-xs whitespace-nowrap">
-                            <SectorPill
-                              sector={tickerMeta.get(f.ticker)?.sector}
-                              industry={tickerMeta.get(f.ticker)?.industry}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <FundCell fundName={f.fund} />
-                          </td>
-                          <td className="p-3 text-muted-foreground whitespace-nowrap">{f.date}</td>
-                          <td className="p-3 text-right font-mono">
-                            {f.deltaType === "NEW" ? (
-                              <span className="badge-new">NEW</span>
-                            ) : f.deltaType === "CLOSED" ? (
-                              <span className="badge-closed">CLOSE</span>
-                            ) : f.deltaPct !== null ? (
-                              <Delta value={f.deltaPct} mode="percent" />
-                            ) : (
-                              <span className="badge-nochange">NO CHANGE</span>
-                            )}
-                          </td>
-                          <td
-                            className="p-3 text-right font-mono text-muted-foreground"
-                            title={
-                              f.quarterPortfolioPct === null && f.estimatedPortfolioPct !== null
-                                ? "Estimated weight over the fund's merged portfolio (new position)"
-                                : undefined
-                            }
-                          >
-                            {f.quarterPortfolioPct !== null
-                              ? `${f.quarterPortfolioPct.toFixed(2)}%`
-                              : f.estimatedPortfolioPct !== null
-                                ? `~${f.estimatedPortfolioPct.toFixed(2)}%`
-                                : "—"}
-                          </td>
-                          <td className="p-3 text-right font-mono">
-                            {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}
-                          </td>
-                          <td className="p-3 text-right font-mono">{f.value}</td>
-                        </tr>
-                      );
-                    })
+                          {f.quarterPortfolioPct !== null
+                            ? `${f.quarterPortfolioPct.toFixed(2)}%`
+                            : f.estimatedPortfolioPct !== null
+                              ? `~${f.estimatedPortfolioPct.toFixed(2)}%`
+                              : "—"}
+                        </td>
+                        <td className="p-3 text-right font-mono">
+                          {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}
+                        </td>
+                        <td className="p-3 text-right font-mono">{f.value}</td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
-            </div>
+            </TableFrame>
           </div>
         </>
       )}

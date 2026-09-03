@@ -5,8 +5,9 @@ Outputs:
 - app/frontend/src/data/sampleRanking.json (top promising stocks for the latest quarter)
 - app/frontend/src/data/sampleDueDiligence.json (full AI due diligence for a chosen ticker)
 
-Both samples are regenerated using Groq's llama-3.1-8b-instant model and
-include a `generated_at` ISO date for display in the UI.
+Both samples are regenerated with the default provider/model from
+database/models.csv (Google Gemini) and include a `generated_at` ISO date
+for display in the UI.
 
 Run locally with the project's .env loaded:
     pipenv run python -X utf8 scripts/regenerate_samples.py
@@ -28,12 +29,13 @@ load_dotenv(ROOT / ".env")
 import contextlib  # noqa: E402
 
 from app.ai.agent import AnalystAgent  # noqa: E402
-from app.ai.clients.groq_client import GroqClient  # noqa: E402
+from app.ai.clients.google_client import GoogleAIClient  # noqa: E402
 from app.database import get_last_quarter, get_most_recent_quarter  # noqa: E402
+from app.stocks.price_fetcher import PriceFetcher  # noqa: E402
 
-DUE_DILIGENCE_TICKER = "NTR"
+DUE_DILIGENCE_TICKER = "MKSI"
 RANKING_TOP_N = 10
-MODEL_ID = "llama-3.1-8b-instant"
+MODEL_ID = "gemini-3.6-flash"
 
 SAMPLE_RANKING_PATH = ROOT / "app/frontend/src/data/sampleRanking.json"
 SAMPLE_DD_PATH = ROOT / "app/frontend/src/data/sampleDueDiligence.json"
@@ -55,11 +57,11 @@ def _coerce(value):
 
 def regenerate_ranking() -> None:
     """
-    Build the sample ranking JSON for the latest quarter using llama-3.3.
+    Build the sample ranking JSON for the latest quarter using the default model.
     """
     quarter = get_last_quarter()
     print(f"\n=== Regenerating ranking sample for {quarter} ===")
-    agent = AnalystAgent(quarter, ai_client=GroqClient(model=MODEL_ID))
+    agent = AnalystAgent(quarter, ai_client=GoogleAIClient(model=MODEL_ID))
     df = agent.generate_scored_list(RANKING_TOP_N)
     if df.empty:
         raise RuntimeError("Empty ranking result; aborting.")
@@ -92,19 +94,26 @@ def regenerate_ranking() -> None:
 
 def regenerate_due_diligence() -> None:
     """
-    Build the sample due-diligence JSON for the chosen ticker using llama-3.3.
+    Build the sample due-diligence JSON for the chosen ticker using the default model.
     """
     quarter = get_most_recent_quarter(DUE_DILIGENCE_TICKER) or get_last_quarter()
     print(f"\n=== Regenerating due-diligence sample for {DUE_DILIGENCE_TICKER} ({quarter}) ===")
-    agent = AnalystAgent(quarter, ai_client=GroqClient(model=MODEL_ID))
+    agent = AnalystAgent(quarter, ai_client=GoogleAIClient(model=MODEL_ID))
     analysis = agent.run_stock_due_diligence(DUE_DILIGENCE_TICKER)
     if not analysis:
         raise RuntimeError(f"No analysis produced for {DUE_DILIGENCE_TICKER}.")
+
+    # The chart on the sample page has no backend to call, so the 5y weekly
+    # OHLC series is baked in from the same fetcher the /history endpoint uses.
+    price_history = PriceFetcher.get_history(DUE_DILIGENCE_TICKER, "5y")
+    if not price_history:
+        raise RuntimeError(f"No price history for {DUE_DILIGENCE_TICKER}.")
 
     payload = {
         "quarter": quarter,
         "generated_at": date.today().isoformat(),
         **analysis,
+        "price_history": price_history,
     }
     SAMPLE_DD_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"✅ Wrote {SAMPLE_DD_PATH.relative_to(ROOT)} ({analysis.get('ticker')})")

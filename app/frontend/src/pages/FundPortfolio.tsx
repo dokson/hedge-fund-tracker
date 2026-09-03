@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, Link } from "react-router";
 import { isQuarter } from "@/lib/quarters";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -21,6 +21,8 @@ import { FundLogo } from "@/components/FundLogo";
 import { Delta } from "@/components/Delta";
 import { toInitCap, matchesQuery } from "@/lib/utils";
 import { fundPath, stockPath, ROUTES } from "@/lib/routes";
+import { canonicalUrl } from "@/lib/seo";
+import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import {
   Select,
   SelectContent,
@@ -31,9 +33,11 @@ import {
 import { SearchInput } from "@/components/ui/SearchInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { TableFrame } from "@/components/ui/TableFrame";
+import { PanelTitle } from "@/components/ui/PanelTitle";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 
-import { ArrowLeft, Clock, Wallet, Filter, SortAsc, DollarSign, Star, X } from "lucide-react";
+import { ArrowLeft, Wallet, Star, X, ArrowUp, ArrowDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStarred } from "@/hooks/useStarred";
 import { StarButton } from "@/components/StarButton";
@@ -42,97 +46,200 @@ import { StarButton } from "@/components/StarButton";
 
 interface FundMeta {
   aum: number;
+  holdings: number;
   latestQuarter: string | null;
 }
 
-/**
- * One clickable fund tile, shared by every FundGrid tab: logo, names, star,
- * optional AUM rank, AUM line and the latest-quarter chip (highlighted when
- * the fund has already filed the most recent quarter).
- */
-function FundCard({
-  fund,
-  meta,
-  overallLatestQuarter,
-  rank,
-  starred,
-  onToggleStar,
-  onOpen,
-}: {
-  fund: HedgeFund;
-  meta: FundMeta | undefined;
-  overallLatestQuarter: string | null;
-  rank?: number;
-  starred: boolean;
-  onToggleStar: () => void;
-  onOpen: () => void;
-}) {
-  const latestQuarter = meta?.latestQuarter ?? null;
-  const isCurrent = latestQuarter !== null && latestQuarter === overallLatestQuarter;
+/** Last filed quarter; a tinted pill marks a fund already current with the board. */
+function LastFiling({ quarter, current }: { quarter: string | null; current: boolean }) {
+  if (!quarter) return <span className="text-muted-foreground">—</span>;
+  const label = quarter.replace("Q", " Q");
+  if (!current) {
+    return (
+      <span className="text-muted-foreground" title="Latest quarter this fund has filed">
+        {label}
+      </span>
+    );
+  }
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      className="kpi-card cursor-pointer"
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
+    <span
+      className="chip text-positive"
+      title="This fund has already filed the most recent quarter"
     >
-      <div className="flex items-start gap-3">
-        <div className="rounded-md border border-border bg-neutral-200 p-1 shrink-0">
-          <FundLogo fundName={fund.fund} url={fund.url} size={28} className="rounded-md" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">{fund.denomination}</p>
-              <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <StarButton active={starred} onClick={onToggleStar} size={14} className="mt-0.5" />
-              {rank !== undefined && (
-                <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
-                  #{rank}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-2 mt-1.5">
-            {meta !== undefined && (
-              <p className="text-xs font-mono text-muted-foreground">
-                AUM {meta.aum > 0 ? formatValue(meta.aum) : "$0"}
-              </p>
-            )}
-            {latestQuarter && (
-              <span
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono font-medium ${
-                  isCurrent
-                    ? "border-[hsl(var(--positive))]/40 bg-[hsl(var(--positive))]/10 text-[hsl(var(--positive))]"
-                    : "border-border text-muted-foreground"
-                }`}
-                title={
-                  isCurrent
-                    ? "This fund has already filed the most recent quarter"
-                    : "Latest quarter this fund has filed"
-                }
-              >
-                <Clock className="h-2.5 w-2.5" aria-hidden="true" />
-                {latestQuarter.replace("Q", " Q")}
-              </span>
-            )}
-          </div>
-        </div>
+      Filed {label}
+    </span>
+  );
+}
+
+/** Sort arrow for a sortable header or sort chip. */
+function SortIndicator({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return null;
+  const Icon = dir === "desc" ? ArrowDown : ArrowUp;
+  return <Icon aria-hidden="true" className="h-3 w-3 shrink-0" />;
+}
+
+function FundLogoSquare({ fund }: { fund: HedgeFund }) {
+  return (
+    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-card">
+      <FundLogo fundName={fund.fund} url={fund.url} size={24} />
+    </span>
+  );
+}
+
+/**
+ * The fund roster as one dense board: a table from `md` up, frame rows below.
+ * The same list serves every tab; `withRank` adds the AUM position.
+ */
+function FundList({
+  list,
+  metaMap,
+  overallLatestQuarter,
+  withRank,
+  isStarred,
+  onToggleStar,
+}: {
+  list: HedgeFund[];
+  metaMap: Map<string, FundMeta>;
+  overallLatestQuarter: string | null;
+  withRank: boolean;
+  isStarred: (fund: string) => boolean;
+  onToggleStar: (fund: string) => void;
+}) {
+  if (list.length === 0) {
+    return <EmptyState padding="sm" className="mt-4" title="No funds match your search." />;
+  }
+  const isCurrent = (meta: FundMeta | undefined) =>
+    !!meta?.latestQuarter && meta.latestQuarter === overallLatestQuarter;
+
+  return (
+    <>
+      <ol className="md:hidden mt-4 border-t border-border" aria-label="Tracked funds">
+        {list.map((fund, i) => {
+          const meta = metaMap.get(fund.fund);
+          return (
+            <li key={fund.cik} className="border-b border-border/60 py-2 flex items-start gap-3">
+              <FundLogoSquare fund={fund} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  {withRank && (
+                    <span className="text-xs text-muted-foreground shrink-0">{i + 1}</span>
+                  )}
+                  <Link to={fundPath(fund.fund)} className="fund-link truncate">
+                    {fund.denomination}
+                  </Link>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
+                <p className="text-xs mt-1 flex flex-wrap gap-x-3">
+                  <span>
+                    <span className="text-muted-foreground">Holdings </span>
+                    {meta ? meta.holdings : "…"}
+                  </span>
+                  <span>
+                    <span className="text-muted-foreground">Value </span>
+                    {meta ? formatValue(meta.aum) : "…"}
+                  </span>
+                  <span>
+                    <span className="text-muted-foreground">Filed </span>
+                    <LastFiling quarter={meta?.latestQuarter ?? null} current={isCurrent(meta)} />
+                  </span>
+                </p>
+              </div>
+              <StarButton
+                active={isStarred(fund.fund)}
+                onClick={() => onToggleStar(fund.fund)}
+                size={16}
+                className="h-8 w-8 m-0 shrink-0"
+              />
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="hidden md:block mt-4 frame">
+        <TableFrame label="Tracked funds">
+          <table className="w-full text-sm" aria-label="Tracked funds">
+            <thead>
+              <tr className="text-xs">
+                <th scope="col" className="px-3 py-2 w-10">
+                  <span className="sr-only">Starred</span>
+                </th>
+                {withRank && (
+                  <th scope="col" className="text-right px-3 py-2 w-12">
+                    #
+                  </th>
+                )}
+                <th scope="col" className="text-left px-3 py-2">
+                  Fund
+                </th>
+                <th scope="col" className="text-left px-3 py-2">
+                  Manager
+                </th>
+                <th scope="col" className="text-right px-3 py-2">
+                  Holdings
+                </th>
+                <th scope="col" className="text-right px-3 py-2">
+                  Portfolio value
+                </th>
+                <th scope="col" className="text-right px-3 py-2">
+                  Last filing
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((fund, i) => {
+                const meta = metaMap.get(fund.fund);
+                return (
+                  <tr key={fund.cik} className="data-table-row">
+                    <td className="px-3 py-1">
+                      <StarButton
+                        active={isStarred(fund.fund)}
+                        onClick={() => onToggleStar(fund.fund)}
+                        size={16}
+                        className="h-8 w-8 m-0"
+                      />
+                    </td>
+                    {withRank && (
+                      <td className="px-3 py-1 text-right text-xs text-muted-foreground">
+                        {i + 1}
+                      </td>
+                    )}
+                    <td className="px-3 py-1">
+                      <span className="inline-flex items-center gap-3 min-w-0 max-w-full">
+                        <FundLogoSquare fund={fund} />
+                        <Link to={fundPath(fund.fund)} className="fund-link truncate">
+                          {fund.denomination}
+                        </Link>
+                      </span>
+                    </td>
+                    <td className="px-3 py-1 text-muted-foreground">
+                      <span className="block truncate max-w-[24ch] xl:max-w-none">
+                        {fund.manager}
+                      </span>
+                    </td>
+                    <td className="px-3 py-1 text-right">{meta ? meta.holdings : "…"}</td>
+                    <td className="px-3 py-1 text-right">{meta ? formatValue(meta.aum) : "…"}</td>
+                    <td className="px-3 py-1 text-right">
+                      <LastFiling quarter={meta?.latestQuarter ?? null} current={isCurrent(meta)} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableFrame>
       </div>
-    </div>
+    </>
   );
 }
 
 function FundGrid() {
-  const navigate = useNavigate();
+  usePageMeta({
+    title: pageTitle("Fund Portfolios"),
+    description:
+      "Every tracked hedge fund's portfolio: position count, total institutional value, quarter-over-quarter change and the manager behind it.",
+    canonical: canonicalUrl(ROUTES.funds),
+  });
+
   const [search, setSearch] = useState("");
   const { starred, toggle: toggleStar, isStarred } = useStarred("fund");
   const [tab, setTab] = useState<"starred" | "updated" | "alphabetical" | "byvalue">(() =>
@@ -157,10 +264,15 @@ function FundGrid() {
             if (quarters.length === 0) return;
             const latest = quarters[quarters.length - 1];
             const holdings = await getFundQuarterlyHoldings(latest, fund.fund);
-            const total = holdings
-              .filter((h) => h.cusip !== "Total")
-              .reduce((sum, h) => sum + parseValueString(h.value), 0);
-            metaMap.set(fund.fund, { aum: total, latestQuarter: latest });
+            const positions = holdings.filter(
+              (h) => h.cusip !== "Total" && h.delta !== "CLOSE" && parseValueString(h.value) > 0,
+            );
+            const total = positions.reduce((sum, h) => sum + parseValueString(h.value), 0);
+            metaMap.set(fund.fund, {
+              aum: total,
+              holdings: positions.length,
+              latestQuarter: latest,
+            });
           } catch {
             /* skip */
           }
@@ -222,60 +334,43 @@ function FundGrid() {
     return list;
   }, [funds, search, tab, fundMetaMap, nqLatestByFund]);
 
-  const renderCards = (list: HedgeFund[], withRank = false) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
-      {list.map((fund, i) => (
-        <FundCard
-          key={fund.cik}
-          fund={fund}
-          meta={fundMetaMap.get(fund.fund)}
-          overallLatestQuarter={overallLatestQuarter ?? null}
-          rank={withRank ? i + 1 : undefined}
-          starred={isStarred(fund.fund)}
-          onToggleStar={() => toggleStar(fund.fund)}
-          onOpen={() => navigate(fundPath(fund.fund))}
-        />
-      ))}
-      {list.length === 0 && (
-        <p className="col-span-full text-center text-muted-foreground py-8">
-          No funds match your search.
-        </p>
-      )}
-    </div>
+  const renderList = (list: HedgeFund[], withRank = false) => (
+    <FundList
+      list={list}
+      metaMap={fundMetaMap}
+      overallLatestQuarter={overallLatestQuarter ?? null}
+      withRank={withRank}
+      isStarred={isStarred}
+      onToggleStar={toggleStar}
+    />
   );
 
   return (
     <div className="space-y-6 max-w-screen-2xl">
       <div>
-        <span className="eyebrow">Tracked funds</span>
-        <h1 className="page-title mt-1.5">
-          <Wallet className="page-title-icon" /> Hedge Fund Portfolios
+        <h1 className="page-title">
+          <Wallet aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
+          Hedge Fund Portfolios
         </h1>
         <p className="text-sm text-muted-foreground mt-1.5">
-          Browse {funds.length} tracked institutional investors
+          {funds.length} tracked institutional investors. A green Filed pill marks a fund already
+          current with{" "}
+          {overallLatestQuarter ? overallLatestQuarter.replace("Q", " Q") : "the latest quarter"}.
         </p>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <div className="flex flex-wrap items-center gap-3">
-          <TabsList>
+          <TabsList aria-label="Sort funds">
             {starred.size > 0 && (
-              <TabsTrigger value="starred" className="gap-1.5 group">
-                <Star className="h-3.5 w-3.5" fill="currentColor" /> Starred
-                <span className="ml-1 text-[10px] font-mono bg-primary/20 text-primary group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground px-1.5 py-0.5 rounded-full leading-none">
-                  {starred.size}
-                </span>
+              <TabsTrigger value="starred" className="gap-1.5">
+                <Star className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true" /> Starred
+                <span className="text-[11px]">({starred.size})</span>
               </TabsTrigger>
             )}
-            <TabsTrigger value="updated" className="gap-1.5">
-              <Clock className="h-3.5 w-3.5" /> Last Updated
-            </TabsTrigger>
-            <TabsTrigger value="alphabetical" className="gap-1.5">
-              <SortAsc className="h-3.5 w-3.5" /> Alphabetical
-            </TabsTrigger>
-            <TabsTrigger value="byvalue" className="gap-1.5">
-              <DollarSign className="h-3.5 w-3.5" /> AUM
-            </TabsTrigger>
+            <TabsTrigger value="updated">Last Updated</TabsTrigger>
+            <TabsTrigger value="alphabetical">Alphabetical</TabsTrigger>
+            <TabsTrigger value="byvalue">AUM</TabsTrigger>
           </TabsList>
           <SearchInput
             label="Search fund or manager"
@@ -295,7 +390,7 @@ function FundGrid() {
               description="Click the ★ icon on any fund to add it here."
             />
           ) : (
-            renderCards(starredFunds)
+            renderList(starredFunds)
           )}
         </TabsContent>
 
@@ -303,9 +398,9 @@ function FundGrid() {
           <LoadingState message="Loading funds…" />
         ) : (
           <>
-            <TabsContent value="updated">{renderCards(filtered)}</TabsContent>
-            <TabsContent value="alphabetical">{renderCards(filtered)}</TabsContent>
-            <TabsContent value="byvalue">{renderCards(filtered, true)}</TabsContent>
+            <TabsContent value="updated">{renderList(filtered)}</TabsContent>
+            <TabsContent value="alphabetical">{renderList(filtered)}</TabsContent>
+            <TabsContent value="byvalue">{renderList(filtered, true)}</TabsContent>
           </>
         )}
       </Tabs>
@@ -371,46 +466,44 @@ function HoldingDeltaCell({
 }
 
 /**
- * Mobile card for a single holding row. The desktop holdings table is hidden
- * below `md` and replaced by a stack of these: ticker + portfolio weight on the
- * headline, company beneath, value and Δ as a two-up footer.
+ * Mobile row for a single holding. The desktop holdings table is hidden below
+ * `md` and replaced by a list of these frame rows: ticker + portfolio weight
+ * on the headline, company beneath, value and Δ as a two-up footer.
  */
 function HoldingCard({ h, rank }: { h: QuarterlyHolding; rank: number }) {
   const isNew = h.delta === "NEW";
   const isClosed = h.delta === "CLOSE";
   const deltaParsed = isNew || isClosed ? 0 : parseFloat(h.delta) || 0;
   return (
-    <div className="surface p-3.5">
+    <li className="border-b border-border/60 py-2">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-mono text-xs text-muted-foreground shrink-0">#{rank}</span>
+          <span className="text-xs text-muted-foreground shrink-0 w-[3ch] text-right">{rank}</span>
           <TickerLink ticker={h.ticker} />
         </div>
-        <span className="font-mono text-sm font-semibold shrink-0">
-          {h.portfolioPct.toFixed(1)}%
-        </span>
+        <span className="text-sm font-medium shrink-0">{h.portfolioPct.toFixed(1)}%</span>
       </div>
-      <div className="mt-2">
+      <div className="mt-1 pl-[calc(3ch+0.5rem)]">
         <CompanyLink ticker={h.ticker} company={toInitCap(h.company)} showStar />
       </div>
-      <div className="mt-3 pt-3 border-t border-border/60 flex items-end justify-between gap-3">
+      <dl className="mt-1 pl-[calc(3ch+0.5rem)] flex items-start justify-between gap-3 text-sm">
         <div>
-          <div className="metric-label">Value</div>
-          <div className="font-mono text-sm text-foreground mt-0.5">{h.value}</div>
+          <dt className="metric-label !text-[11px]">Value</dt>
+          <dd>{h.value}</dd>
         </div>
         <div className="text-right">
-          <div className="metric-label">Δ</div>
-          <div className="font-mono mt-0.5">
+          <dt className="metric-label !text-[11px]">Δ</dt>
+          <dd>
             <HoldingDeltaCell
               isNew={isNew}
               isClosed={isClosed}
               deltaPct={deltaParsed}
               deltaValueRaw={h.deltaValue}
             />
-          </div>
+          </dd>
         </div>
-      </div>
-    </div>
+      </dl>
+    </li>
   );
 }
 
@@ -442,6 +535,13 @@ function FundDetail({ fundName }: { fundName: string }) {
     queryKey: ["hedgeFunds"],
     queryFn: getHedgeFunds,
     select: (funds) => funds.find((f) => f.fund === fundName),
+  });
+
+  const fundLabel = fund?.denomination || formatFundName(fundName);
+  usePageMeta({
+    title: pageTitle(fundLabel),
+    description: `${fundLabel}'s reported holdings from its latest SEC 13F filing: positions, portfolio weights and quarter-over-quarter changes.`,
+    canonical: canonicalUrl(fundPath(fundName)),
   });
 
   const { data: stocksMaster = [] } = useQuery({
@@ -553,8 +653,8 @@ function FundDetail({ fundName }: { fundName: string }) {
     () => holdings.filter((h) => h.delta !== "CLOSE" && h.deltaShares < 0).length,
     [holdings],
   );
-  // Holdings Map mirrors the active sector filter so it stays coherent with the
-  // central list and the Sector Map selection.
+  // Holdings map mirrors the active sector filter so it stays coherent with the
+  // central list and the Sector map selection.
   const treemapData = useMemo(() => {
     const byPct = [...holdings]
       .filter((h) => h.delta !== "CLOSE")
@@ -622,10 +722,8 @@ function FundDetail({ fundName }: { fundName: string }) {
     }
   }
 
-  function sortIndicator(key: SortKey) {
-    if (sortKey !== key) return null;
-    return sortDir === "desc" ? " ↓" : " ↑";
-  }
+  const ariaSort = (key: SortKey) =>
+    sortKey === key ? (sortDir === "desc" ? "descending" : "ascending") : "none";
 
   const quarterLabel = selectedQuarter ? selectedQuarter.replace("Q", " Q") : "—";
 
@@ -637,24 +735,28 @@ function FundDetail({ fundName }: { fundName: string }) {
     return (
       <div className="space-y-6 max-w-screen-2xl">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(ROUTES.funds)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Back to funds"
+            onClick={() => navigate(ROUTES.funds)}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="rounded-lg border border-border bg-neutral-200 p-2 shadow-sm ring-1 ring-border/50 shrink-0">
-            <FundLogo fundName={fundName} url={fund?.url} size={28} className="rounded-md" />
-          </div>
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-card">
+            <FundLogo fundName={fundName} url={fund?.url} size={28} />
+          </span>
           <h1 className="page-title">
             {fund?.denomination || formatFundName(fundName)}
             <StarButton
               active={isStarred(fundName)}
               onClick={() => toggleStar(fundName)}
               size={20}
+              className="h-8 w-8 m-0"
             />
           </h1>
         </div>
-        <div className="surface p-8 text-center text-muted-foreground">
-          No quarterly data available for this fund.
-        </div>
+        <EmptyState padding="sm" title="No quarterly data available for this fund." />
       </div>
     );
   }
@@ -663,12 +765,17 @@ function FundDetail({ fundName }: { fundName: string }) {
     <div className="space-y-6 max-w-screen-2xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(ROUTES.funds)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Back to funds"
+            onClick={() => navigate(ROUTES.funds)}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="rounded-lg border border-border bg-neutral-200 p-2 shadow-sm ring-1 ring-border/50 shrink-0">
-            <FundLogo fundName={fundName} url={fund?.url} size={28} className="rounded-md" />
-          </div>
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-card">
+            <FundLogo fundName={fundName} url={fund?.url} size={28} />
+          </span>
           <div>
             <h1 className="page-title">
               {fund?.denomination || formatFundName(fundName)}
@@ -676,6 +783,7 @@ function FundDetail({ fundName }: { fundName: string }) {
                 active={isStarred(fundName)}
                 onClick={() => toggleStar(fundName)}
                 size={20}
+                className="h-8 w-8 m-0"
               />
             </h1>
             {fund && (
@@ -685,7 +793,7 @@ function FundDetail({ fundName }: { fundName: string }) {
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <Select value={selectedQuarter || ""} onValueChange={setQuarter}>
-            <SelectTrigger className="flex-1 sm:flex-none sm:w-36 bg-card border-border">
+            <SelectTrigger aria-label="Quarter" className="flex-1 sm:flex-none sm:w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -701,48 +809,34 @@ function FundDetail({ fundName }: { fundName: string }) {
 
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Left: KPIs + Table */}
-        <div className="lg:col-span-3 space-y-5">
-          {/* Summary KPIs — 6 compact cells: 2 static + 4 toggle filters */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <div className="surface flex flex-col gap-1 p-3">
+        <div className="min-w-0 lg:col-span-3 space-y-5">
+          {/* Status cells: 2 static + 4 toggle filters, one hairline grid. */}
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-3 lg:grid-cols-6">
+            <div className="bg-card p-3 flex flex-col">
               <p className="metric-label">AUM</p>
-              <p className="font-mono text-lg font-bold leading-tight">{formatValue(totalValue)}</p>
+              <p className="text-lg leading-6">{formatValue(totalValue)}</p>
             </div>
-            <div className="surface flex flex-col gap-1 p-3">
+            <div className="bg-card p-3 flex flex-col">
               <p className="metric-label">Positions</p>
-              <p className="font-mono text-lg font-bold leading-tight">
+              <p className="text-lg leading-6">
                 {holdings.filter((h) => parseValueString(h.value) > 0).length}
               </p>
             </div>
             {(
               [
-                {
-                  key: "new",
-                  label: "New",
-                  count: newPositions,
-                  num: "text-primary",
-                  ring: "ring-primary/50",
-                },
-                {
-                  key: "closed",
-                  label: "Closed",
-                  count: closedPositions,
-                  num: "text-closed",
-                  ring: "ring-closed/50",
-                },
+                { key: "new", label: "New", count: newPositions, num: "text-muted-foreground" },
+                { key: "closed", label: "Closed", count: closedPositions, num: "text-closed" },
                 {
                   key: "increased",
                   label: "Increased",
                   count: increasedPositions,
                   num: "text-positive",
-                  ring: "ring-positive/50",
                 },
                 {
                   key: "decreased",
                   label: "Decreased",
                   count: decreasedPositions,
                   num: "text-negative",
-                  ring: "ring-negative/50",
                 },
               ] as const
             ).map((f) => {
@@ -753,33 +847,41 @@ function FundDetail({ fundName }: { fundName: string }) {
                   type="button"
                   aria-pressed={active}
                   onClick={() => setPositionFilter((cur) => (cur === f.key ? "all" : f.key))}
-                  className={`surface flex flex-col gap-1 p-3 text-left transition-colors ${active ? `ring-1 ${f.ring}` : "hover:border-border"}`}
+                  className={`p-3 flex flex-col text-left transition-colors ${active ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
                 >
-                  <p className="metric-label flex items-center gap-1">
-                    {f.label} <Filter className="h-2.5 w-2.5 opacity-50" />
+                  <p
+                    className={`metric-label inline-flex items-center gap-1 ${active ? "!text-primary-foreground" : ""}`}
+                  >
+                    <Check
+                      aria-hidden="true"
+                      className={`h-3.5 w-3.5 shrink-0 ${active ? "" : "opacity-0"}`}
+                    />
+                    {f.label}
                   </p>
-                  <p className={`font-mono text-lg font-bold leading-tight ${f.num}`}>{f.count}</p>
+                  <p className={`text-lg leading-6 ${active ? "" : f.num}`}>{f.count}</p>
                 </button>
               );
             })}
           </div>
 
-          {/* Active sector filter chip — mirrors the Stocks page pattern. */}
+          {/* Active sector filter, mirrors the Stocks page pattern. */}
           {activeSector !== "all" && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground">Filtered by sector:</span>
+            <p className="status-line flex items-center gap-2 flex-wrap">
+              <span className="k">Sector:</span>
+              <span className="text-foreground">{activeSector}</span>
+              <span aria-hidden="true">·</span>
+              <span className="k">
+                {activeSectorCount} holding{activeSectorCount === 1 ? "" : "s"}
+              </span>
               <button
                 type="button"
                 onClick={() => setSectorFilter("all")}
-                className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium hover:bg-primary/15 transition-colors"
+                aria-label="Clear sector filter"
+                className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                {activeSector}
-                <X className="h-3 w-3" aria-label="Clear sector filter" />
+                <X className="h-3 w-3" aria-hidden="true" /> Clear
               </button>
-              <span className="text-xs text-muted-foreground">
-                · {activeSectorCount} holding{activeSectorCount === 1 ? "" : "s"}
-              </span>
-            </div>
+            </p>
           )}
 
           {isLoading ? (
@@ -791,10 +893,10 @@ function FundDetail({ fundName }: { fundName: string }) {
             />
           ) : (
             <>
-              {/* Mobile: sort chips + card list */}
+              {/* Mobile: sort controls + frame rows */}
               <div className="md:hidden space-y-3">
                 <div className="flex items-center gap-2 overflow-x-auto">
-                  <span className="text-xs text-muted-foreground shrink-0">Sort</span>
+                  <span className="control-label shrink-0">Sort</span>
                   {(
                     [
                       ["portfolioPct", "Port %"],
@@ -805,56 +907,83 @@ function FundDetail({ fundName }: { fundName: string }) {
                     return (
                       <button
                         key={key}
+                        type="button"
                         onClick={() => toggleSort(key)}
                         aria-pressed={active}
-                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors shrink-0 ${
+                        className={`inline-flex items-center gap-1 h-9 px-3 rounded-md border text-xs transition-colors shrink-0 ${
                           active
-                            ? "border-primary/50 bg-primary/10 text-primary"
+                            ? "bg-primary text-primary-foreground border-primary"
                             : "border-border bg-card text-muted-foreground"
                         }`}
                       >
                         {label}
-                        {active && (sortDir === "desc" ? " ↓" : " ↑")}
+                        <SortIndicator active={active} dir={sortDir} />
                       </button>
                     );
                   })}
                 </div>
-                {(showAll ? sorted : sorted.slice(0, TOP_N)).map((h, i) => (
-                  <HoldingCard key={`${h.cusip}-${h.ticker}-${h.delta}`} h={h} rank={i + 1} />
-                ))}
+                <ol className="border-t border-border" aria-label="Holdings">
+                  {(showAll ? sorted : sorted.slice(0, TOP_N)).map((h, i) => (
+                    <HoldingCard key={`${h.cusip}-${h.ticker}-${h.delta}`} h={h} rank={i + 1} />
+                  ))}
+                </ol>
                 {!showAll && sorted.length > TOP_N && (
                   <Button
-                    variant="ghost"
+                    variant="secondary"
                     size="sm"
-                    className="w-full text-xs text-muted-foreground hover:text-foreground"
+                    className="w-full"
                     onClick={() => setShowAll(true)}
                   >
-                    Showing top {TOP_N} of {sorted.length} positions — Show all
+                    Show all {sorted.length} positions
                   </Button>
                 )}
               </div>
 
               {/* Desktop: full holdings table */}
-              <div className="surface overflow-hidden hidden md:block">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+              <div className="frame hidden md:block">
+                <TableFrame label={`Holdings for ${quarterLabel}`}>
+                  <table className="w-full text-sm" aria-label={`Holdings for ${quarterLabel}`}>
                     <thead>
-                      <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
-                        <th className="text-left p-3 font-medium">#</th>
-                        <th className="text-left p-3 font-medium">Ticker</th>
-                        <th className="text-left p-3 font-medium">Company</th>
-                        <th className="text-right p-3 font-medium">Value</th>
-                        <th
-                          className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
-                          onClick={() => toggleSort("delta")}
-                        >
-                          Δ{sortIndicator("delta")}
+                      <tr className="text-xs">
+                        <th scope="col" className="text-left px-3 py-2">
+                          #
+                        </th>
+                        <th scope="col" className="text-left px-3 py-2">
+                          Ticker
+                        </th>
+                        <th scope="col" className="text-left px-3 py-2">
+                          Company
+                        </th>
+                        <th scope="col" className="text-right px-3 py-2">
+                          Value
                         </th>
                         <th
-                          className="text-right p-3 font-medium cursor-pointer hover:text-foreground"
-                          onClick={() => toggleSort("portfolioPct")}
+                          scope="col"
+                          aria-sort={ariaSort("delta")}
+                          className="text-right px-3 py-2"
                         >
-                          Port %{sortIndicator("portfolioPct")}
+                          <button
+                            type="button"
+                            onClick={() => toggleSort("delta")}
+                            className="inline-flex min-w-6 items-center justify-end gap-1 h-7 hover:text-foreground"
+                          >
+                            Δ
+                            <SortIndicator active={sortKey === "delta"} dir={sortDir} />
+                          </button>
+                        </th>
+                        <th
+                          scope="col"
+                          aria-sort={ariaSort("portfolioPct")}
+                          className="text-right px-3 py-2"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleSort("portfolioPct")}
+                            className="inline-flex min-w-6 items-center justify-end gap-1 h-7 hover:text-foreground"
+                          >
+                            Port %
+                            <SortIndicator active={sortKey === "portfolioPct"} dir={sortDir} />
+                          </button>
                         </th>
                       </tr>
                     </thead>
@@ -865,7 +994,7 @@ function FundDetail({ fundName }: { fundName: string }) {
                         const deltaParsed = isNew || isClosed ? 0 : parseFloat(h.delta) || 0;
                         return (
                           <tr key={`${h.cusip}-${h.ticker}-${h.delta}`} className="data-table-row">
-                            <td className="p-3 text-muted-foreground font-mono">{i + 1}</td>
+                            <td className="p-3 text-muted-foreground text-xs">{i + 1}</td>
                             <td className="p-3">
                               <TickerLink ticker={h.ticker} />
                             </td>
@@ -897,53 +1026,54 @@ function FundDetail({ fundName }: { fundName: string }) {
                       <tfoot>
                         <tr>
                           <td colSpan={6} className="p-3 text-center">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-xs text-muted-foreground hover:text-foreground"
-                              onClick={() => setShowAll(true)}
-                            >
-                              Showing top {TOP_N} of {sorted.length} positions — Show all
+                            <Button variant="secondary" size="sm" onClick={() => setShowAll(true)}>
+                              Showing top {TOP_N} of {sorted.length}. Show all
                             </Button>
                           </td>
                         </tr>
                       </tfoot>
                     )}
                   </table>
-                </div>
+                </TableFrame>
               </div>
             </>
           )}
         </div>
 
-        {/* Right: Holdings Map + Sector Map side-by-side (stack on narrow viewports) */}
-        <div className="lg:col-span-2 lg:sticky lg:top-4 lg:self-start grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="surface p-5">
-            <h3 className="section-title mb-3 text-sm">
-              Holdings Map
-              {activeSector !== "all" && (
-                <span className="ml-2 font-normal normal-case text-muted-foreground">
-                  · {activeSector}
-                </span>
-              )}
-            </h3>
-            <HoldingsTreemap
-              data={treemapData}
-              onClickTicker={(t) => navigate(stockPath(t))}
-              displayMode="pct"
-            />
+        {/* Right: Holdings map + Sector map side-by-side (stack on narrow viewports) */}
+        <div className="min-w-0 lg:col-span-2 lg:sticky lg:top-4 lg:self-start grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="frame flex h-full flex-col overflow-hidden">
+            <div className="frame-title frame-title--spaced">
+              <PanelTitle>
+                Holdings map
+                {activeSector !== "all" && (
+                  <span className="font-normal text-muted-foreground"> · {activeSector}</span>
+                )}
+              </PanelTitle>
+            </div>
+            <div className="flex-1 min-h-0 p-3 pt-0">
+              <HoldingsTreemap
+                data={treemapData}
+                onClickTicker={(t) => navigate(stockPath(t))}
+                displayMode="pct"
+              />
+            </div>
           </div>
           {sectorTreemapData.length > 0 && (
-            <div className="surface p-5">
-              <h3 className="section-title mb-3 text-sm">Sector Map</h3>
-              <HoldingsTreemap
-                data={sectorTreemapData}
-                onClickTicker={(sector) =>
-                  setSectorFilter((cur) => (cur === sector ? "all" : sector))
-                }
-                displayMode="pct"
-                activeName={activeSector === "all" ? null : activeSector}
-              />
+            <div className="frame flex h-full flex-col overflow-hidden">
+              <div className="frame-title frame-title--spaced">
+                <PanelTitle>Sector map</PanelTitle>
+              </div>
+              <div className="flex-1 min-h-0 p-3 pt-0">
+                <HoldingsTreemap
+                  data={sectorTreemapData}
+                  onClickTicker={(sector) =>
+                    setSectorFilter((cur) => (cur === sector ? "all" : sector))
+                  }
+                  displayMode="pct"
+                  activeName={activeSector === "all" ? null : activeSector}
+                />
+              </div>
             </div>
           )}
         </div>

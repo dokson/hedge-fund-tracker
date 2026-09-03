@@ -24,6 +24,7 @@ from app.api.common import (
 from app.api.sse import _make_sse_stream
 from app.auth.dependencies import current_optional_user
 from app.db.session import AsyncSessionLocal
+from app.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -31,7 +32,27 @@ if TYPE_CHECKING:
     from app.ai.clients.base_client import AIClient
     from app.db.models import User
 
+logger = get_logger(__name__)
+
 router = APIRouter(tags=["ai"])
+
+# Provider ids that no longer exist. A stored user config may still point at one,
+# so we degrade to the default instead of failing the request.
+RETIRED_PROVIDERS: frozenset[str] = frozenset({"github"})
+DEFAULT_PROVIDER_ID = "google"
+
+
+def _resolve_provider(provider_id: str, model_id: str | None) -> tuple[str, str | None]:
+    """
+    Map a retired provider onto the default one, dropping its model id (which
+    belongs to the retired provider) so the fallback client uses its own.
+    """
+    if provider_id in RETIRED_PROVIDERS:
+        logger.warning(
+            "Provider %r has been retired; falling back to %r.", provider_id, DEFAULT_PROVIDER_ID
+        )
+        return DEFAULT_PROVIDER_ID, None
+    return provider_id, model_id
 
 
 def _build_ai_client(
@@ -45,7 +66,6 @@ def _build_ai_client(
     provider → 400.
     """
     from app.ai.clients import (
-        GitHubClient,
         GoogleAIClient,
         GroqClient,
         HuggingFaceClient,
@@ -53,12 +73,12 @@ def _build_ai_client(
     )
 
     client_map: dict[str, Callable[..., AIClient]] = {
-        "github": GitHubClient,
         "google": GoogleAIClient,
         "groq": GroqClient,
         "huggingface": HuggingFaceClient,
         "openrouter": OpenRouterClient,
     }
+    provider_id, model_id = _resolve_provider(provider_id, model_id)
     client_cls = client_map.get(provider_id)
     if client_cls is None:
         raise HTTPException(
@@ -126,9 +146,9 @@ async def ai_promise_score(
     body = await request.json()
     quarter = _require_quarter(body.get("quarter"))
     top_n = body.get("top_n", 20)
-    provider_id = body.get("provider_id")
+    provider_id, model_id = _resolve_provider(body.get("provider_id"), body.get("model_id"))
     api_key = await _resolve_request_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
+    ai_client = _build_ai_client(provider_id, api_key, model_id)
 
     # Offload the blocking AI/analysis work so it doesn't stall the event loop.
     def _run() -> list[dict[str, object]]:
@@ -153,9 +173,9 @@ async def ai_due_diligence(
     body = await request.json()
     ticker = _require_ticker(body.get("ticker"))
     quarter = _require_quarter(body.get("quarter"))
-    provider_id = body.get("provider_id")
+    provider_id, model_id = _resolve_provider(body.get("provider_id"), body.get("model_id"))
     api_key = await _resolve_request_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
+    ai_client = _build_ai_client(provider_id, api_key, model_id)
 
     # Offload the blocking AI/analysis work so it doesn't stall the event loop.
     def _run() -> dict[str, object]:
@@ -179,9 +199,9 @@ async def ai_promise_score_stream(
     body = await request.json()
     quarter = _require_quarter(body.get("quarter"))
     top_n = body.get("top_n", 20)
-    provider_id = body.get("provider_id")
+    provider_id, model_id = _resolve_provider(body.get("provider_id"), body.get("model_id"))
     api_key = await _resolve_request_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
+    ai_client = _build_ai_client(provider_id, api_key, model_id)
 
     def run():
         agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
@@ -205,9 +225,9 @@ async def ai_due_diligence_stream(
     body = await request.json()
     ticker = _require_ticker(body.get("ticker"))
     quarter = _require_quarter(body.get("quarter"))
-    provider_id = body.get("provider_id")
+    provider_id, model_id = _resolve_provider(body.get("provider_id"), body.get("model_id"))
     api_key = await _resolve_request_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, body.get("model_id"))
+    ai_client = _build_ai_client(provider_id, api_key, model_id)
 
     def run():
         agent = AnalystAgent(quarter=quarter, ai_client=ai_client)

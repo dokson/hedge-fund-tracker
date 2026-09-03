@@ -272,8 +272,9 @@ class YFinance(FinanceLibrary):
             tickers (list[str]): A list of stock tickers.
 
         Returns:
-            dict[str, dict]: A dictionary mapping tickers to their info (price, sector).
-                            Example: {'AAPL': {'price': 150.25, 'sector': 'Technology'}}
+            dict[str, dict]: A dictionary mapping tickers to their info (price, sector, industry).
+                            Example: {'AAPL': {'price': 150.25, 'sector': 'Technology',
+                                               'industry': 'Consumer Electronics'}}
         """
         if not tickers:
             return {}
@@ -307,7 +308,11 @@ class YFinance(FinanceLibrary):
                     if ticker_data is None or ticker_data.empty:
                         continue
                     price = ticker_data["Close"].dropna().iloc[-1].item()
-                    stocks_info[original] = {"price": float(price), "sector": None}
+                    stocks_info[original] = {
+                        "price": float(price),
+                        "sector": None,
+                        "industry": None,
+                    }
                 except YFRateLimitError:
                     raise
                 except Exception:
@@ -317,16 +322,22 @@ class YFinance(FinanceLibrary):
             for sanitized, original in ticker_map.items():
                 try:
                     stock = yf.Ticker(sanitized)
-                    sector = stock.info.get("sector") or stock.info.get("industry")
+                    industry = stock.info.get("industry")
+                    sector = stock.info.get("sector") or industry
 
                     if original in stocks_info:
                         stocks_info[original]["sector"] = sector
+                        stocks_info[original]["industry"] = industry
                     else:
                         # Price fallback
                         logger.progress("Getting current price for %s...", log_safe(original))
                         price = YFinance.get_current_price(original)
                         if price:
-                            stocks_info[original] = {"price": price, "sector": sector}
+                            stocks_info[original] = {
+                                "price": price,
+                                "sector": sector,
+                                "industry": industry,
+                            }
                 except YFRateLimitError:
                     raise
                 except Exception:

@@ -15,10 +15,7 @@ export function InfoTooltip({ text, className }: { text: string; className?: str
       <TooltipTrigger asChild>
         <Info className={cn("h-3 w-3 icon-faint cursor-help", className)} />
       </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="max-w-[280px] text-xs font-normal normal-case tracking-normal"
-      >
+      <TooltipContent side="top" className="max-w-[280px] text-xs font-normal">
         <p>{text}</p>
       </TooltipContent>
     </Tooltip>

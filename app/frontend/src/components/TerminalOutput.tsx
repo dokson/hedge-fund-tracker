@@ -1,19 +1,21 @@
 import { useEffect, useRef } from "react";
 
+import { PanelTitle } from "@/components/ui/PanelTitle";
+
 interface TerminalOutputProps {
   lines: string[];
   running: boolean;
 }
 
 function colorize(line: string): string {
-  if (line.includes("✅") || line.includes("✓")) return "text-green-400";
+  if (line.includes("✅") || line.includes("✓")) return "text-positive";
   if (line.includes("❌") || line.includes("Error") || line.includes("error"))
-    return "text-red-400";
-  if (line.includes("⚠️") || line.includes("Warning")) return "text-yellow-400";
+    return "text-negative";
+  if (line.includes("⚠️") || line.includes("Warning")) return "text-warning";
   if (line.startsWith("🔍") || line.startsWith("🚀") || line.startsWith("📊"))
-    return "text-blue-400";
-  if (line.includes("Sending request") || line.includes("AI Agent")) return "text-purple-300";
-  return "text-gray-300";
+    return "text-muted-foreground";
+  if (line.includes("Sending request") || line.includes("AI Agent")) return "text-magenta";
+  return "text-foreground";
 }
 
 export default function TerminalOutput({ lines, running }: TerminalOutputProps) {
@@ -24,14 +26,17 @@ export default function TerminalOutput({ lines, running }: TerminalOutputProps) 
   }, [lines]);
 
   return (
-    <div className="rounded-lg border border-border bg-[#0d0d0d] font-mono text-xs overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/50 bg-[#1a1a1a]">
-        <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
-        <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
-        <span className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
-        <span className="ml-2 text-[10px] text-gray-500">hedge-fund-tracker — AI Agent</span>
+    <div className="frame bg-background overflow-hidden">
+      <div className="frame-title">
+        <PanelTitle>Output</PanelTitle>
       </div>
-      <div className="p-4 max-h-[50vh] overflow-y-auto space-y-0.5">
+      {/* Monospace belongs to the log body only: these are command lines. */}
+      <div
+        className="p-3 max-h-[50vh] overflow-y-auto space-y-0.5 font-mono text-xs"
+        role="log"
+        aria-live="polite"
+        aria-label="Process output"
+      >
         {lines.map((line, i) => (
           <div
             // append-only log buffer; index is a stable identity
@@ -41,10 +46,12 @@ export default function TerminalOutput({ lines, running }: TerminalOutputProps) 
             {line}
           </div>
         ))}
-        {running && (
-          <div className="flex items-center gap-1 text-gray-500 mt-1">
-            <span className="inline-block w-2 h-3.5 bg-gray-400 animate-pulse" />
+        {running ? (
+          <div className="text-muted-foreground mt-1" aria-label="Running">
+            Running…
           </div>
+        ) : (
+          lines.length > 0 && <div className="text-muted-foreground mt-1">Done</div>
         )}
         <div ref={bottomRef} />
       </div>

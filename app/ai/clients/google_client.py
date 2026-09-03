@@ -120,14 +120,13 @@ class GoogleAIClient(AIClient):
         Sends one generate_content request, optionally with a bounded
         thinking_config, and returns the response text.
         """
-        config = None
-        if with_thinking_config and model not in self._thinking_unsupported:
-            config = types.GenerateContentConfig(
-                thinking_config=types.ThinkingConfig(thinking_level=DEFAULT_THINKING_LEVEL)
-            )
-
-        request_kwargs = {"config": config} if config is not None else {}
-        response = self.client.models.generate_content(
-            model=model, contents=prompt, **request_kwargs
+        # No tools are ever passed, but google-genai >= 2.21 warns on every
+        # generate_content call unless AFC is disabled explicitly.
+        config = types.GenerateContentConfig(
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
         )
+        if with_thinking_config and model not in self._thinking_unsupported:
+            config.thinking_config = types.ThinkingConfig(thinking_level=DEFAULT_THINKING_LEVEL)
+
+        response = self.client.models.generate_content(model=model, contents=prompt, config=config)
         return response.text or ""

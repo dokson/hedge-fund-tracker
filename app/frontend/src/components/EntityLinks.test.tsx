@@ -56,6 +56,21 @@ describe("CompanyLink", () => {
   });
 });
 
+// These used to be `role="link"` spans driven by navigate(). They are real
+// anchors now, so middle-click / cmd-click / "copy link address" work; these
+// two cases pin the href so that cannot silently regress.
+describe("entity links are real anchors", () => {
+  it("gives CompanyLink an href to the stock page", () => {
+    const { getByRole } = renderWithRouter(<CompanyLink ticker="AAPL" company="Apple Inc" />);
+    expect(getByRole("link", { name: "Apple Inc" }).getAttribute("href")).toBe("/stock/AAPL");
+  });
+
+  it("gives TickerLink an href to the stock page", () => {
+    const { getByRole } = renderWithRouter(<TickerLink ticker="NVDA" showLogo={false} />);
+    expect(getByRole("link", { name: "NVDA" }).getAttribute("href")).toBe("/stock/NVDA");
+  });
+});
+
 describe("TickerLink", () => {
   it("renders the ticker text inside a .ticker-pill", () => {
     const { container, getByText } = renderWithRouter(<TickerLink ticker="NVDA" />);

@@ -5,13 +5,12 @@
 import { cachedFetch, fetchCSV } from "./fetch";
 import type { AIModel, RawModel } from "./types";
 
-export const MODEL_PROVIDERS = ["GitHub", "Groq", "Google", "HuggingFace", "OpenRouter"] as const;
+export const MODEL_PROVIDERS = ["Groq", "Google", "HuggingFace", "OpenRouter"] as const;
 
 export type ModelProvider = (typeof MODEL_PROVIDERS)[number];
 
 /** Display names for CSV client values (used in UI only) */
 export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
-  GitHub: "GitHub Models",
   Google: "Google AI Studio",
   Groq: "Groq",
   HuggingFace: "HuggingFace",

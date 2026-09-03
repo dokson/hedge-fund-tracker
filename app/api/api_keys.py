@@ -25,7 +25,6 @@ router = APIRouter(prefix="/api/me/api-keys", tags=["me", "byok"])
 # app/server.py:_build_ai_client — accepting a key for a provider we don't
 # wire would leave the user with a useless row + confusing 400 at AI time.
 SUPPORTED_PROVIDERS: Final = {
-    "github",
     "google",
     "groq",
     "huggingface",

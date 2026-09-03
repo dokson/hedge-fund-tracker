@@ -272,6 +272,9 @@ class TestYFinance(unittest.TestCase):
         self.assertEqual(stocks_info["AAPL"]["sector"], "Technology")
         self.assertEqual(stocks_info["MSFT"]["price"], 300.0)
         self.assertEqual(stocks_info["MSFT"]["sector"], "Software")
+        # The industry is reported separately: the AI prompt refines a sector into one.
+        self.assertIsNone(stocks_info["AAPL"]["industry"])
+        self.assertEqual(stocks_info["MSFT"]["industry"], "Software")
 
     def test_get_stocks_info_empty_list(self):
         """
@@ -310,7 +313,7 @@ class TestYFinance(unittest.TestCase):
 
         stocks_info = YFinance.get_stocks_info.__wrapped__(["AAA"])
 
-        self.assertEqual(stocks_info, {"AAA": {"price": 10.0, "sector": None}})
+        self.assertEqual(stocks_info, {"AAA": {"price": 10.0, "sector": None, "industry": None}})
 
     @patch("app.stocks.libraries.yfinance.yf.Sector")
     def test_get_sector_tickers(self, mock_yf_sector):

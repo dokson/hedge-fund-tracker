@@ -2,11 +2,11 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getStocks } from "@/lib/dataService";
 import { parseSSEEvent } from "@/lib/aiClient";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { PanelTitle } from "@/components/ui/PanelTitle";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -26,17 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Play,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  RefreshCw,
-  ArrowRightLeft,
-  Terminal,
-  CalendarSearch,
-  ShieldCheck,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import TickerAutocomplete from "@/components/TickerAutocomplete";
 import CusipAutocomplete from "@/components/CusipAutocomplete";
 import TerminalOutput from "@/components/TerminalOutput";
@@ -56,7 +46,6 @@ interface Operation {
   id: string;
   title: string;
   description: string;
-  icon: React.ReactNode;
   endpoint: string;
   streamable?: boolean;
   /** Read-only operations skip the destructive-action confirmation dialog. */
@@ -69,7 +58,6 @@ const operations: Operation[] = [
     title: "Generate All 13F Reports",
     description:
       "Fetches and generates the latest quarterly 13F comparison reports for all monitored hedge funds.",
-    icon: <RefreshCw className="h-5 w-5" />,
     endpoint: "/update-all",
     streamable: true,
   },
@@ -77,7 +65,6 @@ const operations: Operation[] = [
     id: "fetch-nq",
     title: "Fetch Non-Quarterly Filings",
     description: "Fetches the latest 13D/G and Form 4 filings for all monitored hedge funds.",
-    icon: <RefreshCw className="h-5 w-5" />,
     endpoint: "/fetch-nq",
     streamable: true,
   },
@@ -86,7 +73,6 @@ const operations: Operation[] = [
     title: "Show Funds With Missing Quarters",
     description:
       "Lists every tracked hedge fund that is missing 13F data for at least one available quarter.",
-    icon: <CalendarSearch className="h-5 w-5" />,
     endpoint: "/funds-missing-quarters",
     readonly: true,
   },
@@ -95,21 +81,18 @@ const operations: Operation[] = [
     title: "Auto-Apply Ticker Changes (NASDAQ)",
     description:
       "Pulls the latest symbol-change feed from NASDAQ and applies any matches against stocks.csv automatically.",
-    icon: <ShieldCheck className="h-5 w-5" />,
     endpoint: "/apply-ticker-changes",
   },
   {
     id: "update-ticker",
     title: "Update Ticker",
     description: "Replaces an old ticker symbol with a new one across stocks.csv and all filings.",
-    icon: <ArrowRightLeft className="h-5 w-5" />,
     endpoint: "/update-ticker",
   },
   {
     id: "update-cusip-ticker",
     title: "Update CUSIP Ticker",
     description: "Updates the ticker for a single CUSIP across stocks.csv and all filings.",
-    icon: <ArrowRightLeft className="h-5 w-5" />,
     endpoint: "/update-cusip-ticker",
   },
 ];
@@ -118,22 +101,18 @@ function StatusBadge({ status }: { status: JobStatus }) {
   switch (status) {
     case "running":
       return (
-        <Badge variant="secondary" className="gap-1 text-xs">
-          <Loader2 className="h-3 w-3 animate-spin" /> Running
+        <Badge variant="secondary" className="gap-1">
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Running
         </Badge>
       );
     case "success":
       return (
-        <Badge className="gap-1 text-xs bg-[hsl(var(--positive))] text-[hsl(var(--positive-foreground))]">
-          <CheckCircle2 className="h-3 w-3" /> Done
+        <Badge variant="outline" className="text-positive">
+          Done
         </Badge>
       );
     case "error":
-      return (
-        <Badge variant="destructive" className="gap-1 text-xs">
-          <XCircle className="h-3 w-3" /> Error
-        </Badge>
-      );
+      return <Badge variant="destructive">Error</Badge>;
     default:
       return null;
   }
@@ -326,15 +305,18 @@ export default function DatabaseOperations() {
       return (
         <div className="space-y-2">
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Old Ticker</Label>
+            <Label htmlFor={`${op.id}-old-ticker`} className="text-xs text-muted-foreground">
+              Old Ticker
+            </Label>
             <div className="flex items-center gap-2">
               <div className="shrink-0">
                 <TickerAutocomplete
+                  id={`${op.id}-old-ticker`}
                   value={fieldValues[op.id]?.old_ticker || ""}
                   onChange={(v) => setField(op.id, "old_ticker", v)}
                   onValidChange={(v) => setFieldValid((prev) => ({ ...prev, old_ticker: v }))}
                   placeholder="e.g. FB"
-                  className="h-8 text-xs placeholder:normal-case placeholder:font-sans"
+                  className="text-xs placeholder:normal-case placeholder:font-sans"
                 />
               </div>
               {oldTickerInfo && fieldValid["old_ticker"] && (
@@ -353,7 +335,7 @@ export default function DatabaseOperations() {
               placeholder="e.g. META"
               value={fieldValues[op.id]?.new_ticker || ""}
               onChange={(e) => setField(op.id, "new_ticker", e.target.value.toUpperCase())}
-              className="h-8 text-xs bg-background border-border font-mono uppercase placeholder:normal-case placeholder:font-sans w-24"
+              className="text-xs font-mono uppercase placeholder:normal-case placeholder:font-sans w-24"
               disabled={isRunning}
             />
           </div>
@@ -365,15 +347,18 @@ export default function DatabaseOperations() {
       return (
         <div className="space-y-2">
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">CUSIP</Label>
+            <Label htmlFor={`${op.id}-cusip`} className="text-xs text-muted-foreground">
+              CUSIP
+            </Label>
             <div className="flex items-center gap-2">
               <div className="w-32 shrink-0">
                 <CusipAutocomplete
+                  id={`${op.id}-cusip`}
                   value={fieldValues[op.id]?.cusip || ""}
                   onChange={(v) => setField(op.id, "cusip", v)}
                   onValidChange={(v) => setFieldValid((prev) => ({ ...prev, cusip: v }))}
                   placeholder="e.g. 594918104"
-                  className="h-8 text-xs placeholder:normal-case placeholder:font-sans"
+                  className="text-xs placeholder:normal-case placeholder:font-sans"
                 />
               </div>
               {cusipInfo && fieldValid["cusip"] && (
@@ -393,7 +378,7 @@ export default function DatabaseOperations() {
               placeholder="e.g. MSFT"
               value={fieldValues[op.id]?.new_ticker || ""}
               onChange={(e) => setField(op.id, "new_ticker", e.target.value.toUpperCase())}
-              className="h-8 text-xs bg-background border-border font-mono uppercase placeholder:normal-case placeholder:font-sans w-24"
+              className="text-xs font-mono uppercase placeholder:normal-case placeholder:font-sans w-24"
               disabled={isRunning}
             />
           </div>
@@ -406,65 +391,46 @@ export default function DatabaseOperations() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-        <Terminal className="h-4 w-4 shrink-0 mt-0.5" />
-        <div>
-          <p>
-            These operations invoke local Python commands from{" "}
-            <code className="font-mono bg-muted px-1 py-0.5 rounded">database/updater.py</code>.
-          </p>
-          <p className="mt-1">
-            Each button triggers the corresponding updater function via a local bridge.
-          </p>
-        </div>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        Each operation invokes a function of{" "}
+        <code className="font-mono bg-muted px-1 py-0.5">database/updater.py</code> through a local
+        bridge.
+      </p>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {operations.map((op) => {
+      <ol className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Operations">
+        {operations.map((op, i) => {
           const state = states[op.id] || { status: "idle" };
           const isRunning = state.status === "running";
 
           return (
-            <Card key={op.id} className="transition-all flex flex-col h-full">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <div className="p-2 rounded-md bg-primary/10 text-primary shrink-0">
-                      {op.icon}
-                    </div>
-                    <div className="min-w-0">
-                      <CardTitle className="text-sm font-semibold leading-snug">
-                        {op.title}
-                      </CardTitle>
-                      <CardDescription className="text-xs mt-1 leading-relaxed">
-                        {op.description}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <StatusBadge status={state.status} />
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col gap-3">
+            <li key={op.id} className="frame flex flex-col h-full">
+              <div className="frame-title">
+                <PanelTitle className="truncate">
+                  <span className="text-muted-foreground font-normal tabular-nums mr-1.5">
+                    {i + 1}.
+                  </span>
+                  {op.title}
+                </PanelTitle>
+                <StatusBadge status={state.status} />
+              </div>
+              <div className="flex flex-col gap-3 p-3 flex-1">
+                <p className="text-xs text-muted-foreground leading-5">{op.description}</p>
                 <div className="flex-1">{renderFields(op, isRunning)}</div>
 
                 <Button
                   size="sm"
-                  className="w-full gap-1.5 mt-auto"
+                  className="w-full mt-auto"
                   disabled={isRunDisabled(op, isRunning) || IS_GH_PAGES_MODE}
                   onClick={() => handleRun(op)}
                 >
-                  {isRunning ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Play className="h-3.5 w-3.5" />
-                  )}
+                  {isRunning && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
                   {IS_GH_PAGES_MODE ? "Disabled in Demo" : isRunning ? "Running…" : "Run"}
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={!!confirmOp} onOpenChange={(open) => !open && setConfirmOp(null)}>
@@ -502,11 +468,22 @@ export default function DatabaseOperations() {
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm">
-              {activeIsRunning && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-              {activeState?.status === "success" && (
-                <CheckCircle2 className="h-4 w-4 text-[hsl(var(--positive))]" />
+              {activeIsRunning && (
+                <Loader2
+                  className="h-4 w-4 animate-spin text-muted-foreground"
+                  aria-hidden="true"
+                />
               )}
-              {activeState?.status === "error" && <XCircle className="h-4 w-4 text-destructive" />}
+              {activeState?.status === "success" && (
+                <span className="text-positive" aria-hidden="true">
+                  OK
+                </span>
+              )}
+              {activeState?.status === "error" && (
+                <span className="text-negative" aria-hidden="true">
+                  ERR
+                </span>
+              )}
               {activeOp?.title}
             </DialogTitle>
             <DialogDescription>
@@ -519,17 +496,22 @@ export default function DatabaseOperations() {
           {activeOp?.streamable ? (
             <TerminalOutput lines={activeLogs} running={activeIsRunning} />
           ) : (
-            <div className="rounded-md bg-background border border-border p-3 max-h-64 overflow-y-auto font-mono text-xs">
-              {activeLogs.map((log, i) => (
-                <p
-                  // append-only log buffer; index is a stable identity
-                  key={i}
-                  className="text-muted-foreground leading-relaxed whitespace-pre-wrap"
-                >
-                  {log}
-                </p>
-              ))}
-              <div ref={logEndRef} />
+            <div className="frame bg-background overflow-hidden">
+              <div className="frame-title">
+                <PanelTitle>Output</PanelTitle>
+              </div>
+              <div className="p-3 max-h-64 overflow-y-auto font-mono text-xs">
+                {activeLogs.map((log, i) => (
+                  <p
+                    // append-only log buffer; index is a stable identity
+                    key={i}
+                    className="text-muted-foreground leading-5 whitespace-pre-wrap"
+                  >
+                    {log}
+                  </p>
+                ))}
+                <div ref={logEndRef} />
+              </div>
             </div>
           )}
 

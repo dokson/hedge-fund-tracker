@@ -27,15 +27,16 @@ export function SearchInput({
   return (
     <div className={cn("relative", wrapperClassName)}>
       <Search
+        aria-hidden="true"
         className={cn(
-          "absolute top-1/2 -translate-y-1/2 text-muted-foreground",
-          isSm ? "left-2.5 h-3.5 w-3.5" : "left-3 h-4 w-4",
+          "absolute top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none",
+          isSm ? "left-2 h-3.5 w-3.5" : "left-2.5 h-4 w-4",
         )}
       />
       <Input
         placeholder={`${label}…`}
         aria-label={label}
-        className={cn(isSm ? "pl-8" : "pl-9", "bg-card border-border", className)}
+        className={cn(isSm ? "h-7 pl-7 text-xs" : "h-9 pl-8", className)}
         {...props}
       />
     </div>

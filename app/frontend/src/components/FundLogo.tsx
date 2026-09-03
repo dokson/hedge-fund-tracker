@@ -9,21 +9,39 @@ interface FundLogoProps {
   url?: string | null;
   size?: number;
   className?: string;
+  /**
+   * Default. The favicon always sits beside the fund name today, so naming it
+   * repeats the adjacent text (SC 1.1.1, axe `image-redundant-alt`). Pass
+   * `false` only where the logo stands alone.
+   */
+  decorative?: boolean;
 }
 
-function fundHue(name: string): number {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return Math.abs(h) % 360;
+/** Two initials at most: "Baupost Group" reads better than a lone "B". */
+function fundInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return words
+    .slice(0, 2)
+    .map((w) => w[0] ?? "")
+    .join("")
+    .toUpperCase();
 }
 
 /**
  * Renders the favicon of a hedge fund's website. Tries the curated
  * Cloudinary-stored asset first, falls back to icon.horse (also via
- * Cloudinary in GH Pages mode), and finally to a colored initial-letter
- * avatar when both fail.
+ * Cloudinary in GH Pages mode), and finally to a monogram tile on the neutral
+ * chip surface when both fail. The tile is a token surface, not an invented
+ * hue: a per-fund colour was a hue outside the token set, and a bare white
+ * square read as a broken image.
  */
-export function FundLogo({ fundName, url, size = 32, className = "" }: FundLogoProps) {
+export function FundLogo({
+  fundName,
+  url,
+  size = 32,
+  className = "",
+  decorative = true,
+}: FundLogoProps) {
   const candidates = useMemo(() => {
     const list: string[] = [];
     const curated = buildCuratedFaviconUrl(url);
@@ -34,27 +52,25 @@ export function FundLogo({ fundName, url, size = 32, className = "" }: FundLogoP
   }, [url, size]);
 
   const [index, setIndex] = useState(0);
+  const [loaded, setLoaded] = useState(false);
   const src = candidates[index];
 
   if (!src) {
-    const hue = fundHue(fundName);
-    const initials = fundName.slice(0, 1).toUpperCase();
     return (
       <div
-        role="img"
-        aria-label={`${fundName} logo`}
-        className={`rounded flex items-center justify-center font-sans font-semibold select-none ${className}`}
+        role={decorative ? undefined : "img"}
+        aria-hidden={decorative || undefined}
+        aria-label={decorative ? undefined : `${fundName} logo`}
+        className={`flex items-center justify-center rounded-sm border border-border bg-muted font-semibold text-muted-foreground select-none ${className}`}
         style={{
           width: size,
           height: size,
           flexShrink: 0,
-          background: `hsl(${hue} 55% 32%)`,
-          color: "white",
-          fontSize: Math.round(size * 0.55),
+          fontSize: Math.round(size * 0.4),
           letterSpacing: "-0.02em",
         }}
       >
-        {initials}
+        {fundInitials(fundName)}
       </div>
     );
   }
@@ -62,11 +78,12 @@ export function FundLogo({ fundName, url, size = 32, className = "" }: FundLogoP
   return (
     <img
       src={src}
-      alt={fundName}
+      alt={decorative ? "" : fundName}
       width={size}
       height={size}
       onError={() => setIndex((i) => i + 1)}
-      className={`rounded object-contain ${className}`}
+      onLoad={() => setLoaded(true)}
+      className={`rounded-sm border border-border object-contain ${loaded ? "bg-white p-px" : "bg-card"} ${className}`}
       style={{ width: size, height: size, flexShrink: 0 }}
       loading="lazy"
     />

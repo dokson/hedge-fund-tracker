@@ -8,6 +8,7 @@ interface CusipAutocompleteProps {
   onChange: (value: string) => void;
   onValidChange?: (valid: boolean) => void;
   className?: string;
+  id?: string;
   placeholder?: string;
 }
 
@@ -16,6 +17,7 @@ export default function CusipAutocomplete({
   onChange,
   onValidChange,
   className = "",
+  id,
   placeholder = "e.g. 594918104",
 }: CusipAutocompleteProps) {
   const [open, setOpen] = useState(false);
@@ -113,6 +115,7 @@ export default function CusipAutocomplete({
   return (
     <div ref={wrapperRef} className="relative">
       <Input
+        id={id}
         value={value}
         onChange={(e) => {
           onChange(e.target.value.toUpperCase());
@@ -122,11 +125,15 @@ export default function CusipAutocomplete({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         size={9}
-        className={`${className} font-mono uppercase ${showError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+        className={`${className} font-mono uppercase ${showError ? "border-destructive" : ""}`}
       />
-      {showError && <p className="text-[10px] text-destructive mt-0.5 absolute">CUSIP not found</p>}
+      {showError && <p className="text-[11px] text-destructive mt-0.5 absolute">CUSIP not found</p>}
       {open && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 w-72 rounded-md border border-border bg-popover shadow-md overflow-hidden">
+        <div
+          role="listbox"
+          aria-label="CUSIP suggestions"
+          className="absolute z-50 mt-1 w-72 overflow-hidden rounded-md border border-border bg-popover shadow-md"
+        >
           {suggestions.map((item, idx) => {
             const isHighlighted = idx === highlightIdx;
             return (
@@ -136,7 +143,7 @@ export default function CusipAutocomplete({
                 aria-selected={isHighlighted}
                 tabIndex={-1}
                 className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer transition-colors ${
-                  isHighlighted ? "bg-primary text-primary-foreground" : "hover:bg-accent/50"
+                  isHighlighted ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                 }`}
                 onMouseDown={() => selectCusip(item.cusip)}
                 onMouseEnter={() => setHighlightIdx(idx)}

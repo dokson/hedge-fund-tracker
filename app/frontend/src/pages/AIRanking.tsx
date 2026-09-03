@@ -1,6 +1,8 @@
 import { Fragment, useState } from "react";
 import { formatValue } from "@/lib/dataService";
-import { stockPath, aiDiligenceFor } from "@/lib/routes";
+import { stockPath, aiDiligenceFor, ROUTES } from "@/lib/routes";
+import { canonicalUrl } from "@/lib/seo";
+import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useAIRun } from "@/hooks/useAIRun";
 import { runPromiseScoreStream } from "@/lib/aiClient";
@@ -11,8 +13,10 @@ import AIEmptyState from "@/components/ai/AIEmptyState";
 
 import { Button } from "@/components/ui/button";
 import ModelSelector from "@/components/ModelSelector";
-import { Brain, ChevronDown, ChevronUp, Search } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
+import { TableFrame } from "@/components/ui/TableFrame";
+import { PanelTitle } from "@/components/ui/PanelTitle";
 
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -65,32 +69,33 @@ function ScoreBadge({ score, invert = false }: { score: number; invert?: boolean
   // thresholds: low score → green, high score → red.
   const good = invert ? score <= 20 : score >= 80;
   const mid = invert ? score <= 40 : score >= 60;
-  const bg = good
-    ? "bg-positive/15 text-positive"
-    : mid
-      ? "bg-warning/15 text-warning"
-      : "bg-negative/15 text-negative";
+  const tone = good ? "text-positive" : mid ? "text-warning" : "text-negative";
+  return <span className={`chip tabular-nums ${tone}`}>{score}</span>;
+}
+
+function SignedCount({ value, className = "" }: { value: number; className?: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-bold font-mono ${bg}`}
+      className={`tabular-nums ${value >= 0 ? "delta-positive" : "delta-negative"} ${className}`}
     >
-      {score}
+      {value >= 0 ? "+" : ""}
+      {value}
     </span>
   );
 }
 
 /**
- * Mobile card for one ranked stock. The 12-column table can't fit a phone, so
- * below `md` each result becomes a card: rank + ticker with the hero Promise
- * score on the headline, the secondary scores + stats in a labelled grid, and
- * the two navigation actions inline (no nested expand row).
+ * Mobile row for one ranked stock. The 12-column table can't fit a phone, so
+ * below `md` each result is a frame row: rank + ticker with the Promise score
+ * on the headline, the secondary scores in a labelled grid, and the two
+ * navigation actions inline.
  */
-function RankCard({ s, onNavigate }: { s: RankedStock; onNavigate: (path: string) => void }) {
+function RankRow({ s, onNavigate }: { s: RankedStock; onNavigate: (path: string) => void }) {
   return (
-    <div className="surface p-3.5">
+    <li className="border-b border-border/60 py-3 last:border-0">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-mono text-xs text-muted-foreground shrink-0">#{s.rank}</span>
+          <span className="text-xs text-muted-foreground shrink-0 tabular-nums">#{s.rank}</span>
           <TickerLink ticker={s.ticker} />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -98,67 +103,76 @@ function RankCard({ s, onNavigate }: { s: RankedStock; onNavigate: (path: string
           <ScoreBadge score={s.promiseScore} />
         </div>
       </div>
-      <div className="mt-2">
+      <div className="mt-1">
         <CompanyLink ticker={s.ticker} company={s.company} showStar />
       </div>
-      <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-3 gap-x-2 gap-y-3 text-center">
+      <dl className="mt-3 grid grid-cols-3 gap-x-2 gap-y-3 text-center">
         <div>
-          <div className="metric-label">Growth</div>
-          <div className="mt-1">
+          <dt className="metric-label">Growth</dt>
+          <dd className="mt-1">
             <ScoreBadge score={s.growthScore} />
-          </div>
+          </dd>
         </div>
         <div>
-          <div className="metric-label">Momentum</div>
-          <div className="mt-1">
+          <dt className="metric-label">Momentum</dt>
+          <dd className="mt-1">
             <ScoreBadge score={s.momentumScore} />
-          </div>
+          </dd>
         </div>
         <div>
-          <div className="metric-label">Low Vol</div>
-          <div className="mt-1">
+          <dt className="metric-label">Low Vol</dt>
+          <dd className="mt-1">
             <ScoreBadge score={s.lowVolatilityScore} />
-          </div>
+          </dd>
         </div>
         <div>
-          <div className="metric-label">Risk</div>
-          <div className="mt-1">
+          <dt className="metric-label">Risk</dt>
+          <dd className="mt-1">
             <ScoreBadge score={s.riskScore} invert />
-          </div>
+          </dd>
         </div>
         <div>
-          <div className="metric-label">Holders</div>
-          <div className="mt-1 font-mono text-sm">{s.holderCount}</div>
+          <dt className="metric-label">Holders</dt>
+          <dd className="mt-1 text-[13px] tabular-nums">{s.holderCount}</dd>
         </div>
         <div>
-          <div className="metric-label">Net Buyers</div>
-          <div
-            className={`mt-1 font-mono text-sm ${s.netBuyers >= 0 ? "delta-positive" : "delta-negative"}`}
-          >
-            {s.netBuyers >= 0 ? "+" : ""}
-            {s.netBuyers}
-          </div>
+          <dt className="metric-label">Net Buyers</dt>
+          <dd className="mt-1 text-sm">
+            <SignedCount value={s.netBuyers} />
+          </dd>
         </div>
-      </div>
-      <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between gap-3">
+      </dl>
+      <div className="mt-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="metric-label">Total Value</div>
-          <div className="mt-0.5 font-mono text-sm">{formatValue(s.totalValue)}</div>
+          <span className="metric-label">Total Value</span>
+          <div className="text-[13px] tabular-nums">{formatValue(s.totalValue)}</div>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => onNavigate(stockPath(s.ticker))}>
+          <Button variant="secondary" size="sm" onClick={() => onNavigate(stockPath(s.ticker))}>
             Analysis
           </Button>
-          <Button variant="outline" size="sm" onClick={() => onNavigate(aiDiligenceFor(s.ticker))}>
-            <Brain className="h-3 w-3 mr-1" /> Diligence
+          <Button
+            variant="secondary"
+            size="sm"
+            className="text-magenta"
+            onClick={() => onNavigate(aiDiligenceFor(s.ticker))}
+          >
+            Diligence
           </Button>
         </div>
       </div>
-    </div>
+    </li>
   );
 }
 
 export default function AIRanking() {
+  usePageMeta({
+    title: pageTitle("Most Promising Stocks"),
+    description:
+      "An AI-weighted Promise Score ranking the stocks with the strongest institutional thesis: holders, net buyers, conviction and flows.",
+    canonical: canonicalUrl(ROUTES.aiRanking),
+  });
+
   const navigate = useNavigate();
   const { latestQuarter: quarter } = useAvailableQuarters();
   const [topN] = useState(20);
@@ -234,24 +248,30 @@ export default function AIRanking() {
 
   return (
     <div className="space-y-6 max-w-screen-2xl">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <span className="eyebrow">AI ranking</span>
-          <h1 className="page-title mt-1.5">
-            <Search className="page-title-icon" /> Most Promising Stocks
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1.5">
-            AI-powered discovery of the most promising stocks based on latest institutional data
-          </p>
-        </div>
+      <div className="space-y-1.5">
+        <h1 className="page-title text-magenta">Most Promising Stocks</h1>
+        <p className="text-sm text-muted-foreground">
+          AI-powered discovery of the most promising stocks based on latest institutional data
+        </p>
       </div>
+
+      {isReadOnly && (
+        <LocalOnlyNotice
+          description="AI-powered discovery requires a local Python backend and API keys. This live demo shows the interface only. To use this feature, run the app locally with your own API keys."
+          sample={
+            isSample && {
+              label: "Sample ranking",
+              subject: sampleRanking.quarter,
+              generatedAt: sampleRanking.generated_at,
+            }
+          }
+        />
+      )}
 
       {/* Controls */}
       <div className="flex gap-3 items-end flex-wrap">
         <div className="space-y-1 w-full sm:w-auto">
-          <span className="block text-[10px] text-muted-foreground uppercase tracking-wider">
-            Model
-          </span>
+          <span className="metric-label block">Model</span>
           <ModelSelector
             value={selectedModel}
             onChange={setSelectedModel}
@@ -261,241 +281,236 @@ export default function AIRanking() {
           />
         </div>
         <Button className="w-full sm:w-auto" onClick={runAnalysis} disabled={loading || isReadOnly}>
-          <Brain className="h-4 w-4 mr-1" /> {hasResults ? "Re-run" : "Run"}
+          {hasResults ? "Re-run" : "Run"}
         </Button>
       </div>
-
-      {isReadOnly && (
-        <LocalOnlyNotice
-          description="AI-powered discovery requires a local Python backend and API keys. This live demo shows the interface only. To use this feature, run the app locally with your own API keys."
-          sampleNote={
-            isSample && (
-              <>
-                Below is a sample ranking for{" "}
-                <span className="font-mono">{sampleRanking.quarter}</span>
-                {(sampleRanking as { generated_at?: string }).generated_at && (
-                  <>
-                    {" "}
-                    generated on{" "}
-                    <span className="font-mono">
-                      {(sampleRanking as { generated_at?: string }).generated_at}
-                    </span>
-                  </>
-                )}
-                .
-              </>
-            )
-          }
-        />
-      )}
 
       {(loading || terminalLines.length > 0) && !hasResults && (
         <TerminalOutput lines={terminalLines} running={loading} />
       )}
 
       {weights && !loading && (
-        <div className="surface p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs text-muted-foreground uppercase tracking-wider">
-              AI-Selected Promise Score Weights
-            </h3>
+        <div className="frame">
+          <div className="frame-title">
+            <PanelTitle className="text-magenta">AI-selected Promise Score weights</PanelTitle>
             {modelUsed && (
-              <span className="text-[10px] text-muted-foreground font-mono">
-                Model: {modelUsed}
+              <span className="status-line font-normal">
+                <span className="k">Model</span> {modelUsed}
               </span>
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <ul className="flex flex-wrap gap-2 p-3">
             {Object.entries(weights)
               .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a))
               .map(([key, val]) => (
-                <span
+                <li
                   key={key}
-                  className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-mono ${
-                    val >= 0 ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative"
-                  }`}
+                  className={`chip tabular-nums ${val >= 0 ? "text-positive" : "text-negative"}`}
                 >
                   {key}: {val >= 0 ? "+" : ""}
                   {(val * 100).toFixed(0)}%
-                </span>
+                </li>
               ))}
-          </div>
+          </ul>
         </div>
       )}
 
       {hasResults && !loading && (
         <>
-          {/* Mobile: card list */}
-          <div className="md:hidden space-y-3">
+          {/* Mobile: frame rows */}
+          <ul className="md:hidden frame px-3" aria-label="AI ranking">
             {displayResults.map((s) => (
-              <RankCard key={s.ticker} s={s} onNavigate={navigate} />
+              <RankRow key={s.ticker} s={s} onNavigate={navigate} />
             ))}
-          </div>
+          </ul>
 
           {/* Desktop: full ranking table */}
-          <div className="surface overflow-hidden hidden md:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
-                  <th className="text-left p-3 font-medium w-12">#</th>
-                  <th className="text-left p-3 font-medium">Ticker</th>
-                  <th className="text-left p-3 font-medium">Company</th>
-                  <ColumnHeader
-                    label="Promise"
-                    align="center"
-                    tooltip="Aggregate AI score (1–100) combining institutional metrics (holders, net buyers, conviction, flows) using AI-selected weights for the current market regime. Higher = stronger institutional thesis."
-                  />
-                  <ColumnHeader
-                    label="Growth"
-                    align="center"
-                    tooltip="Contrarian upside potential (1–100), derived from price change since the filing date. HIGHER = price has dropped (more upside potential left). 100 = price down ≥40%; 55–65 = roughly flat; ≤10 = stock has run up ≥40% (less upside left)."
-                  />
-                  <ColumnHeader
-                    label="Momentum"
-                    align="center"
-                    tooltip="Strength of the stock's recent price trend and market enthusiasm (1–100). 90+ = explosive uptrend; 50–69 = moderate; <30 = strong downtrend or selling pressure."
-                  />
-                  <ColumnHeader
-                    label="Low Vol"
-                    align="center"
-                    tooltip="Price stability score (1–100). Higher = more stable price action and lower historical volatility. 90+ = very low beta, minimal drawdowns; <30 = high-beta, speculative price action."
-                  />
-                  <ColumnHeader
-                    label="Risk"
-                    align="center"
-                    tooltip="Potential for permanent capital loss or extreme downside (1–100). Higher = more risk. 90+ = speculative/distressed; <30 = blue-chip, predictable cash flows."
-                  />
-                  <ColumnHeader
-                    label="Holders"
-                    align="right"
-                    tooltip="Number of tracked institutions currently holding this stock. Measures consensus and breadth of institutional ownership."
-                  />
-                  <ColumnHeader
-                    label="Net Buyers"
-                    align="right"
-                    tooltip="Buyer_Count minus Seller_Count among tracked institutions this quarter. Positive = net institutional accumulation; negative = net distribution."
-                  />
-                  <ColumnHeader
-                    label="Value"
-                    align="right"
-                    tooltip="Aggregate dollar value of this stock held across all tracked institutions at quarter-end."
-                  />
-                  <th className="p-3 w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayResults.map((s) => (
-                  <Fragment key={s.ticker}>
-                    <tr
-                      key={s.ticker}
-                      className="data-table-row cursor-pointer"
-                      onClick={() => setExpandedRow(expandedRow === s.ticker ? null : s.ticker)}
-                    >
-                      <td className="p-3 font-mono text-muted-foreground">{s.rank}</td>
-                      <td className="p-3">
-                        <TickerLink ticker={s.ticker} />
-                      </td>
-                      <td className="p-3">
-                        <CompanyLink
-                          ticker={s.ticker}
-                          company={s.company}
-                          className="max-w-[180px] xl:max-w-[260px]"
-                          showStar
-                        />
-                      </td>
-                      <td className="p-3 text-center">
-                        <ScoreBadge score={s.promiseScore} />
-                      </td>
-                      <td className="p-3 text-center">
-                        <ScoreBadge score={s.growthScore} />
-                      </td>
-                      <td className="p-3 text-center">
-                        <ScoreBadge score={s.momentumScore} />
-                      </td>
-                      <td className="p-3 text-center">
-                        <ScoreBadge score={s.lowVolatilityScore} />
-                      </td>
-                      <td className="p-3 text-center">
-                        <ScoreBadge score={s.riskScore} invert />
-                      </td>
-                      <td className="p-3 text-right font-mono">{s.holderCount}</td>
-                      <td
-                        className={`p-3 text-right font-mono ${
-                          s.netBuyers >= 0 ? "delta-positive" : "delta-negative"
-                        }`}
-                      >
-                        {s.netBuyers >= 0 ? "+" : ""}
-                        {s.netBuyers}
-                      </td>
-                      <td className="p-3 text-right font-mono">{formatValue(s.totalValue)}</td>
-                      <td className="p-3">
-                        {expandedRow === s.ticker ? (
-                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </td>
-                    </tr>
-                    {expandedRow === s.ticker && (
-                      <tr key={`${s.ticker}-detail`}>
-                        <td
-                          colSpan={12}
-                          className="px-6 py-4 bg-muted/30 text-sm text-muted-foreground border-b border-border"
+          <div className="frame hidden md:block">
+            <TableFrame label="AI ranking of the most promising stocks">
+              <table
+                className="w-full text-sm"
+                aria-label="AI ranking of the most promising stocks"
+              >
+                <thead>
+                  <tr className="text-xs">
+                    <th scope="col" className="text-left p-3 w-12">
+                      #
+                    </th>
+                    <th scope="col" className="text-left p-3">
+                      Ticker
+                    </th>
+                    <th scope="col" className="text-left p-3">
+                      Company
+                    </th>
+                    <ColumnHeader
+                      label="Promise"
+                      align="center"
+                      tooltip="Aggregate AI score (1–100) combining institutional metrics (holders, net buyers, conviction, flows) using AI-selected weights for the current market regime. Higher = stronger institutional thesis."
+                    />
+                    <ColumnHeader
+                      label="Growth"
+                      align="center"
+                      tooltip="Contrarian upside potential (1–100), derived from price change since the filing date. HIGHER = price has dropped (more upside potential left). 100 = price down ≥40%; 55–65 = roughly flat; ≤10 = stock has run up ≥40% (less upside left)."
+                    />
+                    <ColumnHeader
+                      label="Momentum"
+                      align="center"
+                      tooltip="Strength of the stock's recent price trend and market enthusiasm (1–100). 90+ = explosive uptrend; 50–69 = moderate; <30 = strong downtrend or selling pressure."
+                    />
+                    <ColumnHeader
+                      label="Low Vol"
+                      align="center"
+                      tooltip="Price stability score (1–100). Higher = more stable price action and lower historical volatility. 90+ = very low beta, minimal drawdowns; <30 = high-beta, speculative price action."
+                    />
+                    <ColumnHeader
+                      label="Risk"
+                      align="center"
+                      tooltip="Potential for permanent capital loss or extreme downside (1–100). Higher = more risk. 90+ = speculative/distressed; <30 = blue-chip, predictable cash flows."
+                    />
+                    <ColumnHeader
+                      label="Holders"
+                      align="right"
+                      tooltip="Number of tracked institutions currently holding this stock. Measures consensus and breadth of institutional ownership."
+                    />
+                    <ColumnHeader
+                      label="Net Buyers"
+                      align="right"
+                      tooltip="Buyer_Count minus Seller_Count among tracked institutions this quarter. Positive = net institutional accumulation; negative = net distribution."
+                    />
+                    <ColumnHeader
+                      label="Value"
+                      align="right"
+                      tooltip="Aggregate dollar value of this stock held across all tracked institutions at quarter-end."
+                    />
+                    <th scope="col" className="p-3 w-10">
+                      <span className="sr-only">Details</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayResults.map((s) => {
+                    const expanded = expandedRow === s.ticker;
+                    return (
+                      <Fragment key={s.ticker}>
+                        <tr
+                          className="data-table-row cursor-pointer"
+                          onClick={() => setExpandedRow(expanded ? null : s.ticker)}
                         >
-                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div>
-                              <p className="text-xs uppercase tracking-wider mb-1">
-                                High Conviction
-                              </p>
-                              <p className="font-mono font-bold">{s.highConvictionCount}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs uppercase tracking-wider mb-1">Total Value</p>
-                              <p className="font-mono font-bold">{formatValue(s.totalValue)}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs uppercase tracking-wider mb-1">Holders</p>
-                              <p className="font-mono font-bold">{s.holderCount}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs uppercase tracking-wider mb-1">Net Buyers</p>
-                              <p
-                                className={`font-mono font-bold ${s.netBuyers >= 0 ? "delta-positive" : "delta-negative"}`}
-                              >
-                                {s.netBuyers >= 0 ? "+" : ""}
-                                {s.netBuyers}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="mt-3 flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
+                          <td className="p-3 text-muted-foreground tabular-nums">{s.rank}</td>
+                          <td className="p-3">
+                            <TickerLink ticker={s.ticker} />
+                          </td>
+                          <td className="p-3">
+                            <CompanyLink
+                              ticker={s.ticker}
+                              company={s.company}
+                              className="max-w-[180px] xl:max-w-[260px]"
+                              showStar
+                            />
+                          </td>
+                          <td className="p-3 text-center">
+                            <ScoreBadge score={s.promiseScore} />
+                          </td>
+                          <td className="p-3 text-center">
+                            <ScoreBadge score={s.growthScore} />
+                          </td>
+                          <td className="p-3 text-center">
+                            <ScoreBadge score={s.momentumScore} />
+                          </td>
+                          <td className="p-3 text-center">
+                            <ScoreBadge score={s.lowVolatilityScore} />
+                          </td>
+                          <td className="p-3 text-center">
+                            <ScoreBadge score={s.riskScore} invert />
+                          </td>
+                          <td className="p-3 text-right tabular-nums">{s.holderCount}</td>
+                          <td className="p-3 text-right">
+                            <SignedCount value={s.netBuyers} />
+                          </td>
+                          <td className="p-3 text-right tabular-nums">
+                            {formatValue(s.totalValue)}
+                          </td>
+                          <td className="p-1">
+                            <button
+                              type="button"
+                              aria-expanded={expanded}
+                              aria-label={`${expanded ? "Hide" : "Show"} details for ${s.ticker}`}
+                              className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground transition-colors duration-[120ms] hover:bg-muted hover:text-foreground"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                void navigate(stockPath(s.ticker));
+                                setExpandedRow(expanded ? null : s.ticker);
                               }}
                             >
-                              View Stock Analysis
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void navigate(aiDiligenceFor(s.ticker));
-                              }}
+                              {expanded ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                        {expanded && (
+                          <tr>
+                            <td
+                              colSpan={12}
+                              className="px-6 py-4 bg-muted/40 text-[13px] text-muted-foreground border-b border-border/60"
                             >
-                              <Brain className="h-3 w-3 mr-1" /> AI Due Diligence
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
+                              <dl className="grid grid-cols-2 lg:grid-cols-4 gap-px rounded-sm border border-border bg-border overflow-hidden">
+                                <div className="bg-card p-3">
+                                  <dt className="metric-label">High Conviction</dt>
+                                  <dd className="text-foreground tabular-nums">
+                                    {s.highConvictionCount}
+                                  </dd>
+                                </div>
+                                <div className="bg-card p-3">
+                                  <dt className="metric-label">Total Value</dt>
+                                  <dd className="text-foreground tabular-nums">
+                                    {formatValue(s.totalValue)}
+                                  </dd>
+                                </div>
+                                <div className="bg-card p-3">
+                                  <dt className="metric-label">Holders</dt>
+                                  <dd className="text-foreground tabular-nums">{s.holderCount}</dd>
+                                </div>
+                                <div className="bg-card p-3">
+                                  <dt className="metric-label">Net Buyers</dt>
+                                  <dd>
+                                    <SignedCount value={s.netBuyers} />
+                                  </dd>
+                                </div>
+                              </dl>
+                              <div className="mt-3 flex gap-2">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void navigate(stockPath(s.ticker));
+                                  }}
+                                >
+                                  View Stock Analysis
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="text-magenta"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void navigate(aiDiligenceFor(s.ticker));
+                                  }}
+                                >
+                                  AI Due Diligence
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableFrame>
           </div>
         </>
       )}

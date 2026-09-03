@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SECTOR_STYLE, SECTOR_STYLE, getSectorStyle } from "./sectorStyle";
+import { DEFAULT_SECTOR_STYLE, SECTOR_STYLE, getSectorStyle, sectorPillStyle } from "./sectorStyle";
 
 describe("getSectorStyle", () => {
   it("returns the registered style for a known Yahoo sector", () => {
@@ -23,13 +23,26 @@ describe("getSectorStyle", () => {
     expect(getSectorStyle("Crypto Mining")).toBe(DEFAULT_SECTOR_STYLE);
   });
 
-  it("every registered style exposes the four token classes used by chips", () => {
+  it("keeps the neutral for unknown sectors only", () => {
+    expect(DEFAULT_SECTOR_STYLE.token).toBe("muted-foreground");
     for (const style of Object.values(SECTOR_STYLE)) {
-      expect(style.color).toMatch(/^text-/);
-      expect(style.bg).toMatch(/^bg-/);
-      expect(style.border).toMatch(/^border-/);
-      expect(style.dot).toMatch(/^bg-/);
+      expect(style.token).not.toBe("muted-foreground");
+    }
+  });
+
+  it("every registered style exposes a token, its resolved colour and an icon", () => {
+    for (const style of Object.values(SECTOR_STYLE)) {
+      expect(style.token).toMatch(/^chart-[1-7]$/);
+      expect(style.cssVar).toBe(`hsl(var(--${style.token}))`);
       expect(style.icon).toBeDefined();
     }
+  });
+
+  it("sectorPillStyle passes the hue inline, so nothing depends on the class scanner", () => {
+    // The label reads on the neutral chip surface; the hue reaches the icon
+    // alone through the custom property, so no 15% wash of the hue is emitted.
+    expect(sectorPillStyle(SECTOR_STYLE.Technology!)).toEqual({
+      "--sector-hue": "hsl(var(--chart-1))",
+    });
   });
 });

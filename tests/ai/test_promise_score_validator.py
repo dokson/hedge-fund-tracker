@@ -192,5 +192,40 @@ class TestPromiseScoreValidatorValidateMetrics(unittest.TestCase):
         self.assertEqual(result, [])
 
 
+class TestValidateMetricCount(unittest.TestCase):
+    def test_accepts_counts_inside_the_range(self):
+        """
+        Returns an empty message for any count between MIN_METRICS and MAX_METRICS.
+        """
+        for count in range(
+            PromiseScoreValidator.MIN_METRICS, PromiseScoreValidator.MAX_METRICS + 1
+        ):
+            weights = {f"Metric{i}": 0.1 for i in range(count)}
+
+            self.assertEqual(PromiseScoreValidator.validate_metric_count(weights), "")
+
+    def test_rejects_too_few_metrics(self):
+        """
+        Returns an explanatory message naming the minimum when too few metrics are used.
+        """
+        weights = {f"Metric{i}": 0.2 for i in range(PromiseScoreValidator.MIN_METRICS - 1)}
+
+        message = PromiseScoreValidator.validate_metric_count(weights)
+
+        self.assertIn(str(PromiseScoreValidator.MIN_METRICS), message)
+        self.assertIn("minimum", message)
+
+    def test_rejects_too_many_metrics(self):
+        """
+        Returns an explanatory message naming the maximum when too many metrics are used.
+        """
+        weights = {f"Metric{i}": 0.05 for i in range(PromiseScoreValidator.MAX_METRICS + 1)}
+
+        message = PromiseScoreValidator.validate_metric_count(weights)
+
+        self.assertIn(str(PromiseScoreValidator.MAX_METRICS), message)
+        self.assertIn("maximum", message)
+
+
 if __name__ == "__main__":
     unittest.main()

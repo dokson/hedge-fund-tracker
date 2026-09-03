@@ -36,6 +36,16 @@ def _model_overloaded() -> ServerError:
     )
 
 
+def _assert_afc_disabled(case: unittest.TestCase, config) -> None:
+    """
+    google-genai >= 2.21 warns on every generate_content call unless AFC is
+    disabled explicitly, so EVERY call must carry a config that disables it.
+    """
+    case.assertIsNotNone(config)
+    case.assertIsNotNone(config.automatic_function_calling)
+    case.assertTrue(config.automatic_function_calling.disable)
+
+
 class TestGoogleAIClient(unittest.TestCase):
     def setUp(self):
         # Patch genai.Client globally for the setup to avoid ValueError in CI
@@ -77,8 +87,9 @@ class TestGoogleAIClient(unittest.TestCase):
         call_kwargs = self.mock_instance.models.generate_content.call_args.kwargs
         self.assertEqual(call_kwargs["model"], "gemini-3.5-flash")
         self.assertEqual(call_kwargs["contents"], prompt)
-        thinking_config = call_kwargs["config"].thinking_config
-        self.assertEqual(thinking_config.thinking_level, types.ThinkingLevel.LOW)
+        config = call_kwargs["config"]
+        _assert_afc_disabled(self, config)
+        self.assertEqual(config.thinking_config.thinking_level, types.ThinkingLevel.LOW)
 
         # Verify provider name in get_model_name
         self.assertEqual(self.client.get_model_name(), "google/gemini-3.5-flash")
@@ -98,7 +109,27 @@ class TestGoogleAIClient(unittest.TestCase):
         self.assertEqual(response, "Mocked Gemini response")
         self.assertEqual(self.mock_instance.models.generate_content.call_count, 2)
         last_call_kwargs = self.mock_instance.models.generate_content.call_args.kwargs
-        self.assertNotIn("config", last_call_kwargs)
+        # The retry drops thinking_config but must keep the AFC-disabling config.
+        last_config = last_call_kwargs["config"]
+        _assert_afc_disabled(self, last_config)
+        self.assertIsNone(last_config.thinking_config)
+
+    def test_disables_automatic_function_calling_on_every_call(self):
+        """
+        Both the thinking attempt and the no-thinking retry must disable AFC,
+        or google-genai logs its "direct use of AFC" warning on each call.
+        """
+        self.mock_instance.models.generate_content.side_effect = [
+            _thinking_level_rejected(),
+            self.mock_response,
+        ]
+
+        self.client.generate_content("Hello, Gemini!")
+
+        calls = self.mock_instance.models.generate_content.call_args_list
+        self.assertEqual(len(calls), 2)
+        for call in calls:
+            _assert_afc_disabled(self, call.kwargs["config"])
 
     def test_skips_thinking_config_on_subsequent_calls_after_rejection(self):
         """
@@ -116,7 +147,9 @@ class TestGoogleAIClient(unittest.TestCase):
 
         self.assertEqual(self.mock_instance.models.generate_content.call_count, 3)
         last_call_kwargs = self.mock_instance.models.generate_content.call_args.kwargs
-        self.assertNotIn("config", last_call_kwargs)
+        last_config = last_call_kwargs["config"]
+        _assert_afc_disabled(self, last_config)
+        self.assertIsNone(last_config.thinking_config)
 
     def test_falls_back_to_configured_model_when_primary_is_overloaded(self):
         """
@@ -134,6 +167,7 @@ class TestGoogleAIClient(unittest.TestCase):
         self.assertEqual(self.mock_instance.models.generate_content.call_count, 2)
         last_call_kwargs = self.mock_instance.models.generate_content.call_args.kwargs
         self.assertEqual(last_call_kwargs["model"], GoogleAIClient.FALLBACK_MODEL)
+        _assert_afc_disabled(self, last_call_kwargs["config"])
         # The client remembers the switch, so later calls / logging reflect it.
         self.assertEqual(self.client.get_model_name(), f"google/{GoogleAIClient.FALLBACK_MODEL}")
 

@@ -27,7 +27,6 @@ services:
       - VERIFICATION_TOKEN_SECRET=${VERIFICATION_TOKEN_SECRET:?VERIFICATION_TOKEN_SECRET required}
       # Optional BYOK provider credentials (legacy env-var path; deprecated).
       - FMP_API_KEY=${FMP_API_KEY:-}
-      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - HF_TOKEN=${HF_TOKEN:-}

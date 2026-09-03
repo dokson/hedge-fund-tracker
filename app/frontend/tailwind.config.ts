@@ -1,5 +1,17 @@
 import type { Config } from "tailwindcss";
 
+// One family everywhere, the system sans. `mono` and `display` are
+// compatibility aliases so existing call sites resolve to it without a rename.
+const SANS = [
+  "-apple-system",
+  "BlinkMacSystemFont",
+  '"Segoe UI"',
+  "Roboto",
+  '"Helvetica Neue"',
+  "Arial",
+  "sans-serif",
+];
+
 export default {
   darkMode: ["class"],
   content: [
@@ -19,9 +31,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Inter Tight", "Inter", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+        sans: SANS,
+        mono: SANS,
+        display: SANS,
       },
       colors: {
         border: "hsl(var(--border))",
@@ -29,9 +41,13 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        magenta: "hsl(var(--magenta))",
+        info: "hsl(var(--info))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          // Link/label blue: --primary itself is too dark on a panel.
+          text: "hsl(var(--primary-text))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -81,10 +97,27 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      // Terminal radii: 4px is the panel, 2px the tag, 6px the widest a
+      // surface goes. Nothing here is pill-shaped.
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        none: "0",
+        sm: "2px",
+        DEFAULT: "4px",
+        md: "4px",
+        lg: "6px",
+        xl: "6px",
+        "2xl": "6px",
+        "3xl": "6px",
+        full: "9999px",
+      },
+      // Only floating surfaces cast anything; panels are separated by hairlines.
+      boxShadow: {
+        sm: "none",
+        DEFAULT: "none",
+        md: "0 2px 8px rgb(0 0 0 / 0.35)",
+        lg: "0 2px 8px rgb(0 0 0 / 0.35)",
+        xl: "0 2px 8px rgb(0 0 0 / 0.35)",
+        "2xl": "0 2px 8px rgb(0 0 0 / 0.35)",
       },
       keyframes: {
         "accordion-down": {
@@ -95,20 +128,10 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "pulse-glow": {
-          "0%, 100%": { opacity: "0.4" },
-          "50%": { opacity: "1" },
-        },
-        "slide-up": {
-          from: { opacity: "0", transform: "translateY(10px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
-        "slide-up": "slide-up 0.3s ease-out",
       },
     },
   },

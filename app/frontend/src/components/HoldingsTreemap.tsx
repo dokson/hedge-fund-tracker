@@ -1,6 +1,8 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { formatPct } from "@/lib/dataService";
+import { tokenAlpha } from "@/lib/seriesColors";
 
 function formatTreemapValue(n: number): string {
   const abs = Math.abs(n);
@@ -31,19 +33,28 @@ interface Props {
   /**
    * When set, cells whose name differs from it are dimmed — a visual cue that a
    * filter is active while keeping every cell clickable to switch the selection.
+   * Passing it (even as null) turns the tiles into toggles: they carry
+   * `aria-pressed`, and the active one takes the selection ring.
    */
   activeName?: string | null;
+  /**
+   * When set, cells whose name is not in it are dimmed. Used to project another
+   * treemap's selection onto this one (sector → the stocks in that sector).
+   */
+  highlightNames?: ReadonlySet<string> | null;
 }
 
+// Alpha stays at or under 0.55 so `text-foreground` reads on the tile in both
+// themes; the magnitude is carried by the step, not by a second hue.
 function getDeltaColor(deltaPct: number, delta: string): string {
-  if (delta === "NEW") return "hsl(var(--positive))";
-  if (deltaPct > 20) return "hsl(142, 71%, 40%)";
-  if (deltaPct > 5) return "hsl(142, 60%, 35%)";
-  if (deltaPct > 0) return "hsl(142, 50%, 30%)";
+  if (delta === "NEW") return tokenAlpha("positive", 0.55);
+  if (deltaPct > 20) return tokenAlpha("positive", 0.55);
+  if (deltaPct > 5) return tokenAlpha("positive", 0.38);
+  if (deltaPct > 0) return tokenAlpha("positive", 0.22);
   if (deltaPct === 0) return "hsl(var(--muted))";
-  if (deltaPct > -5) return "hsl(0, 50%, 35%)";
-  if (deltaPct > -20) return "hsl(0, 60%, 40%)";
-  return "hsl(0, 70%, 45%)";
+  if (deltaPct > -5) return tokenAlpha("negative", 0.22);
+  if (deltaPct > -20) return tokenAlpha("negative", 0.38);
+  return tokenAlpha("negative", 0.55);
 }
 
 interface TooltipState {
@@ -86,22 +97,20 @@ function TreemapTooltip({
         ? "text-[hsl(var(--positive))]"
         : "text-muted-foreground";
 
+  const DeltaIcon = isNew || up ? TrendingUp : down ? TrendingDown : Minus;
+
   return createPortal(
-    <div
-      className="pointer-events-none fixed z-[60] animate-in fade-in-0 zoom-in-95 duration-150"
-      style={{ left, top, transform: translate }}
-    >
-      <div className="flex overflow-hidden rounded-lg border border-border/80 bg-card/85 shadow-xl shadow-black/40 backdrop-blur-md">
+    <div className="pointer-events-none fixed z-[60]" style={{ left, top, transform: translate }}>
+      <div className="flex overflow-hidden rounded-md border border-border bg-popover text-xs text-popover-foreground shadow-md">
         <span aria-hidden className="w-1 shrink-0" style={{ backgroundColor: accent }} />
         <div className="px-3 py-2">
           <div className="flex items-center gap-3">
-            <span className="font-mono text-sm font-bold tracking-tight text-card-foreground">
-              {item.name}
-            </span>
+            <span className="text-sm font-semibold">{item.name}</span>
             <span
-              className={`ml-auto inline-flex items-center gap-0.5 font-mono text-[11px] font-semibold tabular-nums ${deltaTone}`}
+              className={`ml-auto inline-flex items-center gap-1 text-[11px] font-semibold tabular-nums ${deltaTone}`}
             >
-              {!isNew && (up ? "▲" : down ? "▼" : "")} {deltaLabel}
+              <DeltaIcon className="h-3 w-3" aria-hidden="true" />
+              {deltaLabel}
             </span>
           </div>
           {item.company && item.company !== item.name && (
@@ -109,7 +118,7 @@ function TreemapTooltip({
               {item.company}
             </div>
           )}
-          <div className="mt-1.5 font-mono text-base font-semibold tabular-nums text-card-foreground">
+          <div className="mt-1.5 text-base font-semibold tabular-nums">
             {displayMode === "pct" ? formatTreemapPct(item.value) : formatTreemapValue(item.value)}
           </div>
         </div>
@@ -221,8 +230,12 @@ export function HoldingsTreemap({
   onClickTicker,
   height: propHeight,
   displayMode = "value",
-  activeName = null,
+  activeName,
+  highlightNames = null,
 }: Props) {
+  // `activeName` present at all (null included) means the tiles are toggles.
+  const selectable = activeName !== undefined;
+  const active = activeName ?? null;
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null);
   const [tip, setTip] = useState<TooltipState | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -249,47 +262,57 @@ export function HoldingsTreemap({
     [data, containerHeight],
   );
 
+  // Each tile carries its own hairline, so the gaps between them read as a
+  // 1px rule and the tile keeps the site's 2px corner.
   return (
     <>
       <div
         ref={containerRef}
-        className="relative w-full rounded overflow-hidden"
+        className="relative w-full overflow-hidden"
         style={{ height: containerHeight }}
       >
         {rects.map(({ item, x, y, w, h }) => {
           const isHovered = hoveredTicker === item.name;
-          const isDimmed = activeName != null && item.name !== activeName;
+          const isSelected = active != null && item.name === active;
+          const isDimmed =
+            (active != null && !isSelected) ||
+            (highlightNames != null && !highlightNames.has(item.name));
           const bgColor = getDeltaColor(item.deltaPct, item.delta);
-          const isSmall = w < 12 || h < 28;
-          const showValue = !isSmall && h > 36;
+          const showValue = h > 40;
 
-          // Bound font by cell px width (≈0.6em/char mono) and height; fall back
-          // to the width-% heuristic until the container is measured.
+          // Bound font by cell px width (≈0.6em/char) and height; fall back
+          // to the width-% heuristic until the container is measured. Below the
+          // 11px floor the label is dropped rather than shrunk.
           const cellPx = (w / 100) * containerPx;
-          const fontSize = containerPx
-            ? Math.max(
-                6,
-                Math.min(
-                  14,
-                  (cellPx - 4) / Math.max(item.name.length, 1) / 0.6,
-                  showValue ? h * 0.45 : h * 0.7,
-                ),
+          const fitSize = containerPx
+            ? Math.min(
+                14,
+                (cellPx - 4) / Math.max(item.name.length, 1) / 0.6,
+                showValue ? h * 0.45 : h * 0.7,
               )
-            : Math.max(7, Math.min(14, isSmall ? 8 : w * 0.8));
+            : Math.min(14, w * 0.8);
+          const showLabel = fitSize >= 11;
+          const fontSize = Math.max(11, fitSize);
 
           return (
             <button
               type="button"
               key={item.name}
-              className="absolute cursor-pointer transition-opacity duration-150 flex flex-col items-center justify-center overflow-hidden"
+              aria-label={item.name}
+              aria-pressed={selectable ? isSelected : undefined}
+              className="absolute flex flex-col items-center justify-center overflow-hidden rounded-sm border border-border text-foreground transition-[opacity,filter,box-shadow] duration-[120ms]"
               style={{
                 left: `${x}%`,
                 top: y,
                 width: `${w}%`,
                 height: h,
                 backgroundColor: bgColor,
-                opacity: isHovered ? 1 : isDimmed ? 0.3 : hoveredTicker ? 0.7 : 0.9,
-                border: "1px solid hsl(var(--background) / 0.3)",
+                opacity: isHovered ? 1 : isDimmed ? 0.25 : hoveredTicker ? 0.7 : 1,
+                // Dimming desaturates too, so the delta hue does not compete
+                // with the tiles that are still in the filter.
+                filter: isDimmed && !isHovered ? "saturate(0.25)" : undefined,
+                // Inset, so the container's overflow-hidden cannot clip it.
+                boxShadow: isSelected ? "inset 0 0 0 2px hsl(var(--primary))" : undefined,
               }}
               onClick={() => onClickTicker(item.name)}
               onMouseEnter={() => setHoveredTicker(item.name)}
@@ -299,14 +322,20 @@ export function HoldingsTreemap({
                 setTip(null);
               }}
             >
-              <span
-                className="font-mono font-bold text-white drop-shadow-sm leading-tight truncate px-0.5 max-w-full"
-                style={{ fontSize }}
-              >
-                {item.name}
-              </span>
-              {showValue && (
-                <span className="text-white/70 text-[9px] leading-tight mt-0.5">
+              {showLabel && (
+                <span
+                  className="max-w-full truncate px-0.5 font-semibold leading-tight"
+                  style={{ fontSize }}
+                >
+                  {item.name}
+                </span>
+              )}
+              {showLabel && showValue && (
+                // Full foreground, not muted and not faded: on the strongest
+                // delta tints the muted tone is 1.9:1 and even foreground at
+                // 80% is 3.6:1. At 100% the worst tile is 4.65:1. Size and
+                // weight carry the hierarchy instead.
+                <span className="mt-0.5 text-[11px] leading-tight text-foreground">
                   {displayMode === "pct"
                     ? formatTreemapPct(item.value)
                     : formatTreemapValue(item.value)}

@@ -22,14 +22,16 @@ import {
   Shield,
   Save,
   Plus,
-  KeyRound,
-  Brain,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Label } from "@/components/ui/label";
+import { PanelTitle } from "@/components/ui/PanelTitle";
+import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
+import { ROUTES } from "@/lib/routes";
+import { canonicalUrl } from "@/lib/seo";
 import { Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -50,42 +52,49 @@ import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 
 export default function AISettingsPage() {
+  usePageMeta({
+    title: pageTitle("AI Settings"),
+    description:
+      "Local configuration for the AI features: provider API keys and the model catalogue used by ranking and due diligence.",
+    canonical: canonicalUrl(ROUTES.aiSettings),
+  });
+
   const [activeTab, setActiveTab] = useState<"keys" | "models">("keys");
 
   return (
     <div className="space-y-6 max-w-screen-2xl">
       <div>
-        <span className="eyebrow">Configuration</span>
-        <h1 className="page-title mt-1.5">
-          <Cpu className="page-title-icon" /> AI Settings
+        <h1 className="page-title">
+          <Cpu className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> AI Settings
         </h1>
         <p className="text-sm text-muted-foreground mt-1.5">
           Manage API keys and AI models configuration.
         </p>
       </div>
 
-      {/* Tab navigation */}
-      <div className="flex gap-1 border-b border-border">
-        <button
-          onClick={() => setActiveTab("keys")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
-            activeTab === "keys"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <KeyRound className="h-3.5 w-3.5" /> API Keys
-        </button>
-        <button
-          onClick={() => setActiveTab("models")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
-            activeTab === "models"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Brain className="h-3.5 w-3.5" /> AI Models
-        </button>
+      {/* Underline tabs: active gets the primary rule and the text colour. */}
+      <div role="tablist" className="flex items-stretch gap-1 border-b border-border">
+        {(
+          [
+            ["keys", "API Keys"],
+            ["models", "AI Models"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === id}
+            onClick={() => setActiveTab(id)}
+            className={`h-9 px-3 -mb-px border-b-2 text-[13px] transition-colors duration-[120ms] cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
+              activeTab === id
+                ? "border-primary text-foreground font-medium"
+                : "border-transparent text-muted-foreground font-normal hover:text-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {activeTab === "keys" ? <APIKeysTab /> : <ModelsTab />}
@@ -99,7 +108,6 @@ export default function AISettingsPage() {
 const API_BASE = window.location.origin;
 
 const CLIENT_TO_PROVIDER_ID: Record<string, string> = {
-  GitHub: "github",
   Google: "google",
   Groq: "groq",
   HuggingFace: "huggingface",
@@ -185,80 +193,75 @@ function APIKeysTab() {
 
   return (
     <div className="space-y-5">
-      {/* Source info */}
-      <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-        📄 Source: <code className="font-mono bg-muted px-1 py-0.5 rounded">.env</code> — API keys
-        are read from and written directly to the configuration file on disk.{" "}
-        <span className="font-semibold text-foreground">This file is not tracked by Git.</span>
-      </div>
-
-      {/* Security notice */}
-      <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-        <Shield className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-        <span>
-          API keys are stored locally and never sent to any server except the AI provider's API.
-        </span>
+      <div className="text-xs text-muted-foreground space-y-1">
+        <p>
+          Source: <code className="font-mono bg-muted px-1 py-0.5">.env</code>. Keys are read from
+          and written directly to the configuration file on disk.{" "}
+          <span className="text-foreground">This file is not tracked by Git.</span>
+        </p>
+        <p>
+          <Shield className="inline h-3.5 w-3.5 mr-1 text-muted-foreground" aria-hidden="true" />
+          Keys are stored locally and never sent to any server except the AI provider's API.
+        </p>
       </div>
 
       {IS_GH_PAGES_MODE && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 flex gap-3 items-start">
-          <Brain className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-          <div className="text-sm">
-            <p className="font-semibold text-primary">Read-Only Mode</p>
-            <p className="text-muted-foreground mt-0.5">
-              Configuration is disabled in this web demo. To manage API keys and models, please run
-              the application in your local environment.
-            </p>
+        <div className="frame text-sm" role="note">
+          <div className="frame-title">
+            <PanelTitle>Read-only mode</PanelTitle>
           </div>
+          <p className="p-3 text-muted-foreground">
+            Configuration is disabled in this web demo. To manage API keys and models, run the
+            application in your local environment.
+          </p>
         </div>
       )}
 
       {/* Provider status overview */}
-      <div className="surface p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Configured Providers</h2>
-          <Badge
-            variant="outline"
-            className={
-              configuredCount > 0 ? "text-positive border-positive/30" : "text-muted-foreground"
-            }
-          >
-            {configuredCount} / {AI_PROVIDERS.length} available
-          </Badge>
+      <div className="frame">
+        <div className="frame-title">
+          <h2>Configured providers</h2>
         </div>
+        <div className="p-3 space-y-4">
+          <div className="status-line">
+            <span className="k">Available:</span> {configuredCount} / {AI_PROVIDERS.length}
+          </div>
 
-        <div className="space-y-1.5">
-          {configuredProviders.map(({ provider, hasKey }) => {
-            const models = allModels.filter((m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id);
-            return (
-              <div key={provider.id} className="flex items-center gap-2 text-sm">
-                {hasKey ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-positive shrink-0" />
-                ) : (
-                  <XCircle className="h-3.5 w-3.5 icon-faint shrink-0" />
-                )}
-                <span className={hasKey ? "text-foreground" : "text-muted-foreground"}>
-                  {provider.name}
-                </span>
-                {hasKey && models.length > 0 && (
-                  <span className="text-[10px] text-muted-foreground ml-auto">
-                    {models.length} model{models.length > 1 ? "s" : ""}
+          <div className="space-y-1.5">
+            {configuredProviders.map(({ provider, hasKey }) => {
+              const models = allModels.filter(
+                (m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id,
+              );
+              return (
+                <div key={provider.id} className="flex items-center gap-2 text-sm">
+                  {hasKey ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-positive shrink-0" />
+                  ) : (
+                    <XCircle className="h-3.5 w-3.5 icon-faint shrink-0" />
+                  )}
+                  <span className={hasKey ? "text-foreground" : "text-muted-foreground"}>
+                    {provider.name}
                   </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                  {hasKey && models.length > 0 && (
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      {models.length} model{models.length > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
-        {configuredCount === 0 && (
-          <p className="text-xs text-destructive">
-            No API key configured. Add at least one key below to enable AI features.
+          {configuredCount === 0 && (
+            <p className="text-xs text-negative">
+              No API key configured. Add at least one key below to enable AI features.
+            </p>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Each AI page lets you select which model to use from the available providers.
           </p>
-        )}
-
-        <p className="text-xs text-muted-foreground">
-          Each AI page lets you select which model to use from the available providers.
-        </p>
+        </div>
       </div>
 
       {/* Delete API Key Confirmation Dialog */}
@@ -266,7 +269,7 @@ function APIKeysTab() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" /> Remove API Key
+              <Trash2 className="h-5 w-5" aria-hidden="true" /> Remove API Key
             </DialogTitle>
             <DialogDescription>
               You are about to remove the API key for <strong>{providerToDelete?.name}</strong>.
@@ -275,11 +278,10 @@ function APIKeysTab() {
           <div className="py-2 text-sm text-muted-foreground space-y-2">
             <p>
               This will permanently delete the key from the{" "}
-              <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">.env</code> file on
-              disk. Since{" "}
-              <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">.env</code> is not
+              <code className="font-mono bg-muted px-1 py-0.5 text-xs">.env</code> file on disk.
+              Since <code className="font-mono bg-muted px-1 py-0.5 text-xs">.env</code> is not
               tracked by Git,{" "}
-              <strong className="text-foreground">this operation cannot be undone</strong> — the key
+              <strong className="text-foreground">this operation cannot be undone</strong>: the key
               cannot be recovered from version history.
             </p>
             <p>Make sure you have a copy of the key before proceeding.</p>
@@ -297,7 +299,7 @@ function APIKeysTab() {
 
       {/* API Keys management */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold">API Keys</h2>
+        <h2 className="section-title">API Keys</h2>
 
         {AI_PROVIDERS.map((provider) => {
           const { hasKey } = configuredProviders.find((cp) => cp.provider.id === provider.id)!;
@@ -305,93 +307,102 @@ function APIKeysTab() {
           const draft = drafts[provider.id] || "";
 
           return (
-            <div key={provider.id} className="surface p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <div key={provider.id} className="frame">
+              <div className="frame-title">
+                <PanelTitle level={3} className="flex items-center gap-2">
                   {hasKey ? (
-                    <CheckCircle2 className="h-4 w-4 text-positive" />
+                    <CheckCircle2 className="h-4 w-4 text-positive" aria-hidden="true" />
                   ) : (
-                    <XCircle className="h-4 w-4 text-muted-foreground" />
+                    <XCircle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   )}
-                  <span className="text-sm font-medium">{provider.name}</span>
-                  <code className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                    {provider.envKey}
-                  </code>
-                </div>
+                  {provider.name}
+                </PanelTitle>
                 <a
                   href={provider.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                  className="text-xs font-normal text-primary-text hover:underline flex items-center gap-1"
                 >
-                  Get key <ExternalLink className="h-3 w-3" />
+                  Get key <ExternalLink className="h-3 w-3" aria-hidden="true" />
                 </a>
               </div>
+              <div className="p-3 space-y-3">
+                <code className="inline-block text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5">
+                  {provider.envKey}
+                </code>
 
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    type={isVisible ? "text" : "password"}
-                    value={
-                      hasKey ? (isVisible ? envKeys[provider.envKey] || "" : "••••••••••••") : draft
-                    }
-                    onChange={
-                      hasKey
-                        ? undefined
-                        : (e) => setDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))
-                    }
-                    placeholder={hasKey ? "" : provider.hint}
-                    className="pr-10 bg-background border-border font-mono text-xs"
-                    autoComplete="off"
-                    spellCheck={false}
-                    readOnly={hasKey}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => toggleVisibility(provider.id)}
-                    aria-label={isVisible ? "Hide API key" : "Show API key"}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors p-1"
-                  >
-                    {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      type={isVisible ? "text" : "password"}
+                      value={
+                        hasKey
+                          ? isVisible
+                            ? envKeys[provider.envKey] || ""
+                            : "••••••••••••"
+                          : draft
+                      }
+                      onChange={
+                        hasKey
+                          ? undefined
+                          : (e) => setDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))
+                      }
+                      placeholder={hasKey ? "" : provider.hint}
+                      aria-label={`${provider.name} API key`}
+                      className="pr-10 font-mono text-xs"
+                      autoComplete="off"
+                      spellCheck={false}
+                      readOnly={hasKey}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => toggleVisibility(provider.id)}
+                      aria-label={isVisible ? "Hide API key" : "Show API key"}
+                      className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+
+                  {hasKey ? (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleDeleteRequest(provider.id)}
+                      title="Remove key"
+                      aria-label={`Remove ${provider.name} key`}
+                      className="shrink-0 text-negative hover:text-negative"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant={draft.trim() ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => handleSave(provider.id)}
+                      title="Save key"
+                      aria-label={`Save ${provider.name} key`}
+                      className="shrink-0"
+                      disabled={!draft.trim()}
+                    >
+                      <Save className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
 
-                {hasKey ? (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleDeleteRequest(provider.id)}
-                    title="Remove key"
-                    className="shrink-0 text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    variant={draft.trim() ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => handleSave(provider.id)}
-                    title="Save key"
-                    className="shrink-0"
-                    disabled={!draft.trim()}
-                  >
-                    <Save className="h-4 w-4" />
-                  </Button>
+                {hasKey && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <span className="text-xs text-muted-foreground mr-1">Models:</span>
+                    {allModels
+                      .filter((m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id)
+                      .map((m) => (
+                        <Badge key={m.id} variant="secondary">
+                          {m.description}
+                        </Badge>
+                      ))}
+                  </div>
                 )}
               </div>
-
-              {hasKey && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  <span className="text-[10px] text-muted-foreground mr-1">Models:</span>
-                  {allModels
-                    .filter((m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id)
-                    .map((m) => (
-                      <Badge key={m.id} variant="secondary" className="text-[10px] font-mono">
-                        {m.description}
-                      </Badge>
-                    ))}
-                </div>
-              )}
             </div>
           );
         })}
@@ -411,7 +422,7 @@ function ModelsTab() {
 
   const [newModelId, setNewModelId] = useState("");
   const [newModelDesc, setNewModelDesc] = useState("");
-  const [newModelProvider, setNewModelProvider] = useState<ModelProvider>("GitHub");
+  const [newModelProvider, setNewModelProvider] = useState<ModelProvider>("Google");
 
   const queryClient = useQueryClient();
 
@@ -482,15 +493,7 @@ function ModelsTab() {
   const resetAddForm = () => {
     setNewModelId("");
     setNewModelDesc("");
-    setNewModelProvider("GitHub");
-  };
-
-  const providerColor: Record<string, string> = {
-    GitHub: "bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]",
-    Groq: "bg-orange-500/10 text-orange-500",
-    Google: "bg-blue-500/10 text-blue-500",
-    HuggingFace: "bg-yellow-500/10 text-yellow-600",
-    OpenRouter: "bg-purple-500/10 text-purple-500",
+    setNewModelProvider("Google");
   };
 
   const displayName = (client: string) => PROVIDER_DISPLAY_NAMES[client] || client;
@@ -516,15 +519,14 @@ function ModelsTab() {
             setAddDialogOpen(true);
           }}
         >
-          <Plus className="h-3.5 w-3.5" /> Add Model
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add Model
         </Button>
       </div>
 
-      <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-        📄 Source:{" "}
-        <code className="font-mono bg-muted px-1 py-0.5 rounded">database/models.csv</code> —
+      <p className="text-xs text-muted-foreground">
+        Source: <code className="font-mono bg-muted px-1 py-0.5">database/models.csv</code>.
         Providers: {MODEL_PROVIDERS.map((p) => PROVIDER_DISPLAY_NAMES[p] || p).join(", ")}
-      </div>
+      </p>
 
       {modelsLoading ? (
         <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
@@ -537,16 +539,16 @@ function ModelsTab() {
       ) : (
         <div className="space-y-4">
           {[...modelsByClient.entries()].map(([client, clientModels]) => (
-            <div key={client} className="surface overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-border bg-muted/30 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">{displayName(client)}</h3>
-                <Badge className={`text-[10px] border-0 ${providerColor[client] || ""}`}>
+            <div key={client} className="frame">
+              <div className="frame-title">
+                <h2>{displayName(client)}</h2>
+                <span className="text-xs font-normal text-muted-foreground">
                   {clientModels.length} model{clientModels.length !== 1 ? "s" : ""}
-                </Badge>
+                </span>
               </div>
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border/60">
                 {clientModels.map((m) => (
-                  <div key={m.id} className="px-4 py-3 flex items-center justify-between group">
+                  <div key={m.id} className="px-4 py-2 flex items-center justify-between group">
                     <div className="min-w-0">
                       <span className="text-sm font-medium">{m.description}</span>
                       <span className="text-xs text-muted-foreground font-mono ml-2">{m.id}</span>
@@ -554,12 +556,13 @@ function ModelsTab() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity text-negative hover:text-negative hover:bg-negative/10 shrink-0"
                       onClick={() => {
                         setModelToDelete(m);
                         setDeleteDialogOpen(true);
                       }}
                       title="Remove model"
+                      aria-label={`Remove model ${m.description}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -576,7 +579,7 @@ function ModelsTab() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" /> Add AI Model
+              <Plus className="h-5 w-5" aria-hidden="true" /> Add AI Model
             </DialogTitle>
             <DialogDescription>Add a new model to the configuration.</DialogDescription>
           </DialogHeader>
@@ -587,7 +590,7 @@ function ModelsTab() {
                 value={newModelProvider}
                 onValueChange={(v) => setNewModelProvider(v as ModelProvider)}
               >
-                <SelectTrigger className="bg-card border-border">
+                <SelectTrigger id="model-provider" className="bg-card">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -606,7 +609,7 @@ function ModelsTab() {
                 placeholder="e.g. xai/grok-3-mini"
                 value={newModelId}
                 onChange={(e) => setNewModelId(e.target.value)}
-                className="bg-card border-border font-mono text-sm"
+                className="font-mono text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -616,7 +619,6 @@ function ModelsTab() {
                 placeholder="e.g. Grok-3 Mini (best)"
                 value={newModelDesc}
                 onChange={(e) => setNewModelDesc(e.target.value)}
-                className="bg-card border-border"
               />
             </div>
           </div>
@@ -636,7 +638,7 @@ function ModelsTab() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" /> Remove AI Model
+              <Trash2 className="h-5 w-5" aria-hidden="true" /> Remove AI Model
             </DialogTitle>
             <DialogDescription>
               Remove <strong>{modelToDelete?.description}</strong> (
@@ -644,7 +646,7 @@ function ModelsTab() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
-            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1 text-sm">
+            <div className="rounded-md border border-border bg-card p-3 space-y-1 text-sm">
               <div>
                 <span className="text-muted-foreground">Model:</span> {modelToDelete?.description}
               </div>

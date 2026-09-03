@@ -20,6 +20,15 @@ class TestBuildAiClient(unittest.TestCase):
             _build_ai_client("bogus", None)
         self.assertEqual(ctx.exception.status_code, 400)
 
+    @patch("app.ai.clients.GoogleAIClient")
+    def test_retired_provider_falls_back_to_default(self, mock_google):
+        """A stored config still naming a retired provider degrades, never crashes."""
+        with self.assertLogs("app.api.ai", level="WARNING"):
+            result = _build_ai_client("github", None, "microsoft/phi-4")
+        # The retired provider's model id is dropped with it.
+        mock_google.assert_called_once_with()
+        self.assertIs(result, mock_google.return_value)
+
     @patch("app.ai.clients.GroqClient")
     def test_known_provider_builds_with_model(self, mock_groq):
         """A known provider instantiates its client, passing the model through."""
