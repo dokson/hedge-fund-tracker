@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: app/frontend
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --fund=false
 
       - name: Build static site
         working-directory: app/frontend

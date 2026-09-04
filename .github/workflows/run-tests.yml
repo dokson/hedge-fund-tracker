@@ -9,12 +9,17 @@ on:
     branches:
       - master
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   python-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     env:
       PIPENV_VENV_IN_PROJECT: "1"
@@ -50,6 +55,7 @@ jobs:
 
   frontend-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository code
@@ -63,7 +69,7 @@ jobs:
           cache-dependency-path: "app/frontend/package-lock.json"
 
       - name: Install frontend dependencies
-        run: cd app/frontend && npm ci
+        run: cd app/frontend && npm ci --prefer-offline --no-audit --fund=false
 
       - name: Run frontend tests
         run: cd app/frontend && npm test
