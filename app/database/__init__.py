@@ -46,6 +46,7 @@ MODELS_FILE = "models.csv"
 SECTOR_HIERARCHY_FILE = "sector_hierarchy.csv"
 STOCKS_FILE = "stocks.csv"
 PERFORMANCE_FILE = "performance.csv"
+SPLITS_FILE = "splits.csv"
 
 
 def _get_db_root() -> Path:
@@ -125,4 +126,5 @@ def load_models(filepath: str | None = None) -> list:
 # constants/helpers above at call time, so the partially-initialised package is fine.
 from app.database.funds import *  # noqa: E402,F401,F403
 from app.database.quarters import *  # noqa: E402,F401,F403
+from app.database.splits import *  # noqa: E402,F401,F403
 from app.database.stocks import *  # noqa: E402,F401,F403

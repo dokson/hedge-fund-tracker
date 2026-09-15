@@ -70,9 +70,19 @@ def _link_cusip_changes(df_comparison: pd.DataFrame) -> pd.DataFrame:
     return df_comparison.drop(index=rows_to_drop)
 
 
-def generate_comparison(df_recent: pd.DataFrame, df_previous: pd.DataFrame | None) -> pd.DataFrame:
+def generate_comparison(
+    df_recent: pd.DataFrame,
+    df_previous: pd.DataFrame | None,
+    split_factors: dict[str, float] | None = None,
+) -> pd.DataFrame:
     """
     Generates a comparison report between the two DataFrames, calculating percentage change and indicating new positions.
+
+    ``split_factors`` maps CUSIP to the split factor applied to the security
+    between the two quarters (see app.analysis.splits). Share counts are filed
+    as of quarter end, so the previous quarter's are restated onto the recent
+    share basis before any delta is taken; otherwise a split reads as a
+    purchase of several times the position's own size.
     """
     if df_previous is None:
         df_previous = pd.DataFrame(columns=df_recent.columns)
@@ -93,6 +103,12 @@ def generate_comparison(df_recent: pd.DataFrame, df_previous: pd.DataFrame | Non
     df_comparison["Value_previous"] = (
         pd.to_numeric(df_comparison["Value_previous"], errors="coerce").fillna(0).astype("int64")
     )
+
+    if split_factors:
+        factors = df_comparison["CUSIP"].map(split_factors).fillna(1.0).astype(float)
+        df_comparison["Shares_previous"] = (
+            (df_comparison["Shares_previous"] * factors).round().astype("int64")
+        )
 
     df_comparison["Company"] = coalesce(
         df_comparison["Company_recent"], df_comparison["Company_previous"]

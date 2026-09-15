@@ -364,6 +364,34 @@ class YFinance(FinanceLibrary):
     }
 
     @staticmethod
+    def get_splits(ticker: str) -> list[tuple[date, float]] | None:
+        """
+        Gets the stock-split history for a ticker, oldest first.
+
+        Returns None when the lookup fails, which a caller must not read as
+        "never split": a delisted or unknown symbol fails the same way.
+
+        Args:
+            ticker (str): The stock ticker.
+
+        Returns:
+            list[tuple[date, float]] | None: (ex-date, factor) pairs, or None on failure.
+        """
+        try:
+            splits = yf.Ticker(YFinance._sanitize_ticker(ticker)).splits
+        except Exception:
+            logger.error("YFinance: split lookup failed for %s", log_safe(ticker), exc_info=True)
+            return None
+
+        if splits is None or splits.empty:
+            return []
+        ex_dates = pd.DatetimeIndex(splits.index)
+        return [
+            (timestamp.date(), float(factor))
+            for timestamp, factor in zip(ex_dates, splits.to_numpy(), strict=True)
+        ]
+
+    @staticmethod
     def get_history(ticker: str, period: str = "5y", **kwargs) -> list[dict] | None:
         """
         Gets OHLC price history for a ticker over the requested period.

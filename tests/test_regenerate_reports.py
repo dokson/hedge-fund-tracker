@@ -1,9 +1,11 @@
 import unittest
+from unittest.mock import patch
 
 from scripts.regenerate_reports import (
     build_comparison_pairs,
     collect_filings_until_floor,
     dedupe_filings_by_period,
+    regenerate_fund,
 )
 
 
@@ -143,6 +145,54 @@ class TestBuildComparisonPairs(unittest.TestCase):
         self.assertEqual(len(pairs), 1)
         self.assertEqual(pairs[0][0]["reference_date"], "2025-03-31")
         self.assertEqual(pairs[0][1]["reference_date"], "2024-12-31")
+
+
+class TestRegenerateFundAppliesSplits(unittest.TestCase):
+    @patch("scripts.regenerate_reports.save_comparison")
+    @patch("scripts.regenerate_reports.generate_comparison")
+    @patch("scripts.regenerate_reports.xml_to_dataframe_13f")
+    @patch("scripts.regenerate_reports.load_split_factors")
+    @patch("scripts.regenerate_reports.fetch_fund_filings")
+    def test_each_quarter_gets_its_own_split_factors(
+        self, mock_fetch, mock_registry, mock_xml, mock_comparison, _mock_save
+    ):
+        mock_fetch.return_value = [
+            _filing("2026-06-30"),
+            _filing("2026-03-31"),
+            _filing("2025-12-31"),
+        ]
+        mock_registry.return_value = {
+            "2026Q2": {"146869102": 5.0},
+            "2025Q4": {"64110L106": 10.0},
+        }
+
+        regenerate_fund({"CIK": "0000000001", "Fund": "Tester"})
+
+        applied = [call.args[2] for call in mock_comparison.call_args_list]
+        self.assertIn({"146869102": 5.0}, applied)
+        # 2026Q1 has no split on record and must be compared untouched.
+        self.assertIn({}, applied)
+
+    @patch("scripts.regenerate_reports.save_comparison")
+    @patch("scripts.regenerate_reports.generate_comparison")
+    @patch("scripts.regenerate_reports.xml_to_dataframe_13f")
+    @patch("scripts.regenerate_reports.load_split_factors")
+    @patch("scripts.regenerate_reports.fetch_fund_filings")
+    def test_a_skipped_quarter_compounds_the_splits_it_spans(
+        self, mock_fetch, mock_registry, mock_xml, mock_comparison, _mock_save
+    ):
+        # No 2026Q1 filing, so 2026Q2 is compared against 2025Q4 and both
+        # quarters' splits sit between the two filings.
+        mock_fetch.return_value = [_filing("2026-06-30"), _filing("2025-12-31")]
+        mock_registry.return_value = {
+            "2026Q1": {"64110L106": 2.0},
+            "2026Q2": {"64110L106": 3.0},
+        }
+
+        regenerate_fund({"CIK": "0000000001", "Fund": "Tester"})
+
+        applied = [call.args[2] for call in mock_comparison.call_args_list]
+        self.assertIn({"64110L106": 6.0}, applied)
 
 
 if __name__ == "__main__":

@@ -296,6 +296,47 @@ class TestCusipChangeLinking(unittest.TestCase):
         self.assertEqual(len(df_output), 2)
         self.assertEqual(df_output.loc[0, "Delta"], "NEW")
 
+    def test_split_factor_neutralises_an_untouched_position(self, mock_resolve_ticker):
+        def resolve_ticker(df):
+            df["Ticker"] = "SPLT"
+            return df
+
+        mock_resolve_ticker.side_effect = resolve_ticker
+
+        # A 10:1 split: the holder did nothing, but the filed share count is ten
+        # times last quarter's at a tenth of the price.
+        df_recent = pd.DataFrame(
+            [{"CUSIP": "TC200001", "Company": "Split Co", "Shares": 41000, "Value": 492000}]
+        )
+        df_previous = pd.DataFrame(
+            [{"CUSIP": "TC200001", "Company": "Split Co", "Shares": 4100, "Value": 451000}]
+        )
+
+        df_output = generate_comparison(df_recent, df_previous, {"TC200001": 10.0})
+
+        self.assertEqual(df_output.loc[0, "Delta"], "NO CHANGE")
+        self.assertEqual(df_output.loc[0, "Delta_Shares"], 0)
+        self.assertEqual(df_output.loc[0, "Delta_Value"], format_value(0))
+
+    def test_positions_without_a_split_factor_are_untouched(self, mock_resolve_ticker):
+        def resolve_ticker(df):
+            df["Ticker"] = "GROW"
+            return df
+
+        mock_resolve_ticker.side_effect = resolve_ticker
+
+        df_recent = pd.DataFrame(
+            [{"CUSIP": "TC200002", "Company": "Grow Co", "Shares": 2000, "Value": 100000}]
+        )
+        df_previous = pd.DataFrame(
+            [{"CUSIP": "TC200002", "Company": "Grow Co", "Shares": 1000, "Value": 48000}]
+        )
+
+        df_output = generate_comparison(df_recent, df_previous, {"TC200001": 10.0})
+
+        self.assertEqual(df_output.loc[0, "Delta"], format_percentage(100.0, True))
+        self.assertEqual(df_output.loc[0, "Delta_Shares"], 1000)
+
 
 if __name__ == "__main__":
     unittest.main()

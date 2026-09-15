@@ -413,5 +413,39 @@ class TestYFinance(unittest.TestCase):
             self.assertLessEqual(tickers.count("-V"), 1)
 
 
+class TestYFinanceSplits(unittest.TestCase):
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_returns_split_history_as_dates_and_factors(self, mock_ticker):
+        mock_ticker.return_value.splits = pd.Series(
+            [10.0, 2.0],
+            index=pd.to_datetime(["2025-11-17", "2026-03-04"]),
+        )
+
+        self.assertEqual(
+            YFinance.get_splits("NFLX"),
+            [(date(2025, 11, 17), 10.0), (date(2026, 3, 4), 2.0)],
+        )
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_returns_empty_list_when_a_ticker_never_split(self, mock_ticker):
+        mock_ticker.return_value.splits = pd.Series(dtype="float64")
+
+        self.assertEqual(YFinance.get_splits("AAPL"), [])
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_returns_none_when_the_lookup_fails(self, mock_ticker):
+        mock_ticker.side_effect = RuntimeError("delisted")
+
+        self.assertIsNone(YFinance.get_splits("GONE"))
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_sanitizes_share_class_tickers(self, mock_ticker):
+        mock_ticker.return_value.splits = pd.Series(dtype="float64")
+
+        YFinance.get_splits("BRK.B")
+
+        mock_ticker.assert_called_once_with("BRK-B")
+
+
 if __name__ == "__main__":
     unittest.main()

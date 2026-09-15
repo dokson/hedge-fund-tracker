@@ -4,13 +4,16 @@ from tabulate import tabulate
 
 from app.analysis.non_quarterly import get_non_quarterly_filings_dataframe
 from app.analysis.quarterly_report import generate_comparison
+from app.analysis.splits import factors_between, unregistered_splits_for_quarter
 from app.backtest.report import rebuild_strategy_performance
 from app.database import (
     MIN_REFERENCE_DATE,
     clean_stocks,
     delete_fund_from_database,
     get_funds_missing_quarters,
+    get_last_quarter,
     load_hedge_funds,
+    load_split_factors,
     restore_fund_to_database,
     save_comparison,
     save_non_quarterly_filings,
@@ -34,8 +37,11 @@ from app.utils.console import (
     select_fund,
     select_period,
 )
+from app.utils.logger import get_logger, log_safe
 from app.utils.readme import update_readme
-from app.utils.strings import get_previous_quarter_end_date
+from app.utils.strings import get_previous_quarter_end_date, get_quarter
+
+logger = get_logger(__name__)
 
 APP_NAME = "HEDGE FUND TRACKER - DATABASE UPDATER"
 # Hard ceiling on the back-search through a fund's filing history, so a fund
@@ -133,7 +139,15 @@ def process_fund(fund_info, offset=0, skip_old=False):
         dataframe_previous = (
             xml_to_dataframe_13f(previous_filing["xml_content"]) if previous_filing else None
         )
-        dataframe_comparison = generate_comparison(dataframe_latest, dataframe_previous)
+        previous_quarter = (
+            get_quarter(previous_filing["reference_date"]) if previous_filing else None
+        )
+        split_factors = factors_between(
+            load_split_factors(), previous_quarter, get_quarter(latest_date)
+        )
+        dataframe_comparison = generate_comparison(
+            dataframe_latest, dataframe_previous, split_factors
+        )
         save_comparison(dataframe_comparison, latest_date, fund_name)
     except Exception as e:
         print(f"❌ An unexpected error occurred while processing {fund_name} (CIK = {cik}): {e}")
@@ -162,6 +176,28 @@ def run_all_funds_report():
             print_centered(f"Processed {i + 1:2}/{total_funds}: {fund['Fund']}", "-")
 
     print_centered("All funds processed", "-")
+    _warn_on_unregistered_splits()
+
+
+def _warn_on_unregistered_splits():
+    """
+    Warns when the freshly written quarter contains a split the registry does
+    not know about, since those comparisons were computed on a stale registry.
+    """
+    quarter = get_last_quarter()
+    if not quarter:
+        return
+
+    missing = unregistered_splits_for_quarter(quarter, load_split_factors())
+    for split in missing:
+        logger.warning(
+            "Unregistered split on %s in %s (factor %s)",
+            log_safe(str(split["CUSIP"])),
+            log_safe(quarter),
+            split["Factor"],
+        )
+    if missing:
+        logger.warning("Run `pipenv run gen-splits` then `pipenv run regenerate` to correct them")
 
 
 def process_fund_nq(fund):

@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT))
 from bs4 import BeautifulSoup  # noqa: E402
 
 from app.analysis.quarterly_report import generate_comparison  # noqa: E402
+from app.analysis.splits import factors_between  # noqa: E402
 from app.database import (  # noqa: E402
     MIN_REFERENCE_DATE,
     clean_stocks,
@@ -30,6 +31,7 @@ from app.database import (  # noqa: E402
     save_comparison,
     sort_stocks,
 )
+from app.database.splits import load_split_factors  # noqa: E402
 from app.scraper.sec_scraper import (  # noqa: E402
     _create_search_url,
     _get_request,
@@ -37,7 +39,7 @@ from app.scraper.sec_scraper import (  # noqa: E402
     scraper_session,
 )
 from app.scraper.xml_processor import xml_to_dataframe_13f  # noqa: E402
-from app.utils.strings import get_previous_quarter_end_date  # noqa: E402
+from app.utils.strings import get_previous_quarter_end_date, get_quarter  # noqa: E402
 
 # One quarter before MIN_REFERENCE_DATE: needed as the previous side of the
 # oldest regenerated comparison.
@@ -129,6 +131,7 @@ def regenerate_fund(fund: dict) -> int:
 
     filings = dedupe_filings_by_period(fetch_fund_filings(cik))
     pairs = build_comparison_pairs(filings, MIN_REFERENCE_DATE)
+    split_registry = load_split_factors()
 
     # Oldest first: if multiple writes ever target the same quarter (e.g. a
     # future change weakening the dedupe), the newest version wins.
@@ -136,7 +139,11 @@ def regenerate_fund(fund: dict) -> int:
     for current, previous in reversed(pairs):
         df_current = xml_to_dataframe_13f(current["xml_content"])
         df_previous = xml_to_dataframe_13f(previous["xml_content"]) if previous else None
-        comparison = generate_comparison(df_current, df_previous)
+        quarter = get_quarter(current["reference_date"])
+        previous_quarter = get_quarter(previous["reference_date"]) if previous else None
+        comparison = generate_comparison(
+            df_current, df_previous, factors_between(split_registry, previous_quarter, quarter)
+        )
         save_comparison(comparison, current["reference_date"], fund_name)
         regenerated += 1
     return regenerated
