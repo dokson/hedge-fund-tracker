@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pandas as pd
 
 from app.analysis.non_quarterly import (
+    _normalize_to_listed_units,
     get_non_quarterly_filings_dataframe,
     update_quarter_with_nq_filings,
 )
@@ -282,6 +283,55 @@ class TestUpdateQuarterWithNqFilings(unittest.TestCase):
 
         self.assertIn("CUSIP0001", set(result["CUSIP"]))
         self.assertNotIn("CUSIP0002", set(result["CUSIP"]))
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class TestNormalizeToListedUnits(unittest.TestCase):
+    FILINGS = pd.DataFrame(
+        [
+            # A 13G on a foreign issuer: the count is in ordinary shares.
+            {"Ticker": "ADRX", "Shares": 24_699_825, "Class_Pct": 12.7},
+            # A Form 4 carries no percentage of class and must be left alone.
+            {"Ticker": "PLAIN", "Shares": 1_000, "Class_Pct": float("nan")},
+        ]
+    )
+
+    @patch("app.analysis.non_quarterly.YFinance.get_shares_outstanding")
+    def test_ordinary_share_count_is_restated_into_listed_units(self, mock_outstanding):
+        mock_outstanding.return_value = 39_759_402
+
+        result = _normalize_to_listed_units(self.FILINGS.copy())
+
+        self.assertEqual(result.loc[0, "Shares"], 4_939_965)
+        self.assertEqual(result.loc[1, "Shares"], 1_000)
+
+    @patch("app.analysis.non_quarterly.YFinance.get_shares_outstanding")
+    def test_a_domestic_filing_is_left_at_its_filed_count(self, mock_outstanding):
+        mock_outstanding.return_value = 194_486_811
+
+        result = _normalize_to_listed_units(self.FILINGS.copy())
+
+        self.assertEqual(result.loc[0, "Shares"], 24_699_825)
+
+    @patch("app.analysis.non_quarterly.YFinance.get_shares_outstanding")
+    def test_an_unavailable_share_count_leaves_the_filing_untouched(self, mock_outstanding):
+        mock_outstanding.return_value = None
+
+        result = _normalize_to_listed_units(self.FILINGS.copy())
+
+        self.assertEqual(result.loc[0, "Shares"], 24_699_825)
+
+    @patch("app.analysis.non_quarterly.YFinance.get_shares_outstanding")
+    def test_each_ticker_is_looked_up_once(self, mock_outstanding):
+        mock_outstanding.return_value = 39_759_402
+        filings = pd.concat([self.FILINGS, self.FILINGS], ignore_index=True)
+
+        _normalize_to_listed_units(filings)
+
+        self.assertEqual(mock_outstanding.call_count, 1)
 
 
 if __name__ == "__main__":

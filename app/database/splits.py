@@ -62,10 +62,8 @@ def save_split_factors(
     Writes the split registry, ordered by quarter then CUSIP so regenerating it
     leaves the committed file's history append-only.
 
-    ``replacing`` names the quarters this call rescanned: their existing rows
-    are dropped and every other quarter is carried over untouched, so a routine
-    incremental scan cannot discard older entries -- including any added by
-    hand. Omit it to rewrite the whole registry.
+    ``replacing`` names the quarters this call rescanned: their rows are
+    dropped and every other quarter is carried over. Omit it to rewrite all.
     """
     fresh = pd.DataFrame(splits, columns=_COLUMNS)
 

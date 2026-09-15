@@ -447,5 +447,31 @@ class TestYFinanceSplits(unittest.TestCase):
         mock_ticker.assert_called_once_with("BRK-B")
 
 
+class TestYFinanceSharesOutstanding(unittest.TestCase):
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_returns_the_listed_share_count(self, mock_ticker):
+        mock_ticker.return_value.info = {"sharesOutstanding": 39759402}
+
+        self.assertEqual(YFinance.get_shares_outstanding("GMTL"), 39759402)
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_returns_none_when_the_field_is_missing(self, mock_ticker):
+        mock_ticker.return_value.info = {"shortName": "Nothing Inc"}
+
+        self.assertIsNone(YFinance.get_shares_outstanding("NONE"))
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_returns_none_when_the_lookup_fails(self, mock_ticker):
+        mock_ticker.side_effect = RuntimeError("delisted")
+
+        self.assertIsNone(YFinance.get_shares_outstanding("GONE"))
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_rejects_a_non_positive_count(self, mock_ticker):
+        mock_ticker.return_value.info = {"sharesOutstanding": 0}
+
+        self.assertIsNone(YFinance.get_shares_outstanding("ZERO"))
+
+
 if __name__ == "__main__":
     unittest.main()

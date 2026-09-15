@@ -364,6 +364,34 @@ class YFinance(FinanceLibrary):
     }
 
     @staticmethod
+    def get_shares_outstanding(ticker: str) -> int | None:
+        """
+        Gets the number of shares outstanding of the listed line, or None when
+        the lookup fails or reports nothing usable.
+
+        For a depositary receipt this counts the receipts, not the underlying
+        foreign shares, which is what makes it usable as the unit reference for
+        a filing that reports the underlying.
+
+        Args:
+            ticker (str): The stock ticker.
+
+        Returns:
+            int | None: Shares outstanding, or None when unavailable.
+        """
+        try:
+            outstanding = yf.Ticker(YFinance._sanitize_ticker(ticker)).info.get("sharesOutstanding")
+        except Exception:
+            logger.error(
+                "YFinance: shares-outstanding lookup failed for %s", log_safe(ticker), exc_info=True
+            )
+            return None
+
+        if not outstanding or outstanding <= 0:
+            return None
+        return int(outstanding)
+
+    @staticmethod
     def get_splits(ticker: str) -> list[tuple[date, float]] | None:
         """
         Gets the stock-split history for a ticker, oldest first.

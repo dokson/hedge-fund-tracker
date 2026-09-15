@@ -192,6 +192,7 @@ class TestXmlToDataframeSchedule(unittest.TestCase):
           <reportingPersonName>Big Fund LP</reportingPersonName>
           <rptOwnerCIK>0007654321</rptOwnerCIK>
           <aggregateAmountOwned>500000</aggregateAmountOwned>
+          <classPercent>12.7</classPercent>
         </coverPageHeaderReportingPersonDetails>
       </formData>
     </edgarSubmission>
@@ -213,6 +214,18 @@ class TestXmlToDataframeSchedule(unittest.TestCase):
         self.assertEqual(row["Owner_CIK"], "0007654321")
         self.assertEqual(row["Owner"], "BIG FUND LP")
         self.assertEqual(row["Date"], pd.Timestamp("2026-03-15"))
+        self.assertEqual(row["Class_Pct"], 12.7)
+
+    def test_class_percent_is_absent_when_not_reported(self):
+        """
+        Older schedule schemas omit the percentage of class; it must parse as
+        missing rather than zero, which would read as a real 0% stake.
+        """
+        xml = self.SCHEDULE_XML.replace("<classPercent>12.7</classPercent>", "")
+
+        df = xml_to_dataframe_schedule(xml)
+
+        self.assertTrue(pd.isna(df.iloc[0]["Class_Pct"]))
 
     NEW_SCHEMA_XML = """
     <edgarSubmission>

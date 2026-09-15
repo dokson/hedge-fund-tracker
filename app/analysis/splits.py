@@ -1,23 +1,11 @@
 """
 Stock-split detection across the tracked 13F universe.
 
-A 13F reports share counts as of quarter end, so a split inflates them without
-anyone having traded: quarter over quarter the position reads as a purchase of
-several times its own size, and every delta derived from share counts inherits
-the error. Forward splits leave the CUSIP unchanged, so nothing else in the
-comparison path notices them.
-
-A split is a published fact, so the price provider decides -- the filings only
-say which securities are worth asking about. That order matters: the filings
-alone cannot tell a 2:1 split from a fund doubling its position, and gating on
-them produced one true split for every twenty-one ordinary trades.
-
-The holder-agreement test is the fallback for securities the provider cannot
-serve (delisted, foreign, mutual funds). A holder that did nothing across the
-split lands on exactly the split factor, so three of them agreeing to within a
-fraction of a percent is a coincidence trading cannot manufacture. It needs
-three holders, and two thirds of the universe is held by fewer, which is
-exactly why it is the fallback and not the source.
+Share counts are filed as of quarter end, so a split reads as a purchase of
+several times the position's own size. The price provider decides whether one
+happened; the filings only pick the candidates and confirm the factor. Holder
+agreement is the fallback for securities the provider cannot serve. See the
+split footgun in AGENTS.md for why that order matters.
 """
 
 import time
@@ -29,6 +17,7 @@ import pandas as pd
 
 from app.database import get_all_quarters, load_quarterly_data
 from app.utils.logger import get_logger, log_safe
+from app.utils.numbers import snap_to_simple_ratio
 from app.utils.pd import get_numeric_series
 from app.utils.strings import get_previous_quarter, get_quarter_date
 
@@ -47,11 +36,6 @@ _DEADBAND = (0.72, 1.38)
 # ratio itself, far outside the band.
 _TRUE_MOVE_BAND = (0.70, 1.50)
 
-# A split factor is a ratio of small whole numbers. Bounding the numerator as
-# well as the denominator is what keeps 249/50 from passing as "simple".
-_MAX_SNAP_NUMERATOR = 50
-_MAX_SNAP_DENOMINATOR = 10
-
 # Worth a provider lookup: wide on purpose, since the provider adjudicates and
 # this only keeps the number of lookups down.
 _CANDIDATE_TRUE_MOVE_BAND = (0.6, 1.7)
@@ -69,25 +53,6 @@ _REQUIRED_COLUMNS = ("CUSIP", "Shares", "Value", "Shares_previous", "Value_previ
 
 # Ex-dates and factors for a ticker, or None when the lookup itself failed.
 SplitProvider = Callable[[str], list[tuple[date, float]] | None]
-
-
-def _snap_to_simple_ratio(factor: float) -> float:
-    """
-    Rounds a factor to the nearest simple rational, preferring the smallest
-    denominator and leaving it unchanged when none is close. Filed share counts
-    are rounded, so holders agree to a few parts in a thousand rather than
-    exactly; without this an untouched position would keep a residual delta
-    after rescaling.
-    """
-    tolerance = float(np.log(1 + _AGREEMENT_TOLERANCE))
-    for denominator in range(1, _MAX_SNAP_DENOMINATOR + 1):
-        numerator = round(factor * denominator)
-        if not 1 <= numerator <= _MAX_SNAP_NUMERATOR:
-            continue
-        candidate = numerator / denominator
-        if abs(float(np.log(candidate / factor))) <= tolerance:
-            return candidate
-    return factor
 
 
 def _largest_agreeing_cluster(ratios: np.ndarray) -> np.ndarray:
@@ -114,7 +79,9 @@ def _split_factor(holdings: pd.DataFrame) -> float | None:
     if len(cluster) < MIN_AGREEING_HOLDERS:
         return None
 
-    factor = _snap_to_simple_ratio(float(np.exp(np.log(cluster).mean())))
+    factor = snap_to_simple_ratio(
+        float(np.exp(np.log(cluster).mean())), tolerance=_AGREEMENT_TOLERANCE
+    )
     price_ratio = float(np.median(holdings["price"] / holdings["price_previous"]))
     true_move = price_ratio * factor
     if not _TRUE_MOVE_BAND[0] < true_move < _TRUE_MOVE_BAND[1]:
@@ -171,13 +138,7 @@ def _is_candidate(holdings: pd.DataFrame) -> bool:
 def _is_confirmed(holdings: pd.DataFrame, factor: float) -> bool:
     """
     True when the filed share counts really moved by the factor the provider
-    reports.
-
-    The provider's split series also carries events that restate the price
-    without restating share counts -- a spinoff's basis adjustment, a small
-    stock dividend. Applying one of those to share counts would manufacture the
-    very error this module removes, turning untouched positions into large
-    sales, so the filings get the last word.
+    reports, which rejects spinoff basis adjustments and stock dividends.
     """
     if _DEADBAND[0] < factor < _DEADBAND[1]:
         return False
@@ -228,13 +189,9 @@ def splits_for_transition(
     positions: pd.DataFrame, quarter: str, provider: SplitProvider
 ) -> list[dict[str, object]]:
     """
-    Registry rows for the splits that took effect in ``quarter``, given the
-    universe's positions in that quarter and the one it is compared against.
-
-    Only securities whose filed share counts moved are looked up, and the
-    provider's answer is final: it reporting no split for a quarter is what
-    keeps a fund that doubled its position from being erased as a split. The
-    holder-agreement fallback applies only when the lookup itself failed.
+    Registry rows for the splits that took effect in ``quarter``. Only moved
+    securities are looked up; the agreement fallback applies only when the
+    lookup itself failed.
     """
     held = _prepare(positions)
     if held.empty:
@@ -290,8 +247,7 @@ def splits_for_transition(
 
 def _paced(provider: SplitProvider, pacing: float) -> SplitProvider:
     """
-    Wraps a provider so each ticker is looked up once and lookups are spaced
-    out, since a throttled sweep comes back empty rather than failing.
+    Wraps a provider so each ticker is looked up once, with lookups spaced out.
     """
     answers: dict[str, list[tuple[date, float]] | None] = {}
 
@@ -320,11 +276,8 @@ def _quarter_positions(quarter: str) -> pd.DataFrame:
 
 def scannable_quarters(quarters: list[str] | None = None) -> list[str]:
     """
-    The quarters a scan can actually cover, oldest first.
-
-    A quarter is scannable only if the one before it is also on record, since a
-    split is visible in the change between two filings. The earliest quarter on
-    record therefore never appears.
+    The quarters a scan can cover, oldest first: those whose predecessor is also
+    on record, since a split is visible only in the change between two filings.
     """
     known = sorted(get_all_quarters())
     wanted = sorted(set(quarters) & set(known)) if quarters else known
@@ -343,13 +296,8 @@ def rebuild_split_registry(
     provider: SplitProvider | None = None, quarters: list[str] | None = None
 ) -> list[dict[str, object]]:
     """
-    Scans quarter transitions and returns one registry row per split, ready for
-    app.database.splits.save_split_factors.
-
-    ``quarters`` limits the scan, which is what makes a routine run cheap: only
-    the newest quarter needs rescanning, and each lookup is paced against the
-    provider's rate limit. Pass the same quarters to ``save_split_factors`` as
-    ``replacing`` so untouched quarters keep their rows.
+    Scans quarter transitions and returns one registry row per split. Pass the
+    same ``quarters`` to ``save_split_factors`` as ``replacing``.
     """
     if provider is None:
         from app.stocks.libraries.yfinance import YFinance
@@ -387,13 +335,8 @@ def unregistered_splits_for_quarter(
     quarter: str, registry: dict[str, dict[str, float]]
 ) -> list[dict[str, object]]:
     """
-    Splits visible in a quarter's own filings that the registry does not
-    record, so a scheduled fetch cannot quietly write comparisons against a
-    stale registry.
-
-    Deliberately provider-free: it runs on holder agreement alone, costs no
-    network and so can run after every fetch. It therefore sees only the
-    securities three funds hold, which makes it a warning, not a source.
+    Splits a quarter's own filings show but the registry does not record.
+    Provider-free, so it costs no network: a warning, not a source.
     """
     current = _quarter_positions(quarter)
     previous = _quarter_positions(get_previous_quarter(quarter))
@@ -423,11 +366,7 @@ def factors_between(
 ) -> dict[str, float]:
     """
     The split factors separating two filings, compounded over every quarter
-    between them.
-
-    A fund that skips a quarter is compared against two quarters back, so a
-    single quarter's factors are not enough: every split in the span has to be
-    applied, or the gap silently reintroduces the error this module removes.
+    between them -- a fund that skips one is compared against two quarters back.
     """
     if not previous_quarter or not registry:
         return {}

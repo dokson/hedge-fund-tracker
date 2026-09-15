@@ -117,7 +117,7 @@ def xml_to_dataframe_schedule(xml_content):
     """
     soup_xml = BeautifulSoup(_sanitize_xml(xml_content), "lxml")
 
-    columns = ["Company", "CUSIP", "CIK", "Shares", "Owner_CIK", "Owner", "Date"]
+    columns = ["Company", "CUSIP", "CIK", "Shares", "Class_Pct", "Owner_CIK", "Owner", "Date"]
 
     data = []
 
@@ -135,12 +135,18 @@ def xml_to_dataframe_schedule(xml_content):
         shares = _get_tag_text(reporting_person, "aggregateamountowned") or _get_tag_text(
             reporting_person, "reportingpersonbeneficiallyownedaggregatenumberofshares"
         )
+        # Percentage of the class: the only figure in the filing that ties the
+        # reported share count to the size of the class it belongs to, which is
+        # what reconciles a depositary receipt with its underlying shares.
+        class_pct = _get_tag_text(reporting_person, "classpercent") or _get_tag_text(
+            reporting_person, "percentofclass"
+        )
         owner_cik = _get_tag_text(reporting_person, "rptownercik") or _get_tag_text(
             reporting_person, "reportingpersoncik"
         )
         owner_name = _get_tag_text(reporting_person, "reportingpersonname")
 
-        data.append([company, cusip, cik, shares, owner_cik, owner_name, date])
+        data.append([company, cusip, cik, shares, class_pct, owner_cik, owner_name, date])
 
     df = pd.DataFrame(data, columns=columns)
 
@@ -148,6 +154,7 @@ def xml_to_dataframe_schedule(xml_content):
     df["CUSIP"] = df["CUSIP"].str.upper()
     df["CIK"] = df["CIK"].str.strip()
     df["Shares"] = pd.to_numeric(df["Shares"], errors="coerce").fillna(0).astype(int)
+    df["Class_Pct"] = pd.to_numeric(df["Class_Pct"], errors="coerce")
     df["Owner_CIK"] = df["Owner_CIK"].str.strip()
     df["Owner"] = df["Owner"].str.upper()
     df["Date"] = pd.to_datetime(df["Date"], format="%m/%d/%Y", errors="coerce")

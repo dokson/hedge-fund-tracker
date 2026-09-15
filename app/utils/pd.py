@@ -93,7 +93,8 @@ def get_numeric_series(series: pd.Series) -> pd.Series:
     Parses a formatted value series (e.g., '1.23B', '45.67M') back into a numeric series.
     """
     # Ensure we are working with strings, and replace 'N/A' with NaN
-    s = series.astype(str).str.strip().replace("N/A", np.nan)
+    s = series.astype(str).str.strip()
+    s = s.mask(s == "N/A")
 
     # Dynamically build conditions and multipliers from the rules
     conditions = []

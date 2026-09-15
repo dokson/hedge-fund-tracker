@@ -1,7 +1,9 @@
 import pandas as pd
 
+from app.analysis.depositary import listed_units
 from app.database import load_non_quarterly_data
 from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
+from app.stocks.libraries.yfinance import YFinance
 from app.stocks.price_fetcher import PriceFetcher
 from app.stocks.ticker_resolver import TickerResolver
 from app.utils.github import open_issue
@@ -10,6 +12,38 @@ from app.utils.pd import coalesce, format_value_series, get_numeric_series
 from app.utils.strings import format_percentage
 
 logger = get_logger(__name__)
+
+
+def _normalize_to_listed_units(filings: pd.DataFrame) -> pd.DataFrame:
+    """
+    Restates share counts into the units of the security listed in the US, so a
+    foreign issuer's ordinary shares are not priced or merged as receipts.
+    """
+    if "Class_Pct" not in filings.columns:
+        return filings
+
+    outstanding: dict[str, int | None] = {}
+    for index, row in filings.iterrows():
+        ticker = row["Ticker"]
+        if not ticker or pd.isna(ticker) or pd.isna(row["Class_Pct"]):
+            continue
+
+        if ticker not in outstanding:
+            outstanding[ticker] = YFinance.get_shares_outstanding(ticker)
+
+        units = listed_units(row["Shares"], row["Class_Pct"], outstanding[ticker])
+        if units is None:
+            continue
+
+        filings.at[index, "Shares"] = units
+        logger.info(
+            "%s: restating %s reported shares as %s listed units",
+            log_safe(str(ticker)),
+            row["Shares"],
+            units,
+        )
+
+    return filings
 
 
 def get_non_quarterly_filings_dataframe(
@@ -70,6 +104,8 @@ def get_non_quarterly_filings_dataframe(
     non_quarterly_filings_df = non_quarterly_filings_df.sort_values(
         by=["Ticker", "Date", "Accepted_On"], ascending=False
     ).drop_duplicates(subset=["Ticker", "Date"], keep="first")
+
+    non_quarterly_filings_df = _normalize_to_listed_units(non_quarterly_filings_df)
 
     # Initialize columns before the loop to prevent KeyError
     non_quarterly_filings_df["Value"] = pd.NA
