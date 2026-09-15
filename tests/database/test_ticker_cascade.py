@@ -65,6 +65,34 @@ class TestTickerCascade(unittest.TestCase):
         nq_text = (self.root / "non_quarterly.csv").read_text(encoding="utf-8")
         self.assertIn('"C2","NEW"', nq_text)
 
+    def _stocks_industries(self):
+        """Return stocks.csv as a list of (cusip, industry) tuples."""
+        df = load_stocks().reset_index()
+        return list(zip(df["CUSIP"], df["Industry"]))
+
+    def test_update_ticker_rewrites_the_industry_when_given_one(self):
+        """
+        A rename that comes with a new industry replaces it on every matching
+        CUSIP, since a reverse merger leaves the stored one describing the old
+        business.
+        """
+        update_ticker("OLD", "NEW", new_company="New Corp", new_industry="Aerospace & Defense")
+
+        self.assertCountEqual(
+            self._stocks_industries(),
+            [("C1", "Aerospace & Defense"), ("C2", "Aerospace & Defense"), ("C3", "Health")],
+        )
+
+    def test_update_ticker_keeps_the_industry_when_not_given_one(self):
+        """
+        An unresolvable industry must not blank the stored one.
+        """
+        update_ticker("OLD", "NEW", new_company="New Corp")
+
+        self.assertCountEqual(
+            self._stocks_industries(), [("C1", "Tech"), ("C2", "Tech"), ("C3", "Health")]
+        )
+
     def test_update_ticker_for_cusip_only_touches_that_cusip(self):
         """
         A single-CUSIP rename leaves the ticker's other CUSIPs untouched.

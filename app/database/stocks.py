@@ -429,7 +429,12 @@ def find_cusips_for_ticker(old_ticker: str) -> list[dict[str, str]]:
     return matching_stocks
 
 
-def update_stocks_csv(old_ticker: str, new_ticker: str, new_company: str | None = None) -> int:
+def update_stocks_csv(
+    old_ticker: str,
+    new_ticker: str,
+    new_company: str | None = None,
+    new_industry: str | None = None,
+) -> int:
     """
     Updates the ticker (and optionally company name) in stocks.csv for all matching CUSIPs.
 
@@ -437,6 +442,7 @@ def update_stocks_csv(old_ticker: str, new_ticker: str, new_company: str | None 
         old_ticker (str): The current ticker to replace.
         new_ticker (str): The new ticker to use.
         new_company (str, optional): The new company name. If None, the existing name is preserved.
+        new_industry (str, optional): The new industry. If None, the existing one is preserved.
 
     Returns:
         int: The number of rows updated.
@@ -462,6 +468,8 @@ def update_stocks_csv(old_ticker: str, new_ticker: str, new_company: str | None 
                     row["Ticker"] = new_ticker
                     if new_company:
                         row["Company"] = new_company
+                    if new_industry:
+                        row["Industry"] = new_industry
                     updated_count += 1
                 rows.append(row)
 
@@ -618,7 +626,12 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str, new_company: str | None
     update_non_quarterly_filings([cusip], new_ticker)
 
 
-def update_ticker(old_ticker: str, new_ticker: str, new_company: str | None = None) -> None:
+def update_ticker(
+    old_ticker: str,
+    new_ticker: str,
+    new_company: str | None = None,
+    new_industry: str | None = None,
+) -> None:
     """
     Updates a ticker across the entire database.
 
@@ -632,6 +645,7 @@ def update_ticker(old_ticker: str, new_ticker: str, new_company: str | None = No
         old_ticker (str): The current ticker to replace.
         new_ticker (str): The new ticker to use.
         new_company (str, optional): The new company name. If None, the existing name is preserved.
+        new_industry (str, optional): The new industry. If None, the existing one is preserved.
     """
     matching_stocks = find_cusips_for_ticker(old_ticker)
 
@@ -644,6 +658,6 @@ def update_ticker(old_ticker: str, new_ticker: str, new_company: str | None = No
 
     cusips = [stock["CUSIP"] for stock in matching_stocks]
 
-    update_stocks_csv(old_ticker, new_ticker, new_company)
+    update_stocks_csv(old_ticker, new_ticker, new_company, new_industry)
     update_quarterly_filings(cusips, new_ticker)
     update_non_quarterly_filings(cusips, new_ticker)

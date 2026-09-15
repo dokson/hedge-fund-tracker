@@ -11,6 +11,7 @@ from difflib import SequenceMatcher
 from typing import TypedDict
 
 from app.database import find_cusips_for_ticker, load_stocks, update_ticker
+from app.stocks.classification import resolve_industry
 from app.stocks.libraries.nasdaq import Nasdaq
 from app.stocks.libraries.openfigi import OpenFIGI
 from app.stocks.libraries.yfinance import YFinance
@@ -359,7 +360,15 @@ def apply_ticker_changes() -> ApplyReport:
     applied: list[AppliedChange] = []
     for change in applicable:
         company = YFinance.get_company("", ticker=change["newSymbol"]) or change["companyName"]
-        update_ticker(change["oldSymbol"], change["newSymbol"], new_company=company)
+        # A rename often follows a reverse merger, so the stored industry
+        # describes a business the issuer has left.
+        industry = resolve_industry(change["newSymbol"], company)
+        update_ticker(
+            change["oldSymbol"],
+            change["newSymbol"],
+            new_company=company,
+            new_industry=industry or None,
+        )
         applied.append(
             {"old": change["oldSymbol"], "new": change["newSymbol"], "companyName": company}
         )
