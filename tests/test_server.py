@@ -331,6 +331,43 @@ class TestValidateDeploymentSecrets(unittest.TestCase):
         ):
             _validate_deployment_secrets()
 
+    def test_raises_on_env_example_placeholder_in_production(self):
+        """
+        A placeholder copied from .env.example overrides the dev default, so it
+        is not caught by the "dev-only" prefix — but it is just as public.
+        """
+        from unittest.mock import patch
+
+        from app.server import _validate_deployment_secrets
+
+        with (
+            patch("app.auth.backend.COOKIE_SECURE", True),
+            patch("app.auth.manager.RESET_PASSWORD_TOKEN_SECRET", "a-real-strong-secret"),
+            patch(
+                "app.auth.manager.VERIFICATION_TOKEN_SECRET",
+                "REPLACE_ME_with_a_DIFFERENT_random_32_byte_secret",
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            _validate_deployment_secrets()
+
+    def test_raises_on_identical_signing_secrets_in_production(self):
+        """
+        Reusing one secret for both token purposes lets a verification token be
+        replayed as a password-reset token.
+        """
+        from unittest.mock import patch
+
+        from app.server import _validate_deployment_secrets
+
+        with (
+            patch("app.auth.backend.COOKIE_SECURE", True),
+            patch("app.auth.manager.RESET_PASSWORD_TOKEN_SECRET", "the-same-strong-secret"),
+            patch("app.auth.manager.VERIFICATION_TOKEN_SECRET", "the-same-strong-secret"),
+            self.assertRaises(RuntimeError),
+        ):
+            _validate_deployment_secrets()
+
     def test_no_raise_with_strong_secrets_in_production(self):
         """COOKIE_SECURE set + non-default secrets → start normally."""
         from unittest.mock import patch

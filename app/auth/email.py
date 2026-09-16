@@ -60,7 +60,7 @@ async def send_verification_email(to: str, token: str) -> None:
     link = f"{APP_BASE_URL}/auth/verify?token={token}"
     html = f"""
     <p>Welcome to Hedge Fund Tracker.</p>
-    <p>Please confirm your email by clicking the link below — it expires in 1 hour.</p>
+    <p>Please confirm your email by clicking the link below — it expires in 24 hours.</p>
     <p><a href="{link}">Verify my email</a></p>
     <p>If you didn't sign up, you can ignore this message.</p>
     """

@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
+import limits
+from fastapi import HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -23,6 +24,40 @@ if TYPE_CHECKING:
 # accounts, switch the key_func to read the authenticated user_id from
 # request.state. Created here and registered on the app in app.server.
 limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
+
+# Credential endpoints get their own, much tighter bucket: at the site-wide
+# default a single client could try 120 passwords — or trigger 120 password
+# reset emails to a third party — every minute.
+AUTH_RATE_LIMIT = limits.parse("10/minute")
+_AUTH_BUCKET = "auth"
+
+
+def _auth_rate_limit_key(request: Request) -> str:
+    """
+    Bucket credential attempts per client IP, shared across every auth route so
+    rotating between login and forgot-password doesn't multiply the allowance.
+    """
+    return f"{_AUTH_BUCKET}:{get_remote_address(request)}"
+
+
+def reset_auth_rate_limit(client_ip: str) -> None:
+    """
+    Clear one client's credential bucket.
+    """
+    limiter.limiter.clear(AUTH_RATE_LIMIT, f"{_AUTH_BUCKET}:{client_ip}")
+
+
+async def enforce_auth_rate_limit(request: Request) -> None:
+    """
+    Dependency for the fastapi-users routers, which are mounted wholesale and so
+    can't carry a @limiter.limit decorator on individual endpoints.
+    """
+    if not limiter.limiter.hit(AUTH_RATE_LIMIT, _auth_rate_limit_key(request)):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many authentication attempts. Try again in a minute.",
+            headers={"Retry-After": "60"},
+        )
 
 
 def _require_quarter(quarter: str | None) -> str:

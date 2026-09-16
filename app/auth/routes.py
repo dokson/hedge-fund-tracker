@@ -22,11 +22,16 @@ us by checking `is_verified` on `current_active_verified_user`.
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
+from app.api.common import enforce_auth_rate_limit
 from app.auth.backend import auth_backend
 from app.auth.dependencies import fastapi_users
 from app.auth.schemas import UserCreate, UserRead, UserUpdate
+
+# Brute-force and mail-bombing guard. Applied at include time because these
+# routers come from fastapi-users, so there is no endpoint of ours to decorate.
+_throttled = [Depends(enforce_auth_rate_limit)]
 
 
 def include_routers_for_auth(app: FastAPI) -> None:
@@ -37,21 +42,25 @@ def include_routers_for_auth(app: FastAPI) -> None:
         fastapi_users.get_auth_router(auth_backend),
         prefix="/auth/cookie-db",
         tags=["auth"],
+        dependencies=_throttled,
     )
     app.include_router(
         fastapi_users.get_register_router(UserRead, UserCreate),
         prefix="/auth",
         tags=["auth"],
+        dependencies=_throttled,
     )
     app.include_router(
         fastapi_users.get_reset_password_router(),
         prefix="/auth",
         tags=["auth"],
+        dependencies=_throttled,
     )
     app.include_router(
         fastapi_users.get_verify_router(UserRead),
         prefix="/auth",
         tags=["auth"],
+        dependencies=_throttled,
     )
     # `get_users_router` mounts:
     #   GET /users/me, PATCH /users/me  → current_active_user (any logged-in)

@@ -145,18 +145,21 @@ function APIKeysTab() {
 
   const toggleVisibility = (id: string) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
 
+  // Send only what changed: the server merges into .env and owns every key it
+  // does not expose, so the deployment secrets never round-trip through here.
   const saveToEnv = async (updates: Record<string, string>) => {
-    const newEnv = { ...envKeys, ...updates };
-    // Remove empty values
-    for (const k of Object.keys(newEnv)) {
-      if (!newEnv[k]) delete newEnv[k];
-    }
     await fetch(`${API_BASE}/api/settings/env`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newEnv),
+      body: JSON.stringify(updates),
     });
-    setEnvKeys(newEnv);
+    setEnvKeys((prev) => {
+      const next = { ...prev, ...updates };
+      for (const [key, value] of Object.entries(updates)) {
+        if (!value) delete next[key];
+      }
+      return next;
+    });
   };
 
   const handleSave = async (providerId: string) => {

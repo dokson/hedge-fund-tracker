@@ -34,10 +34,19 @@ from app.api.starred import router as starred_router
 from app.auth import include_routers_for_auth
 
 
+def _is_publicly_known_secret(value: str) -> bool:
+    """
+    Detect a signing secret that anyone can read off the repository: the dev
+    default baked into the code, or a placeholder copied from `.env.example`.
+    """
+    normalized = value.strip()
+    return normalized.startswith(("dev-only", "REPLACE_ME", "your_"))
+
+
 def _validate_deployment_secrets() -> None:
     """
     In a hardened deployment (secure cookies → HTTPS → real deploy), refuse to
-    start with the dev-default token-signing secrets: they would let anyone forge
+    start with publicly-known token-signing secrets: they would let anyone forge
     verification / password-reset tokens. No effect in local/dev (COOKIE_SECURE
     unset), so the local single-user tool keeps working with the defaults.
     """
@@ -47,18 +56,23 @@ def _validate_deployment_secrets() -> None:
     if not COOKIE_SECURE:
         return
 
-    weak = [
-        name
-        for name, value in (
-            ("RESET_PASSWORD_TOKEN_SECRET", RESET_PASSWORD_TOKEN_SECRET),
-            ("VERIFICATION_TOKEN_SECRET", VERIFICATION_TOKEN_SECRET),
-        )
-        if value.startswith("dev-only")
-    ]
+    secrets_by_name = (
+        ("RESET_PASSWORD_TOKEN_SECRET", RESET_PASSWORD_TOKEN_SECRET),
+        ("VERIFICATION_TOKEN_SECRET", VERIFICATION_TOKEN_SECRET),
+    )
+    # A value copied from .env.example overrides the dev default, so the
+    # "dev-only" prefix alone would wave it through despite being just as public.
+    weak = [name for name, value in secrets_by_name if _is_publicly_known_secret(value)]
     if weak:
         raise RuntimeError(
-            "COOKIE_SECURE is set (production posture) but dev-default signing secrets "
+            "COOKIE_SECURE is set (production posture) but publicly-known signing secrets "
             f"are still in use: {weak}. Set them via environment variables before deploying."
+        )
+
+    if RESET_PASSWORD_TOKEN_SECRET == VERIFICATION_TOKEN_SECRET:
+        raise RuntimeError(
+            "RESET_PASSWORD_TOKEN_SECRET and VERIFICATION_TOKEN_SECRET must differ: "
+            "sharing one key lets a verification token be replayed as a password reset."
         )
 
 

@@ -19,6 +19,11 @@ Operational guidance:
 - Annual KEK rotation: keep current MASTER_KEY as MASTER_KEY_PREV in your
   env, set the new value as MASTER_KEY, run a re-encryption job, then drop
   MASTER_KEY_PREV.
+
+`--update` also regenerates runtime auth/encryption secrets still left at the
+`.env.example` placeholder values. It deliberately skips POSTGRES_PASSWORD:
+changing it once the database volume is initialized desynchronizes the app
+from the DB.
 """
 
 from __future__ import annotations
@@ -29,6 +34,14 @@ import sys
 from pathlib import Path
 
 from cryptography.fernet import Fernet
+
+_PLACEHOLDER_REPAIR_KEYS = frozenset(
+    {
+        "MASTER_KEY",
+        "RESET_PASSWORD_TOKEN_SECRET",
+        "VERIFICATION_TOKEN_SECRET",
+    }
+)
 
 
 def _fresh_pairs() -> list[tuple[str, str]]:
@@ -72,6 +85,42 @@ def _existing_keys(path: Path) -> set[str]:
     return keys
 
 
+def _is_example_placeholder(value: str) -> bool:
+    """
+    Detect a value copied verbatim from `.env.example`.
+    """
+    normalized = value.strip().strip('"').strip("'")
+    return normalized.startswith("REPLACE_ME") or normalized.startswith("your_")
+
+
+def _replace_placeholder_values(path: Path, pairs: list[tuple[str, str]]) -> list[str]:
+    """
+    Replace example placeholder runtime secrets in `path` with fresh values,
+    returning the keys that were repaired.
+    """
+    if not path.exists():
+        return []
+
+    replacements = {k: v for k, v in pairs if k in _PLACEHOLDER_REPAIR_KEYS}
+    updated_lines: list[str] = []
+    replaced: list[str] = []
+
+    for line in path.read_text(encoding="utf-8").splitlines():
+        key, separator, value = line.partition("=")
+        if separator and not line.lstrip().startswith("#"):
+            key = key.strip()
+            if key in replacements and _is_example_placeholder(value):
+                updated_lines.append(f"{key}={replacements[key]}")
+                replaced.append(key)
+                continue
+        updated_lines.append(line)
+
+    if replaced:
+        path.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
+
+    return replaced
+
+
 def main() -> None:
     """
     CLI entry point.
@@ -94,8 +143,9 @@ def main() -> None:
         nargs="?",
         const=".env",
         metavar="PATH",
-        help="Append only the keys that are MISSING from PATH (default: .env). "
-        "Existing keys are preserved untouched.",
+        help="Append the keys MISSING from PATH (default: .env) and regenerate any "
+        "auth/encryption secret still set to its .env.example placeholder. "
+        "Real existing values are preserved untouched.",
     )
     args = parser.parse_args()
 
@@ -115,19 +165,27 @@ def main() -> None:
 
     if args.update:
         path = Path(args.update)
+        replaced = _replace_placeholder_values(path, pairs)
         present = _existing_keys(path)
         missing = [(k, v) for k, v in pairs if k not in present]
-        if not missing:
+        if not missing and not replaced:
             sys.stderr.write(f"{path} already contains all required keys. Nothing to do.\n")
             return
-        # Append a separator + only the missing pairs.
-        with path.open("a", encoding="utf-8") as f:
-            f.write("\n# Added by scripts/generate_secrets.py --update\n")
-            f.write(_render(missing, header=False))
-        sys.stderr.write(
-            f"Appended {len(missing)} missing key(s) to {path}: "
-            f"{', '.join(k for k, _ in missing)}\n"
-        )
+
+        if missing:
+            # Append a separator + only the missing pairs.
+            with path.open("a", encoding="utf-8") as f:
+                f.write("\n# Added by scripts/generate_secrets.py --update\n")
+                f.write(_render(missing, header=False))
+
+        actions = []
+        if replaced:
+            actions.append(f"replaced {len(replaced)} placeholder value(s): {', '.join(replaced)}")
+        if missing:
+            actions.append(
+                f"appended {len(missing)} missing key(s): {', '.join(k for k, _ in missing)}"
+            )
+        sys.stderr.write(f"Updated {path}: {'; '.join(actions)}\n")
         return
 
     sys.stdout.write(_render(pairs))
