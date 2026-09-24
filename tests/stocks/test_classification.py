@@ -1,9 +1,11 @@
 import unittest
+import unittest.mock
 from unittest.mock import patch
 
 import pandas as pd
 
-from app.stocks.classification import resolve_industry
+from app.ai.clients.groq_client import GroqClient
+from app.stocks.classification import _llm_classify, resolve_industry
 
 
 def _stocks_df(rows: list[tuple[str, str, str, str]]) -> pd.DataFrame:
@@ -123,6 +125,48 @@ class TestResolveIndustry(unittest.TestCase):
         # we assert only that name match did not return the wrong value).
         with patch("app.stocks.classification._llm_classify", return_value=None):
             self.assertEqual(resolve_industry("AEVAW", ""), "")
+
+
+class TestLlmClassifyRequest(unittest.TestCase):
+    """
+    The Groq request must target a model the API still serves and leave room
+    for a reasoning model to think before it emits the Industry string.
+    """
+
+    def _post_payload(self) -> dict:
+        """
+        Runs _llm_classify against a mocked Groq endpoint and returns the JSON body it sent.
+        """
+        hierarchy = pd.DataFrame(
+            {"Sector": ["Utilities"], "Industry": ["Utilities—Regulated Electric"]}
+        )
+        response = unittest.mock.MagicMock(ok=True)
+        response.json.return_value = {
+            "choices": [{"message": {"content": "Utilities—Regulated Electric"}}]
+        }
+        with (
+            patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
+            patch("app.stocks.classification.load_sector_hierarchy", return_value=hierarchy),
+            patch("app.stocks.classification.requests.post", return_value=response) as post,
+        ):
+            self.assertEqual(
+                _llm_classify("XYZ", "Example Power Co"), "Utilities—Regulated Electric"
+            )
+        return post.call_args.kwargs["json"]
+
+    def test_uses_the_groq_client_default_model(self):
+        """
+        One model id for every Groq call, so a retired model is replaced in one place.
+        """
+        self.assertEqual(self._post_payload()["model"], GroqClient.DEFAULT_MODEL)
+
+    def test_bounds_reasoning_and_leaves_room_for_the_answer(self):
+        """
+        A 32-token cap was spent entirely on reasoning, returning an empty answer.
+        """
+        payload = self._post_payload()
+        self.assertEqual(payload["reasoning_effort"], "low")
+        self.assertGreaterEqual(payload["max_tokens"], 256)
 
 
 if __name__ == "__main__":

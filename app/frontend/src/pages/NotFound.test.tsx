@@ -4,7 +4,7 @@
  * entirely under the GH Pages project path).
  */
 import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 
 import NotFound from "./NotFound";
@@ -56,5 +56,15 @@ describe("NotFound page", () => {
     for (const href of inAppHrefs) {
       expect(href === basename || href.startsWith(`${basename}/`)).toBe(true);
     }
+  });
+
+  it("explains a missing symbol for a stock-page path", () => {
+    renderNotFound(`${ROUTES.stock}/ZZZZ`);
+    expect(screen.getByText("No filings for this symbol")).toBeTruthy();
+  });
+
+  it("uses the generic heading for any other path", () => {
+    renderNotFound("/stockholders");
+    expect(screen.getByText("Route not found")).toBeTruthy();
   });
 });

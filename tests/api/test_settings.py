@@ -122,5 +122,47 @@ class TestEnvEndpoints(unittest.TestCase):
         self.assertFalse(self.env.exists())
 
 
+class TestEnvWriteAtomicity(unittest.TestCase):
+    """The .env rewrite is atomic and serialised."""
+
+    def setUp(self):
+        """
+        Use an isolated temp directory so the real .env is never touched.
+        """
+        self._tmp = tempfile.mkdtemp(prefix="hft_env_")
+        self.env = Path(self._tmp) / ".env"
+
+    def tearDown(self):
+        """
+        Remove the temp directory.
+        """
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_put_env_writes_atomically_under_lock(self):
+        """
+        The rewrite goes through the atomic helper while the module lock is held.
+        """
+        from app.api import settings
+
+        held: list[bool] = []
+
+        def _fake_write(path, text):
+            """
+            Record whether the lock is held at write time.
+            """
+            held.append(settings._ENV_LOCK.locked())
+            path.write_text(text, encoding="utf-8")
+
+        with (
+            patch("app.api.settings.ENV_FILE", self.env),
+            patch("app.api.settings.atomic_write_text", side_effect=_fake_write) as mock_write,
+        ):
+            resp = client.put("/api/settings/env", json={"GROQ_API_KEY": "k"})
+        self.assertEqual(resp.status_code, 200)
+        mock_write.assert_called_once()
+        self.assertEqual(held, [True])
+        self.assertEqual(self.env.read_text(encoding="utf-8"), "GROQ_API_KEY=k\n")
+
+
 if __name__ == "__main__":
     unittest.main()

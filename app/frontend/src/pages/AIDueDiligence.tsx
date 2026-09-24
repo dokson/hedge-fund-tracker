@@ -5,7 +5,7 @@ import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { stockPath, ROUTES } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
-import { useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 import { runStockAnalysis, getStocks } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useAIRun } from "@/hooks/useAIRun";
@@ -120,9 +120,9 @@ export default function AIDueDiligence() {
   // consumed elsewhere via useQuery with the same key.
   useQuery({
     queryKey: ["stockAnalysis", ticker, quarter],
-    queryFn: () => runStockAnalysis(ticker, quarter!),
+    queryFn: quarter ? () => runStockAnalysis(ticker, quarter) : skipToken,
     staleTime: 10 * 60 * 1000,
-    enabled: !!ticker && !!quarter && validTickers.has(ticker),
+    enabled: !!ticker && validTickers.has(ticker),
   });
 
   const runDiligence = async () => {

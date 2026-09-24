@@ -2,14 +2,33 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import httpx2 as httpx
-from openai import BadRequestError
+from openai import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    AuthenticationError,
+    BadRequestError,
+    InternalServerError,
+    NotFoundError,
+    RateLimitError,
+)
 from tenacity import RetryError
 
+from app.ai.clients.base_client import AIClient
 from app.ai.clients.base_openai_client import (
     REQUEST_TIMEOUT_S,
     OpenAIClient,
     OpenAIProviderConfig,
 )
+
+_REQUEST = httpx.Request("POST", "https://api.test-provider.com/v1")
+
+
+def _response(status: int) -> httpx.Response:
+    """
+    Builds a bare HTTP response with the given status for SDK error construction.
+    """
+    return httpx.Response(status, request=_REQUEST)
 
 
 def _stream(*contents):
@@ -98,7 +117,7 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
         # Patch time.sleep to avoid wait_exponential delay in tenacity retry
         self.sleep_patcher = patch("time.sleep")
         self.sleep_patcher.start()
-        OpenAIClient._reasoning_unsupported.clear()
+        AIClient._reasoning_unsupported.clear()
 
     def tearDown(self):
         """
@@ -127,13 +146,58 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
         Propagates the exception after all tenacity retry attempts are exhausted.
         """
         mock_instance = mock_openai.return_value
-        mock_instance.chat.completions.create.side_effect = RuntimeError("API unavailable")
+        mock_instance.chat.completions.create.side_effect = APIConnectionError(request=_REQUEST)
 
         with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
             client = ConcreteOpenAIClient()
 
         with self.assertRaises(RetryError):
             client.generate_content("Test prompt")
+        self.assertEqual(mock_instance.chat.completions.create.call_count, 3)
+
+    @patch("app.ai.clients.base_openai_client.OpenAI")
+    def test_retries_transient_errors(self, mock_openai):
+        """
+        Timeouts, rate limits and 5xx responses are retried until attempts run out.
+        """
+        transient = [
+            APITimeoutError(request=_REQUEST),
+            RateLimitError("slow down", response=_response(429), body=None),
+            InternalServerError("boom", response=_response(500), body=None),
+            APIStatusError("bad gateway", response=_response(502), body=None),
+        ]
+        for exc in transient:
+            with self.subTest(exc=type(exc).__name__):
+                mock_instance = mock_openai.return_value
+                mock_instance.chat.completions.create.reset_mock()
+                mock_instance.chat.completions.create.side_effect = exc
+                with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
+                    client = ConcreteOpenAIClient()
+                with self.assertRaises(RetryError):
+                    client.generate_content("Test prompt")
+                self.assertEqual(mock_instance.chat.completions.create.call_count, 3)
+
+    @patch("app.ai.clients.base_openai_client.OpenAI")
+    def test_does_not_retry_permanent_errors(self, mock_openai):
+        """
+        Auth failures, bad requests, missing models and unknown errors fail on the first attempt.
+        """
+        permanent = [
+            AuthenticationError("bad key", response=_response(401), body=None),
+            BadRequestError("bad request", response=_response(400), body=None),
+            NotFoundError("no model", response=_response(404), body=None),
+            RuntimeError("unexpected"),
+        ]
+        for exc in permanent:
+            with self.subTest(exc=type(exc).__name__):
+                mock_instance = mock_openai.return_value
+                mock_instance.chat.completions.create.reset_mock()
+                mock_instance.chat.completions.create.side_effect = exc
+                with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
+                    client = ConcreteOpenAIClient()
+                with self.assertRaises(type(exc)):
+                    client.generate_content("Test prompt")
+                self.assertEqual(mock_instance.chat.completions.create.call_count, 1)
 
     @patch("app.ai.clients.base_openai_client.OpenAI")
     def test_calls_api_with_correct_model_and_messages(self, mock_openai):
@@ -240,6 +304,59 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
             client.generate_content("Test prompt")
 
         self.assertTrue(any("first token" in line for line in cm.output))
+
+    @patch("app.ai.clients.base_openai_client.OpenAI")
+    def test_maps_reasoning_to_reasoning_effort(self, mock_openai):
+        """
+        An explicit level becomes reasoning_effort; ``reasoning`` never reaches the SDK.
+        """
+        mock_instance = mock_openai.return_value
+        mock_instance.chat.completions.create.return_value = _stream("OK")
+        with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
+            client = ConcreteOpenAIClient()
+
+        client.generate_content("Hello!", reasoning="medium")
+
+        kwargs = mock_instance.chat.completions.create.call_args.kwargs
+        self.assertEqual(kwargs["extra_body"], {"reasoning_effort": "medium"})
+        self.assertNotIn("reasoning", kwargs)
+
+    @patch("app.ai.clients.base_openai_client.OpenAI")
+    def test_default_reasoning_effort_is_low_and_not_forwarded(self, mock_openai):
+        """
+        Without a level the shared default is sent, and no ``reasoning`` kwarg leaks.
+        """
+        mock_instance = mock_openai.return_value
+        mock_instance.chat.completions.create.return_value = _stream("OK")
+        with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
+            client = ConcreteOpenAIClient()
+
+        client.generate_content("Hello!")
+
+        kwargs = mock_instance.chat.completions.create.call_args.kwargs
+        self.assertEqual(kwargs["extra_body"], {"reasoning_effort": "low"})
+        self.assertNotIn("reasoning", kwargs)
+
+    @patch("app.ai.clients.base_openai_client.OpenAI")
+    def test_reasoning_fallback_works_with_non_default_level(self, mock_openai):
+        """
+        A model rejecting a HIGH reasoning_effort is retried without it.
+        """
+        mock_instance = mock_openai.return_value
+        mock_instance.chat.completions.create.side_effect = [
+            _reasoning_effort_rejected(),
+            _stream("OK"),
+        ]
+        with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
+            client = ConcreteOpenAIClient()
+
+        self.assertEqual(client.generate_content("Hello!", reasoning="high"), "OK")
+
+        calls = mock_instance.chat.completions.create.call_args_list
+        self.assertEqual(calls[0].kwargs["extra_body"], {"reasoning_effort": "high"})
+        self.assertEqual(calls[1].kwargs["extra_body"], {})
+        for call in calls:
+            self.assertNotIn("reasoning", call.kwargs)
 
 
 if __name__ == "__main__":

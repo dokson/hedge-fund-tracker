@@ -10,6 +10,7 @@ over HTTP, so an XSS payload or a leaked DevTools log can't reach them.
 
 from __future__ import annotations
 
+import threading
 from typing import Final
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -17,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from app.api.paths import ENV_FILE
 from app.auth.dependencies import require_local_or_superuser
 from app.patterns import ENV_KEY_RE
+from app.utils.pd import atomic_write_text
 
 # Provider credentials the AI Settings page owns. Everything else in .env is
 # deployment configuration and stays server-side.
@@ -34,6 +36,8 @@ MANAGED_ENV_KEYS: Final = frozenset(
 # .env holds every provider secret: operator-only in a production posture.
 router = APIRouter(tags=["settings"], dependencies=[Depends(require_local_or_superuser)])
 
+_ENV_LOCK = threading.Lock()
+
 
 def _parse_env_line(line: str) -> tuple[str, str] | None:
     """
@@ -48,7 +52,9 @@ def _parse_env_line(line: str) -> tuple[str, str] | None:
 
 @router.get("/api/settings/env")
 def get_env() -> dict[str, str]:
-    """Return the managed provider keys from the .env file (empty if absent)."""
+    """
+    Return the managed provider keys from the .env file (empty if absent).
+    """
     if not ENV_FILE.exists():
         return {}
     result: dict[str, str] = {}
@@ -95,21 +101,22 @@ async def put_env(request: Request) -> dict[str, bool]:
             raise HTTPException(status_code=422, detail=f"Value for {key!r} contains a newline")
         updates[key] = value
 
-    existing = ENV_FILE.read_text(encoding="utf-8").splitlines() if ENV_FILE.exists() else []
-    lines: list[str] = []
-    seen: set[str] = set()
+    with _ENV_LOCK:
+        existing = ENV_FILE.read_text(encoding="utf-8").splitlines() if ENV_FILE.exists() else []
+        lines: list[str] = []
+        seen: set[str] = set()
 
-    for line in existing:
-        pair = _parse_env_line(line)
-        if pair is None or pair[0] not in updates:
-            lines.append(line)
-            continue
-        key = pair[0]
-        seen.add(key)
-        if updates[key]:
-            lines.append(f"{key}={updates[key]}")
+        for line in existing:
+            pair = _parse_env_line(line)
+            if pair is None or pair[0] not in updates:
+                lines.append(line)
+                continue
+            key = pair[0]
+            seen.add(key)
+            if updates[key]:
+                lines.append(f"{key}={updates[key]}")
 
-    lines.extend(f"{k}={v}" for k, v in updates.items() if k not in seen and v)
+        lines.extend(f"{k}={v}" for k, v in updates.items() if k not in seen and v)
 
-    ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        atomic_write_text(ENV_FILE, "\n".join(lines) + "\n")
     return {"ok": True}

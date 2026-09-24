@@ -6,6 +6,7 @@ import {
   generateModelsCSV,
   saveFileToDisk,
   clearCache,
+  isModelProvider,
   MODEL_PROVIDERS,
   PROVIDER_DISPLAY_NAMES,
   type AIModel,
@@ -31,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { PanelTitle } from "@/components/ui/PanelTitle";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { ROUTES } from "@/lib/routes";
+import { matchesQuery } from "@/lib/utils";
 import { canonicalUrl } from "@/lib/seo";
 import { Loader2 } from "lucide-react";
 import {
@@ -435,14 +437,7 @@ function ModelsTab() {
   });
 
   const filteredModels = useMemo(() => {
-    if (!modelSearch) return models;
-    const q = modelSearch.toLowerCase();
-    return models.filter(
-      (m) =>
-        m.id.toLowerCase().includes(q) ||
-        m.description.toLowerCase().includes(q) ||
-        m.client.toLowerCase().includes(q),
-    );
+    return models.filter((m) => matchesQuery(modelSearch, m.id, m.description, m.client));
   }, [models, modelSearch]);
 
   const modelsByClient = useMemo(() => {
@@ -591,7 +586,9 @@ function ModelsTab() {
               <Label htmlFor="model-provider">Provider</Label>
               <Select
                 value={newModelProvider}
-                onValueChange={(v) => setNewModelProvider(v as ModelProvider)}
+                onValueChange={(v) => {
+                  if (isModelProvider(v)) setNewModelProvider(v);
+                }}
               >
                 <SelectTrigger id="model-provider" className="bg-card">
                   <SelectValue />

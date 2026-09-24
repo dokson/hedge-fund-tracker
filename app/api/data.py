@@ -15,7 +15,10 @@ from fastapi.concurrency import run_in_threadpool
 from app.api.common import _df_to_json_safe_records, _require_quarter
 from app.api.paths import DATABASE_DIR, _safe_db_path
 from app.auth.dependencies import require_local_or_superuser
+from app.database import STOCKS_FILE
+from app.database.stocks import stocks_lock
 from app.patterns import QUARTER_RE
+from app.utils.pd import atomic_write_text
 
 router = APIRouter(tags=["data"])
 
@@ -79,7 +82,11 @@ async def put_database_file(filepath: str, request: Request) -> dict[str, bool]:
 
     def _write() -> None:
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(text, encoding="utf-8")
+        if file_path == DATABASE_DIR.resolve() / STOCKS_FILE:
+            with stocks_lock():
+                atomic_write_text(file_path, text)
+        else:
+            atomic_write_text(file_path, text)
 
     await run_in_threadpool(_write)
     return {"ok": True}
@@ -87,7 +94,9 @@ async def put_database_file(filepath: str, request: Request) -> dict[str, bool]:
 
 @router.get("/api/database/quarters")
 def list_quarters() -> list[str]:
-    """List all available quarter folders (YYYYQ[1-4]), sorted chronologically."""
+    """
+    List all available quarter folders (YYYYQ[1-4]), sorted chronologically.
+    """
     if not DATABASE_DIR.exists():
         return []
     return sorted(d.name for d in DATABASE_DIR.iterdir() if d.is_dir() and QUARTER_RE.match(d.name))

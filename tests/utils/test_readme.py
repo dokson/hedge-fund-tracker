@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from app.utils.readme import EXCLUDED_HEDGE_FUNDS_FILE, generate_excluded_funds_list
+from app.utils.readme import EXCLUDED_HEDGE_FUNDS_FILE, generate_excluded_funds_list, update_readme
 
 
 class TestReadme(unittest.TestCase):
@@ -43,3 +43,53 @@ class TestReadme(unittest.TestCase):
             result = generate_excluded_funds_list()
         self.assertIsNone(result)
         self.assertIn(EXCLUDED_HEDGE_FUNDS_FILE, "\n".join(cm.output))
+
+    @patch("app.utils.readme.atomic_write_text")
+    @patch("app.utils.readme.generate_excluded_funds_list")
+    def test_update_readme_keeps_backslashes_literal(self, mock_list, mock_write):
+        """
+        Backslashes in fund names must not be read as regex group references.
+        """
+        import tempfile
+        from pathlib import Path
+
+        mock_list.return_value = r"- [Fund \1 \g<0>](url)"
+        with tempfile.TemporaryDirectory() as tmp:
+            readme = Path(tmp) / "README.md"
+            readme.write_text(
+                "a\n<!-- EXCLUDED_FUNDS_LIST_START -->old<!-- EXCLUDED_FUNDS_LIST_END -->\nb",
+                encoding="utf-8",
+                newline="",
+            )
+            with patch("app.utils.readme.README_FILE", str(readme)):
+                update_readme()
+        mock_write.assert_called_once()
+        self.assertEqual(
+            mock_write.call_args.args[1],
+            "a\n<!-- EXCLUDED_FUNDS_LIST_START -->\n"
+            r"- [Fund \1 \g<0>](url)"
+            "\n<!-- EXCLUDED_FUNDS_LIST_END -->\nb",
+        )
+
+    @patch("app.utils.readme.atomic_write_text")
+    @patch("app.utils.readme.generate_excluded_funds_list")
+    def test_update_readme_keeps_crlf_line_endings_consistent(self, mock_list, mock_write):
+        """
+        A CRLF checkout must not come back with the inserted lines in bare LF.
+        """
+        import tempfile
+        from pathlib import Path
+
+        mock_list.return_value = "- [Fund A](url)\n- [Fund B](url)"
+        with tempfile.TemporaryDirectory() as tmp:
+            readme = Path(tmp) / "README.md"
+            readme.write_text(
+                "a\r\n<!-- EXCLUDED_FUNDS_LIST_START -->old<!-- EXCLUDED_FUNDS_LIST_END -->\r\nb\r\n",
+                encoding="utf-8",
+                newline="",
+            )
+            with patch("app.utils.readme.README_FILE", str(readme)):
+                update_readme()
+        written = mock_write.call_args.args[1]
+        self.assertEqual(written.count("\n"), written.count("\r\n"))
+        self.assertIn("- [Fund A](url)\r\n- [Fund B](url)", written)

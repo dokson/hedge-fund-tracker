@@ -5,7 +5,7 @@
     {
       "Ticker": "VSAT",
       "Company": "Viasat Inc",
-      "Promise_Score": 106.46621445343072,
+      "Promise_Score": 90.0,
       "Momentum_Score": 28,
       "Low_Volatility_Score": 38,
       "Risk_Score": 68,
@@ -18,7 +18,7 @@
     {
       "Ticker": "TSM",
       "Company": "Taiwan Semiconductor Manufacturing",
-      "Promise_Score": 104.74628228541614,
+      "Promise_Score": 78.35,
       "Momentum_Score": 42,
       "Low_Volatility_Score": 52,
       "Risk_Score": 38,
@@ -31,7 +31,7 @@
     {
       "Ticker": "SHAZ",
       "Company": "SharonAI Holdings Inc",
-      "Promise_Score": 104.36864075136971,
+      "Promise_Score": 75.79,
       "Momentum_Score": 18,
       "Low_Volatility_Score": 20,
       "Risk_Score": 85,
@@ -44,7 +44,7 @@
     {
       "Ticker": "FRMI",
       "Company": "Fermi Inc",
-      "Promise_Score": 103.19527785024786,
+      "Promise_Score": 67.84,
       "Momentum_Score": 12,
       "Low_Volatility_Score": 15,
       "Risk_Score": 90,
@@ -57,7 +57,7 @@
     {
       "Ticker": "RRX",
       "Company": "Regal Rexnord Corporation",
-      "Promise_Score": 102.94156013566398,
+      "Promise_Score": 66.12,
       "Momentum_Score": 22,
       "Low_Volatility_Score": 35,
       "Risk_Score": 62,
@@ -70,7 +70,7 @@
     {
       "Ticker": "HBM",
       "Company": "Hudbay Minerals",
-      "Promise_Score": 102.34411687972866,
+      "Promise_Score": 62.08,
       "Momentum_Score": 82,
       "Low_Volatility_Score": 38,
       "Risk_Score": 60,
@@ -83,7 +83,7 @@
     {
       "Ticker": "MRVL",
       "Company": "Marvell Technology Inc",
-      "Promise_Score": 102.2834594312549,
+      "Promise_Score": 61.67,
       "Momentum_Score": 25,
       "Low_Volatility_Score": 28,
       "Risk_Score": 68,
@@ -96,7 +96,7 @@
     {
       "Ticker": "POET",
       "Company": "Poet Technologies Inc",
-      "Promise_Score": 101.97169319071226,
+      "Promise_Score": 59.55,
       "Momentum_Score": 24,
       "Low_Volatility_Score": 22,
       "Risk_Score": 82,
@@ -109,7 +109,7 @@
     {
       "Ticker": "MSDL",
       "Company": "Morgan Stanley Direct Lending Fund",
-      "Promise_Score": 100.91247064962172,
+      "Promise_Score": 52.38,
       "Momentum_Score": 55,
       "Low_Volatility_Score": 80,
       "Risk_Score": 38,
@@ -122,7 +122,7 @@
     {
       "Ticker": "BW",
       "Company": "Babcock & Wilcox Enterprises",
-      "Promise_Score": 99.82324549960867,
+      "Promise_Score": 45.0,
       "Momentum_Score": 10,
       "Low_Volatility_Score": 14,
       "Risk_Score": 92,

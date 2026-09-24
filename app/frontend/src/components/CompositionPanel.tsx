@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { Loader2 } from "lucide-react";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
@@ -42,15 +42,13 @@ export default function CompositionPanel({ strategyId }: { strategyId: string })
 
   const { data: analysis = [], isLoading } = useQuery({
     queryKey: ["quarterAnalysis", quarter, "all"],
-    queryFn: () => runQuarterAnalysis(quarter!),
-    enabled: !!quarter,
+    queryFn: quarter ? () => runQuarterAnalysis(quarter) : skipToken,
     staleTime: 10 * 60 * 1000,
   });
   const { data: stocks = [] } = useQuery({ queryKey: ["stocks"], queryFn: getStocks });
   const { data: fundList = [] } = useQuery({
     queryKey: ["quarterFundList", quarter],
-    queryFn: () => getQuarterFundList(quarter!),
-    enabled: !!quarter,
+    queryFn: quarter ? () => getQuarterFundList(quarter) : skipToken,
     staleTime: Infinity,
   });
 

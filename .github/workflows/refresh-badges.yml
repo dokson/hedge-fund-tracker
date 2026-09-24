@@ -3,7 +3,7 @@ name: Refresh README Badges
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */2 * * *" # Every 2 hours
+    - cron: "0 */4 * * *" # Every 4 hours
 
 jobs:
   refresh-badges:

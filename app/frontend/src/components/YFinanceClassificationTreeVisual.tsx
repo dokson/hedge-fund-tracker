@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Loader2, Search } from "lucide-react";
 
 import { getSectorHierarchy } from "@/lib/dataService";
+import { matchesQuery } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { PanelTitle } from "@/components/ui/PanelTitle";
 import { getSectorStyle } from "@/lib/sectorStyle";
@@ -21,12 +22,11 @@ export default function YFinanceClassificationTreeVisual({ onSelectIndustry }: P
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
 
-  // Group industries by sector, lowercased query for case-insensitive search.
+  // Group industries by sector, keeping only rows that match the search.
   const grouped = useMemo(() => {
     const map = new Map<string, string[]>();
-    const q = query.trim().toLowerCase();
     for (const { sector, industry } of hierarchy) {
-      if (q && !sector.toLowerCase().includes(q) && !industry.toLowerCase().includes(q)) continue;
+      if (!matchesQuery(query, sector, industry)) continue;
       const list = map.get(sector) ?? [];
       list.push(industry);
       map.set(sector, list);

@@ -52,6 +52,7 @@ export { getSectorHierarchy, getStocks } from "./data/stocks";
 export {
   generateModelsCSV,
   getModels,
+  isModelProvider,
   MODEL_PROVIDERS,
   PROVIDER_DISPLAY_NAMES,
   type ModelProvider,

@@ -2,8 +2,7 @@ import math
 import os
 import shutil
 import sys
-from contextlib import contextmanager, redirect_stderr, redirect_stdout, suppress
-from pathlib import Path
+from contextlib import suppress
 
 from tabulate import tabulate
 
@@ -25,25 +24,6 @@ if sys.stdout.encoding.lower() != "utf-8":
 if sys.stderr.encoding.lower() != "utf-8":
     with suppress(AttributeError, Exception):
         sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
-
-
-@contextmanager
-def silence_output():
-    """
-    Context manager to silence stdout and stderr in single-threaded code.
-
-    WARNING: NOT thread-safe. ``redirect_stdout`` / ``redirect_stderr`` rebind
-    the process-global ``sys.stdout`` / ``sys.stderr``; concurrent callers
-    leave the restore stack in an inconsistent state, eventually pointing
-    one of the streams at an already-closed file descriptor (symptom:
-    ``ValueError: I/O operation on closed file. lost sys.stderr``).
-
-    Prefer silencing the library at its logger
-    (``logging.getLogger("<lib>").setLevel(logging.CRITICAL)``) when the code
-    can run inside a ``ThreadPoolExecutor`` or any other multi-threaded context.
-    """
-    with Path(os.devnull).open("w") as devnull, redirect_stderr(devnull), redirect_stdout(devnull):
-        yield
 
 
 def get_terminal_width(fallback=110):

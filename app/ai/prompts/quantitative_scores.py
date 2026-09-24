@@ -1,4 +1,4 @@
-def quantivative_scores_prompt(stocks_toon: str, filing_date: str) -> str:
+def quantitative_scores_prompt(stocks_toon: str, filing_date: str) -> str:
     """
     Build prompt for getting AI scores for stocks.
     """
@@ -61,17 +61,17 @@ Return ONLY a single ```toon fenced code block, with no text before or after it.
 - Every ticker in the input MUST appear, and all four fields MUST be present for each.
 - Avoid clustering on multiples of 5: use the full integer range so the ranking stays separable.
 
-EXAMPLE
+EXAMPLE (placeholder tickers, illustrative values)
 ```toon
-NVDA:
-  industry: "Semiconductors"
-  momentum_score: 94
-  low_volatility_score: 26
-  risk_score: 63
-"BRK-B":
-  industry: "Insurance—Diversified"
-  momentum_score: 58
-  low_volatility_score: 87
-  risk_score: 18
+AAA:
+  industry: "Software—Application"
+  momentum_score: 73
+  low_volatility_score: 41
+  risk_score: 57
+"BBB-B":
+  industry: "Utilities—Regulated Electric"
+  momentum_score: 38
+  low_volatility_score: 82
+  risk_score: 24
 ```
 """

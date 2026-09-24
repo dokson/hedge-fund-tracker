@@ -14,13 +14,14 @@ Choose the weights of a "Promise Score" that ranks stocks by institutional convi
 - `Seller_Count` and `Close_Count`, if included, MUST carry a negative weight.
 - EVERY other metric MUST carry a strictly positive weight.
 - Metric names MUST come verbatim from AVAILABLE METRICS, each used at most once.
-- The weights MUST sum to 1.0 (tolerance +/-0.05).
+- Every weight MUST be a finite, non-zero number.
+- Weights express RELATIVE IMPORTANCE: their magnitudes only matter relative to each other, because the code normalizes them. Any scale works (e.g. 0.4 and 0.2, or 4 and 2).
 
 # HOW YOUR WEIGHTS ARE USED
-Each metric is first converted to a CROSS-SECTIONAL PERCENTILE RANK (0-1) over the whole stock universe; the Promise Score is the weighted sum of those ranks. Two consequences MUST shape your choice:
+Each metric is first converted to a CROSS-SECTIONAL PERCENTILE RANK (0-1) over the whole stock universe; the Promise Score combines those ranks with your weights, normalized by the code. Two consequences follow:
 - Magnitude is discarded. A metric's outliers carry no more influence than its median, so do not weight a metric up because its raw scale is large.
 - Correlated metrics double-count. `Buyer_Count`, `Seller_Count`, `Holder_Count`, `Net_Buyers` and `Buyer_Seller_Ratio` move together, so spreading weight across them concentrates the model on breadth instead of diversifying it.
-The ranking is invariant to rescaling every weight by a positive constant: the sum constraint exists for comparability across runs, not for correctness.
+Multiplying every weight by the same positive constant leaves the ranking unchanged.
 
 # AVAILABLE METRICS
 ```toon
@@ -49,15 +50,15 @@ Buyer_Seller_Ratio: "Buyer_Count / Seller_Count. Extreme when Seller_Count is ne
 # OUTPUT FORMAT
 Return ONLY a single ```toon fenced code block, with no text before or after it. Inside the block: a flat object, one `Metric_Name: <float>` line per metric, no nesting, no comments.
 
-EXAMPLE
+EXAMPLE (illustrative format only; choose your own metrics and values)
 ```toon
-High_Conviction_Count: 0.30
-Max_Portfolio_Pct: 0.20
-Ownership_Delta_Avg: 0.15
-Net_Buyers: 0.15
-Total_Delta_Value: 0.15
-New_Holder_Count: 0.05
-Close_Count: -0.07
-Seller_Count: -0.03
+High_Conviction_Count: 8
+Max_Portfolio_Pct: 4
+Ownership_Delta_Avg: 3
+Net_Buyers: 3
+Total_Delta_Value: 2
+New_Holder_Count: 1
+Close_Count: -2
+Seller_Count: -1
 ```
 """

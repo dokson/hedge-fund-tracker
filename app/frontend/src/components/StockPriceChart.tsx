@@ -26,13 +26,14 @@ type ChartMode = "area" | "candles";
 type Candle = { date: string; open: number; high: number; low: number; close: number };
 type CandleWithRange = Candle & { range: [number, number] };
 
-const RANGES: ReadonlyArray<{ key: RangeKey; label: string; period: string }> = [
-  { key: "YTD", label: "YTD", period: "ytd" },
-  { key: "1Y", label: "1Y", period: "1y" },
-  { key: "3Y", label: "3Y", period: "3y" },
-  { key: "5Y", label: "5Y", period: "5y" },
-  { key: "MAX", label: "Max", period: "max" },
-];
+const RANGE_INFO: Record<RangeKey, { label: string; period: string }> = {
+  YTD: { label: "YTD", period: "ytd" },
+  "1Y": { label: "1Y", period: "1y" },
+  "3Y": { label: "3Y", period: "3y" },
+  "5Y": { label: "5Y", period: "5y" },
+  MAX: { label: "Max", period: "max" },
+};
+const RANGE_KEYS: readonly RangeKey[] = ["YTD", "1Y", "3Y", "5Y", "MAX"];
 
 const UP_COLOR = POSITIVE;
 const DOWN_COLOR = NEGATIVE;
@@ -119,7 +120,7 @@ type Selection = { start: Candle; end: Candle };
 export function StockPriceChart({ ticker, staticData }: { ticker: string; staticData?: Candle[] }) {
   const [range, setRange] = useState<RangeKey>("5Y");
   const [mode, setMode] = useState<ChartMode>("candles");
-  const period = RANGES.find((r) => r.key === range)!.period;
+  const period = RANGE_INFO[range].period;
   const [containerRef, size] = useElementSize();
   const [selection, setSelection] = useState<Selection | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -359,9 +360,9 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
             aria-label="Time range"
             value={range}
             onValueChange={(v) => setRange(v)}
-            options={RANGES.map((r) => ({
-              value: r.key,
-              label: <span className="tabular-nums">{r.label}</span>,
+            options={RANGE_KEYS.map((key) => ({
+              value: key,
+              label: <span className="tabular-nums">{RANGE_INFO[key].label}</span>,
             }))}
           />
         </div>

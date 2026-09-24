@@ -48,54 +48,6 @@ export const AI_PROVIDERS: AIProvider[] = [
 
 // ─── Python backend AI calls ───────────────────────────────────────────────────
 
-function _providerIdForModel(_modelId: string | undefined): null {
-  return null; // provider is now resolved via ModelSelector → onProviderChange
-}
-
-export async function runPromiseScore(
-  quarter: string,
-  topN: number,
-  modelId?: string,
-): Promise<unknown[]> {
-  const res = await fetch(`${API_BASE}/api/ai/promise-score`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      quarter,
-      top_n: topN,
-      model_id: modelId || null,
-      provider_id: _providerIdForModel(modelId),
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Server error ${res.status}`);
-  }
-  return res.json();
-}
-
-export async function runDueDiligence(
-  ticker: string,
-  quarter: string,
-  modelId?: string,
-): Promise<unknown> {
-  const res = await fetch(`${API_BASE}/api/ai/due-diligence`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ticker,
-      quarter,
-      model_id: modelId || null,
-      provider_id: _providerIdForModel(modelId),
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Server error ${res.status}`);
-  }
-  return res.json();
-}
-
 // ─── Streaming AI calls ────────────────────────────────────────────────────────
 
 /** Events the backend SSE endpoints emit (see app/api/sse.py). */
@@ -179,7 +131,7 @@ export async function runPromiseScoreStream(
       quarter,
       top_n: topN,
       model_id: modelId || null,
-      provider_id: providerId || _providerIdForModel(modelId),
+      provider_id: providerId || null,
     }),
   });
   if (!res.ok) {
@@ -207,7 +159,7 @@ export async function runDueDiligenceStream(
       ticker,
       quarter,
       model_id: modelId || null,
-      provider_id: providerId || _providerIdForModel(modelId),
+      provider_id: providerId || null,
     }),
   });
   if (!res.ok) {

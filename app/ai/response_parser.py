@@ -2,6 +2,7 @@ import re
 
 from toon_format import decode
 
+from app.ai.promise_score_validator import PromiseScoreValidator
 from app.utils.logger import get_logger, log_safe
 
 logger = get_logger(__name__)
@@ -20,17 +21,7 @@ class ResponseParser:
         "low_volatility_score",
         "risk_score",
         "growth_score",
-        "High_Conviction_Count",
-        "Max_Portfolio_Pct",
-        "Ownership_Delta_Avg",
-        "Net_Buyers",
-        "New_Holder_Count",
-        "Portfolio_Concentration_Avg",
-        "Total_Delta_Value",
-        "Holder_Count",
-        "Buyer_Count",
-        "Seller_Count",
-        "Buyer_Seller_Ratio",
+        *PromiseScoreValidator.AVAILABLE_METRICS,
     )
 
     @staticmethod

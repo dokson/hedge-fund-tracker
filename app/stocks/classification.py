@@ -24,6 +24,7 @@ from typing import cast
 from curl_cffi import requests
 from curl_cffi.requests.exceptions import RequestException
 
+from app.ai.clients.groq_client import GroqClient
 from app.database import load_sector_hierarchy, load_stocks
 from app.stocks.libraries.yfinance import YFinance
 from app.utils.logger import get_logger, log_safe
@@ -31,7 +32,6 @@ from app.utils.logger import get_logger, log_safe
 logger = get_logger(__name__)
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.1-8b-instant"
 GROQ_TIMEOUT = 20
 
 
@@ -53,7 +53,7 @@ def _match_by_company_name(company: str) -> str:
 
 def _llm_classify(ticker: str, company: str) -> str | None:
     """
-    Asks Groq's llama-3.1-8b-instant to pick an Industry from the closed vocabulary in
+    Asks Groq's default model to pick an Industry from the closed vocabulary in
     sector_hierarchy.csv. Returns None when GROQ_API_KEY is missing, the API
     errors, or the response is not a recognised Industry string.
     """
@@ -81,10 +81,12 @@ def _llm_classify(ticker: str, company: str) -> str | None:
             GROQ_URL,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
-                "model": GROQ_MODEL,
+                "model": GroqClient.DEFAULT_MODEL,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0,
-                "max_tokens": 32,
+                # Reasoning tokens count toward max_tokens; a tight cap returns an empty answer.
+                "reasoning_effort": "low",
+                "max_tokens": 512,
             },
             timeout=GROQ_TIMEOUT,
         )

@@ -18,7 +18,7 @@ const RECOVERY: { label: string; path: string; icon: LucideIcon }[] = [
 /** 404: what failed to resolve, then the routes that do. */
 const NotFound = () => {
   const location = useLocation();
-  const isSymbolLookup = location.pathname.startsWith("/stock/");
+  const isSymbolLookup = location.pathname.startsWith(`${ROUTES.stock}/`);
 
   usePageMeta({
     title: pageTitle("Page not found"),

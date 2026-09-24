@@ -32,27 +32,36 @@ export async function fetchQuarterAnalysis(
   const response = await fetch(url);
   if (!response.ok) throw new Error("Failed to fetch quarter analysis");
   interface RawAnalysisRow {
-    Ticker?: string;
-    Company?: string;
-    Total_Value?: number;
-    Total_Delta_Value?: number;
-    Max_Portfolio_Pct?: number;
-    Avg_Portfolio_Pct?: number;
-    Buyer_Count?: number;
-    Seller_Count?: number;
-    Holder_Count?: number;
-    New_Holder_Count?: number;
-    Close_Count?: number;
-    High_Conviction_Count?: number;
-    Net_Buyers?: number;
-    Buyer_Seller_Ratio?: number;
-    Ownership_Delta_Avg?: number;
-    Avg_Fund_Concentration?: number;
-    Delta?: number;
+    Ticker?: string | null;
+    Company?: string | null;
+    Total_Value?: number | null;
+    Total_Delta_Value?: number | null;
+    Max_Portfolio_Pct?: number | null;
+    Avg_Portfolio_Pct?: number | null;
+    Buyer_Count?: number | null;
+    Seller_Count?: number | null;
+    Holder_Count?: number | null;
+    New_Holder_Count?: number | null;
+    Close_Count?: number | null;
+    High_Conviction_Count?: number | null;
+    Net_Buyers?: number | null;
+    Buyer_Seller_Ratio?: number | null;
+    Ownership_Delta_Avg?: number | null;
+    Avg_Fund_Concentration?: number | null;
+    Delta?: number | null;
   }
   const body: unknown = await response.json();
   if (!Array.isArray(body)) throw new Error("Malformed quarter analysis: expected an array");
-  const raw = body as RawAnalysisRow[];
+  const isRow = (v: unknown): v is RawAnalysisRow => {
+    if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+    return Object.entries(v).every(([key, value]) =>
+      key === "Ticker" || key === "Company"
+        ? value == null || typeof value === "string"
+        : value == null || typeof value === "number",
+    );
+  };
+  if (!body.every(isRow)) throw new Error("Malformed quarter analysis: unexpected row shape");
+  const raw = body;
   // JSON has no ±Infinity: the backend serializer nulls it out. An all-new
   // stock's delta IS Infinity (same rule as aggregateStockLevel) — rebuild it
   // instead of flattening to 0%, which would mislabel NEW positions.

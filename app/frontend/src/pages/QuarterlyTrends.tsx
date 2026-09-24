@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, Link } from "react-router";
-import { useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 import {
   fetchQuarterAnalysis,
   runQuarterAnalysis,
@@ -9,7 +9,7 @@ import {
   type NumericStockKey,
   type StockQuarterAnalysis,
 } from "@/lib/dataService";
-import type { Quarter } from "@/lib/quarters";
+import { isQuarter, type Quarter } from "@/lib/quarters";
 import { STRATEGY_BY_TAB, STRATEGY_DEFS_PERF_ORDER, isStrategyTab } from "@/lib/strategies";
 import { performanceFor, ROUTES } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
@@ -446,21 +446,21 @@ export default function QuarterlyTrends() {
     queryKey: activeFundFilter
       ? ["quarterAnalysis", quarter, [...activeFundFilter].sort().join(",")]
       : ["quarterAnalysis", quarter],
-    queryFn: async () => {
-      const onProgress = (msg: string, pct: number) => setProgress({ msg, pct });
-      if (activeFundFilter) return runQuarterAnalysis(quarter!, onProgress, activeFundFilter);
-      return (
-        (await fetchQuarterAnalysis(quarter!)) ?? (await runQuarterAnalysis(quarter!, onProgress))
-      );
-    },
-    enabled: !!quarter,
+    queryFn: quarter
+      ? async () => {
+          const onProgress = (msg: string, pct: number) => setProgress({ msg, pct });
+          if (activeFundFilter) return runQuarterAnalysis(quarter, onProgress, activeFundFilter);
+          return (
+            (await fetchQuarterAnalysis(quarter)) ?? (await runQuarterAnalysis(quarter, onProgress))
+          );
+        }
+      : skipToken,
     staleTime: 10 * 60 * 1000,
   });
 
   const { data: quarterFundList = [] } = useQuery({
     queryKey: ["quarterFundList", quarter],
-    queryFn: () => getQuarterFundList(quarter!),
-    enabled: !!quarter,
+    queryFn: quarter ? () => getQuarterFundList(quarter) : skipToken,
     staleTime: Infinity,
   });
   // Per-tab AnalysisTable defaults sourced from the shared strategy registry
@@ -512,7 +512,12 @@ export default function QuarterlyTrends() {
                 <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
             )}
-            <Select value={quarter ?? ""} onValueChange={(v) => setSelectedQuarter(v as Quarter)}>
+            <Select
+              value={quarter ?? ""}
+              onValueChange={(v) => {
+                if (isQuarter(v)) setSelectedQuarter(v);
+              }}
+            >
               <SelectTrigger aria-label="Quarter" className="w-36">
                 <SelectValue />
               </SelectTrigger>

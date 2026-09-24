@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
-import { useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 import {
   runStockAnalysis,
   fetchQuarterAnalysis,
@@ -19,7 +19,7 @@ import { stocksByIndustry, aiDiligenceFor, stockPath } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { getSectorStyle, sectorPillStyle, SECTOR_PILL } from "@/lib/sectorStyle";
-import type { Quarter } from "@/lib/quarters";
+import { isQuarter, type Quarter } from "@/lib/quarters";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { FundCell } from "@/components/EntityLinks";
 import {
@@ -159,8 +159,9 @@ export default function StockAnalysis() {
 
   const { data: holdings = [], isLoading } = useQuery({
     queryKey: ["stockAnalysis", ticker, quarter],
-    queryFn: () => runStockAnalysis(ticker, quarter!, (msg, pct) => setProgress({ msg, pct })),
-    enabled: !!quarter,
+    queryFn: quarter
+      ? () => runStockAnalysis(ticker, quarter, (msg, pct) => setProgress({ msg, pct }))
+      : skipToken,
     staleTime: 10 * 60 * 1000,
   });
 
@@ -171,9 +172,9 @@ export default function StockAnalysis() {
   // (same cached data the browser pages use), so it always matches the dropdown.
   const { data: quarterRows = [] } = useQuery({
     queryKey: ["quarterAnalysis", quarter],
-    queryFn: async () =>
-      (await fetchQuarterAnalysis(quarter!)) ?? (await runQuarterAnalysis(quarter!)),
-    enabled: !!quarter,
+    queryFn: quarter
+      ? async () => (await fetchQuarterAnalysis(quarter)) ?? (await runQuarterAnalysis(quarter))
+      : skipToken,
     staleTime: 10 * 60 * 1000,
   });
   const scoreRow = quarterRows.find((r) => r.ticker === ticker);
@@ -375,7 +376,12 @@ export default function StockAnalysis() {
           </div>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
-          <Select value={quarter ?? ""} onValueChange={(v) => setSelectedQuarter(v as Quarter)}>
+          <Select
+            value={quarter ?? ""}
+            onValueChange={(v) => {
+              if (isQuarter(v)) setSelectedQuarter(v);
+            }}
+          >
             <SelectTrigger
               className="flex-1 sm:flex-none sm:w-36 bg-card border-border"
               aria-label="Quarter"

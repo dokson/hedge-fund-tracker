@@ -1,44 +1,53 @@
+import time
 from typing import ClassVar
 
+import httpx
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from google.genai.errors import ClientError, ServerError
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from app.ai.clients import AIClient
+from app.ai.clients.base_client import ReasoningLevel
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Mirrors DEFAULT_REASONING_EFFORT in base_openai_client.py: a bounded thinking
-# budget for reasoning-capable Gemini models, so short structured prompts
-# don't burn output tokens on hidden chain-of-thought.
-DEFAULT_THINKING_LEVEL = types.ThinkingLevel.LOW
+_THINKING_LEVELS: dict[str, types.ThinkingLevel] = {
+    "low": types.ThinkingLevel.LOW,
+    "medium": types.ThinkingLevel.MEDIUM,
+    "high": types.ThinkingLevel.HIGH,
+}
+
+
+def _is_transient(exc: BaseException) -> bool:
+    """
+    Whether a Gemini call failure is worth retrying: a 5xx, a 429 or a transport failure.
+    """
+    if isinstance(exc, (ServerError, httpx.TransportError, TimeoutError, ConnectionError)):
+        return True
+    return isinstance(exc, ClientError) and exc.code == 429
 
 
 class GoogleAIClient(AIClient):
     """
-    Google AI client implementation using Gemini models (e.g., Gemini 2.5)
+    Google AI client implementation for Gemini models.
     """
 
-    DEFAULT_MODEL = "gemini-2.5-flash"
+    DEFAULT_MODEL = "gemini-3.6-flash"
 
     # Model to switch to, within the same call, when the primary model is
     # overloaded (503 UNAVAILABLE) — "high demand" spikes are usually
     # temporary but can outlast the outer retry's backoff window.
-    FALLBACK_MODEL: ClassVar[str] = "gemini-3.1-flash-lite"
-
-    # Model names that have already rejected thinking_config, so repeat calls
-    # to a known non-thinking model skip the failing round trip.
-    _thinking_unsupported: ClassVar[set[str]] = set()
+    FALLBACK_MODEL: ClassVar[str] = "gemini-3.5-flash-lite"
 
     def __init__(self, model: str = DEFAULT_MODEL, api_key: str | None = None):
         """
         Initialise the Google AI client.
 
         Args:
-            model: model name (default 'gemini-2.5-flash').
+            model: model name (default DEFAULT_MODEL).
             api_key: explicit API key. When None, falls back to GOOGLE_API_KEY
                 env var via genai.Client default — DEPRECATED, will be required
                 explicitly once BYOK is wired end-to-end.
@@ -52,6 +61,7 @@ class GoogleAIClient(AIClient):
         else:
             self.client = genai.Client(api_key=api_key, http_options=http_options)
         self.model = model
+        self._answered_by: str | None = None
 
     def get_model_name(self) -> str:
         """
@@ -59,19 +69,31 @@ class GoogleAIClient(AIClient):
         """
         return f"google/{self.model}"
 
+    def _answering_model_name(self) -> str:
+        """
+        Names the model that actually answered, which is FALLBACK_MODEL after an overload.
+        """
+        return f"google/{self._answered_by or self.model}"
+
     @retry(
         wait=wait_exponential(multiplier=2, min=1, max=8),
         stop=stop_after_attempt(3),
+        retry=retry_if_exception(_is_transient),
         before_sleep=lambda rs: logger.progress(
-            f"Google AI service unavailable, retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
+            "Google AI service unavailable, retrying in %.2fs... (Attempt #%d)",
+            rs.next_action.sleep,  # type: ignore[union-attr]
+            rs.attempt_number,
         ),
     )
-    def _generate_content_impl(self, prompt: str, **kwargs) -> str:
+    def _generate_content_impl(
+        self, prompt: str, reasoning: ReasoningLevel | None = None, **kwargs
+    ) -> str:
         """
         Generate content using Google AI Gemini API
 
         Args:
             prompt: The input prompt for content generation
+            reasoning: thinking level (None = the shared default)
 
         Returns:
             Generated content as string
@@ -79,9 +101,10 @@ class GoogleAIClient(AIClient):
         Raises:
             Exception: If the Google AI API call fails after retries
         """
+        self._answered_by = self.model
         try:
             try:
-                return self._generate_with_thinking_fallback(prompt, self.model)
+                return self._generate_on(prompt, self.model, reasoning)
             except ServerError as exc:
                 if self.model == self.FALLBACK_MODEL or "unavailable" not in str(exc).lower():
                     raise
@@ -91,42 +114,52 @@ class GoogleAIClient(AIClient):
                     exc,
                     self.FALLBACK_MODEL,
                 )
-                result = self._generate_with_thinking_fallback(prompt, self.FALLBACK_MODEL)
-                self.model = self.FALLBACK_MODEL
-                return result
+                self._answered_by = self.FALLBACK_MODEL
+                return self._generate_on(prompt, self.FALLBACK_MODEL, reasoning)
         except Exception:
             logger.error("Google AI API call failed", exc_info=True)
             raise
 
-    def _generate_with_thinking_fallback(self, prompt: str, model: str) -> str:
+    def _generate_on(self, prompt: str, model: str, reasoning: ReasoningLevel | None) -> str:
         """
-        Generates content on ``model``, retrying once without thinking_config
-        if the model rejects it.
+        Generates on ``model`` through the shared reasoning-fallback flow.
         """
-        try:
-            return self._generate_once(prompt, model, with_thinking_config=True)
-        except ClientError as exc:
-            if model in self._thinking_unsupported or "thinking" not in str(exc).lower():
-                raise
-            logger.warning(
-                "GoogleAIClient: %s does not support thinking_config, retrying without it",
-                model,
-            )
-            self._thinking_unsupported.add(model)
-            return self._generate_once(prompt, model, with_thinking_config=False)
+        return self._generate_with_reasoning(
+            model, reasoning, lambda level: self._generate_once(prompt, model, level)
+        )
 
-    def _generate_once(self, prompt: str, model: str, with_thinking_config: bool) -> str:
+    def _is_reasoning_rejected(self, exc: BaseException) -> bool:
         """
-        Sends one generate_content request, optionally with a bounded
-        thinking_config, and returns the response text.
+        Gemini rejects thinking_config on non-thinking models with a 4xx naming it.
+        """
+        return isinstance(exc, ClientError) and "thinking" in str(exc).lower()
+
+    def _generate_once(self, prompt: str, model: str, level: ReasoningLevel | None) -> str:
+        """
+        Streams one request (with a thinking level unless ``level`` is None)
+        and returns the accumulated text, logging time-to-first-token once.
         """
         # No tools are ever passed, but google-genai >= 2.21 warns on every
         # generate_content call unless AFC is disabled explicitly.
         config = types.GenerateContentConfig(
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
         )
-        if with_thinking_config and model not in self._thinking_unsupported:
-            config.thinking_config = types.ThinkingConfig(thinking_level=DEFAULT_THINKING_LEVEL)
+        if level is not None:
+            config.thinking_config = types.ThinkingConfig(thinking_level=_THINKING_LEVELS[level])
 
-        response = self.client.models.generate_content(model=model, contents=prompt, config=config)
-        return response.text or ""
+        model_name = f"google/{model}"
+        start = time.perf_counter()
+        parts: list[str] = []
+        stream = self.client.models.generate_content_stream(
+            model=model, contents=prompt, config=config
+        )
+        for chunk in stream:
+            text = chunk.text
+            if not text:
+                continue
+            if not parts:
+                logger.progress(
+                    "%s: first token after %.1fs", model_name, time.perf_counter() - start
+                )
+            parts.append(text)
+        return "".join(parts)

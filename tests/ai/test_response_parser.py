@@ -207,3 +207,26 @@ AVGO:
             }
         }
         self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
+
+    def test_known_keys_cover_every_available_metric(self):
+        """
+        Every metric the weights prompt may return is repairable when glued to a neighbour.
+        """
+        from app.ai.promise_score_validator import PromiseScoreValidator
+
+        for metric in PromiseScoreValidator.AVAILABLE_METRICS:
+            with self.subTest(metric=metric):
+                self.assertIn(metric, ResponseParser._KNOWN_FIELD_KEYS)
+
+    def test_repairs_glued_weights_for_previously_uncovered_metrics(self):
+        """
+        Weight lines glued together are split for metrics outside the score keys.
+        """
+        response_text = """```toon
+Total_Value: 0.4  Close_Count: -0.2
+Delta: 0.4
+```"""
+        self.assertEqual(
+            ResponseParser.extract_and_decode_toon(response_text),
+            {"Total_Value": 0.4, "Close_Count": -0.2, "Delta": 0.4},
+        )

@@ -13,7 +13,7 @@ import type { getConfiguredProviders as getConfiguredProvidersType } from "@/lib
 vi.mock("@/lib/dataService", () => ({
   getModels: vi.fn<typeof getModelsType>(async () => [
     { id: "gemini-3.1-flash-lite", description: "Gemini 3.1 Flash Lite", client: "Google" },
-    { id: "llama-3.3-70b-versatile", description: "Llama 3.3 70B", client: "Groq" },
+    { id: "openai/gpt-oss-120b", description: "GPT-OSS 120B", client: "Groq" },
   ]),
 }));
 

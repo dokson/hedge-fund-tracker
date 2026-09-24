@@ -66,6 +66,29 @@ class TestDatabaseFileUpload(unittest.TestCase):
             resp = client.put("/database/x.csv", content=b"toolong")
         self.assertEqual(resp.status_code, 413)
 
+    @patch("app.api.data.atomic_write_text")
+    def test_upload_writes_atomically(self, mock_write):
+        """
+        The upload goes through the atomic writer, not a direct truncate-and-write.
+        """
+        with patch("app.api.data.stocks_lock") as mock_lock:
+            resp = client.put("/database/x_upload_test.csv", content=b"a,b\n")
+        self.assertEqual(resp.status_code, 200)
+        mock_write.assert_called_once()
+        self.assertEqual(mock_write.call_args.args[1], "a,b\n")
+        mock_lock.assert_not_called()
+
+    @patch("app.api.data.atomic_write_text")
+    def test_stocks_upload_takes_stocks_lock(self, mock_write):
+        """
+        Overwriting stocks.csv serialises with every other stocks.csv writer.
+        """
+        with patch("app.api.data.stocks_lock") as mock_lock:
+            resp = client.put("/database/stocks.csv", content=b"a,b\n")
+        self.assertEqual(resp.status_code, 200)
+        mock_lock.assert_called_once()
+        mock_write.assert_called_once()
+
 
 class TestStockHistoryEndpoint(unittest.TestCase):
     """/api/stocks/{ticker}/history validation + delegation."""

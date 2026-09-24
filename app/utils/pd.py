@@ -1,4 +1,5 @@
 import os
+import stat
 import tempfile
 from contextlib import suppress
 from pathlib import Path
@@ -25,6 +26,18 @@ def escape_csv_text_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _match_target_mode(tmp: str, path: Path) -> None:
+    """
+    Gives the temp file the target's permissions (0644 for a new file), since
+    mkstemp creates it 0600 and os.replace would otherwise narrow the target.
+    """
+    try:
+        mode = stat.S_IMODE(path.stat().st_mode)
+    except FileNotFoundError:
+        mode = 0o644
+    Path(tmp).chmod(mode)
+
+
 def atomic_to_csv(df: pd.DataFrame, filepath: str | Path, **to_csv_kwargs) -> None:
     """
     Write ``df`` to ``filepath`` atomically.
@@ -43,6 +56,31 @@ def atomic_to_csv(df: pd.DataFrame, filepath: str | Path, **to_csv_kwargs) -> No
     try:
         with os.fdopen(fd, "w", encoding=encoding, newline="") as f:
             df.to_csv(f, **to_csv_kwargs)
+        _match_target_mode(tmp, path)
+        Path(tmp).replace(path)
+    except BaseException:
+        with suppress(OSError):
+            Path(tmp).unlink()
+        raise
+
+
+def atomic_write_text(filepath: str | Path, text: str, encoding: str = "utf-8") -> None:
+    """
+    Write ``text`` to ``filepath`` atomically and verbatim (no newline translation).
+
+    Same temp-file + ``os.replace()`` scheme as ``atomic_to_csv``.
+
+    Args:
+        filepath: Destination path.
+        text: The full file contents.
+        encoding: Text encoding for the file.
+    """
+    path = Path(filepath)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding=encoding, newline="") as f:
+            f.write(text)
+        _match_target_mode(tmp, path)
         Path(tmp).replace(path)
     except BaseException:
         with suppress(OSError):

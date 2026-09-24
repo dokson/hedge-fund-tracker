@@ -9,6 +9,10 @@ export const MODEL_PROVIDERS = ["Groq", "Google", "HuggingFace", "OpenRouter"] a
 
 export type ModelProvider = (typeof MODEL_PROVIDERS)[number];
 
+export function isModelProvider(value: string): value is ModelProvider {
+  return (MODEL_PROVIDERS as readonly string[]).includes(value);
+}
+
 /** Display names for CSV client values (used in UI only) */
 export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   Google: "Google AI Studio",

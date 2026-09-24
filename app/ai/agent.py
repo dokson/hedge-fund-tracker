@@ -5,10 +5,10 @@ from tenacity import RetryError, retry, retry_if_exception_type, stop_after_atte
 from toon_format import encode
 
 from app.ai.clients import AIClient
-from app.ai.promise_score_validator import PromiseScoreValidator
+from app.ai.promise_score_validator import PromiseScoreValidator, normalize_weights
 from app.ai.prompts import (
     promise_score_weights_prompt,
-    quantivative_scores_prompt,
+    quantitative_scores_prompt,
     stock_due_diligence_prompt,
 )
 from app.ai.response_parser import ResponseParser
@@ -46,7 +46,9 @@ class AnalystAgent:
         wait=wait_fixed(1),
         stop=stop_after_attempt(7),
         before_sleep=lambda rs: logger.progress(
-            f"{rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
+            "%s. Retrying in %.0fs...",
+            log_safe(rs.outcome.exception(), max_len=300),  # type: ignore[union-attr]
+            rs.next_action.sleep,  # type: ignore[union-attr]
         ),
     )
     def _get_promise_score_weights(self) -> dict:
@@ -69,11 +71,6 @@ class AnalystAgent:
         except (TypeError, ValueError) as e:
             raise InvalidAIResponseError(f"AI returned non-numeric weight value: {e}") from e
 
-        total = sum(parsed_weights.values())
-
-        if not PromiseScoreValidator.validate_weights(parsed_weights):
-            raise InvalidAIResponseError(f"AI returned weights that sum to {total:.2f}, not 1.0")
-
         invalid_metrics = PromiseScoreValidator.validate_metrics(list(parsed_weights.keys()))
         if invalid_metrics:
             raise InvalidAIResponseError(f"AI returned invalid metrics: {invalid_metrics}")
@@ -82,35 +79,80 @@ class AnalystAgent:
         if count_error:
             raise InvalidAIResponseError(count_error)
 
+        value_errors = PromiseScoreValidator.validate_weight_values(parsed_weights)
+        if value_errors:
+            raise InvalidAIResponseError(f"AI returned invalid weight values: {value_errors}")
+
         wrong_signs = PromiseScoreValidator.validate_weight_signs(parsed_weights)
         if wrong_signs:
             raise InvalidAIResponseError(f"AI returned wrongly signed weights: {wrong_signs}")
 
+        normalized = normalize_weights(parsed_weights)
         weights_str = "\n\t" + "\n\t".join(
-            [f"{k:<20} = {v:5.2f}" for k, v in parsed_weights.items()]
+            f"{k:<28} raw = {v:7.3f}   normalized = {normalized[k]:6.3f}"
+            for k, v in parsed_weights.items()
         )
-        logger.success("AI Agent selected weights (sum: %.2f):%s", total, weights_str)
+        logger.success("AI Agent selected weights:%s", weights_str)
         return parsed_weights
+
+    @staticmethod
+    def _is_informative(values: pd.Series) -> bool:
+        """
+        Whether a metric separates stocks at all: it needs two or more distinct non-NaN values.
+        """
+        return values.dropna().nunique() > 1
+
+    @staticmethod
+    def _rank_column(values: pd.Series) -> pd.Series:
+        """
+        Maps a metric onto [0, 1] by min-rank, so the minimum and its ties get 0.
+
+        NaN values and constant columns (including a single stock) rank as a neutral 0.5.
+        """
+        if not AnalystAgent._is_informative(values):
+            return pd.Series(0.5, index=values.index)
+        ranks = (values.rank(method="min") - 1) / (values.count() - 1)
+        return ranks.fillna(0.5)
 
     def _calculate_promise_scores(self, df: pd.DataFrame, promise_weights: dict) -> pd.DataFrame:
         """
-        Calculate Promise scores based on weights
+        Calculates the Promise Score on a 0-100 scale from rank-transformed metrics.
+
+        Weights are normalized over the informative metrics present in the frame, i.e.
+        excluding missing and constant columns. The score is
+        100 * (sum_i w_i * r_i + sum of |w_j| over negative w_j), so the best possible stock
+        scores 100 and the worst 0; with no informative metric every stock scores 50.
+
+        Raises:
+            ValueError: If none of the weighted metrics is present in the frame.
         """
         df = df.copy()
-        df["Promise_Score"] = 0.0
-
-        # Calculate percentile ranks and the weighted score dynamically
+        present: dict[str, float] = {}
         for metric, weight in promise_weights.items():
             if metric in df.columns:
-                rank_col = f"{metric}_rank"
-                df[rank_col] = df[metric].rank(pct=True)
-                df["Promise_Score"] += df[rank_col] * weight
+                present[metric] = weight
             else:
                 logger.warning(
-                    "Metric '%s' suggested by AI not found in analysis data. Skipping.", metric
+                    "Metric '%s' suggested by AI not found in analysis data. Skipping.",
+                    log_safe(metric),
                 )
+        if not present:
+            raise ValueError("None of the weighted metrics is present in the analysis data")
 
-        df["Promise_Score"] *= 100
+        informative: dict[str, float] = {}
+        for metric, weight in present.items():
+            df[f"{metric}_rank"] = self._rank_column(df[metric])
+            if self._is_informative(df[metric]):
+                informative[metric] = weight
+
+        if not informative:
+            df["Promise_Score"] = 50.0
+            return df
+
+        weights = normalize_weights(informative)
+        score = sum(df[f"{m}_rank"] * w for m, w in weights.items())
+        offset = sum(-w for w in weights.values() if w < 0)
+        df["Promise_Score"] = 100 * (score + offset)
         return df
 
     @retry(
@@ -118,7 +160,9 @@ class AnalystAgent:
         wait=wait_fixed(1),
         stop=stop_after_attempt(5),
         before_sleep=lambda rs: logger.progress(
-            f"{rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
+            "%s. Retrying in %.0fs...",
+            log_safe(rs.outcome.exception(), max_len=300),  # type: ignore[union-attr]
+            rs.next_action.sleep,  # type: ignore[union-attr]
         ),
     )
     def _get_ai_scores(self, stocks_context: list[dict]) -> dict:
@@ -127,7 +171,7 @@ class AnalystAgent:
         Retries with tenacity if the response is invalid.
         """
         assert self.ai_client is not None, "AnalystAgent requires an AIClient"
-        prompt = quantivative_scores_prompt(encode(stocks_context), self.filing_date)
+        prompt = quantitative_scores_prompt(encode(stocks_context), self.filing_date)
         required_keys = ["momentum_score", "low_volatility_score", "risk_score"]
 
         logger.progress(
@@ -233,7 +277,11 @@ class AnalystAgent:
             )
             return pd.DataFrame()
 
-        df = self._calculate_promise_scores(self.analysis_df, promise_weights)
+        try:
+            df = self._calculate_promise_scores(self.analysis_df, promise_weights)
+        except ValueError:
+            logger.error("Failed to calculate promise scores", exc_info=True)
+            return pd.DataFrame()
         suggestions_df = df.sort_values(by="Promise_Score", ascending=False).head(top_n)
 
         tickers = suggestions_df["Ticker"].tolist()
@@ -285,7 +333,9 @@ class AnalystAgent:
         wait=wait_fixed(1),
         stop=stop_after_attempt(5),
         before_sleep=lambda rs: logger.progress(
-            f"{rs.outcome.exception()}. Retrying in {rs.next_action.sleep:.0f}s..."  # type: ignore[union-attr]
+            "%s. Retrying in %.0fs...",
+            log_safe(rs.outcome.exception(), max_len=300),  # type: ignore[union-attr]
+            rs.next_action.sleep,  # type: ignore[union-attr]
         ),
     )
     def run_stock_due_diligence(self, ticker: str) -> dict:
@@ -306,10 +356,12 @@ class AnalystAgent:
 
         stock_context_toon = encode(stock_data)
         logger.progress(
-            f"Sending request to AI ({self.ai_client.get_model_name()}) for due diligence on {ticker}..."
+            "Sending request to AI (%s) for due diligence on %s...",
+            self.ai_client.get_model_name(),
+            log_safe(ticker),
         )
         prompt = stock_due_diligence_prompt(stock_context_toon)
-        response_text = self.ai_client.generate_content(prompt)
+        response_text = self.ai_client.generate_content(prompt, reasoning="medium")
         parsed_data = ResponseParser().extract_and_decode_toon(response_text)
 
         if not parsed_data:

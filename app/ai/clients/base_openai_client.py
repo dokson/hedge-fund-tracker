@@ -2,13 +2,18 @@ import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import ClassVar
 
 from dotenv import load_dotenv
-from openai import BadRequestError, OpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential
+from openai import (
+    APIConnectionError,
+    APIStatusError,
+    BadRequestError,
+    OpenAI,
+    RateLimitError,
+)
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
-from app.ai.clients.base_client import AIClient
+from app.ai.clients.base_client import AIClient, ReasoningLevel
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -16,15 +21,21 @@ logger = get_logger(__name__)
 # Per-request timeout, so a stalled model fails fast (the OpenAI SDK default is 600s).
 REQUEST_TIMEOUT_S = 90.0
 
-# Reasoning models (e.g. gpt-oss) spend a hidden token budget "thinking" before
-# emitting content; without a bound they can exhaust their output tokens with
-# no visible answer. "low" is enough for this app's short, structured prompts.
-DEFAULT_REASONING_EFFORT = "low"
-
 
 def _identity(model: str) -> str:
-    """Default model-name transform: return the model id unchanged."""
+    """
+    Default model-name transform: return the model id unchanged.
+    """
     return model
+
+
+def _is_transient(exc: BaseException) -> bool:
+    """
+    Whether an API error is worth retrying: connection/timeout, rate limit or a 5xx.
+    """
+    if isinstance(exc, (APIConnectionError, RateLimitError)):
+        return True
+    return isinstance(exc, APIStatusError) and exc.status_code >= 500
 
 
 @dataclass(frozen=True)
@@ -57,10 +68,6 @@ class OpenAIClient(AIClient):
     """
 
     CONFIG: OpenAIProviderConfig
-
-    # (base_url, model) pairs that have already rejected reasoning_effort, so
-    # repeat calls to a known non-reasoning model skip the failing round trip.
-    _reasoning_unsupported: ClassVar[set[tuple[str, str]]] = set()
 
     def __init__(self, model: str | None = None, api_key: str | None = None):
         """
@@ -105,44 +112,44 @@ class OpenAIClient(AIClient):
     @retry(
         wait=wait_exponential(multiplier=2, min=1, max=8),
         stop=stop_after_attempt(3),
+        retry=retry_if_exception(_is_transient),
         before_sleep=lambda rs: logger.progress(
-            f"Retrying in {rs.next_action.sleep:.2f}s... (Attempt #{rs.attempt_number})"  # type: ignore[union-attr]
+            "Retrying in %.2fs... (Attempt #%d)",
+            rs.next_action.sleep,  # type: ignore[union-attr]
+            rs.attempt_number,
         ),
     )
-    def _generate_content_impl(self, prompt: str, **kwargs) -> str:
+    def _generate_content_impl(
+        self, prompt: str, reasoning: ReasoningLevel | None = None, **kwargs
+    ) -> str:
         """
         Generate content from an OpenAI-compatible API via streaming.
 
         Streaming surfaces time-to-first-token and returns the accumulated text.
-        Accepts optional keyword arguments for the completion call. Reasoning
-        models get a bounded ``reasoning_effort`` by default; if the model
-        rejects the parameter, the call is transparently retried without it
-        (see ``_reasoning_unsupported``).
+        Accepts optional keyword arguments for the completion call. ``reasoning``
+        maps to ``reasoning_effort``; a model rejecting it is retried without it
+        through the shared flow in AIClient.
         """
-        extra_body = dict(self.CONFIG.extra_body)
-        cache_key = (self.CONFIG.base_url, self.model)
-        if cache_key not in self._reasoning_unsupported:
-            extra_body.setdefault("reasoning_effort", DEFAULT_REASONING_EFFORT)
+        base_extra_body = dict(self.CONFIG.extra_body)
         if "extra_body" in kwargs:
-            extra_body.update(kwargs.pop("extra_body"))
+            base_extra_body.update(kwargs.pop("extra_body"))
 
         model_name = self.get_model_name()
         start = time.perf_counter()
 
+        def _send(level: ReasoningLevel | None) -> str:
+            """
+            Streams one completion, with reasoning_effort unless ``level`` is None.
+            """
+            extra_body = dict(base_extra_body)
+            if level is None:
+                extra_body.pop("reasoning_effort", None)
+            else:
+                extra_body.setdefault("reasoning_effort", level)
+            return self._stream_completion(prompt, extra_body, model_name, start, **kwargs)
+
         try:
-            try:
-                return self._stream_completion(prompt, extra_body, model_name, start, **kwargs)
-            except BadRequestError as exc:
-                if "reasoning_effort" not in extra_body or "reasoning_effort" not in str(exc):
-                    raise
-                logger.warning(
-                    "%s: %s does not support reasoning_effort, retrying without it",
-                    self.__class__.__name__,
-                    self.model,
-                )
-                self._reasoning_unsupported.add(cache_key)
-                extra_body = {k: v for k, v in extra_body.items() if k != "reasoning_effort"}
-                return self._stream_completion(prompt, extra_body, model_name, start, **kwargs)
+            return self._generate_with_reasoning(self.model, reasoning, _send)
         except Exception:
             logger.error(
                 "%s: API call failed for model %s after %.1fs",
@@ -152,6 +159,18 @@ class OpenAIClient(AIClient):
                 exc_info=True,
             )
             raise
+
+    def _reasoning_scope(self) -> str:
+        """
+        Scopes the rejection memory by endpoint, since providers share model names.
+        """
+        return self.CONFIG.base_url
+
+    def _is_reasoning_rejected(self, exc: BaseException) -> bool:
+        """
+        OpenAI-compatible providers reject the parameter with a 400 naming it.
+        """
+        return isinstance(exc, BadRequestError) and "reasoning_effort" in str(exc)
 
     def _stream_completion(
         self, prompt: str, extra_body: dict, model_name: str, start: float, **kwargs

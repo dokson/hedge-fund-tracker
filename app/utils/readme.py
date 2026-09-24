@@ -6,6 +6,7 @@ import pandas as pd
 from app.database import DB_FOLDER
 from app.database import EXCLUDED_HEDGE_FUNDS_FILE as EXCLUDED_FILENAME
 from app.utils.logger import get_logger
+from app.utils.pd import atomic_write_text
 
 logger = get_logger(__name__)
 
@@ -52,17 +53,18 @@ def update_readme() -> None:
     content = generate_excluded_funds_list()
     if content is not None:
         try:
-            with Path(README_FILE).open(encoding="utf-8") as f:
+            with Path(README_FILE).open(encoding="utf-8", newline="") as f:
                 readme_text = f.read()
 
+            newline = "\r\n" if "\r\n" in readme_text else "\n"
+            block = newline.join(content.splitlines())
             new_readme_text = re.sub(
                 r"(<!-- EXCLUDED_FUNDS_LIST_START -->)(.*?)(<!-- EXCLUDED_FUNDS_LIST_END -->)",
-                f"\\1\n{content}\n\\3",
+                lambda m: f"{m.group(1)}{newline}{block}{newline}{m.group(3)}",
                 readme_text,
                 flags=re.DOTALL,
             )
 
-            with Path(README_FILE).open("w", encoding="utf-8") as f:
-                f.write(new_readme_text)
+            atomic_write_text(README_FILE, new_readme_text)
         except FileNotFoundError:
             logger.error("%s was not found.", README_FILE, exc_info=True)
