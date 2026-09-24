@@ -44,7 +44,7 @@ class GoogleAIClient(AIClient):
     Google AI client implementation for Gemini models.
     """
 
-    DEFAULT_MODEL = "gemini-3.6-flash"
+    DEFAULT_MODEL = "gemini-3.8-flash"
 
     # Model to switch to, within the same call, when the primary model is
     # overloaded (503 UNAVAILABLE) or rate-limited (429): the free tier's

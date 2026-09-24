@@ -35,7 +35,7 @@ from app.stocks.price_fetcher import PriceFetcher  # noqa: E402
 
 DUE_DILIGENCE_TICKER = "VSH"
 RANKING_TOP_N = 10
-MODEL_ID = "gemini-3.6-flash"
+MODEL_ID = GoogleAIClient.DEFAULT_MODEL
 
 SAMPLE_RANKING_PATH = ROOT / "app/frontend/src/data/sampleRanking.json"
 SAMPLE_DD_PATH = ROOT / "app/frontend/src/data/sampleDueDiligence.json"

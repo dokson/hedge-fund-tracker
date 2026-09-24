@@ -10,9 +10,9 @@ Chain (each step short-circuits if it produces a value):
        row that already carries it for the same company name (typical case:
        the underlying common stock was resolved earlier and now its warrant /
        unit / share-class hits the resolver).
-    3. Groq LLM classification — picks an Industry string from the closed
-       sector_hierarchy.csv vocabulary. Optional: skipped when GROQ_API_KEY
-       is unset, so the chain degrades gracefully.
+    3. LLM classification — Gemini flash-lite (Groq fallback) picks an Industry
+       from the closed sector_hierarchy.csv vocabulary. Optional: skipped when
+       no API key is set, so the chain degrades gracefully.
 
 Returns "" when every step misses, so the row is still persistable.
 """
@@ -21,18 +21,31 @@ import os
 import re
 from typing import cast
 
-from curl_cffi import requests
-from curl_cffi.requests.exceptions import RequestException
-
+from app.ai.clients.base_client import AIClient
+from app.ai.clients.google_client import GoogleAIClient
 from app.ai.clients.groq_client import GroqClient
+from app.ai.response_parser import ResponseParser
 from app.database import load_sector_hierarchy, load_stocks
 from app.stocks.libraries.yfinance import YFinance
 from app.utils.logger import get_logger, log_safe
 
 logger = get_logger(__name__)
 
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_TIMEOUT = 20
+GEMINI_CLASSIFIER_MODEL = "gemini-3.5-flash-lite"
+GROQ_CLASSIFIER_MODEL = GroqClient.DEFAULT_MODEL
+# Gemini answers a bare 400 INVALID_ARGUMENT for enums past ~100-130 values.
+GEMINI_MAX_ENUM = 100
+SHELL_INDUSTRY = "Shell Companies"
+
+# LLMs over-apply "Shell Companies" to small operating issuers, so it is only trusted on blank-check names.
+_BLANK_CHECK_RE = re.compile(r"\b(?:acquisition|merger corp|blank check|spac)\b", re.IGNORECASE)
+
+
+def _looks_like_blank_check(company: str) -> bool:
+    """
+    Whether a company name reads like a blank-check / SPAC vehicle.
+    """
+    return bool(_BLANK_CHECK_RE.search(company or ""))
 
 
 def _match_by_company_name(company: str) -> str:
@@ -51,68 +64,125 @@ def _match_by_company_name(company: str) -> str:
     return cast(str, matches.iloc[0]["Industry"])
 
 
+def _build_prompt(ticker: str, company: str, vocabulary: list[str], operating: bool) -> str:
+    """
+    Builds the classification prompt over the closed Industry vocabulary.
+
+    ``operating`` marks the re-ask after a rejected 'Shell Companies' answer.
+    """
+    vocab_block = "\n".join(f"- {industry}" for industry in vocabulary)
+    rules = "Securities such as warrants, rights and units take the issuer's operating industry. "
+    if operating:
+        rules += "This company has an operating business: pick the industry it operates in."
+    else:
+        rules += (
+            f"Answer '{SHELL_INDUSTRY}' only for a blank-check/SPAC company that has not "
+            "yet completed a merger (no operating business)."
+        )
+    return (
+        "Classify a publicly-traded security into exactly ONE Industry from the list.\n\n"
+        f"Allowed industries (Yahoo Finance taxonomy):\n{vocab_block}\n\n"
+        f"Company: {company}\nTicker: {ticker}\n\n"
+        'Answer as JSON {"industry": "<Industry>"}, using the string exactly as it '
+        f"appears in the list. {rules}"
+    )
+
+
+def _industry_schema(vocabulary: list[str], max_enum: int | None) -> dict:
+    """
+    JSON Schema for the answer: an enum over ``vocabulary`` unless it exceeds
+    ``max_enum`` (then a plain string, validated in code).
+    """
+    field: dict = {"type": "string"}
+    if max_enum is None or len(vocabulary) <= max_enum:
+        field["enum"] = vocabulary
+    return {
+        "type": "object",
+        "properties": {"industry": field},
+        "required": ["industry"],
+        "additionalProperties": False,
+    }
+
+
+def _ask_once(
+    client: AIClient,
+    ticker: str,
+    company: str,
+    vocabulary: list[str],
+    operating: bool,
+    max_enum: int | None,
+) -> str | None:
+    """
+    Sends one classification request and returns the answer if it is in ``vocabulary``.
+    """
+    prompt = _build_prompt(ticker, company, vocabulary, operating)
+    try:
+        raw = client.generate_content(
+            prompt, reasoning="low", response_schema=_industry_schema(vocabulary, max_enum)
+        )
+    except Exception:
+        logger.warning(
+            "Industry classification via %s failed for %s",
+            client.get_model_name(),
+            log_safe(ticker),
+            exc_info=True,
+        )
+        return None
+    answer = ResponseParser.parse_json(raw).get("industry")
+    if isinstance(answer, str) and answer in vocabulary:
+        return answer
+    return None
+
+
+def _ask(
+    client: AIClient,
+    ticker: str,
+    company: str,
+    vocabulary: list[str],
+    max_enum: int | None = None,
+) -> str | None:
+    """
+    Classifies with one provider, re-asking once without 'Shell Companies' when
+    that label comes back for a name that is not a blank-check vehicle.
+    """
+    answer = _ask_once(client, ticker, company, vocabulary, operating=False, max_enum=max_enum)
+    if answer != SHELL_INDUSTRY or _looks_like_blank_check(company):
+        return answer
+    logger.progress(
+        "Re-asking without '%s' for operating-name %s", SHELL_INDUSTRY, log_safe(company)
+    )
+    operating_vocabulary = [industry for industry in vocabulary if industry != SHELL_INDUSTRY]
+    return _ask_once(
+        client, ticker, company, operating_vocabulary, operating=True, max_enum=max_enum
+    )
+
+
 def _llm_classify(ticker: str, company: str) -> str | None:
     """
-    Asks Groq's default model to pick an Industry from the closed vocabulary in
-    sector_hierarchy.csv. Returns None when GROQ_API_KEY is missing, the API
-    errors, or the response is not a recognised Industry string.
+    Picks an Industry from the sector_hierarchy.csv vocabulary with Gemini
+    flash-lite, falling back to Groq when GOOGLE_API_KEY is missing or Gemini
+    fails or answers outside the vocabulary. Returns None when neither yields
+    a valid answer.
     """
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
+    google_key = os.getenv("GOOGLE_API_KEY")
+    groq_key = os.getenv("GROQ_API_KEY")
+    if not google_key and not groq_key:
         return None
 
     hierarchy = load_sector_hierarchy()
     if hierarchy.empty:
         return None
     vocabulary = sorted(hierarchy["Industry"].unique())
-    vocab_block = "\n".join(f"- {industry}" for industry in vocabulary)
 
-    prompt = (
-        "Classify a publicly-traded security into exactly ONE Industry from the list.\n\n"
-        f"Allowed industries (Yahoo Finance taxonomy):\n{vocab_block}\n\n"
-        f"Company: {company}\nTicker: {ticker}\n\n"
-        "Output ONLY the chosen Industry string, exactly as it appears in the list. "
-        "If the security is a warrant, unit, SPAC pre-merger or other special "
-        "structure with no operating business, answer with 'Shell Companies'."
-    )
-
-    try:
-        response = requests.post(
-            GROQ_URL,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={
-                "model": GroqClient.DEFAULT_MODEL,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0,
-                # Reasoning tokens count toward max_tokens; a tight cap returns an empty answer.
-                "reasoning_effort": "low",
-                "max_tokens": 512,
-            },
-            timeout=GROQ_TIMEOUT,
-        )
-    except RequestException:
-        logger.warning("Groq classification: network error for %s", log_safe(ticker), exc_info=True)
-        return None
-
-    if not response.ok:
-        logger.warning(
-            "Groq classification: HTTP %s for ticker %s",
-            response.status_code,
-            log_safe(ticker),
-        )
-        return None
-
-    try:
-        content = response.json()["choices"][0]["message"]["content"].strip()
-    except KeyError, ValueError, IndexError:
-        return None
-
-    cleaned = re.sub(r"^[`\"']+|[`\"']+$", "", content).strip()
-    if cleaned in vocabulary:
-        return cleaned
-    # Case-insensitive recovery: model may shuffle casing on edge cases.
-    lowered = {industry.lower(): industry for industry in vocabulary}
-    return lowered.get(cleaned.lower())
+    if google_key:
+        gemini = GoogleAIClient(model=GEMINI_CLASSIFIER_MODEL, api_key=google_key)
+        answer = _ask(gemini, ticker, company, vocabulary, GEMINI_MAX_ENUM)
+        if answer:
+            return answer
+    if groq_key:
+        groq = GroqClient(model=GROQ_CLASSIFIER_MODEL, api_key=groq_key)
+        return _ask(groq, ticker, company, vocabulary)
+    return None
 
 
 def resolve_industry(ticker: str, company: str) -> str:
@@ -135,7 +205,7 @@ def resolve_industry(ticker: str, company: str) -> str:
     if name_match:
         return name_match
 
-    # Step 3 — Groq LLM (optional, requires GROQ_API_KEY).
+    # Step 3 — LLM (optional, requires GOOGLE_API_KEY or GROQ_API_KEY).
     llm_answer = _llm_classify(ticker, company)
     if llm_answer:
         return llm_answer

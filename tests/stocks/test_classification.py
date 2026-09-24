@@ -1,11 +1,15 @@
 import unittest
-import unittest.mock
 from unittest.mock import patch
 
 import pandas as pd
 
 from app.ai.clients.groq_client import GroqClient
-from app.stocks.classification import _llm_classify, resolve_industry
+from app.stocks.classification import (
+    GEMINI_CLASSIFIER_MODEL,
+    _llm_classify,
+    _looks_like_blank_check,
+    resolve_industry,
+)
 
 
 def _stocks_df(rows: list[tuple[str, str, str, str]]) -> pd.DataFrame:
@@ -22,7 +26,7 @@ class TestResolveIndustry(unittest.TestCase):
     resolve_industry runs a three-step fallback chain:
        1. YFinance.get_classification
        2. Same-Company lookup in stocks.csv
-       3. Groq LLM classification (when GROQ_API_KEY is set)
+       3. LLM classification (Gemini flash-lite, Groq fallback)
     Returns "" when every step misses, so callers can store an empty Industry
     without crashing.
     """
@@ -127,46 +131,185 @@ class TestResolveIndustry(unittest.TestCase):
             self.assertEqual(resolve_industry("AEVAW", ""), "")
 
 
-class TestLlmClassifyRequest(unittest.TestCase):
+_VOCAB = ["Banks - Regional", "Shell Companies", "Software - Application"]
+
+
+def _hierarchy() -> pd.DataFrame:
     """
-    The Groq request must target a model the API still serves and leave room
-    for a reasoning model to think before it emits the Industry string.
+    Builds a small sector hierarchy covering the placeholder vocabulary.
+    """
+    return pd.DataFrame(
+        {"Sector": ["Financial Services", "Financial Services", "Technology"], "Industry": _VOCAB}
+    )
+
+
+class TestLlmClassify(unittest.TestCase):
+    """
+    _llm_classify asks Gemini flash-lite first with a vocabulary-constrained schema
+    and falls back to Groq when Gemini is unavailable or answers badly.
     """
 
-    def _post_payload(self) -> dict:
+    def _run(
+        self,
+        company: str = "Example Holdings Inc",
+        gemini: object = '{"industry": "Banks - Regional"}',
+        groq: object = '{"industry": "Software - Application"}',
+        env: dict | None = None,
+    ):
         """
-        Runs _llm_classify against a mocked Groq endpoint and returns the JSON body it sent.
+        Runs _llm_classify with both clients mocked; returns (result, gemini_cls, groq_cls).
         """
-        hierarchy = pd.DataFrame(
-            {"Sector": ["Utilities"], "Industry": ["Utilities—Regulated Electric"]}
-        )
-        response = unittest.mock.MagicMock(ok=True)
-        response.json.return_value = {
-            "choices": [{"message": {"content": "Utilities—Regulated Electric"}}]
-        }
+        env = {"GOOGLE_API_KEY": "g-key", "GROQ_API_KEY": "q-key"} if env is None else env
         with (
-            patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
-            patch("app.stocks.classification.load_sector_hierarchy", return_value=hierarchy),
-            patch("app.stocks.classification.requests.post", return_value=response) as post,
+            patch.dict("os.environ", env, clear=True),
+            patch("app.stocks.classification.load_sector_hierarchy", return_value=_hierarchy()),
+            patch("app.stocks.classification.GoogleAIClient") as gemini_cls,
+            patch("app.stocks.classification.GroqClient") as groq_cls,
         ):
-            self.assertEqual(
-                _llm_classify("XYZ", "Example Power Co"), "Utilities—Regulated Electric"
-            )
-        return post.call_args.kwargs["json"]
+            gemini_call = gemini_cls.return_value.generate_content
+            groq_call = groq_cls.return_value.generate_content
+            for call, value in ((gemini_call, gemini), (groq_call, groq)):
+                if isinstance(value, (BaseException, list)):
+                    call.side_effect = value
+                else:
+                    call.return_value = value
+            result = _llm_classify("XYZ", company)
+        return result, gemini_cls, groq_cls
 
-    def test_uses_the_groq_client_default_model(self):
+    def test_gemini_called_first_with_constrained_schema_and_low_reasoning(self):
         """
-        One model id for every Groq call, so a retired model is replaced in one place.
+        Gemini flash-lite is asked with an enum schema over the sorted vocabulary.
         """
-        self.assertEqual(self._post_payload()["model"], GroqClient.DEFAULT_MODEL)
+        result, gemini_cls, groq_cls = self._run()
+        self.assertEqual(result, "Banks - Regional")
+        self.assertEqual(gemini_cls.call_args.kwargs["model"], GEMINI_CLASSIFIER_MODEL)
+        self.assertEqual(GEMINI_CLASSIFIER_MODEL, "gemini-3.5-flash-lite")
+        self.assertEqual(gemini_cls.call_args.kwargs["api_key"], "g-key")
+        kwargs = gemini_cls.return_value.generate_content.call_args.kwargs
+        self.assertEqual(kwargs["reasoning"], "low")
+        schema = kwargs["response_schema"]
+        self.assertEqual(schema["properties"]["industry"]["enum"], sorted(_VOCAB))
+        self.assertEqual(schema["required"], ["industry"])
+        self.assertFalse(schema["additionalProperties"])
+        groq_cls.assert_not_called()
 
-    def test_bounds_reasoning_and_leaves_room_for_the_answer(self):
+    def test_gemini_drops_enum_above_its_size_limit(self):
         """
-        A 32-token cap was spent entirely on reasoning, returning an empty answer.
+        Gemini rejects large enums with a bare 400, so an oversized vocabulary is
+        sent as a plain string and validated in code; Groq keeps the enum.
         """
-        payload = self._post_payload()
-        self.assertEqual(payload["reasoning_effort"], "low")
-        self.assertGreaterEqual(payload["max_tokens"], 256)
+        with patch("app.stocks.classification.GEMINI_MAX_ENUM", 2):
+            result, gemini_cls, _ = self._run()
+            _, _, groq_cls = self._run(env={"GROQ_API_KEY": "q-key"})
+        self.assertEqual(result, "Banks - Regional")
+        gemini_schema = gemini_cls.return_value.generate_content.call_args.kwargs["response_schema"]
+        self.assertEqual(gemini_schema["properties"]["industry"], {"type": "string"})
+        groq_schema = groq_cls.return_value.generate_content.call_args.kwargs["response_schema"]
+        self.assertEqual(groq_schema["properties"]["industry"]["enum"], sorted(_VOCAB))
+
+    def test_missing_google_key_uses_groq(self):
+        """
+        Without GOOGLE_API_KEY, Gemini is skipped and Groq answers.
+        """
+        result, gemini_cls, groq_cls = self._run(env={"GROQ_API_KEY": "q-key"})
+        self.assertEqual(result, "Software - Application")
+        gemini_cls.assert_not_called()
+        self.assertEqual(groq_cls.call_args.kwargs["model"], GroqClient.DEFAULT_MODEL)
+        kwargs = groq_cls.return_value.generate_content.call_args.kwargs
+        self.assertEqual(kwargs["reasoning"], "low")
+        self.assertIn("enum", kwargs["response_schema"]["properties"]["industry"])
+
+    def test_gemini_error_uses_groq(self):
+        """
+        A Gemini exception falls back to Groq.
+        """
+        result, _, groq_cls = self._run(gemini=RuntimeError("boom"))
+        self.assertEqual(result, "Software - Application")
+        groq_cls.assert_called_once()
+
+    def test_non_vocabulary_answer_falls_back(self):
+        """
+        An answer outside the vocabulary (or unparseable) is not trusted.
+        """
+        result, _, _ = self._run(gemini='{"industry": "Made Up Industry"}')
+        self.assertEqual(result, "Software - Application")
+        result, _, _ = self._run(gemini="not json")
+        self.assertEqual(result, "Software - Application")
+
+    def test_both_fail_returns_none(self):
+        """
+        Both providers failing yields None.
+        """
+        result, _, _ = self._run(gemini=RuntimeError("x"), groq='{"industry": "Nope"}')
+        self.assertIsNone(result)
+
+    def test_no_keys_returns_none(self):
+        """
+        With no API keys at all, no client is built and None is returned.
+        """
+        result, gemini_cls, groq_cls = self._run(env={})
+        self.assertIsNone(result)
+        gemini_cls.assert_not_called()
+        groq_cls.assert_not_called()
+
+    def test_prompt_wording_for_warrants_and_spacs(self):
+        """
+        Warrants/rights/units take the issuer's industry; Shell Companies is SPAC-only.
+        """
+        _, gemini_cls, _ = self._run()
+        prompt = gemini_cls.return_value.generate_content.call_args.args[0]
+        self.assertIn("warrants, rights and units take the issuer's operating industry", prompt)
+        self.assertIn("blank-check/SPAC company that has not yet completed a merger", prompt)
+        self.assertNotIn("warrant, unit, SPAC pre-merger or other special structure", prompt)
+
+    def test_shell_accepted_for_blank_check_name(self):
+        """
+        Shell Companies is kept when the name looks like a blank-check vehicle.
+        """
+        result, _, groq_cls = self._run(
+            company="Example Acquisition Corp", gemini='{"industry": "Shell Companies"}'
+        )
+        self.assertEqual(result, "Shell Companies")
+        groq_cls.assert_not_called()
+
+    def test_shell_rejected_for_ordinary_name(self):
+        """
+        Shell Companies on an ordinary name triggers one re-ask without that label.
+        """
+        shell = '{"industry": "Shell Companies"}'
+        result, gemini_cls, groq_cls = self._run(
+            company="Example Robotics Inc",
+            gemini=[shell, '{"industry": "Software - Application"}'],
+        )
+        self.assertEqual(result, "Software - Application")
+        groq_cls.assert_not_called()
+        calls = gemini_cls.return_value.generate_content.call_args_list
+        self.assertEqual(len(calls), 2)
+        retry_enum = calls[1].kwargs["response_schema"]["properties"]["industry"]["enum"]
+        self.assertNotIn("Shell Companies", retry_enum)
+        self.assertEqual(retry_enum, ["Banks - Regional", "Software - Application"])
+        self.assertIn("has an operating business", calls[1].args[0])
+        self.assertNotIn("- Shell Companies", calls[1].args[0])
+
+
+class TestLooksLikeBlankCheck(unittest.TestCase):
+    """
+    The blank-check name pattern is deliberately narrow.
+    """
+
+    def test_patterns(self):
+        """
+        Blank-check wording matches; ordinary names do not.
+        """
+        for name in (
+            "Example Acquisition Corp",
+            "Sample Merger Corp II",
+            "Placeholder Blank Check Co",
+            "Demo SPAC Inc",
+        ):
+            self.assertTrue(_looks_like_blank_check(name), name)
+        for name in ("Example Robotics Inc", "Sample Acquisitions Bank", ""):
+            self.assertFalse(_looks_like_blank_check(name), name)
 
 
 if __name__ == "__main__":
