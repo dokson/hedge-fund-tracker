@@ -1,5 +1,6 @@
 import contextlib
 import contextvars
+import json
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -22,6 +23,17 @@ ReasoningLevel = Literal["low", "medium", "high"]
 DEFAULT_REASONING: ReasoningLevel = "low"
 _REASONING_LEVELS: frozenset[str] = frozenset(get_args(ReasoningLevel))
 
+# Structured-output modes, strongest first: provider-enforced JSON schema, plain
+# JSON mode, then the schema carried only by the prompt.
+StructuredMode = Literal["schema", "json", "prompt"]
+STRUCTURED_MODES: tuple[StructuredMode, ...] = get_args(StructuredMode)
+
+
+class InvalidAIResponseError(Exception):
+    """
+    The model answered, but its output is unusable; a fresh generation may succeed.
+    """
+
 
 class AIClient(ABC):
     """
@@ -36,18 +48,35 @@ class AIClient(ABC):
     # calls to a known non-reasoning model skip the failing round trip.
     _reasoning_unsupported: ClassVar[set[tuple[str, str]]] = set()
 
+    # Modes the provider can attach to a request; prompt-only needs no support.
+    SUPPORTED_STRUCTURED_MODES: ClassVar[tuple[StructuredMode, ...]] = ("prompt",)
+    # (provider scope, model, mode) triples that rejected a structured-output mode.
+    _structured_rejected: ClassVar[set[tuple[str, str, str]]] = set()
+
+    last_structured_mode: StructuredMode | None = None
+
     def generate_content(
-        self, prompt: str, *, reasoning: ReasoningLevel | None = None, **kwargs
+        self,
+        prompt: str,
+        *,
+        reasoning: ReasoningLevel | None = None,
+        response_schema: dict | None = None,
+        **kwargs,
     ) -> str:
         """
         Generate content using the AI service.
 
         ``reasoning`` picks the provider's thinking depth (None = DEFAULT_REASONING);
-        an unknown level raises ValueError before any provider call. Runs the provider call on a worker thread while the main thread polls on
+        an unknown level raises ValueError before any provider call. ``response_schema``
+        (a JSON Schema) asks for JSON output, enforced by the provider when it can
+        (see ``_generate_with_structure``). Runs the provider call on a worker thread while the main thread polls on
         a short timeout, so a slow/buffering provider stays interruptible by
         Ctrl+C and emits a heartbeat instead of going silent.
         """
         level = self._resolve_reasoning(reasoning)
+        self.last_structured_mode = None
+        if response_schema is not None:
+            kwargs["response_schema"] = response_schema
         model_name = self.get_model_name()
         start = time.perf_counter()
         done = threading.Event()
@@ -113,7 +142,7 @@ class AIClient(ABC):
             )
         return reasoning  # type: ignore[return-value]
 
-    def _reasoning_scope(self) -> str:
+    def _provider_scope(self) -> str:
         """
         Namespace for the rejection memory, so equal model names on different
         providers are tracked separately. Defaults to the class name.
@@ -138,7 +167,7 @@ class AIClient(ABC):
         remembers the model and retries once with no level (``send(None)``).
         """
         level = self._resolve_reasoning(reasoning)
-        key = (self._reasoning_scope(), model)
+        key = (self._provider_scope(), model)
         if key in self._reasoning_unsupported:
             return send(None)
         try:
@@ -153,6 +182,65 @@ class AIClient(ABC):
             )
             self._reasoning_unsupported.add(key)
             return send(None)
+
+    def _is_structured_output_rejected(self, exc: BaseException) -> bool:
+        """
+        Whether ``exc`` is the provider refusing a structured-output mode.
+        Providers override this; the default recognises nothing.
+        """
+        return False
+
+    @staticmethod
+    def _schema_instructions(prompt: str, schema: dict) -> str:
+        """
+        Appends the schema to the prompt, for modes where the provider does not enforce it.
+        """
+        return (
+            f"{prompt}\n\n# RESPONSE FORMAT\n"
+            "Return ONLY a single JSON object, with no text before or after it, "
+            "that validates against this JSON Schema:\n"
+            f"{json.dumps(schema, indent=2)}\n"
+        )
+
+    def _generate_with_structure(
+        self,
+        model: str,
+        prompt: str,
+        schema: dict | None,
+        send: Callable[[str, StructuredMode | None], str],
+    ) -> str:
+        """
+        Calls ``send(prompt, mode)`` with the strongest supported mode not known
+        to be rejected by ``model``, degrading schema -> json -> prompt-only on
+        each recognised rejection and remembering it. Without a schema, sends no mode.
+        """
+        if schema is None:
+            return send(prompt, None)
+        scope = self._provider_scope()
+        candidates: list[StructuredMode] = [
+            mode
+            for mode in STRUCTURED_MODES
+            if (mode == "prompt" or mode in self.SUPPORTED_STRUCTURED_MODES)
+            and (scope, model, mode) not in self._structured_rejected
+        ]
+        for mode in candidates:
+            mode_prompt = prompt if mode == "schema" else self._schema_instructions(prompt, schema)
+            try:
+                text = send(mode_prompt, mode)
+            except Exception as exc:
+                if mode == "prompt" or not self._is_structured_output_rejected(exc):
+                    raise
+                logger.warning(
+                    "%s: %s does not support %s structured output, degrading",
+                    type(self).__name__,
+                    model,
+                    mode,
+                )
+                self._structured_rejected.add((scope, model, mode))
+                continue
+            self.last_structured_mode = mode
+            return text
+        raise AssertionError("prompt-only mode is always a candidate")
 
     def _log_response(self, prompt: str, response: str):
         """

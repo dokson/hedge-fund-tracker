@@ -33,7 +33,7 @@ from app.ai.clients.google_client import GoogleAIClient  # noqa: E402
 from app.database import get_last_quarter, get_most_recent_quarter  # noqa: E402
 from app.stocks.price_fetcher import PriceFetcher  # noqa: E402
 
-DUE_DILIGENCE_TICKER = "MKSI"
+DUE_DILIGENCE_TICKER = "VSH"
 RANKING_TOP_N = 10
 MODEL_ID = "gemini-3.6-flash"
 

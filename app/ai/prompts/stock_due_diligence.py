@@ -46,51 +46,72 @@ For each analysis section below, provide a sentiment indicator:
 - **Bearish**: Negative outlook / Unfavorable
 
 ## OUTPUT FORMAT
-Return ONLY a single ```toon fenced code block, with no text before or after it (TOON: `key: value` lines, indentation for nesting).
-- Use exactly the top-level keys in the SCHEMA below and no others (no `checklist`, no preamble key). The ticker symbol is the value of `ticker`, not a key wrapping the response.
-- Enclose every string value in double quotes.
+Return a JSON object with these fields:
+- `ticker` and `company`: the stock's ticker symbol and company name.
+- `analysis`: `business_summary`, `financial_health`, `valuation`, `growth_vs_risks` and `institutional_sentiment` (one string per section above), plus `financial_health_sentiment`, `valuation_sentiment`, `growth_vs_risks_sentiment` and `institutional_sentiment_sentiment`.
+- `investment_thesis`: `overall_sentiment`, `thesis` and `price_target`.
 
-### SCHEMA
-ticker: "..."
-company: "..."
-analysis:
-  business_summary: "..."
-  financial_health: "..."
-  financial_health_sentiment: "Bullish/Neutral/Bearish"
-  valuation: "..."
-  valuation_sentiment: "Bullish/Neutral/Bearish"
-  growth_vs_risks: "..."
-  growth_vs_risks_sentiment: "Bullish/Neutral/Bearish"
-  institutional_sentiment: "..."
-  institutional_sentiment_sentiment: "Bullish/Neutral/Bearish"
-investment_thesis:
-  overall_sentiment: "Bullish/Neutral/Bearish"
-  thesis: "..."
-  price_target: "..."
-
+Rules:
 - Complete all listed fields. If data is missing/unavailable, set the value to `null`.
 - Sentiment fields must be "Bullish", "Neutral", or "Bearish", or `null` if unavailable.
 - `price_target`: string formatted as USD (e.g., "$145") or `null` if not applicable/uncertain.
 - If institutional activity data is unavailable, set `institutional_sentiment` and `institutional_sentiment_sentiment` to `null`.
 - If any analysis section cannot be completed, set its value, including its sentiment, to `null`.
-
-# EXAMPLE OUTPUT STRUCTURE (illustrative shape only; the content is placeholder)
-```toon
-ticker: "XYZ"
-company: "Example Corp"
-analysis:
-  business_summary: "<2-3 sentences on operations, business model and market position>"
-  financial_health: "<revenue growth, margins and leverage, citing figures only if given>"
-  financial_health_sentiment: "Bullish"
-  valuation: "<valuation versus peers; a multiple only if known with confidence, otherwise qualitative>"
-  valuation_sentiment: "Neutral"
-  growth_vs_risks: "<main catalysts vs headwinds, and which way the balance tips>"
-  growth_vs_risks_sentiment: "Bearish"
-  institutional_sentiment: "<the story told by the institutional data and the post-filing price move>"
-  institutional_sentiment_sentiment: "Bullish"
-investment_thesis:
-  overall_sentiment: "Bullish"
-  thesis: "<synthesis of the sections above>"
-  price_target: "$000"
-```
 """
+
+
+SENTIMENTS: tuple[str, ...] = ("Bullish", "Neutral", "Bearish")
+
+
+def _text() -> dict:
+    """
+    A nullable free-text field.
+    """
+    return {"type": ["string", "null"]}
+
+
+def _sentiment() -> dict:
+    """
+    A nullable sentiment indicator.
+    """
+    return {"type": ["string", "null"], "enum": [*SENTIMENTS, None]}
+
+
+def _closed_object(properties: dict) -> dict:
+    """
+    An object whose listed properties are all required and no others are allowed.
+    """
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": list(properties),
+        "additionalProperties": False,
+    }
+
+
+DUE_DILIGENCE_SCHEMA: dict = _closed_object(
+    {
+        "ticker": {"type": "string"},
+        "company": {"type": "string"},
+        "analysis": _closed_object(
+            {
+                "business_summary": _text(),
+                "financial_health": _text(),
+                "financial_health_sentiment": _sentiment(),
+                "valuation": _text(),
+                "valuation_sentiment": _sentiment(),
+                "growth_vs_risks": _text(),
+                "growth_vs_risks_sentiment": _sentiment(),
+                "institutional_sentiment": _text(),
+                "institutional_sentiment_sentiment": _sentiment(),
+            }
+        ),
+        "investment_thesis": _closed_object(
+            {
+                "overall_sentiment": _sentiment(),
+                "thesis": _text(),
+                "price_target": _text(),
+            }
+        ),
+    }
+)

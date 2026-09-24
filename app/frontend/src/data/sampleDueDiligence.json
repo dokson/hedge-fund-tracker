@@ -1,1861 +1,1861 @@
 {
   "quarter": "2026Q2",
-  "generated_at": "2026-09-03",
-  "ticker": "MKSI",
-  "company": "MKS Instruments Inc",
+  "generated_at": "2026-09-24",
+  "ticker": "VSH",
+  "company": "Vishay Intertechnology Inc",
   "analysis": {
-    "business_summary": "MKS Instruments is a global provider of critical process control instruments, subsystems, and solutions that measure, control, power, and monitor essential parameters of advanced manufacturing processes, primarily serving the semiconductor, advanced electronics, and specialty industrial markets.",
-    "financial_health": "Financial health reflects steady cash generation offset by elevated debt obligations following large strategic acquisitions (Atotech). While net profit margins remain moderate and leverage requires disciplined debt paydown, free cash flow generation provides debt service coverage as semiconductor end-markets stabilize.",
+    "business_summary": "Vishay makes discrete semiconductors (MOSFETs, diodes, optoelectronics) and passive components (resistors, inductors, capacitors) sold into industrial, automotive, computing and power-infrastructure end markets. Its breadth of catalog parts makes it a bellwether for the electronic-component cycle rather than a single-product story.",
+    "financial_health": "No financial statements are included in this context, so no margin or leverage figures are cited. The company funds a multi-year capacity expansion and has convertible notes outstanding, so free cash flow and balance-sheet flexibility are the metrics to watch as the cycle turns.",
     "financial_health_sentiment": "Neutral",
-    "valuation": "Following a severe 41.95% price correction from $433.05 to $251.38, MKSI trades at compressed valuation multiples (EV/EBITDA and Forward P/E) well below its semiconductor equipment peer group and historical averages, signaling significant undervaluation.",
-    "valuation_sentiment": "Bullish",
-    "growth_vs_risks": "Growth catalysts include the long-term ramp in semiconductor WFE spending, advanced packaging demand, and synergy realization. Main headwinds include broader semiconductor cyclicality and macro drag. At current compressed price levels, the risk/reward balance heavily favors growth catalysts.",
+    "valuation": "No multiples are available here to compare with peers. On price alone, the stock has given back roughly half of its spring rally, from a $64.90 weekly close in mid-June to $32.60, which removes most of the speculative premium while still sitting about twice its March level.",
+    "valuation_sentiment": "Neutral",
+    "growth_vs_risks": "Upside comes from a component-cycle recovery and demand from power and data-center infrastructure, which drove the spring re-rating. Risks are that the rally front-ran fundamentals, cyclical end markets (industrial, automotive) and execution on the capacity build-out. After five weeks of consolidation between $31 and $33, with the excess already unwound, the balance tips modestly toward growth.",
     "growth_vs_risks_sentiment": "Bullish",
-    "institutional_sentiment": "Institutional activity reflects exceptionally strong conviction prior to the recent sell-off, highlighted by 5 new positions, zero closed positions, 1 high-conviction entry, and an average position size increase of +135.97% with high portfolio concentration (58.84%). The severe post-filing price drawdown creates a stark disconnect between smart money accumulation and market sentiment, establishing an attractive entry window.",
+    "institutional_sentiment": "Tracked funds show clear accumulation: nine opened new positions and only one trimmed, for about $210M of dollar exposure and three high-conviction entries; holders run concentrated books (59.25% average concentration). CloudAlpha ($83M, 8.2% of its portfolio) and Keystone ($50M) lead, and two funds gain their exposure through the convertible notes. The -37.94% move since the filing date means that capital now sits well below its quarter-end marks.",
     "institutional_sentiment_sentiment": "Bullish"
   },
   "investment_thesis": {
     "overall_sentiment": "Bullish",
-    "thesis": "The dramatic 42% price sell-off appears overdone relative to solid long-term fundamentals and strong smart-money accumulation. High institutional concentration and aggressive position building (+135.97% delta) signal strong underlying conviction. MKSI offers compelling upside potential via mean-reversion as semiconductor process control demand rebounds.",
-    "price_target": "$325"
+    "thesis": "Concentrated new institutional money entered during the spring re-rating and is now under water, while the price has stopped falling and built a base around $31-33 after unwinding half of the rally. With no fundamental data here to confirm the recovery, this is a measured bullish call: a rebound toward the July consolidation zone is the base case, and a break below the base would invalidate it.",
+    "price_target": "$38"
   },
-  "current_price": "$251.38",
-  "filing_date_price": "$433.05",
-  "price_delta_percentage": "-41.95%",
+  "current_price": "$32.60",
+  "filing_date_price": "$52.53",
+  "price_delta_percentage": "-37.94%",
   "price_history": [
     {
-      "date": "2021-08-30",
-      "open": 146.06,
-      "high": 149.0,
-      "low": 145.36,
-      "close": 148.51
-    },
-    {
-      "date": "2021-09-06",
-      "open": 149.1,
-      "high": 152.11,
-      "low": 144.86,
-      "close": 148.42
-    },
-    {
-      "date": "2021-09-13",
-      "open": 150.73,
-      "high": 152.43,
-      "low": 148.0,
-      "close": 149.47
-    },
-    {
       "date": "2021-09-20",
-      "open": 146.72,
-      "high": 154.4,
-      "low": 144.19,
-      "close": 153.35
+      "open": 20.33,
+      "high": 20.85,
+      "low": 20.27,
+      "close": 20.73
     },
     {
       "date": "2021-09-27",
-      "open": 152.75,
-      "high": 155.31,
-      "low": 146.84,
-      "close": 149.7
+      "open": 20.67,
+      "high": 21.14,
+      "low": 20.03,
+      "close": 20.47
     },
     {
       "date": "2021-10-04",
-      "open": 149.42,
-      "high": 149.42,
-      "low": 140.87,
-      "close": 142.67
+      "open": 20.48,
+      "high": 20.65,
+      "low": 19.8,
+      "close": 20.16
     },
     {
       "date": "2021-10-11",
-      "open": 141.79,
-      "high": 146.97,
-      "low": 141.73,
-      "close": 144.67
+      "open": 20.21,
+      "high": 20.36,
+      "low": 19.06,
+      "close": 19.43
     },
     {
       "date": "2021-10-18",
-      "open": 143.3,
-      "high": 149.75,
-      "low": 142.5,
-      "close": 144.72
+      "open": 19.35,
+      "high": 19.87,
+      "low": 19.14,
+      "close": 19.35
     },
     {
       "date": "2021-10-25",
-      "open": 144.87,
-      "high": 150.47,
-      "low": 141.35,
-      "close": 150.05
+      "open": 19.4,
+      "high": 19.65,
+      "low": 19.0,
+      "close": 19.22
     },
     {
       "date": "2021-11-01",
-      "open": 150.06,
-      "high": 160.45,
-      "low": 149.27,
-      "close": 160.26
+      "open": 19.31,
+      "high": 20.7,
+      "low": 19.31,
+      "close": 20.47
     },
     {
       "date": "2021-11-08",
-      "open": 160.62,
-      "high": 167.47,
-      "low": 155.87,
-      "close": 166.51
+      "open": 20.64,
+      "high": 21.16,
+      "low": 20.1,
+      "close": 21.02
     },
     {
       "date": "2021-11-15",
-      "open": 167.75,
-      "high": 169.88,
-      "low": 161.17,
-      "close": 163.43
+      "open": 21.13,
+      "high": 22.05,
+      "low": 20.84,
+      "close": 21.6
     },
     {
       "date": "2021-11-22",
-      "open": 164.44,
-      "high": 166.68,
-      "low": 153.99,
-      "close": 155.03
+      "open": 21.75,
+      "high": 22.17,
+      "low": 20.57,
+      "close": 20.73
     },
     {
       "date": "2021-11-29",
-      "open": 156.47,
-      "high": 161.86,
-      "low": 150.42,
-      "close": 156.09
+      "open": 21.12,
+      "high": 21.21,
+      "low": 20.24,
+      "close": 20.6
     },
     {
       "date": "2021-12-06",
-      "open": 156.47,
-      "high": 167.04,
-      "low": 153.36,
-      "close": 161.37
+      "open": 20.7,
+      "high": 21.57,
+      "low": 20.23,
+      "close": 21.01
     },
     {
       "date": "2021-12-13",
-      "open": 162.49,
-      "high": 166.19,
-      "low": 155.15,
-      "close": 157.03
+      "open": 20.9,
+      "high": 20.95,
+      "low": 20.02,
+      "close": 20.13
     },
     {
       "date": "2021-12-20",
-      "open": 154.71,
-      "high": 170.24,
-      "low": 153.38,
-      "close": 169.16
+      "open": 19.89,
+      "high": 21.34,
+      "low": 19.43,
+      "close": 21.15
     },
     {
       "date": "2021-12-27",
-      "open": 169.16,
-      "high": 178.66,
-      "low": 169.16,
-      "close": 174.17
+      "open": 21.16,
+      "high": 22.65,
+      "low": 21.14,
+      "close": 21.87
     },
     {
       "date": "2022-01-03",
-      "open": 174.83,
-      "high": 180.67,
-      "low": 168.91,
-      "close": 169.0
+      "open": 22.15,
+      "high": 22.71,
+      "low": 21.37,
+      "close": 21.39
     },
     {
       "date": "2022-01-10",
-      "open": 166.18,
-      "high": 181.03,
-      "low": 160.77,
-      "close": 180.69
+      "open": 21.31,
+      "high": 22.27,
+      "low": 20.85,
+      "close": 22.27
     },
     {
       "date": "2022-01-17",
-      "open": 179.41,
-      "high": 180.59,
-      "low": 158.19,
-      "close": 158.52
+      "open": 22.09,
+      "high": 22.19,
+      "low": 20.52,
+      "close": 20.54
     },
     {
       "date": "2022-01-24",
-      "open": 155.07,
-      "high": 163.9,
-      "low": 142.0,
-      "close": 149.1
+      "open": 20.18,
+      "high": 20.98,
+      "low": 19.24,
+      "close": 19.88
     },
     {
       "date": "2022-01-31",
-      "open": 149.58,
-      "high": 156.42,
-      "low": 143.58,
-      "close": 147.85
+      "open": 19.8,
+      "high": 20.92,
+      "low": 19.8,
+      "close": 20.31
     },
     {
       "date": "2022-02-07",
-      "open": 147.85,
-      "high": 156.51,
-      "low": 144.38,
-      "close": 144.98
+      "open": 20.44,
+      "high": 21.18,
+      "low": 19.56,
+      "close": 19.78
     },
     {
       "date": "2022-02-14",
-      "open": 144.42,
-      "high": 155.56,
-      "low": 143.43,
-      "close": 150.44
+      "open": 19.94,
+      "high": 20.53,
+      "low": 19.77,
+      "close": 20.04
     },
     {
       "date": "2022-02-21",
-      "open": 148.83,
-      "high": 152.12,
-      "low": 136.23,
-      "close": 151.25
+      "open": 19.94,
+      "high": 20.12,
+      "low": 18.4,
+      "close": 19.59
     },
     {
       "date": "2022-02-28",
-      "open": 149.44,
-      "high": 154.81,
-      "low": 142.89,
-      "close": 146.38
+      "open": 19.27,
+      "high": 19.47,
+      "low": 18.2,
+      "close": 18.63
     },
     {
       "date": "2022-03-07",
-      "open": 146.55,
-      "high": 152.8,
-      "low": 137.81,
-      "close": 142.24
+      "open": 18.67,
+      "high": 19.03,
+      "low": 17.58,
+      "close": 18.64
     },
     {
       "date": "2022-03-14",
-      "open": 142.63,
-      "high": 156.35,
-      "low": 135.56,
-      "close": 155.25
+      "open": 18.72,
+      "high": 20.35,
+      "low": 18.34,
+      "close": 20.2
     },
     {
       "date": "2022-03-21",
-      "open": 154.18,
-      "high": 156.38,
-      "low": 147.79,
-      "close": 155.61
+      "open": 20.24,
+      "high": 20.67,
+      "low": 19.76,
+      "close": 20.47
     },
     {
       "date": "2022-03-28",
-      "open": 154.54,
-      "high": 163.89,
-      "low": 140.04,
-      "close": 141.21
+      "open": 20.31,
+      "high": 20.77,
+      "low": 18.92,
+      "close": 19.18
     },
     {
       "date": "2022-04-04",
-      "open": 142.4,
-      "high": 145.39,
-      "low": 122.22,
-      "close": 122.37
+      "open": 19.15,
+      "high": 19.47,
+      "low": 17.79,
+      "close": 17.85
     },
     {
       "date": "2022-04-11",
-      "open": 121.01,
-      "high": 123.12,
-      "low": 114.47,
-      "close": 114.52
+      "open": 17.82,
+      "high": 18.59,
+      "low": 17.57,
+      "close": 18.13
     },
     {
       "date": "2022-04-18",
-      "open": 113.48,
-      "high": 124.85,
-      "low": 113.12,
-      "close": 119.58
+      "open": 18.09,
+      "high": 19.28,
+      "low": 18.08,
+      "close": 18.48
     },
     {
       "date": "2022-04-25",
-      "open": 117.78,
-      "high": 121.64,
-      "low": 110.26,
-      "close": 113.98
+      "open": 18.5,
+      "high": 19.32,
+      "low": 18.03,
+      "close": 18.63
     },
     {
       "date": "2022-05-02",
-      "open": 114.36,
-      "high": 126.49,
-      "low": 113.88,
-      "close": 118.75
+      "open": 18.67,
+      "high": 19.95,
+      "low": 18.46,
+      "close": 19.02
     },
     {
       "date": "2022-05-09",
-      "open": 115.48,
-      "high": 118.83,
-      "low": 110.59,
-      "close": 118.14
+      "open": 18.71,
+      "high": 19.61,
+      "low": 18.52,
+      "close": 19.53
     },
     {
       "date": "2022-05-16",
-      "open": 116.68,
-      "high": 123.1,
-      "low": 112.44,
-      "close": 117.51
+      "open": 19.29,
+      "high": 20.62,
+      "low": 19.05,
+      "close": 19.58
     },
     {
       "date": "2022-05-23",
-      "open": 117.52,
-      "high": 122.6,
-      "low": 113.92,
-      "close": 122.41
+      "open": 19.68,
+      "high": 20.45,
+      "low": 19.24,
+      "close": 20.36
     },
     {
       "date": "2022-05-30",
-      "open": 122.54,
-      "high": 125.56,
-      "low": 119.34,
-      "close": 120.4
+      "open": 20.36,
+      "high": 20.75,
+      "low": 19.99,
+      "close": 20.44
     },
     {
       "date": "2022-06-06",
-      "open": 123.16,
-      "high": 123.89,
-      "low": 111.35,
-      "close": 112.59
+      "open": 20.61,
+      "high": 20.91,
+      "low": 19.02,
+      "close": 19.32
     },
     {
       "date": "2022-06-13",
-      "open": 108.76,
-      "high": 110.62,
-      "low": 99.62,
-      "close": 100.36
+      "open": 18.87,
+      "high": 19.11,
+      "low": 17.43,
+      "close": 17.79
     },
     {
       "date": "2022-06-20",
-      "open": 102.23,
-      "high": 106.03,
-      "low": 97.64,
-      "close": 105.91
+      "open": 18.12,
+      "high": 18.19,
+      "low": 17.41,
+      "close": 17.91
     },
     {
       "date": "2022-06-27",
-      "open": 106.5,
-      "high": 108.7,
-      "low": 95.21,
-      "close": 96.32
+      "open": 18.09,
+      "high": 18.73,
+      "low": 17.13,
+      "close": 17.4
     },
     {
       "date": "2022-07-04",
-      "open": 93.82,
-      "high": 101.05,
-      "low": 92.66,
-      "close": 99.51
+      "open": 17.0,
+      "high": 18.28,
+      "low": 16.73,
+      "close": 18.23
     },
     {
       "date": "2022-07-11",
-      "open": 98.21,
-      "high": 102.99,
-      "low": 96.86,
-      "close": 102.75
+      "open": 18.17,
+      "high": 19.31,
+      "low": 18.1,
+      "close": 19.3
     },
     {
       "date": "2022-07-18",
-      "open": 104.05,
-      "high": 112.6,
-      "low": 100.71,
-      "close": 109.64
+      "open": 19.41,
+      "high": 19.91,
+      "low": 18.55,
+      "close": 19.33
     },
     {
       "date": "2022-07-25",
-      "open": 109.16,
-      "high": 119.8,
-      "low": 107.43,
-      "close": 118.2
+      "open": 19.37,
+      "high": 20.75,
+      "low": 19.13,
+      "close": 20.66
     },
     {
       "date": "2022-08-01",
-      "open": 117.51,
-      "high": 123.93,
-      "low": 116.74,
-      "close": 120.65
+      "open": 20.46,
+      "high": 21.16,
+      "low": 20.05,
+      "close": 20.7
     },
     {
       "date": "2022-08-08",
-      "open": 119.7,
-      "high": 122.89,
-      "low": 108.28,
-      "close": 120.81
+      "open": 20.72,
+      "high": 21.23,
+      "low": 19.61,
+      "close": 21.18
     },
     {
       "date": "2022-08-15",
-      "open": 120.15,
-      "high": 121.42,
-      "low": 107.72,
-      "close": 108.47
+      "open": 20.96,
+      "high": 21.58,
+      "low": 20.64,
+      "close": 21.32
     },
     {
       "date": "2022-08-22",
-      "open": 105.65,
-      "high": 111.06,
-      "low": 102.91,
-      "close": 102.93
+      "open": 21.01,
+      "high": 21.2,
+      "low": 20.18,
+      "close": 20.2
     },
     {
       "date": "2022-08-29",
-      "open": 102.04,
-      "high": 103.45,
-      "low": 94.12,
-      "close": 97.13
+      "open": 19.95,
+      "high": 20.29,
+      "low": 19.05,
+      "close": 19.19
     },
     {
       "date": "2022-09-05",
-      "open": 96.64,
-      "high": 101.01,
-      "low": 93.78,
-      "close": 100.29
+      "open": 19.24,
+      "high": 19.67,
+      "low": 18.67,
+      "close": 19.52
     },
     {
       "date": "2022-09-12",
-      "open": 100.92,
-      "high": 101.92,
-      "low": 87.67,
-      "close": 89.11
+      "open": 19.73,
+      "high": 19.89,
+      "low": 18.4,
+      "close": 18.76
     },
     {
       "date": "2022-09-19",
-      "open": 88.23,
-      "high": 90.97,
-      "low": 82.39,
-      "close": 84.82
+      "open": 18.55,
+      "high": 19.19,
+      "low": 17.8,
+      "close": 18.18
     },
     {
       "date": "2022-09-26",
-      "open": 84.85,
-      "high": 86.78,
-      "low": 81.5,
-      "close": 82.64
+      "open": 18.14,
+      "high": 18.63,
+      "low": 17.76,
+      "close": 17.79
     },
     {
       "date": "2022-10-03",
-      "open": 84.14,
-      "high": 90.46,
-      "low": 82.38,
-      "close": 82.87
+      "open": 18.01,
+      "high": 19.68,
+      "low": 17.87,
+      "close": 18.88
     },
     {
       "date": "2022-10-10",
-      "open": 83.1,
-      "high": 83.79,
-      "low": 72.47,
-      "close": 74.65
+      "open": 18.9,
+      "high": 19.01,
+      "low": 17.63,
+      "close": 18.39
     },
     {
       "date": "2022-10-17",
-      "open": 76.6,
-      "high": 80.63,
-      "low": 75.13,
-      "close": 79.22
+      "open": 18.78,
+      "high": 20.42,
+      "low": 18.67,
+      "close": 20.37
     },
     {
       "date": "2022-10-24",
-      "open": 79.08,
-      "high": 84.71,
-      "low": 77.75,
-      "close": 84.58
+      "open": 20.42,
+      "high": 21.09,
+      "low": 20.18,
+      "close": 21.09
     },
     {
       "date": "2022-10-31",
-      "open": 83.87,
-      "high": 84.68,
-      "low": 66.32,
-      "close": 67.21
+      "open": 21.02,
+      "high": 21.42,
+      "low": 19.52,
+      "close": 21.06
     },
     {
       "date": "2022-11-07",
-      "open": 68.35,
-      "high": 81.14,
-      "low": 64.77,
-      "close": 80.32
+      "open": 21.26,
+      "high": 22.46,
+      "low": 21.02,
+      "close": 22.19
     },
     {
       "date": "2022-11-14",
-      "open": 79.6,
-      "high": 81.64,
-      "low": 71.29,
-      "close": 74.57
+      "open": 22.02,
+      "high": 22.96,
+      "low": 21.88,
+      "close": 22.83
     },
     {
       "date": "2022-11-21",
-      "open": 73.44,
-      "high": 81.98,
-      "low": 71.61,
-      "close": 81.08
+      "open": 22.75,
+      "high": 22.98,
+      "low": 22.4,
+      "close": 22.45
     },
     {
       "date": "2022-11-28",
-      "open": 79.78,
-      "high": 84.77,
-      "low": 76.65,
-      "close": 83.86
+      "open": 22.27,
+      "high": 23.26,
+      "low": 21.85,
+      "close": 23.04
     },
     {
       "date": "2022-12-05",
-      "open": 83.76,
-      "high": 86.49,
-      "low": 80.1,
-      "close": 82.01
+      "open": 22.86,
+      "high": 22.98,
+      "low": 21.76,
+      "close": 22.1
     },
     {
       "date": "2022-12-12",
-      "open": 81.21,
-      "high": 91.53,
-      "low": 80.02,
-      "close": 82.25
+      "open": 22.15,
+      "high": 23.39,
+      "low": 21.24,
+      "close": 21.6
     },
     {
       "date": "2022-12-19",
-      "open": 81.42,
-      "high": 86.22,
-      "low": 77.73,
-      "close": 83.69
+      "open": 21.58,
+      "high": 21.75,
+      "low": 20.86,
+      "close": 21.37
     },
     {
       "date": "2022-12-26",
-      "open": 82.83,
-      "high": 85.67,
-      "low": 80.61,
-      "close": 84.73
+      "open": 21.36,
+      "high": 21.69,
+      "low": 21.0,
+      "close": 21.57
     },
     {
       "date": "2023-01-02",
-      "open": 86.81,
-      "high": 98.64,
-      "low": 83.32,
-      "close": 97.48
+      "open": 21.79,
+      "high": 22.31,
+      "low": 21.35,
+      "close": 22.22
     },
     {
       "date": "2023-01-09",
-      "open": 99.0,
-      "high": 100.85,
-      "low": 95.76,
-      "close": 100.72
+      "open": 22.41,
+      "high": 22.98,
+      "low": 22.27,
+      "close": 22.96
     },
     {
       "date": "2023-01-16",
-      "open": 100.03,
-      "high": 102.42,
-      "low": 94.59,
-      "close": 99.63
+      "open": 22.96,
+      "high": 23.09,
+      "low": 21.64,
+      "close": 22.18
     },
     {
       "date": "2023-01-23",
-      "open": 99.7,
-      "high": 106.9,
-      "low": 99.49,
-      "close": 105.24
+      "open": 22.26,
+      "high": 23.1,
+      "low": 22.26,
+      "close": 22.79
     },
     {
       "date": "2023-01-30",
-      "open": 102.93,
-      "high": 114.15,
-      "low": 97.74,
-      "close": 109.24
+      "open": 22.53,
+      "high": 24.48,
+      "low": 22.47,
+      "close": 24.22
     },
     {
       "date": "2023-02-06",
-      "open": 105.85,
-      "high": 107.26,
-      "low": 99.16,
-      "close": 100.84
+      "open": 23.89,
+      "high": 24.17,
+      "low": 20.51,
+      "close": 20.77
     },
     {
       "date": "2023-02-13",
-      "open": 99.26,
-      "high": 100.74,
-      "low": 93.78,
-      "close": 95.24
+      "open": 20.73,
+      "high": 21.71,
+      "low": 20.58,
+      "close": 21.39
     },
     {
       "date": "2023-02-20",
-      "open": 93.41,
-      "high": 94.47,
-      "low": 90.22,
-      "close": 91.52
+      "open": 21.08,
+      "high": 21.58,
+      "low": 20.86,
+      "close": 21.13
     },
     {
       "date": "2023-02-27",
-      "open": 92.92,
-      "high": 99.86,
-      "low": 91.43,
-      "close": 96.53
+      "open": 21.39,
+      "high": 21.76,
+      "low": 21.15,
+      "close": 21.72
     },
     {
       "date": "2023-03-06",
-      "open": 97.06,
-      "high": 97.8,
-      "low": 86.72,
-      "close": 87.48
+      "open": 21.85,
+      "high": 22.02,
+      "low": 21.17,
+      "close": 21.41
     },
     {
       "date": "2023-03-13",
-      "open": 86.13,
-      "high": 91.11,
-      "low": 84.95,
-      "close": 86.98
+      "open": 21.07,
+      "high": 22.24,
+      "low": 20.82,
+      "close": 21.0
     },
     {
       "date": "2023-03-20",
-      "open": 87.3,
-      "high": 89.37,
-      "low": 83.62,
-      "close": 84.96
+      "open": 21.18,
+      "high": 22.02,
+      "low": 20.98,
+      "close": 21.67
     },
     {
       "date": "2023-03-27",
-      "open": 86.01,
-      "high": 89.01,
-      "low": 81.87,
-      "close": 88.62
+      "open": 21.79,
+      "high": 22.64,
+      "low": 21.36,
+      "close": 22.62
     },
     {
       "date": "2023-04-03",
-      "open": 87.87,
-      "high": 88.79,
-      "low": 82.02,
-      "close": 83.01
+      "open": 22.55,
+      "high": 22.69,
+      "low": 21.34,
+      "close": 21.38
     },
     {
       "date": "2023-04-10",
-      "open": 81.8,
-      "high": 86.24,
-      "low": 81.61,
-      "close": 82.54
+      "open": 21.41,
+      "high": 22.05,
+      "low": 21.4,
+      "close": 21.64
     },
     {
       "date": "2023-04-17",
-      "open": 81.13,
-      "high": 85.28,
-      "low": 79.68,
-      "close": 85.03
+      "open": 21.5,
+      "high": 21.91,
+      "low": 20.88,
+      "close": 21.25
     },
     {
       "date": "2023-04-24",
-      "open": 84.57,
-      "high": 85.44,
-      "low": 79.63,
-      "close": 83.87
+      "open": 21.16,
+      "high": 21.38,
+      "low": 20.57,
+      "close": 21.29
     },
     {
       "date": "2023-05-01",
-      "open": 83.62,
-      "high": 89.48,
-      "low": 80.01,
-      "close": 88.52
+      "open": 21.33,
+      "high": 21.67,
+      "low": 20.82,
+      "close": 21.54
     },
     {
       "date": "2023-05-08",
-      "open": 86.76,
-      "high": 87.19,
-      "low": 80.76,
-      "close": 82.01
+      "open": 21.62,
+      "high": 24.86,
+      "low": 21.05,
+      "close": 24.1
     },
     {
       "date": "2023-05-15",
-      "open": 82.5,
-      "high": 90.59,
-      "low": 81.75,
-      "close": 87.6
+      "open": 24.3,
+      "high": 25.68,
+      "low": 23.92,
+      "close": 25.38
     },
     {
       "date": "2023-05-22",
-      "open": 87.32,
-      "high": 99.88,
-      "low": 85.96,
-      "close": 99.48
+      "open": 25.33,
+      "high": 26.74,
+      "low": 24.73,
+      "close": 26.51
     },
     {
       "date": "2023-05-29",
-      "open": 101.62,
-      "high": 102.15,
-      "low": 92.26,
-      "close": 96.6
+      "open": 26.66,
+      "high": 26.71,
+      "low": 25.38,
+      "close": 26.56
     },
     {
       "date": "2023-06-05",
-      "open": 95.86,
-      "high": 102.44,
-      "low": 93.9,
-      "close": 100.82
+      "open": 26.09,
+      "high": 27.8,
+      "low": 25.66,
+      "close": 27.3
     },
     {
       "date": "2023-06-12",
-      "open": 100.98,
-      "high": 106.39,
-      "low": 100.81,
-      "close": 105.18
+      "open": 27.36,
+      "high": 27.98,
+      "low": 27.18,
+      "close": 27.78
     },
     {
       "date": "2023-06-19",
-      "open": 104.89,
-      "high": 106.19,
-      "low": 100.72,
-      "close": 101.19
+      "open": 27.7,
+      "high": 28.1,
+      "low": 27.41,
+      "close": 27.78
     },
     {
       "date": "2023-06-26",
-      "open": 101.75,
-      "high": 110.47,
-      "low": 101.16,
-      "close": 108.1
+      "open": 27.92,
+      "high": 29.66,
+      "low": 27.81,
+      "close": 29.4
     },
     {
       "date": "2023-07-03",
-      "open": 108.49,
-      "high": 109.12,
-      "low": 102.7,
-      "close": 105.03
+      "open": 29.36,
+      "high": 29.68,
+      "low": 28.4,
+      "close": 28.51
     },
     {
       "date": "2023-07-10",
-      "open": 105.26,
-      "high": 109.93,
-      "low": 103.93,
-      "close": 107.43
+      "open": 28.43,
+      "high": 29.9,
+      "low": 28.37,
+      "close": 29.37
     },
     {
       "date": "2023-07-17",
-      "open": 107.82,
-      "high": 109.63,
-      "low": 102.62,
-      "close": 103.66
+      "open": 29.31,
+      "high": 30.1,
+      "low": 28.4,
+      "close": 28.4
     },
     {
       "date": "2023-07-24",
-      "open": 103.53,
-      "high": 109.57,
-      "low": 102.01,
-      "close": 108.34
+      "open": 28.45,
+      "high": 28.69,
+      "low": 27.74,
+      "close": 28.0
     },
     {
       "date": "2023-07-31",
-      "open": 108.64,
-      "high": 109.83,
-      "low": 98.98,
-      "close": 100.29
+      "open": 28.0,
+      "high": 28.41,
+      "low": 26.95,
+      "close": 27.09
     },
     {
       "date": "2023-08-07",
-      "open": 100.63,
-      "high": 102.14,
-      "low": 93.8,
-      "close": 94.09
+      "open": 27.26,
+      "high": 27.4,
+      "low": 25.9,
+      "close": 26.6
     },
     {
       "date": "2023-08-14",
-      "open": 93.54,
-      "high": 95.96,
-      "low": 88.44,
-      "close": 91.89
+      "open": 26.5,
+      "high": 27.15,
+      "low": 25.78,
+      "close": 26.41
     },
     {
       "date": "2023-08-21",
-      "open": 91.89,
-      "high": 98.52,
-      "low": 91.89,
-      "close": 94.7
+      "open": 26.44,
+      "high": 27.48,
+      "low": 26.33,
+      "close": 26.85
     },
     {
       "date": "2023-08-28",
-      "open": 95.66,
-      "high": 101.62,
-      "low": 94.69,
-      "close": 100.81
+      "open": 27.02,
+      "high": 27.81,
+      "low": 27.0,
+      "close": 27.59
     },
     {
       "date": "2023-09-04",
-      "open": 100.45,
-      "high": 101.01,
-      "low": 91.42,
-      "close": 92.5
+      "open": 27.17,
+      "high": 27.31,
+      "low": 24.52,
+      "close": 24.57
     },
     {
       "date": "2023-09-11",
-      "open": 93.87,
-      "high": 93.87,
-      "low": 87.58,
-      "close": 88.54
+      "open": 24.84,
+      "high": 25.22,
+      "low": 24.58,
+      "close": 25.0
     },
     {
       "date": "2023-09-18",
-      "open": 87.92,
-      "high": 89.44,
-      "low": 84.34,
-      "close": 84.49
+      "open": 25.08,
+      "high": 25.32,
+      "low": 24.22,
+      "close": 24.46
     },
     {
       "date": "2023-09-25",
-      "open": 83.75,
-      "high": 87.29,
-      "low": 82.76,
-      "close": 86.54
+      "open": 24.32,
+      "high": 24.94,
+      "low": 24.03,
+      "close": 24.72
     },
     {
       "date": "2023-10-02",
-      "open": 87.15,
-      "high": 88.98,
-      "low": 81.72,
-      "close": 83.35
+      "open": 24.72,
+      "high": 25.22,
+      "low": 23.87,
+      "close": 24.21
     },
     {
       "date": "2023-10-09",
-      "open": 82.17,
-      "high": 84.96,
-      "low": 78.91,
-      "close": 79.4
+      "open": 23.99,
+      "high": 24.67,
+      "low": 23.56,
+      "close": 23.67
     },
     {
       "date": "2023-10-16",
-      "open": 79.47,
-      "high": 81.54,
-      "low": 73.86,
-      "close": 74.04
+      "open": 23.92,
+      "high": 24.09,
+      "low": 22.95,
+      "close": 23.0
     },
     {
       "date": "2023-10-23",
-      "open": 73.31,
-      "high": 74.05,
-      "low": 66.74,
-      "close": 67.17
+      "open": 22.89,
+      "high": 23.14,
+      "low": 22.45,
+      "close": 22.6
     },
     {
       "date": "2023-10-30",
-      "open": 67.43,
-      "high": 69.25,
-      "low": 63.44,
-      "close": 68.47
+      "open": 22.79,
+      "high": 23.79,
+      "low": 21.82,
+      "close": 23.62
     },
     {
       "date": "2023-11-06",
-      "open": 68.6,
-      "high": 71.32,
-      "low": 67.04,
-      "close": 70.96
+      "open": 23.15,
+      "high": 23.29,
+      "low": 21.15,
+      "close": 21.87
     },
     {
       "date": "2023-11-13",
-      "open": 69.96,
-      "high": 78.56,
-      "low": 69.01,
-      "close": 76.56
+      "open": 21.55,
+      "high": 23.13,
+      "low": 21.27,
+      "close": 22.49
     },
     {
       "date": "2023-11-20",
-      "open": 76.61,
-      "high": 78.8,
-      "low": 75.58,
-      "close": 78.38
+      "open": 22.49,
+      "high": 22.82,
+      "low": 22.18,
+      "close": 22.3
     },
     {
       "date": "2023-11-27",
-      "open": 77.73,
-      "high": 84.26,
-      "low": 77.25,
-      "close": 84.19
+      "open": 22.14,
+      "high": 22.92,
+      "low": 22.01,
+      "close": 22.57
     },
     {
       "date": "2023-12-04",
-      "open": 82.62,
-      "high": 84.69,
-      "low": 80.84,
-      "close": 84.06
+      "open": 22.47,
+      "high": 23.48,
+      "low": 22.18,
+      "close": 23.13
     },
     {
       "date": "2023-12-11",
-      "open": 84.04,
-      "high": 99.79,
-      "low": 83.6,
-      "close": 96.13
+      "open": 23.1,
+      "high": 24.72,
+      "low": 22.84,
+      "close": 24.18
     },
     {
       "date": "2023-12-18",
-      "open": 95.64,
-      "high": 101.5,
-      "low": 93.88,
-      "close": 100.45
+      "open": 24.0,
+      "high": 24.44,
+      "low": 23.64,
+      "close": 24.36
     },
     {
       "date": "2023-12-25",
-      "open": 101.17,
-      "high": 106.13,
-      "low": 100.4,
-      "close": 102.87
+      "open": 24.5,
+      "high": 24.62,
+      "low": 23.95,
+      "close": 23.97
     },
     {
       "date": "2024-01-01",
-      "open": 100.9,
-      "high": 101.9,
-      "low": 95.71,
-      "close": 97.96
+      "open": 23.74,
+      "high": 23.92,
+      "low": 22.44,
+      "close": 22.48
     },
     {
       "date": "2024-01-08",
-      "open": 98.41,
-      "high": 104.8,
-      "low": 97.92,
-      "close": 101.31
+      "open": 22.49,
+      "high": 22.94,
+      "low": 22.02,
+      "close": 22.41
     },
     {
       "date": "2024-01-15",
-      "open": 101.0,
-      "high": 108.07,
-      "low": 98.82,
-      "close": 107.69
+      "open": 22.25,
+      "high": 22.48,
+      "low": 21.63,
+      "close": 22.31
     },
     {
       "date": "2024-01-22",
-      "open": 108.88,
-      "high": 115.29,
-      "low": 108.5,
-      "close": 110.13
+      "open": 22.46,
+      "high": 22.98,
+      "low": 22.03,
+      "close": 22.13
     },
     {
       "date": "2024-01-29",
-      "open": 110.83,
-      "high": 112.66,
-      "low": 106.16,
-      "close": 109.35
+      "open": 22.05,
+      "high": 22.68,
+      "low": 21.54,
+      "close": 21.92
     },
     {
       "date": "2024-02-05",
-      "open": 109.17,
-      "high": 120.34,
-      "low": 105.86,
-      "close": 119.8
+      "open": 21.78,
+      "high": 22.3,
+      "low": 20.93,
+      "close": 22.3
     },
     {
       "date": "2024-02-12",
-      "open": 119.53,
-      "high": 127.72,
-      "low": 114.37,
-      "close": 124.74
+      "open": 22.29,
+      "high": 22.61,
+      "low": 20.96,
+      "close": 22.28
     },
     {
       "date": "2024-02-19",
-      "open": 122.0,
-      "high": 124.71,
-      "low": 116.59,
-      "close": 120.03
+      "open": 21.93,
+      "high": 22.06,
+      "low": 21.06,
+      "close": 21.71
     },
     {
       "date": "2024-02-26",
-      "open": 121.26,
-      "high": 128.06,
-      "low": 117.68,
-      "close": 126.53
+      "open": 21.57,
+      "high": 22.59,
+      "low": 21.12,
+      "close": 22.49
     },
     {
       "date": "2024-03-04",
-      "open": 127.52,
-      "high": 134.7,
-      "low": 122.49,
-      "close": 128.07
+      "open": 22.74,
+      "high": 23.77,
+      "low": 22.57,
+      "close": 23.22
     },
     {
       "date": "2024-03-11",
-      "open": 126.55,
-      "high": 129.5,
-      "low": 120.61,
-      "close": 121.21
+      "open": 23.09,
+      "high": 23.33,
+      "low": 21.85,
+      "close": 22.18
     },
     {
       "date": "2024-03-18",
-      "open": 123.2,
-      "high": 132.16,
-      "low": 117.29,
-      "close": 126.79
+      "open": 22.11,
+      "high": 22.37,
+      "low": 21.28,
+      "close": 22.01
     },
     {
       "date": "2024-03-25",
-      "open": 124.91,
-      "high": 133.1,
-      "low": 124.89,
-      "close": 133.0
+      "open": 21.91,
+      "high": 23.04,
+      "low": 21.87,
+      "close": 22.68
     },
     {
       "date": "2024-04-01",
-      "open": 133.0,
-      "high": 135.51,
-      "low": 127.58,
-      "close": 128.56
+      "open": 22.69,
+      "high": 22.84,
+      "low": 21.71,
+      "close": 21.89
     },
     {
       "date": "2024-04-08",
-      "open": 129.63,
-      "high": 131.02,
-      "low": 122.2,
-      "close": 122.71
+      "open": 22.05,
+      "high": 22.57,
+      "low": 21.51,
+      "close": 21.62
     },
     {
       "date": "2024-04-15",
-      "open": 124.76,
-      "high": 124.95,
-      "low": 107.19,
-      "close": 108.17
+      "open": 21.67,
+      "high": 21.85,
+      "low": 20.83,
+      "close": 20.9
     },
     {
       "date": "2024-04-22",
-      "open": 109.42,
-      "high": 121.88,
-      "low": 107.51,
-      "close": 120.75
+      "open": 21.21,
+      "high": 22.66,
+      "low": 20.98,
+      "close": 22.63
     },
     {
       "date": "2024-04-29",
-      "open": 120.37,
-      "high": 124.36,
-      "low": 114.53,
-      "close": 122.02
+      "open": 22.72,
+      "high": 23.23,
+      "low": 21.99,
+      "close": 22.77
     },
     {
       "date": "2024-05-06",
-      "open": 123.63,
-      "high": 130.7,
-      "low": 120.83,
-      "close": 130.5
+      "open": 22.92,
+      "high": 23.33,
+      "low": 21.69,
+      "close": 22.51
     },
     {
       "date": "2024-05-13",
-      "open": 124.0,
-      "high": 129.88,
-      "low": 118.45,
-      "close": 128.25
+      "open": 22.63,
+      "high": 23.98,
+      "low": 22.58,
+      "close": 23.93
     },
     {
       "date": "2024-05-20",
-      "open": 128.99,
-      "high": 135.0,
-      "low": 126.9,
-      "close": 131.01
+      "open": 23.86,
+      "high": 24.18,
+      "low": 23.32,
+      "close": 24.0
     },
     {
       "date": "2024-05-27",
-      "open": 132.65,
-      "high": 132.65,
-      "low": 121.8,
-      "close": 126.59
+      "open": 24.08,
+      "high": 24.19,
+      "low": 23.23,
+      "close": 23.63
     },
     {
       "date": "2024-06-03",
-      "open": 129.41,
-      "high": 132.22,
-      "low": 122.65,
-      "close": 128.2
+      "open": 23.97,
+      "high": 23.99,
+      "low": 22.5,
+      "close": 22.63
     },
     {
       "date": "2024-06-10",
-      "open": 126.38,
-      "high": 138.69,
-      "low": 126.08,
-      "close": 133.77
+      "open": 22.34,
+      "high": 23.67,
+      "low": 22.17,
+      "close": 22.29
     },
     {
       "date": "2024-06-17",
-      "open": 133.7,
-      "high": 139.2,
-      "low": 128.22,
-      "close": 131.4
+      "open": 22.01,
+      "high": 22.74,
+      "low": 21.94,
+      "close": 22.41
     },
     {
       "date": "2024-06-24",
-      "open": 130.44,
-      "high": 134.91,
-      "low": 127.67,
-      "close": 130.58
+      "open": 22.47,
+      "high": 22.64,
+      "low": 21.73,
+      "close": 22.3
     },
     {
       "date": "2024-07-01",
-      "open": 130.39,
-      "high": 136.43,
-      "low": 126.27,
-      "close": 134.07
+      "open": 22.24,
+      "high": 22.45,
+      "low": 21.78,
+      "close": 22.24
     },
     {
       "date": "2024-07-08",
-      "open": 135.2,
-      "high": 147.4,
-      "low": 133.99,
-      "close": 143.52
+      "open": 22.5,
+      "high": 23.46,
+      "low": 22.05,
+      "close": 23.21
     },
     {
       "date": "2024-07-15",
-      "open": 143.1,
-      "high": 145.59,
-      "low": 125.07,
-      "close": 125.3
+      "open": 23.34,
+      "high": 24.54,
+      "low": 23.25,
+      "close": 23.53
     },
     {
       "date": "2024-07-22",
-      "open": 129.04,
-      "high": 133.05,
-      "low": 118.51,
-      "close": 124.57
+      "open": 23.79,
+      "high": 24.37,
+      "low": 23.21,
+      "close": 24.0
     },
     {
       "date": "2024-07-29",
-      "open": 126.32,
-      "high": 128.2,
-      "low": 104.86,
-      "close": 106.56
+      "open": 24.2,
+      "high": 24.69,
+      "low": 22.27,
+      "close": 22.43
     },
     {
       "date": "2024-08-05",
-      "open": 100.65,
-      "high": 110.49,
-      "low": 100.31,
-      "close": 108.13
+      "open": 21.28,
+      "high": 22.45,
+      "low": 19.64,
+      "close": 20.15
     },
     {
       "date": "2024-08-12",
-      "open": 109.17,
-      "high": 121.8,
-      "low": 107.83,
-      "close": 119.09
+      "open": 20.16,
+      "high": 20.46,
+      "low": 19.54,
+      "close": 20.26
     },
     {
       "date": "2024-08-19",
-      "open": 118.86,
-      "high": 121.9,
-      "low": 115.89,
-      "close": 121.68
+      "open": 20.31,
+      "high": 20.84,
+      "low": 19.89,
+      "close": 20.64
     },
     {
       "date": "2024-08-26",
-      "open": 120.78,
-      "high": 121.21,
-      "low": 114.4,
-      "close": 119.23
+      "open": 20.81,
+      "high": 20.91,
+      "low": 19.78,
+      "close": 20.15
     },
     {
       "date": "2024-09-02",
-      "open": 115.97,
-      "high": 115.97,
-      "low": 104.0,
-      "close": 104.43
+      "open": 19.82,
+      "high": 19.87,
+      "low": 18.44,
+      "close": 18.46
     },
     {
       "date": "2024-09-09",
-      "open": 106.59,
-      "high": 112.95,
-      "low": 104.67,
-      "close": 111.85
+      "open": 18.43,
+      "high": 18.45,
+      "low": 17.42,
+      "close": 18.42
     },
     {
       "date": "2024-09-16",
-      "open": 108.24,
-      "high": 115.58,
-      "low": 105.86,
-      "close": 109.88
+      "open": 18.38,
+      "high": 18.99,
+      "low": 18.02,
+      "close": 18.47
     },
     {
       "date": "2024-09-23",
-      "open": 110.83,
-      "high": 115.61,
-      "low": 107.56,
-      "close": 110.31
+      "open": 18.54,
+      "high": 19.11,
+      "low": 17.86,
+      "close": 19.07
     },
     {
       "date": "2024-09-30",
-      "open": 108.91,
-      "high": 110.03,
-      "low": 103.92,
-      "close": 105.86
+      "open": 18.87,
+      "high": 19.01,
+      "low": 17.63,
+      "close": 18.0
     },
     {
       "date": "2024-10-07",
-      "open": 105.61,
-      "high": 110.01,
-      "low": 105.26,
-      "close": 109.4
+      "open": 17.84,
+      "high": 18.21,
+      "low": 17.48,
+      "close": 18.21
     },
     {
       "date": "2024-10-14",
-      "open": 109.76,
-      "high": 113.35,
-      "low": 102.21,
-      "close": 102.7
+      "open": 18.21,
+      "high": 18.69,
+      "low": 18.04,
+      "close": 18.24
     },
     {
       "date": "2024-10-21",
-      "open": 102.12,
-      "high": 102.6,
-      "low": 97.54,
-      "close": 100.95
+      "open": 18.17,
+      "high": 18.23,
+      "low": 17.45,
+      "close": 17.77
     },
     {
       "date": "2024-10-28",
-      "open": 101.56,
-      "high": 105.63,
-      "low": 98.04,
-      "close": 100.6
+      "open": 17.87,
+      "high": 18.18,
+      "low": 16.88,
+      "close": 16.95
     },
     {
       "date": "2024-11-04",
-      "open": 99.77,
-      "high": 117.85,
-      "low": 99.16,
-      "close": 116.29
+      "open": 16.91,
+      "high": 18.54,
+      "low": 16.65,
+      "close": 17.89
     },
     {
       "date": "2024-11-11",
-      "open": 115.8,
-      "high": 115.93,
-      "low": 105.18,
-      "close": 105.48
+      "open": 18.0,
+      "high": 18.02,
+      "low": 15.31,
+      "close": 15.36
     },
     {
       "date": "2024-11-18",
-      "open": 105.23,
-      "high": 114.98,
-      "low": 104.84,
-      "close": 114.92
+      "open": 15.35,
+      "high": 15.99,
+      "low": 14.95,
+      "close": 15.98
     },
     {
       "date": "2024-11-25",
-      "open": 117.61,
-      "high": 118.92,
-      "low": 109.69,
-      "close": 113.64
+      "open": 16.25,
+      "high": 20.15,
+      "low": 16.25,
+      "close": 19.1
     },
     {
       "date": "2024-12-02",
-      "open": 113.41,
-      "high": 119.37,
-      "low": 112.7,
-      "close": 114.6
+      "open": 19.09,
+      "high": 19.63,
+      "low": 17.87,
+      "close": 18.18
     },
     {
       "date": "2024-12-09",
-      "open": 113.98,
-      "high": 117.46,
-      "low": 109.87,
-      "close": 112.55
+      "open": 18.5,
+      "high": 18.85,
+      "low": 17.18,
+      "close": 17.81
     },
     {
       "date": "2024-12-16",
-      "open": 111.52,
-      "high": 113.38,
-      "low": 101.25,
-      "close": 103.53
+      "open": 17.64,
+      "high": 18.65,
+      "low": 16.81,
+      "close": 17.18
     },
     {
       "date": "2024-12-23",
-      "open": 103.9,
-      "high": 108.1,
-      "low": 103.7,
-      "close": 106.18
+      "open": 17.06,
+      "high": 17.87,
+      "low": 16.82,
+      "close": 17.48
     },
     {
       "date": "2024-12-30",
-      "open": 104.55,
-      "high": 108.8,
-      "low": 102.28,
-      "close": 108.3
+      "open": 17.25,
+      "high": 17.33,
+      "low": 16.52,
+      "close": 17.16
     },
     {
       "date": "2025-01-06",
-      "open": 112.02,
-      "high": 116.63,
-      "low": 107.2,
-      "close": 109.07
+      "open": 17.45,
+      "high": 17.78,
+      "low": 15.91,
+      "close": 16.36
     },
     {
       "date": "2025-01-13",
-      "open": 107.11,
-      "high": 120.93,
-      "low": 105.34,
-      "close": 120.11
+      "open": 16.15,
+      "high": 16.9,
+      "low": 15.87,
+      "close": 16.5
     },
     {
       "date": "2025-01-20",
-      "open": 120.76,
-      "high": 125.33,
-      "low": 116.82,
-      "close": 117.5
+      "open": 16.62,
+      "high": 17.63,
+      "low": 16.61,
+      "close": 16.86
     },
     {
       "date": "2025-01-27",
-      "open": 113.71,
-      "high": 118.36,
-      "low": 105.03,
-      "close": 113.28
+      "open": 16.67,
+      "high": 17.07,
+      "low": 16.04,
+      "close": 16.93
     },
     {
       "date": "2025-02-03",
-      "open": 109.32,
-      "high": 113.82,
-      "low": 108.31,
-      "close": 109.38
+      "open": 16.35,
+      "high": 18.36,
+      "low": 15.88,
+      "close": 17.17
     },
     {
       "date": "2025-02-10",
-      "open": 109.85,
-      "high": 113.05,
-      "low": 102.4,
-      "close": 103.67
+      "open": 17.15,
+      "high": 18.69,
+      "low": 16.44,
+      "close": 18.63
     },
     {
       "date": "2025-02-17",
-      "open": 105.04,
-      "high": 110.47,
-      "low": 102.01,
-      "close": 103.09
+      "open": 18.61,
+      "high": 19.81,
+      "low": 18.44,
+      "close": 18.63
     },
     {
       "date": "2025-02-24",
-      "open": 103.5,
-      "high": 103.5,
-      "low": 90.07,
-      "close": 91.82
+      "open": 18.71,
+      "high": 18.86,
+      "low": 16.54,
+      "close": 17.14
     },
     {
       "date": "2025-03-03",
-      "open": 92.46,
-      "high": 92.79,
-      "low": 80.36,
-      "close": 84.89
+      "open": 17.33,
+      "high": 17.86,
+      "low": 16.39,
+      "close": 17.78
     },
     {
       "date": "2025-03-10",
-      "open": 82.96,
-      "high": 86.49,
-      "low": 76.37,
-      "close": 86.32
+      "open": 17.5,
+      "high": 17.89,
+      "low": 16.52,
+      "close": 16.87
     },
     {
       "date": "2025-03-17",
-      "open": 86.01,
-      "high": 93.31,
-      "low": 85.74,
-      "close": 88.17
+      "open": 16.5,
+      "high": 17.46,
+      "low": 16.41,
+      "close": 16.86
     },
     {
       "date": "2025-03-24",
-      "open": 90.36,
-      "high": 92.82,
-      "low": 80.77,
-      "close": 81.59
+      "open": 17.11,
+      "high": 17.43,
+      "low": 16.03,
+      "close": 16.18
     },
     {
       "date": "2025-03-31",
-      "open": 79.93,
-      "high": 82.85,
-      "low": 54.84,
-      "close": 60.29
+      "open": 15.95,
+      "high": 16.3,
+      "low": 10.58,
+      "close": 11.88
     },
     {
       "date": "2025-04-07",
-      "open": 57.19,
-      "high": 75.3,
-      "low": 56.46,
-      "close": 65.53
+      "open": 11.43,
+      "high": 13.32,
+      "low": 10.35,
+      "close": 11.16
     },
     {
       "date": "2025-04-14",
-      "open": 67.99,
-      "high": 69.5,
-      "low": 60.61,
-      "close": 63.72
+      "open": 11.38,
+      "high": 11.6,
+      "low": 10.57,
+      "close": 11.24
     },
     {
       "date": "2025-04-21",
-      "open": 62.15,
-      "high": 75.49,
-      "low": 58.85,
-      "close": 74.08
+      "open": 11.0,
+      "high": 12.97,
+      "low": 10.66,
+      "close": 12.9
     },
     {
       "date": "2025-04-28",
-      "open": 73.7,
-      "high": 77.31,
-      "low": 67.87,
-      "close": 75.83
+      "open": 12.8,
+      "high": 13.9,
+      "low": 12.58,
+      "close": 13.72
     },
     {
       "date": "2025-05-05",
-      "open": 74.73,
-      "high": 80.7,
-      "low": 71.49,
-      "close": 80.05
+      "open": 13.57,
+      "high": 13.92,
+      "low": 12.0,
+      "close": 13.14
     },
     {
       "date": "2025-05-12",
-      "open": 87.26,
-      "high": 94.53,
-      "low": 86.86,
-      "close": 90.66
+      "open": 14.0,
+      "high": 15.35,
+      "low": 13.88,
+      "close": 15.27
     },
     {
       "date": "2025-05-19",
-      "open": 87.31,
-      "high": 89.62,
-      "low": 81.6,
-      "close": 83.82
+      "open": 14.92,
+      "high": 15.1,
+      "low": 13.6,
+      "close": 13.91
     },
     {
       "date": "2025-05-26",
-      "open": 86.61,
-      "high": 88.43,
-      "low": 80.54,
-      "close": 82.19
+      "open": 14.3,
+      "high": 14.58,
+      "low": 13.85,
+      "close": 14.07
     },
     {
       "date": "2025-06-02",
-      "open": 81.78,
-      "high": 90.26,
-      "low": 80.22,
-      "close": 88.64
+      "open": 14.01,
+      "high": 15.3,
+      "low": 13.77,
+      "close": 15.16
     },
     {
       "date": "2025-06-09",
-      "open": 90.2,
-      "high": 96.12,
-      "low": 89.09,
-      "close": 89.37
+      "open": 15.36,
+      "high": 16.24,
+      "low": 15.1,
+      "close": 15.17
     },
     {
       "date": "2025-06-16",
-      "open": 91.28,
-      "high": 94.62,
-      "low": 88.86,
-      "close": 90.71
+      "open": 15.4,
+      "high": 15.79,
+      "low": 15.1,
+      "close": 15.24
     },
     {
       "date": "2025-06-23",
-      "open": 90.05,
-      "high": 100.8,
-      "low": 89.02,
-      "close": 100.21
+      "open": 15.07,
+      "high": 16.01,
+      "low": 14.97,
+      "close": 15.96
     },
     {
       "date": "2025-06-30",
-      "open": 100.41,
-      "high": 105.48,
-      "low": 97.16,
-      "close": 104.56
+      "open": 15.97,
+      "high": 17.28,
+      "low": 15.64,
+      "close": 17.21
     },
     {
       "date": "2025-07-07",
-      "open": 102.44,
-      "high": 107.88,
-      "low": 101.92,
-      "close": 106.45
+      "open": 16.93,
+      "high": 18.2,
+      "low": 16.56,
+      "close": 17.85
     },
     {
       "date": "2025-07-14",
-      "open": 105.48,
-      "high": 107.61,
-      "low": 98.07,
-      "close": 104.71
+      "open": 17.63,
+      "high": 17.87,
+      "low": 16.65,
+      "close": 17.24
     },
     {
       "date": "2025-07-21",
-      "open": 105.69,
-      "high": 107.31,
-      "low": 97.92,
-      "close": 99.5
+      "open": 17.4,
+      "high": 17.73,
+      "low": 16.81,
+      "close": 17.0
     },
     {
       "date": "2025-07-28",
-      "open": 101.44,
-      "high": 104.8,
-      "low": 90.38,
-      "close": 92.75
+      "open": 17.14,
+      "high": 17.55,
+      "low": 15.65,
+      "close": 15.98
     },
     {
       "date": "2025-08-04",
-      "open": 93.67,
-      "high": 100.71,
-      "low": 88.49,
-      "close": 99.37
+      "open": 16.0,
+      "high": 16.34,
+      "low": 13.03,
+      "close": 14.59
     },
     {
       "date": "2025-08-11",
-      "open": 99.86,
-      "high": 106.19,
-      "low": 97.62,
-      "close": 100.22
+      "open": 14.4,
+      "high": 15.56,
+      "low": 13.95,
+      "close": 14.84
     },
     {
       "date": "2025-08-18",
-      "open": 100.38,
-      "high": 106.35,
-      "low": 97.3,
-      "close": 105.25
+      "open": 14.72,
+      "high": 15.59,
+      "low": 14.42,
+      "close": 15.58
     },
     {
       "date": "2025-08-25",
-      "open": 105.0,
-      "high": 107.84,
-      "low": 102.24,
-      "close": 103.34
+      "open": 15.48,
+      "high": 15.73,
+      "low": 15.15,
+      "close": 15.46
     },
     {
       "date": "2025-09-01",
-      "open": 99.85,
-      "high": 104.77,
-      "low": 97.5,
-      "close": 104.49
+      "open": 15.02,
+      "high": 15.78,
+      "low": 14.56,
+      "close": 15.56
     },
     {
       "date": "2025-09-08",
-      "open": 105.8,
-      "high": 116.32,
-      "low": 104.05,
-      "close": 115.1
+      "open": 15.66,
+      "high": 15.66,
+      "low": 15.08,
+      "close": 15.25
     },
     {
       "date": "2025-09-15",
-      "open": 115.54,
-      "high": 132.44,
-      "low": 114.89,
-      "close": 128.62
+      "open": 15.22,
+      "high": 15.95,
+      "low": 14.95,
+      "close": 15.36
     },
     {
       "date": "2025-09-22",
-      "open": 128.82,
-      "high": 131.74,
-      "low": 119.62,
-      "close": 121.81
+      "open": 15.4,
+      "high": 15.86,
+      "low": 14.67,
+      "close": 15.03
     },
     {
       "date": "2025-09-29",
-      "open": 123.73,
-      "high": 140.33,
-      "low": 121.73,
-      "close": 137.86
+      "open": 15.15,
+      "high": 16.61,
+      "low": 14.86,
+      "close": 16.15
     },
     {
       "date": "2025-10-06",
-      "open": 140.63,
-      "high": 142.2,
-      "low": 120.91,
-      "close": 121.26
+      "open": 16.38,
+      "high": 16.38,
+      "low": 14.65,
+      "close": 14.66
     },
     {
       "date": "2025-10-13",
-      "open": 129.45,
-      "high": 139.1,
-      "low": 126.92,
-      "close": 136.52
+      "open": 15.18,
+      "high": 17.36,
+      "low": 15.02,
+      "close": 16.49
     },
     {
       "date": "2025-10-20",
-      "open": 137.87,
-      "high": 146.84,
-      "low": 130.72,
-      "close": 142.94
+      "open": 16.72,
+      "high": 17.75,
+      "low": 16.32,
+      "close": 16.84
     },
     {
       "date": "2025-10-27",
-      "open": 146.16,
-      "high": 147.31,
-      "low": 138.55,
-      "close": 143.71
+      "open": 17.16,
+      "high": 17.79,
+      "low": 16.64,
+      "close": 16.98
     },
     {
       "date": "2025-11-03",
-      "open": 143.93,
-      "high": 157.23,
-      "low": 136.95,
-      "close": 154.8
+      "open": 16.77,
+      "high": 17.27,
+      "low": 13.91,
+      "close": 14.37
     },
     {
       "date": "2025-11-10",
-      "open": 158.5,
-      "high": 160.18,
-      "low": 138.36,
-      "close": 142.74
+      "open": 14.65,
+      "high": 14.83,
+      "low": 13.14,
+      "close": 13.24
     },
     {
       "date": "2025-11-17",
-      "open": 141.16,
-      "high": 149.47,
-      "low": 134.74,
-      "close": 144.0
+      "open": 13.15,
+      "high": 13.35,
+      "low": 11.77,
+      "close": 12.51
     },
     {
       "date": "2025-11-24",
-      "open": 144.0,
-      "high": 156.49,
-      "low": 144.0,
-      "close": 156.39
+      "open": 12.63,
+      "high": 13.83,
+      "low": 12.49,
+      "close": 13.67
     },
     {
       "date": "2025-12-01",
-      "open": 155.96,
-      "high": 165.95,
-      "low": 154.0,
-      "close": 162.94
+      "open": 13.42,
+      "high": 15.41,
+      "low": 13.35,
+      "close": 15.2
     },
     {
       "date": "2025-12-08",
-      "open": 164.82,
-      "high": 170.37,
-      "low": 153.12,
-      "close": 155.77
+      "open": 15.34,
+      "high": 16.0,
+      "low": 15.04,
+      "close": 15.33
     },
     {
       "date": "2025-12-15",
-      "open": 159.26,
-      "high": 161.08,
-      "low": 146.9,
-      "close": 159.56
+      "open": 15.45,
+      "high": 15.45,
+      "low": 14.42,
+      "close": 14.87
     },
     {
       "date": "2025-12-22",
-      "open": 162.49,
-      "high": 164.87,
-      "low": 160.0,
-      "close": 164.19
+      "open": 15.1,
+      "high": 15.28,
+      "low": 14.75,
+      "close": 15.01
     },
     {
       "date": "2025-12-29",
-      "open": 162.04,
-      "high": 169.54,
-      "low": 159.56,
-      "close": 168.36
+      "open": 14.92,
+      "high": 15.39,
+      "low": 14.49,
+      "close": 15.29
     },
     {
       "date": "2026-01-05",
-      "open": 172.05,
-      "high": 186.71,
-      "low": 170.76,
-      "close": 186.08
+      "open": 15.58,
+      "high": 16.56,
+      "low": 15.39,
+      "close": 16.19
     },
     {
       "date": "2026-01-12",
-      "open": 183.4,
-      "high": 211.08,
-      "low": 183.4,
-      "close": 203.99
+      "open": 16.04,
+      "high": 18.44,
+      "low": 15.85,
+      "close": 18.29
     },
     {
       "date": "2026-01-19",
-      "open": 200.44,
-      "high": 233.11,
-      "low": 200.0,
-      "close": 217.06
+      "open": 17.81,
+      "high": 19.65,
+      "low": 17.75,
+      "close": 18.45
     },
     {
       "date": "2026-01-26",
-      "open": 217.73,
-      "high": 246.35,
-      "low": 215.17,
-      "close": 235.41
+      "open": 18.38,
+      "high": 20.31,
+      "low": 17.91,
+      "close": 20.15
     },
     {
       "date": "2026-02-02",
-      "open": 231.71,
-      "high": 244.06,
-      "low": 212.91,
-      "close": 242.96
+      "open": 19.81,
+      "high": 22.0,
+      "low": 18.93,
+      "close": 19.95
     },
     {
       "date": "2026-02-09",
-      "open": 241.71,
-      "high": 266.08,
-      "low": 239.36,
-      "close": 260.74
+      "open": 19.69,
+      "high": 20.39,
+      "low": 18.77,
+      "close": 18.88
     },
     {
       "date": "2026-02-16",
-      "open": 257.68,
-      "high": 269.91,
-      "low": 242.2,
-      "close": 259.27
+      "open": 18.58,
+      "high": 20.02,
+      "low": 18.23,
+      "close": 19.67
     },
     {
       "date": "2026-02-23",
-      "open": 258.98,
-      "high": 260.68,
-      "low": 237.91,
-      "close": 244.46
+      "open": 19.5,
+      "high": 20.53,
+      "low": 18.52,
+      "close": 18.72
     },
     {
       "date": "2026-03-02",
-      "open": 239.44,
-      "high": 246.98,
-      "low": 208.95,
-      "close": 210.0
+      "open": 18.3,
+      "high": 19.17,
+      "low": 16.49,
+      "close": 16.69
     },
     {
       "date": "2026-03-09",
-      "open": 203.88,
-      "high": 233.42,
-      "low": 200.5,
-      "close": 213.45
+      "open": 16.36,
+      "high": 17.72,
+      "low": 15.61,
+      "close": 17.23
     },
     {
       "date": "2026-03-16",
-      "open": 218.99,
-      "high": 239.36,
-      "low": 217.92,
-      "close": 227.13
+      "open": 17.67,
+      "high": 17.92,
+      "low": 16.44,
+      "close": 16.65
     },
     {
       "date": "2026-03-23",
-      "open": 234.87,
-      "high": 247.9,
-      "low": 221.16,
-      "close": 223.18
+      "open": 17.78,
+      "high": 18.84,
+      "low": 16.93,
+      "close": 17.02
     },
     {
       "date": "2026-03-30",
-      "open": 227.97,
-      "high": 241.11,
-      "low": 208.47,
-      "close": 234.66
+      "open": 17.14,
+      "high": 18.89,
+      "low": 16.31,
+      "close": 18.58
     },
     {
       "date": "2026-04-06",
-      "open": 236.11,
-      "high": 272.71,
-      "low": 232.92,
-      "close": 268.77
+      "open": 18.59,
+      "high": 22.57,
+      "low": 18.52,
+      "close": 22.47
     },
     {
       "date": "2026-04-13",
-      "open": 266.65,
-      "high": 281.77,
-      "low": 261.89,
-      "close": 278.59
+      "open": 22.34,
+      "high": 27.0,
+      "low": 22.01,
+      "close": 25.92
     },
     {
       "date": "2026-04-20",
-      "open": 279.01,
-      "high": 294.05,
-      "low": 266.85,
-      "close": 280.98
+      "open": 26.34,
+      "high": 28.48,
+      "low": 26.06,
+      "close": 28.19
     },
     {
       "date": "2026-04-27",
-      "open": 282.57,
-      "high": 285.67,
-      "low": 261.23,
-      "close": 279.38
+      "open": 28.2,
+      "high": 29.67,
+      "low": 26.25,
+      "close": 29.58
     },
     {
       "date": "2026-05-04",
-      "open": 277.72,
-      "high": 326.84,
-      "low": 277.55,
-      "close": 313.21
+      "open": 30.0,
+      "high": 34.85,
+      "low": 29.69,
+      "close": 34.26
     },
     {
       "date": "2026-05-11",
-      "open": 313.47,
-      "high": 321.65,
-      "low": 295.08,
-      "close": 303.17
+      "open": 34.42,
+      "high": 40.07,
+      "low": 32.4,
+      "close": 37.23
     },
     {
       "date": "2026-05-18",
-      "open": 314.51,
-      "high": 322.0,
-      "low": 280.83,
-      "close": 320.62
+      "open": 37.91,
+      "high": 47.94,
+      "low": 34.56,
+      "close": 47.25
     },
     {
       "date": "2026-05-25",
-      "open": 330.5,
-      "high": 339.0,
-      "low": 316.35,
-      "close": 324.26
+      "open": 49.76,
+      "high": 55.24,
+      "low": 47.27,
+      "close": 52.05
     },
     {
       "date": "2026-06-01",
-      "open": 318.02,
-      "high": 341.81,
-      "low": 300.11,
-      "close": 301.65
+      "open": 50.5,
+      "high": 66.24,
+      "low": 50.3,
+      "close": 57.2
     },
     {
       "date": "2026-06-08",
-      "open": 314.99,
-      "high": 359.35,
-      "low": 298.0,
-      "close": 355.69
+      "open": 59.6,
+      "high": 66.65,
+      "low": 53.66,
+      "close": 59.38
     },
     {
       "date": "2026-06-15",
-      "open": 367.88,
-      "high": 408.87,
-      "low": 365.36,
-      "close": 406.37
+      "open": 62.7,
+      "high": 69.47,
+      "low": 59.85,
+      "close": 64.9
     },
     {
       "date": "2026-06-22",
-      "open": 413.5,
-      "high": 421.58,
-      "low": 376.83,
-      "close": 388.61
+      "open": 68.46,
+      "high": 69.4,
+      "low": 53.51,
+      "close": 56.35
     },
     {
       "date": "2026-06-29",
-      "open": 393.18,
-      "high": 447.62,
-      "low": 355.08,
-      "close": 365.56
+      "open": 54.93,
+      "high": 56.44,
+      "low": 44.74,
+      "close": 45.92
     },
     {
       "date": "2026-07-06",
-      "open": 375.84,
-      "high": 385.58,
-      "low": 329.01,
-      "close": 368.58
+      "open": 47.88,
+      "high": 50.39,
+      "low": 40.39,
+      "close": 44.67
     },
     {
       "date": "2026-07-13",
-      "open": 352.51,
-      "high": 374.12,
-      "low": 307.1,
-      "close": 324.69
+      "open": 42.0,
+      "high": 44.21,
+      "low": 33.36,
+      "close": 37.81
     },
     {
       "date": "2026-07-20",
-      "open": 330.88,
-      "high": 349.02,
-      "low": 322.75,
-      "close": 329.18
+      "open": 37.5,
+      "high": 41.99,
+      "low": 36.61,
+      "close": 38.21
     },
     {
       "date": "2026-07-27",
-      "open": 330.15,
-      "high": 334.0,
-      "low": 256.16,
-      "close": 297.45
+      "open": 38.73,
+      "high": 38.73,
+      "low": 29.68,
+      "close": 34.22
     },
     {
       "date": "2026-08-03",
-      "open": 288.31,
-      "high": 329.35,
-      "low": 285.58,
-      "close": 304.99
+      "open": 32.99,
+      "high": 39.42,
+      "low": 31.73,
+      "close": 35.41
     },
     {
       "date": "2026-08-10",
-      "open": 304.92,
-      "high": 317.0,
-      "low": 290.76,
-      "close": 310.73
+      "open": 35.94,
+      "high": 36.25,
+      "low": 33.03,
+      "close": 35.08
     },
     {
       "date": "2026-08-17",
-      "open": 315.42,
-      "high": 325.24,
-      "low": 274.31,
-      "close": 279.11
+      "open": 36.23,
+      "high": 36.58,
+      "low": 30.67,
+      "close": 31.63
     },
     {
       "date": "2026-08-24",
-      "open": 271.5,
-      "high": 282.56,
-      "low": 255.14,
-      "close": 255.76
+      "open": 30.93,
+      "high": 31.95,
+      "low": 29.87,
+      "close": 30.56
     },
     {
       "date": "2026-08-31",
-      "open": 258.38,
-      "high": 259.38,
-      "low": 243.72,
-      "close": 251.38
+      "open": 30.87,
+      "high": 32.06,
+      "low": 29.29,
+      "close": 31.8
+    },
+    {
+      "date": "2026-09-07",
+      "open": 32.09,
+      "high": 34.04,
+      "low": 30.5,
+      "close": 33.21
+    },
+    {
+      "date": "2026-09-14",
+      "open": 31.17,
+      "high": 32.96,
+      "low": 30.19,
+      "close": 32.51
+    },
+    {
+      "date": "2026-09-21",
+      "open": 33.54,
+      "high": 33.54,
+      "low": 31.8,
+      "close": 32.6
     }
   ]
 }

@@ -1,3 +1,6 @@
+from app.ai.promise_score_validator import PromiseScoreValidator
+
+
 def promise_score_weights_prompt(quarter: str) -> str:
     """
     Build prompt for getting Promise Score weights.
@@ -48,17 +51,30 @@ Buyer_Seller_Ratio: "Buyer_Count / Seller_Count. Extreme when Seller_Count is ne
 - Concentration context: a high `Portfolio_Concentration_Avg` is informative only alongside buying, so treat it as a tiebreaker rather than a primary driver.
 
 # OUTPUT FORMAT
-Return ONLY a single ```toon fenced code block, with no text before or after it. Inside the block: a flat object, one `Metric_Name: <float>` line per metric, no nesting, no comments.
-
-EXAMPLE (illustrative format only; choose your own metrics and values)
-```toon
-High_Conviction_Count: 8
-Max_Portfolio_Pct: 4
-Ownership_Delta_Avg: 3
-Net_Buyers: 3
-Total_Delta_Value: 2
-New_Holder_Count: 1
-Close_Count: -2
-Seller_Count: -1
-```
+Return a JSON object with a single field `weights`: a list of 6 to 10 items, one per chosen metric, each with `metric` (the metric name) and `weight` (a number).
 """
+
+
+# Strict mode needs every property required, so the chosen subset of metrics
+# is a list of {metric, weight} items instead of an object keyed by metric.
+WEIGHTS_SCHEMA: dict = {
+    "type": "object",
+    "properties": {
+        "weights": {
+            "type": "array",
+            "minItems": PromiseScoreValidator.MIN_METRICS,
+            "maxItems": PromiseScoreValidator.MAX_METRICS,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "metric": {"type": "string", "enum": PromiseScoreValidator.AVAILABLE_METRICS},
+                    "weight": {"type": "number"},
+                },
+                "required": ["metric", "weight"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["weights"],
+    "additionalProperties": False,
+}

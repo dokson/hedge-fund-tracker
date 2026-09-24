@@ -3,7 +3,7 @@ Centralised regular expressions for shared validation / domain formats.
 
 Only patterns that represent a *shared concept* reused across modules live here,
 so the canonical definition exists in exactly one place. Module-internal,
-algorithm-specific regexes (TOON repair in app/ai/response_parser, XML/XXE
+algorithm-specific regexes (JSON fence extraction in app/ai/response_parser, XML/XXE
 sanitising in app/scraper/xml_processor, identifier heuristics, HTML scraping)
 intentionally stay next to their code for cohesion.
 """

@@ -4,229 +4,72 @@ from app.ai.response_parser import ResponseParser
 
 
 class TestResponseParser(unittest.TestCase):
-    def test_comment_with_quote(self):
-        """
-        Tests stripping a comment that contains a quote, which previously caused 'Unterminated string' error.
-        """
-        response_text = """
-```toon
-ticker: "Q"
-sub_industry: "Semiconductors"  # Assumed based on "Qnity Electronics Inc" description
-```
-"""
-        expected = {"ticker": "Q", "sub_industry": "Semiconductors"}
-        result = ResponseParser.extract_and_decode_toon(response_text)
-        self.assertEqual(result, expected)
+    """
+    The JSON response parser: strict JSON first, tolerant extraction only as a fallback.
+    """
 
-    def test_hash_inside_string(self):
+    def test_parses_a_bare_json_object(self):
         """
-        Tests that a hash symbol inside a quoted string is NOT stripped as a comment.
+        Provider-enforced output is a bare JSON object.
         """
-        response_text = """
-```toon
-ticker: "NVDA"
-description: "This is item # 1 in the list"
-```
-"""
-        expected = {"ticker": "NVDA", "description": "This is item # 1 in the list"}
-        result = ResponseParser.extract_and_decode_toon(response_text)
-        self.assertEqual(result, expected)
+        self.assertEqual(ResponseParser.parse_json('{"a": 1, "b": [1, 2]}'), {"a": 1, "b": [1, 2]})
 
-    def test_extract_and_decode_simple_toon(self):
+    def test_parses_surrounding_whitespace(self):
         """
-        Tests parsing a simple, valid TOON string.
+        Leading and trailing whitespace is ignored.
         """
-        response_text = 'key1: "value1"\nkey2: 123\nbool_key: true'
-        expected = {"key1": "value1", "key2": 123, "bool_key": True}
-        self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
+        self.assertEqual(ResponseParser.parse_json('\n  {"a": null}  \n'), {"a": None})
 
-    def test_extract_and_decode_with_toon_markdown(self):
+    def test_parses_a_json_fence(self):
         """
-        Tests parsing a TOON string enclosed in ```toon ... ``` markdown.
+        Prompt-only answers often wrap the object in a json fence.
         """
-        response_text = '```toon\nkey: "value"\n```'
-        expected = {"key": "value"}
-        self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
+        text = 'Here you go:\n```json\n{"a": 1}\n```\nDone.'
+        self.assertEqual(ResponseParser.parse_json(text), {"a": 1})
 
-    def test_extract_and_decode_with_split_markdown_tag(self):
+    def test_uses_the_last_fence(self):
         """
-        Tests parsing a TOON string where 'toon' is on the next line after backticks.
-        E.g. ```\ntoon
+        Earlier fences may be drafts; the final one is the answer.
         """
-        response_text = '```\ntoon\nkey: "value"\n```'
-        expected = {"key": "value"}
-        self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
+        text = '```json\n{"a": 1}\n```\nrevised:\n```json\n{"a": 2}\n```'
+        self.assertEqual(ResponseParser.parse_json(text), {"a": 2})
 
-    def test_extract_and_decode_with_generic_markdown(self):
+    def test_parses_an_object_embedded_in_prose(self):
         """
-        Tests parsing a TOON string enclosed in generic ``` ... ``` markdown.
+        Without a fence, the outermost braces delimit the object.
         """
-        response_text = "```\nnested:\n  inner_key: 42\n```"
-        expected = {"nested": {"inner_key": 42}}
-        self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
+        self.assertEqual(ResponseParser.parse_json('Result: {"a": {"b": 1}} end'), {"a": {"b": 1}})
 
-    def test_extract_and_decode_with_quoted_keys(self):
+    def test_invalid_json_returns_empty_dict(self):
         """
-        Tests parsing TOON where keys are quoted (required for special characters).
+        Unparseable text yields {} so callers raise their retryable error.
         """
-        response_text = '"BRK-B": 500\n"BF.B": 200'
-        expected = {"BRK-B": 500, "BF.B": 200}
-        self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
+        with self.assertLogs("app.ai.response_parser", level="ERROR"):
+            self.assertEqual(ResponseParser.parse_json('{"a": 1,'), {})
 
-    def test_extract_and_decode_empty_or_whitespace_string(self):
+    def test_empty_text_returns_empty_dict(self):
         """
-        Tests that an empty string returns an empty dictionary.
+        An empty or blank response yields {}.
         """
-        self.assertEqual(ResponseParser.extract_and_decode_toon(""), {})
-        self.assertEqual(ResponseParser.extract_and_decode_toon("   \n \t "), {})
+        with self.assertLogs("app.ai.response_parser", level="ERROR"):
+            self.assertEqual(ResponseParser.parse_json(""), {})
+            self.assertEqual(ResponseParser.parse_json("   \n\t "), {})
 
-    def test_checklist_with_yaml_list(self):
+    def test_non_object_json_returns_empty_dict(self):
         """
-        Tests filtering out YAML-style list items (bullets) that corrupt the TOON block.
+        Every response type is an object, so a top-level array or scalar is invalid.
         """
-        response_text = """
-```toon
-checklist:
-  - "Step 1"
-  - "Step 2"
-ticker: "NVDA"
-company: "NVIDIA"
-```
-"""
-        expected = {"checklist": {}, "ticker": "NVDA", "company": "NVIDIA"}
-        self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
+        with self.assertLogs("app.ai.response_parser", level="ERROR"):
+            self.assertEqual(ResponseParser.parse_json("[1, 2]"), {})
+            self.assertEqual(ResponseParser.parse_json("42"), {})
 
-    def test_checklist_with_json_list(self):
+    def test_rejects_non_finite_constants(self):
         """
-        Tests filtering out JSON-style list items that don't match the TOON key-value regex.
-        Note: The regex filters line-by-line, so the checklist key remains but items are dropped.
+        NaN and Infinity are not JSON and must not reach the numeric validators.
         """
-        response_text = """
-```toon
-checklist: [
-  "Step 1",
-  "Step 2"
-]
-ticker: "NVDA"
-```
-"""
-        # checklist: [ matches key regex?
-        # checklist matches key. [ matches value start?
-        # My regex: (?:\s+(?:[\d\."'\[\{]|true|false|null))
-        # [ is in the character class. So "checklist: [" IS matched and kept!
-        # "Step 1", line is NOT matched (no colon, no value part validation?).
-        # ] line is brackets.
-        # If toon_format.decode handles "checklist: [" followed by "ticker: ...", we get {'checklist': '[', 'ticker': ...}
-        # Let's see what happens.
-        result = ResponseParser.extract_and_decode_toon(response_text)
-        self.assertEqual(result.get("ticker"), "NVDA")
-        # We don't strictly care about the checklist value, just that parsing succeeded.
-        self.assertIn("checklist", result)
+        with self.assertLogs("app.ai.response_parser", level="ERROR"):
+            self.assertEqual(ResponseParser.parse_json('{"a": NaN}'), {})
 
-    def test_extract_last_toon_block(self):
-        """
-        Tests that only the LAST toon block is used if multiple blocks are present.
-        This handles iterative reasoning where intermediate blocks are generated.
-        """
-        response_text = """
-Some initial reasoning...
-```toon
-score: 0.5
-status: "intermediate"
-```
 
-More thoughts and corrections:
-```toon
-score: 0.85
-status: "final"
-```
-Final conclusion.
-"""
-        expected = {"score": 0.85, "status": "final"}
-        result = ResponseParser.extract_and_decode_toon(response_text)
-        self.assertEqual(result, expected)
-
-    def test_repairs_two_known_keys_glued_on_same_line(self):
-        """
-        Two known field keys appearing on the same line (LLM dropped a newline) are
-        split, and the second key inherits the first key's leading indent.
-        """
-        response_text = """```toon
-LIF:
-  industry: "Software"
-  momentum_score: 65  low_volatility_score: 70
-  risk_score: 60
-```"""
-        result = ResponseParser.extract_and_decode_toon(response_text)
-        self.assertEqual(
-            result,
-            {
-                "LIF": {
-                    "industry": "Software",
-                    "momentum_score": 65,
-                    "low_volatility_score": 70,
-                    "risk_score": 60,
-                }
-            },
-        )
-
-    def test_repairs_ticker_glued_to_previous_value(self):
-        """
-        A ticker block-header that is glued to the previous numeric value
-        (e.g. "risk_score: 90KRRO:") is moved onto its own line at column 0.
-        """
-        response_text = """```toon
-OKYO:
-  industry: "Biotechnology"
-  risk_score: 90KRRO:
-  industry: "Biotechnology"
-  risk_score: 95
-```"""
-        result = ResponseParser.extract_and_decode_toon(response_text)
-        self.assertEqual(result.get("OKYO", {}).get("risk_score"), 90)
-        self.assertEqual(result.get("KRRO", {}).get("risk_score"), 95)
-
-    def test_repairs_are_idempotent_on_clean_input(self):
-        """
-        Already-well-formed TOON must parse identically; the repair regexes must not
-        alter clean key-value lines.
-        """
-        response_text = """```toon
-AVGO:
-  industry: "Semiconductors"
-  momentum_score: 92
-  low_volatility_score: 40
-  risk_score: 50
-```"""
-        expected = {
-            "AVGO": {
-                "industry": "Semiconductors",
-                "momentum_score": 92,
-                "low_volatility_score": 40,
-                "risk_score": 50,
-            }
-        }
-        self.assertEqual(ResponseParser.extract_and_decode_toon(response_text), expected)
-
-    def test_known_keys_cover_every_available_metric(self):
-        """
-        Every metric the weights prompt may return is repairable when glued to a neighbour.
-        """
-        from app.ai.promise_score_validator import PromiseScoreValidator
-
-        for metric in PromiseScoreValidator.AVAILABLE_METRICS:
-            with self.subTest(metric=metric):
-                self.assertIn(metric, ResponseParser._KNOWN_FIELD_KEYS)
-
-    def test_repairs_glued_weights_for_previously_uncovered_metrics(self):
-        """
-        Weight lines glued together are split for metrics outside the score keys.
-        """
-        response_text = """```toon
-Total_Value: 0.4  Close_Count: -0.2
-Delta: 0.4
-```"""
-        self.assertEqual(
-            ResponseParser.extract_and_decode_toon(response_text),
-            {"Total_Value": 0.4, "Close_Count": -0.2, "Delta": 0.4},
-        )
+if __name__ == "__main__":
+    unittest.main()

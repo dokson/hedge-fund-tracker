@@ -458,7 +458,7 @@ def main() -> int:
     if args.no_cache:
         _RESOLVE_CACHE.clear()
         _PAGEVIEWS_CACHE.clear()
-    csv_path = ROOT / DB_FOLDER.lstrip("./") / EXCLUDED_HEDGE_FUNDS_FILE
+    csv_path = Path(DB_FOLDER) / EXCLUDED_HEDGE_FUNDS_FILE
 
     with csv_path.open(encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)

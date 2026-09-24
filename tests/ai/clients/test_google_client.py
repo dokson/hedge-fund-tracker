@@ -38,6 +38,16 @@ def _model_overloaded() -> ServerError:
     )
 
 
+def _rate_limited() -> ClientError:
+    """
+    Builds the 429 error Gemini raises when the per-minute request quota is spent.
+    """
+    return ClientError(
+        429,
+        {"error": {"code": 429, "message": "Quota exceeded.", "status": "RESOURCE_EXHAUSTED"}},
+    )
+
+
 def _chunk(text):
     """
     Builds one streamed Gemini chunk carrying ``text``.
@@ -367,6 +377,53 @@ class TestGoogleAIClient(unittest.TestCase):
         last_call_kwargs = self.mock_instance.models.generate_content_stream.call_args.kwargs
         self.assertEqual(last_call_kwargs["model"], GoogleAIClient.FALLBACK_MODEL)
 
+    def test_falls_back_when_primary_is_rate_limited(self):
+        """
+        A 429 on the primary model is answered by FALLBACK_MODEL in the same call, with no wait.
+        """
+        self.mock_instance.models.generate_content_stream.side_effect = [
+            _rate_limited(),
+            [self.mock_response],
+        ]
+
+        with patch("tenacity.nap.time.sleep") as nap:
+            response = self.client.generate_content("Hello")
+
+        self.assertEqual(response, "Mocked Gemini response")
+        self.assertEqual(self.mock_instance.models.generate_content_stream.call_count, 2)
+        last_call_kwargs = self.mock_instance.models.generate_content_stream.call_args.kwargs
+        self.assertEqual(last_call_kwargs["model"], GoogleAIClient.FALLBACK_MODEL)
+        nap.assert_not_called()
+        self.assertEqual(self.client.model, "gemini-3.5-flash")
+
+    def test_rate_limit_on_fallback_model_propagates_to_retry(self):
+        """
+        A 429 on the fallback model itself is left to the outer retry, which then gives up.
+        """
+        self.mock_instance.models.generate_content_stream.side_effect = _rate_limited()
+
+        with self.assertRaises(RetryError):
+            self.client.generate_content("Hello")
+
+        models = [
+            c.kwargs["model"]
+            for c in self.mock_instance.models.generate_content_stream.call_args_list
+        ]
+        self.assertEqual(models, ["gemini-3.5-flash", GoogleAIClient.FALLBACK_MODEL] * 3)
+
+    def test_falls_back_when_rate_limit_surfaces_mid_stream(self):
+        """
+        A 429 raised while iterating the stream switches to FALLBACK_MODEL like a 503.
+        """
+        self.mock_instance.models.generate_content_stream.side_effect = [
+            _failing_stream(_rate_limited(), "partial"),
+            [self.mock_response],
+        ]
+
+        self.assertEqual(self.client.generate_content("Hello"), "Mocked Gemini response")
+        last_call_kwargs = self.mock_instance.models.generate_content_stream.call_args.kwargs
+        self.assertEqual(last_call_kwargs["model"], GoogleAIClient.FALLBACK_MODEL)
+
     def test_retries_transient_error_raised_mid_stream(self):
         """
         A transport failure during iteration is retried by the outer tenacity loop.
@@ -396,6 +453,107 @@ class TestGoogleAIClient(unittest.TestCase):
         first_token = [r for r in cm.records if "first token" in r.getMessage()]
         self.assertEqual(len(first_token), 1)
         self.assertIn("google/gemini-3.5-flash", first_token[0].getMessage())
+
+
+_SCHEMA = {
+    "type": "object",
+    "properties": {"a": {"type": "integer"}},
+    "required": ["a"],
+    "additionalProperties": False,
+}
+
+
+def _json_schema_rejected() -> ClientError:
+    """
+    Builds the 400 error Gemini raises when a model doesn't accept a JSON schema.
+    """
+    return ClientError(
+        400,
+        {
+            "error": {
+                "code": 400,
+                "message": "response_json_schema is not supported for this model.",
+                "status": "INVALID_ARGUMENT",
+            }
+        },
+    )
+
+
+class TestGoogleStructuredOutput(unittest.TestCase):
+    """
+    ``response_schema`` maps to Gemini's JSON mime type and JSON schema fields.
+    """
+
+    def setUp(self):
+        """
+        Patches the genai client and sleep, and clears the shared rejection memories.
+        """
+        patcher = patch("app.ai.clients.google_client.genai.Client")
+        self.stream = patcher.start().return_value.models.generate_content_stream
+        self.addCleanup(patcher.stop)
+        sleep_patcher = patch("time.sleep")
+        sleep_patcher.start()
+        self.addCleanup(sleep_patcher.stop)
+        self.stream.return_value = [_chunk('{"a": 1}')]
+        AIClient._reasoning_unsupported.clear()
+        AIClient._structured_rejected.clear()
+        self.addCleanup(AIClient._structured_rejected.clear)
+        self.client = GoogleAIClient(model="gemini-3.5-flash")
+
+    def configs(self) -> list:
+        """
+        The config of every request sent, in order.
+        """
+        return [c.kwargs["config"] for c in self.stream.call_args_list]
+
+    def test_schema_mode_sets_mime_type_and_json_schema(self):
+        """
+        The strongest mode has Gemini enforce the schema.
+        """
+        self.client.generate_content("p", response_schema=_SCHEMA)
+        config = self.configs()[0]
+        self.assertEqual(config.response_mime_type, "application/json")
+        self.assertEqual(config.response_json_schema, _SCHEMA)
+        _assert_afc_disabled(self, config)
+        self.assertEqual(self.client.last_structured_mode, "schema")
+
+    def test_no_schema_leaves_the_config_plain(self):
+        """
+        Plain-text requests carry neither field.
+        """
+        self.client.generate_content("p")
+        config = self.configs()[0]
+        self.assertIsNone(config.response_mime_type)
+        self.assertIsNone(config.response_json_schema)
+
+    def test_rejected_schema_degrades_to_json_mode(self):
+        """
+        JSON mode keeps the mime type but drops the schema, which moves to the prompt.
+        """
+        self.stream.side_effect = [_json_schema_rejected(), [_chunk("{}")]]
+        self.client.generate_content("p", response_schema=_SCHEMA)
+        config = self.configs()[1]
+        self.assertEqual(config.response_mime_type, "application/json")
+        self.assertIsNone(config.response_json_schema)
+        self.assertIn('"additionalProperties": false', self.stream.call_args.kwargs["contents"])
+        self.assertEqual(self.client.last_structured_mode, "json")
+
+    def test_thinking_rejection_is_not_a_structured_rejection(self):
+        """
+        Each fallback only reacts to its own error.
+        """
+        self.assertFalse(self.client._is_structured_output_rejected(_thinking_level_rejected()))
+        self.assertTrue(self.client._is_structured_output_rejected(_json_schema_rejected()))
+
+    def test_overload_fallback_keeps_the_schema(self):
+        """
+        The 503 fallback model receives the same enforced schema.
+        """
+        self.stream.side_effect = [_model_overloaded(), [_chunk("{}")]]
+        self.client.generate_content("p", response_schema=_SCHEMA)
+        last = self.stream.call_args.kwargs
+        self.assertEqual(last["model"], GoogleAIClient.FALLBACK_MODEL)
+        self.assertEqual(last["config"].response_json_schema, _SCHEMA)
 
 
 class TestGoogleDefaultModels(unittest.TestCase):

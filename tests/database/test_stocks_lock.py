@@ -60,3 +60,32 @@ class TestStocksLock(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDbFolderAnchoring(unittest.TestCase):
+    def test_default_db_folder_is_repo_absolute_regardless_of_cwd(self):
+        """
+        The default DB_FOLDER names <repo>/database even when the process runs elsewhere.
+        """
+        import importlib
+
+        repo_db = (Path(__file__).resolve().parents[2] / "database").resolve()
+        original_cwd = Path.cwd()
+        with tempfile.TemporaryDirectory() as tmp:
+            os.chdir(tmp)
+            try:
+                reloaded = importlib.reload(_db)
+                folder = Path(reloaded.DB_FOLDER)
+            finally:
+                os.chdir(original_cwd)
+                importlib.reload(_db)
+        self.assertTrue(folder.is_absolute())
+        self.assertEqual(folder.resolve(), repo_db)
+
+    def test_lock_path_follows_a_monkeypatched_db_folder(self):
+        """
+        stocks_lock reads DB_FOLDER at call time, so a patched folder holds the lock file.
+        """
+        with tempfile.TemporaryDirectory() as tmp, patch.object(_db, "DB_FOLDER", tmp):
+            with stocks_lock(timeout=2):
+                self.assertTrue((Path(tmp) / f"{_db.STOCKS_FILE}.lock").exists())

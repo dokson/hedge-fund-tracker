@@ -35,7 +35,8 @@ logger = get_logger(__name__)
 _stocks_thread_lock = threading.Lock()
 
 
-DB_FOLDER = "./database"
+# Anchored to the repo root (like app/api/paths.py) so every process locks the same stocks.csv.
+DB_FOLDER = str(Path(__file__).resolve().parents[2] / "database")
 # Oldest reporting period tracked by the database; fetch/regeneration tooling
 # skips filings referring to earlier quarters.
 MIN_REFERENCE_DATE = "2025-03-31"

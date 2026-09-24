@@ -219,5 +219,200 @@ class TestSharedReasoningFlow(unittest.TestCase):
         self.assertEqual(client.sent, [])
 
 
+class _StructureRejectedError(Exception):
+    """
+    Fake provider error signalling that a structured-output mode was rejected.
+    """
+
+
+_SCHEMA = {
+    "type": "object",
+    "properties": {"a": {"type": "integer"}},
+    "required": ["a"],
+    "additionalProperties": False,
+}
+
+
+class StructuredFakeClient(AIClient):
+    """
+    Minimal provider supporting every structured mode; ``rejecting`` maps a
+    model to the modes it refuses.
+    """
+
+    SUPPORTED_STRUCTURED_MODES = ("schema", "json", "prompt")
+
+    def __init__(self, model: str = "fake-model", rejecting: dict | None = None):
+        """
+        Stores the model and the modes each model rejects.
+        """
+        self.model = model
+        self.rejecting = rejecting or {}
+        self.sent: list[tuple[str | None, str]] = []
+
+    def _generate_content_impl(self, prompt: str, reasoning=None, response_schema=None, **kwargs):
+        """
+        Routes the request through the shared structured-output flow.
+        """
+        return self._generate_with_structure(self.model, prompt, response_schema, self._send)
+
+    def _send(self, prompt: str, mode) -> str:
+        """
+        Records one request and fails when the model rejects its mode.
+        """
+        self.sent.append((mode, prompt))
+        if mode in self.rejecting.get(self.model, ()):
+            raise _StructureRejectedError(f"{mode} not supported")
+        return '{"a": 1}'
+
+    def _is_structured_output_rejected(self, exc: BaseException) -> bool:
+        """
+        Recognises the fake rejection error.
+        """
+        return isinstance(exc, _StructureRejectedError)
+
+    def get_model_name(self) -> str:
+        """
+        Returns the fake model name.
+        """
+        return self.model
+
+
+class TestSharedStructuredOutputFlow(unittest.TestCase):
+    """
+    Structured-output mode selection, degradation and memory live in AIClient.
+    """
+
+    def setUp(self):
+        """
+        Isolates the response cache and the shared rejection memory.
+        """
+        self.cache_dir = tempfile.mkdtemp(prefix="hft_llmcache_")
+        cache_patcher = patch.object(AIClient, "CACHE_DIR", self.cache_dir)
+        self.addCleanup(cache_patcher.stop)
+        cache_patcher.start()
+        self.addCleanup(shutil.rmtree, self.cache_dir, True)
+        AIClient._structured_rejected.clear()
+        self.addCleanup(AIClient._structured_rejected.clear)
+
+    def modes(self, client: StructuredFakeClient) -> list:
+        """
+        The mode of every recorded request, in order.
+        """
+        return [mode for mode, _ in client.sent]
+
+    def test_schema_mode_is_tried_first_with_the_prompt_unchanged(self):
+        """
+        With provider-enforced schema the prompt needs no extra instructions.
+        """
+        client = StructuredFakeClient()
+        client.generate_content("p", response_schema=_SCHEMA)
+        self.assertEqual(client.sent, [("schema", "p")])
+        self.assertEqual(client.last_structured_mode, "schema")
+
+    def test_no_schema_sends_no_mode(self):
+        """
+        A plain-text request carries no structured mode.
+        """
+        client = StructuredFakeClient()
+        client.generate_content("p")
+        self.assertEqual(client.sent, [(None, "p")])
+        self.assertIsNone(client.last_structured_mode)
+
+    def test_degrades_schema_to_json_to_prompt_and_remembers(self):
+        """
+        Each rejected mode falls to the next, and is skipped on later calls.
+        """
+        client = StructuredFakeClient(rejecting={"fake-model": {"schema", "json"}})
+        self.assertEqual(client.generate_content("p", response_schema=_SCHEMA), '{"a": 1}')
+        self.assertEqual(self.modes(client), ["schema", "json", "prompt"])
+        self.assertEqual(client.last_structured_mode, "prompt")
+        client.sent.clear()
+        client.generate_content("p", response_schema=_SCHEMA)
+        self.assertEqual(self.modes(client), ["prompt"])
+
+    def test_weaker_modes_embed_the_schema_in_the_prompt(self):
+        """
+        Without enforcement the model can only follow the schema if it reads it.
+        """
+        client = StructuredFakeClient(rejecting={"fake-model": {"schema"}})
+        client.generate_content("p", response_schema=_SCHEMA)
+        json_prompt = client.sent[1][1]
+        self.assertTrue(json_prompt.startswith("p"))
+        self.assertIn("JSON", json_prompt)
+        self.assertIn('"additionalProperties": false', json_prompt)
+
+    def test_unsupported_modes_are_skipped_without_a_request(self):
+        """
+        A provider without a plain JSON mode goes from schema straight to prompt-only.
+        """
+
+        class NoJsonMode(StructuredFakeClient):
+            """
+            Provider with no plain JSON mode.
+            """
+
+            SUPPORTED_STRUCTURED_MODES = ("schema", "prompt")
+
+        client = NoJsonMode(rejecting={"fake-model": {"schema"}})
+        client.generate_content("p", response_schema=_SCHEMA)
+        self.assertEqual(self.modes(client), ["schema", "prompt"])
+
+    def test_default_provider_is_prompt_only(self):
+        """
+        A provider that declares nothing gets the schema through the prompt.
+        """
+
+        class Plain(StructuredFakeClient):
+            """
+            Provider that keeps the base default.
+            """
+
+            SUPPORTED_STRUCTURED_MODES = AIClient.SUPPORTED_STRUCTURED_MODES
+
+        client = Plain()
+        client.generate_content("p", response_schema=_SCHEMA)
+        self.assertEqual(self.modes(client), ["prompt"])
+
+    def test_memory_is_per_model_and_per_provider(self):
+        """
+        One model's rejection doesn't degrade another model or provider.
+        """
+
+        class OtherProvider(StructuredFakeClient):
+            """
+            A second provider serving a model with the same name.
+            """
+
+        StructuredFakeClient(rejecting={"fake-model": {"schema"}}).generate_content(
+            "p", response_schema=_SCHEMA
+        )
+        other_model = StructuredFakeClient(model="other")
+        other_model.generate_content("p", response_schema=_SCHEMA)
+        other_provider = OtherProvider()
+        other_provider.generate_content("p", response_schema=_SCHEMA)
+        self.assertEqual(self.modes(other_model), ["schema"])
+        self.assertEqual(self.modes(other_provider), ["schema"])
+
+    def test_unrelated_errors_propagate_without_degrading(self):
+        """
+        Only a recognised rejection moves to a weaker mode.
+        """
+        client = StructuredFakeClient()
+        with (
+            patch.object(client, "_send", side_effect=RuntimeError("boom")),
+            self.assertRaises(RuntimeError),
+        ):
+            client.generate_content("p", response_schema=_SCHEMA)
+        self.assertEqual(AIClient._structured_rejected, set())
+
+    def test_prompt_only_rejection_propagates(self):
+        """
+        There is nothing weaker than prompt-only, so its failure surfaces.
+        """
+        client = StructuredFakeClient(rejecting={"fake-model": {"schema", "json", "prompt"}})
+        with self.assertRaises(_StructureRejectedError):
+            client.generate_content("p", response_schema=_SCHEMA)
+
+
 if __name__ == "__main__":
     unittest.main()

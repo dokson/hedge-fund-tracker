@@ -40,11 +40,19 @@ class TestPromiseScoreWeightsPrompt(unittest.TestCase):
         """
         self.assertIn("between 6 and 10 metrics", self.prompt)
 
-    def test_keeps_a_toon_example(self):
+    def test_input_metrics_stay_in_a_toon_block(self):
         """
-        The parser reads the last fenced toon block, so the format lock stays.
+        TOON is kept for compact prompt inputs, but no longer asked for as the answer.
         """
         self.assertIn("```toon", self.prompt)
+        self.assertNotIn("Return ONLY a single ```toon", self.prompt)
+
+    def test_describes_the_json_output_fields(self):
+        """
+        The schema carries the structure; the prompt names the fields it fills.
+        """
+        for field in ("JSON", "`weights`", "`metric`", "`weight`"):
+            self.assertIn(field, self.prompt)
 
     def test_drops_the_self_validation_ritual(self):
         """
@@ -53,39 +61,20 @@ class TestPromiseScoreWeightsPrompt(unittest.TestCase):
         self.assertNotIn("Self-Correction", self.prompt)
         self.assertNotIn("internal validation", self.prompt)
 
-    def test_labels_the_example_as_illustrative(self):
+    def test_has_no_worked_weights_example(self):
         """
-        Weak models copy an unlabelled example verbatim instead of choosing their own weights.
+        A single numeric example was copied verbatim by weak models; the schema carries the shape.
         """
-        self.assertIn(
-            "EXAMPLE (illustrative format only; choose your own metrics and values)", self.prompt
-        )
+        self.assertNotIn("EXAMPLE", self.prompt)
+        self.assertNotIn('"weight": ', self.prompt)
 
-    def test_example_weights_satisfy_the_validator(self):
+    def test_states_the_sign_rule_in_text(self):
         """
-        Models copy the example, so the example itself must pass every check.
+        Without an example, the negative-weight rule for selling metrics must be spelled out.
         """
-        from app.ai.promise_score_validator import PromiseScoreValidator
-
-        weights = self._example_weights()
-        self.assertEqual(PromiseScoreValidator.validate_metric_count(weights), "")
-        self.assertEqual(PromiseScoreValidator.validate_weight_signs(weights), [])
-        self.assertEqual(PromiseScoreValidator.validate_metrics(list(weights)), [])
-        self.assertEqual(PromiseScoreValidator.validate_weight_values(weights), [])
-
-    def test_example_weights_deliberately_do_not_sum_to_one(self):
-        """
-        An example summing to 1.0 would re-teach the retired sum constraint.
-        """
-        self.assertNotAlmostEqual(sum(self._example_weights().values()), 1.0, places=2)
-
-    def test_example_keeps_negative_selling_weights(self):
-        """
-        The example shows the sign rule in action on both selling metrics.
-        """
-        weights = self._example_weights()
-        self.assertLess(weights["Seller_Count"], 0)
-        self.assertLess(weights["Close_Count"], 0)
+        self.assertIn("Seller_Count", self.prompt)
+        self.assertIn("Close_Count", self.prompt)
+        self.assertIn("negative", self.prompt)
 
     def test_drops_the_sum_constraint(self):
         """
@@ -102,15 +91,6 @@ class TestPromiseScoreWeightsPrompt(unittest.TestCase):
         """
         self.assertIn("relative to each other", self.prompt)
         self.assertIn("normalized", self.prompt)
-
-    def _example_weights(self) -> dict[str, float]:
-        """
-        Decodes the illustrative example block of the prompt into float weights.
-        """
-        from app.ai.response_parser import ResponseParser
-
-        example = self.prompt.split("EXAMPLE (illustrative", 1)[1]
-        return {k: float(v) for k, v in ResponseParser.extract_and_decode_toon(example).items()}
 
     def test_describes_consequences_without_a_hard_demand(self):
         """
@@ -149,13 +129,11 @@ class TestQuantitativeScoresPrompt(unittest.TestCase):
         self.assertIn("Yahoo Finance INDUSTRY", self.prompt)
         self.assertIn('"ETF"', self.prompt)
 
-    def test_states_the_score_directions(self):
-        self.assertIn("MOMENTUM_SCORE (1-100, HIGH IS GOOD)", self.prompt)
-        self.assertIn("LOW_VOLATILITY_SCORE (1-100, HIGH IS GOOD)", self.prompt)
-        self.assertIn("RISK_SCORE (1-100, HIGH IS BAD", self.prompt)
-
-    def test_makes_momentum_relative_to_the_list(self):
-        self.assertIn("RELATIVE TO THE OTHER STOCKS IN THIS LIST", self.prompt)
+    def test_states_the_score_direction(self):
+        """
+        Risk is the one LLM score and high means bad.
+        """
+        self.assertIn("RISK_SCORE (1-100, HIGH IS BAD)", self.prompt)
 
     def test_frames_calibration_as_illustrative(self):
         """
@@ -163,20 +141,38 @@ class TestQuantitativeScoresPrompt(unittest.TestCase):
         """
         self.assertIn("illustrative profiles", self.prompt)
 
-    def test_example_block_uses_placeholder_tickers(self):
+    def test_uses_no_real_tickers(self):
         """
-        The example must not anchor scores on real companies, but keeps the quoted-hyphen case.
+        Nothing in the prompt may anchor scores on a real company.
         """
-        example = self.prompt.split("EXAMPLE", 1)[1]
         self.assertNotIn("NVDA", self.prompt)
-        self.assertNotIn("BRK-B", example)
-        self.assertIn("AAA:", example)
-        self.assertIn('"BBB-B":', example)
+        self.assertNotIn("BRK-B", self.prompt)
 
-    def test_keeps_the_toon_output_lock(self):
+    def test_input_stays_toon_and_output_is_json(self):
+        """
+        The stock list is sent as TOON; the answer is a JSON list of stocks.
+        """
         self.assertIn("```toon", self.prompt)
-        for field in ("momentum_score", "low_volatility_score", "risk_score", "industry"):
-            self.assertIn(field, self.prompt)
+        self.assertNotIn("Return ONLY a single ```toon", self.prompt)
+        self.assertIn("JSON", self.prompt)
+        self.assertIn("`stocks`", self.prompt)
+        for field in ("ticker", "risk_score", "industry"):
+            self.assertIn(f"`{field}`", self.prompt)
+
+    def test_no_longer_asks_for_price_derived_scores(self):
+        """
+        Momentum and low volatility are computed from price history, not by the LLM.
+        """
+        lowered = self.prompt.lower()
+        for word in ("momentum", "volatility"):
+            self.assertNotIn(word, lowered)
+
+    def test_asks_for_every_ticker_exactly_once(self):
+        """
+        Missing or duplicated tickers are rejected by the agent.
+        """
+        self.assertIn("exactly once", self.prompt)
+        self.assertIn("spelled exactly as provided", self.prompt)
 
 
 class TestStockDueDiligencePrompt(unittest.TestCase):
@@ -196,12 +192,29 @@ class TestStockDueDiligencePrompt(unittest.TestCase):
         """
         self.assertNotIn("self-correct", self.prompt)
 
-    def test_example_uses_a_placeholder_ticker(self):
+    def test_uses_no_real_ticker(self):
         """
-        The worked example shows the shape only, with no real company to copy from.
+        No real company is offered as something to copy from.
         """
         self.assertNotIn("NVDA", self.prompt)
-        self.assertIn("illustrative", self.prompt)
+
+    def test_input_stays_toon_and_output_is_json(self):
+        """
+        The context is sent as TOON; the answer is described as JSON fields.
+        """
+        self.assertIn("```toon", self.prompt)
+        self.assertNotIn("Return ONLY a single ```toon", self.prompt)
+        self.assertIn("JSON", self.prompt)
+        for field in ("analysis", "investment_thesis", "overall_sentiment", "price_target"):
+            self.assertIn(f"`{field}`", self.prompt)
+
+    def test_keeps_the_null_and_sentiment_rules(self):
+        """
+        The schema allows null; the prompt says when to use it.
+        """
+        self.assertIn("`null`", self.prompt)
+        for sentiment in ("Bullish", "Neutral", "Bearish"):
+            self.assertIn(sentiment, self.prompt)
 
     def test_does_not_demand_data_the_model_lacks(self):
         """
@@ -234,6 +247,126 @@ class TestStockDueDiligencePrompt(unittest.TestCase):
         The stock context reaches the model.
         """
         self.assertIn('ticker: "XYZ"', self.prompt)
+
+
+# Keywords accepted by both OpenAI-style strict json_schema and Gemini's response_json_schema.
+_STRICT_KEYWORDS = frozenset(
+    {
+        "type",
+        "properties",
+        "required",
+        "additionalProperties",
+        "items",
+        "enum",
+        "description",
+        "minimum",
+        "maximum",
+        "minItems",
+        "maxItems",
+    }
+)
+_JSON_TYPES = frozenset({"object", "array", "string", "number", "integer", "boolean", "null"})
+
+
+class TestResponseSchemas(unittest.TestCase):
+    """
+    Each schema must stay inside the strict subset both providers enforce.
+    """
+
+    def assert_strict(self, schema: dict, path: str = "$") -> None:
+        """
+        Walks ``schema`` asserting the strict-mode rules at every node.
+        """
+        self.assertLessEqual(set(schema), _STRICT_KEYWORDS, path)
+        types = schema["type"] if isinstance(schema["type"], list) else [schema["type"]]
+        self.assertLessEqual(set(types), _JSON_TYPES, path)
+        if "enum" in schema:
+            for value in schema["enum"]:
+                self.assertIn("null" if value is None else type(value).__name__, {"str", "null"})
+                if value is None:
+                    self.assertIn("null", types, path)
+        if "object" in types:
+            self.assertIs(schema["additionalProperties"], False, path)
+            self.assertEqual(set(schema["required"]), set(schema["properties"]), path)
+            for name, child in schema["properties"].items():
+                self.assert_strict(child, f"{path}.{name}")
+        if "array" in types:
+            self.assert_strict(schema["items"], f"{path}[]")
+
+    def schemas(self) -> dict:
+        """
+        The three response schemas, by name.
+        """
+        from app.ai.prompts import DUE_DILIGENCE_SCHEMA, SCORES_SCHEMA, WEIGHTS_SCHEMA
+
+        return {
+            "weights": WEIGHTS_SCHEMA,
+            "scores": SCORES_SCHEMA,
+            "due_diligence": DUE_DILIGENCE_SCHEMA,
+        }
+
+    def test_schemas_are_strict_and_json_serializable(self):
+        """
+        Root objects, closed and fully required, and serializable as sent on the wire.
+        """
+        import json
+
+        for name, schema in self.schemas().items():
+            with self.subTest(schema=name):
+                self.assertEqual(schema["type"], "object")
+                self.assert_strict(schema)
+                self.assertEqual(json.loads(json.dumps(schema)), schema)
+
+    def test_weights_schema_enumerates_the_available_metrics(self):
+        """
+        The metric enum and the item bounds mirror the validator.
+        """
+        from app.ai.promise_score_validator import PromiseScoreValidator as V
+
+        weights = self.schemas()["weights"]["properties"]["weights"]
+        self.assertEqual(weights["items"]["properties"]["metric"]["enum"], V.AVAILABLE_METRICS)
+        self.assertEqual(weights["minItems"], V.MIN_METRICS)
+        self.assertEqual(weights["maxItems"], V.MAX_METRICS)
+
+    def test_scores_schema_lists_stocks_with_bounded_integer_scores(self):
+        """
+        Tickers are values in a list, so hyphens and dots need no quoting rules.
+        """
+        stock = self.schemas()["scores"]["properties"]["stocks"]["items"]
+        self.assertEqual(stock["properties"]["ticker"]["type"], "string")
+        self.assertEqual(set(stock["properties"]), {"ticker", "industry", "risk_score"})
+        self.assertEqual(set(stock["required"]), {"ticker", "industry", "risk_score"})
+        risk = stock["properties"]["risk_score"]
+        self.assertEqual((risk["type"], risk["minimum"], risk["maximum"]), ("integer", 1, 100))
+
+    def test_due_diligence_schema_keeps_the_api_shape(self):
+        """
+        The frontend reads these exact keys, so the shape must not drift.
+        """
+        schema = self.schemas()["due_diligence"]
+        self.assertEqual(
+            set(schema["properties"]), {"ticker", "company", "analysis", "investment_thesis"}
+        )
+        analysis = schema["properties"]["analysis"]["properties"]
+        self.assertEqual(
+            set(analysis),
+            {
+                "business_summary",
+                "financial_health",
+                "financial_health_sentiment",
+                "valuation",
+                "valuation_sentiment",
+                "growth_vs_risks",
+                "growth_vs_risks_sentiment",
+                "institutional_sentiment",
+                "institutional_sentiment_sentiment",
+            },
+        )
+        thesis = schema["properties"]["investment_thesis"]["properties"]
+        self.assertEqual(set(thesis), {"overall_sentiment", "thesis", "price_target"})
+        self.assertEqual(
+            thesis["overall_sentiment"]["enum"], ["Bullish", "Neutral", "Bearish", None]
+        )
 
 
 if __name__ == "__main__":

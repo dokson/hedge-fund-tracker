@@ -123,11 +123,11 @@ These are real incidents — read before changing code in these areas.
 
 - **No price-derived or daily-churning values in committed CSVs.** They turn every regeneration into a full-file git diff. The hosted site will fetch live prices at runtime; snapshots that must accumulate belong in the future history store, not in git.
 
-- **The smart score is institutional-only and computed on the fly, by product decision.** No sell-side analyst inputs (a full Yahoo analyst-ratings integration was built and then removed on 2026-07-12 — differentiation beats me-too data) and no precomputed CSV: the Python `score_core` and its TypeScript mirror (`lib/smartScore.ts`, pinned by hand-computed parity tests) derive it from the quarter-analysis frame, so every tab/page/backtest shows the same formula on the same universe. Don't tune score weights on backtest returns — same principle as the strategy screens — and keep the two implementations in lockstep when changing the formula.
+- **The smart score is institutional-only and computed on the fly, by product decision.** No sell-side analyst inputs (a Yahoo analyst-ratings integration was tried and removed: differentiation beats me-too data) and no precomputed CSV: the Python `score_core` and its TypeScript mirror (`lib/smartScore.ts`, pinned by hand-computed parity tests) derive it from the quarter-analysis frame, so every tab/page/backtest shows the same formula on the same universe. Don't tune score weights on backtest returns — same principle as the strategy screens — and keep the two implementations in lockstep when changing the formula.
 
 - **Yahoo rate-limits bulk yfinance sweeps.** A concurrent fetch over thousands of tickers got the IP temporarily banned (`YFRateLimitError`) and silently degraded to empty responses. If a mass yfinance fetch ever returns, pace requests, keep workers ≤2 and back off on rate limits rather than recording gaps.
 
-- **CRLF on Windows.** Git auto-converts. Don't fight it. Pre-commit hooks and `.editorconfig` enforce LF in repo; checkout converts as needed.
+- **CRLF on Windows.** Git converts on checkout; pre-commit hooks and `.editorconfig` enforce LF in the repo. Files written by scripts or tools on Windows can come out CRLF and fail the `mixed-line-ending` hook at commit time — the hook fixes them in place, so re-stage and commit again (in Python, write with `newline="\n"` to avoid it).
 
 - **GH Pages mode is a separate build.** `IS_GH_PAGES_MODE=true` (set via `--mode gh-pages`) hides routes and disables AI features (no backend). Test both modes when touching routing or feature flags.
 
@@ -172,7 +172,7 @@ Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `datab
 - **`app/scraper/`** — SEC EDGAR retrieval. `sec_scraper.py` fetches 13F-HR, 13D/G, Form 4 with tenacity retries + custom User-Agent. `xml_processor.py` parses 13F XML into DataFrames.
 - **`app/analysis/`** — `quarterly_report.py` (delta shares/values, NEW/CLOSE positions), `stocks.py` (multi-fund consensus), `non_quarterly.py` (13D/G + Form 4 integration), `performance_evaluator.py` (HBR), `smart_scores.py` (the smart-score core: composite 1-10 from **institutional signals only** — breadth/momentum percentiles + conviction with a capped +10/high-conviction-entry bonus; deliberately NO sell-side analyst inputs, that's the product stance. Pure compute, NO persistence: the backtest derives it per point-in-time frame and the UI mirrors it in TS (`lib/smartScore.ts`) on the fly, like every other consensus metric).
 - **`app/stocks/`** — CUSIP→Ticker via fallback chain: yfinance → OpenFIGI → TradingView. Reverse ticker→CUSIP (Form 4 path) via FMP (requires `FMP_API_KEY`). Industry classification via `app/stocks/classification.py::resolve_industry`: yfinance → same-Company match in stocks.csv → Groq LLM (free, picks from `sector_hierarchy.csv` vocabulary). Maintains `stocks.csv`. `PriceFetcher` uses a separate chain: yfinance → TradingView → Nasdaq (Nasdaq covers mutual funds others miss).
-- **`app/ai/`** — Multi-provider LLM. `agent.py` runs **two-phase analysis**: (1) AI picks metric weights for current market, (2) AI computes scores using those weights. Retries up to 7× on invalid response. Clients in `clients/`: Google Gemini, Groq, HuggingFace, OpenRouter.
+- **`app/ai/`** — Multi-provider LLM. `agent.py` runs **two-phase analysis**: (1) the LLM picks relative metric weights, which code normalizes into a 0-100 Promise Score over rank-transformed metrics; (2) for the top stocks the LLM supplies only industry + risk, while Momentum/Low-Volatility scores are computed from daily price history in `app/analysis/price_scores.py` (12-1 return and annualized volatility, cross-sectional 1-100 percentiles, 50 when history is short). Clients in `clients/`: Google Gemini, Groq, HuggingFace, OpenRouter.
 - **`app/backtest/`** — Strategy backtester. `strategies.py` defines the seven `/quarterly` screens as `StrategySpec`s (Smart Score first, then Avg Portfolio, Consensus Buys, New Consensus, Big Bets, Increasing, Decreasing) — each mirrors its tab's default sort + filters; all but Avg Portfolio take **top 30**. Smart Score ranks by the score core the engine derives lazily on each point-in-time frame (`app/analysis/smart_scores.py::score_core`). `engine.py` reconstructs each screen point-in-time per quarter (reusing `app/analysis/stocks.py` aggregation — NOT the non-quarterly-merged view), weights every screen by `Avg_Portfolio_Pct` normalized to 100% (so strategies differ in *what* they hold, not *how* it's weighted), holds filing-date→next-filing, and computes returns vs the **S&P 500** (`BENCHMARKS`, extensible to more indices; `run_backtest`, long-format rows); `min_holders_for_quarter` = round(funds/10) per quarter. `price_cache.py` persists `(ticker, date)→price` (gitignored `__pricecache__/`) so regeneration after a fund-list change is near-instant. `report.py` writes `database/performance.csv`. Run via `pipenv run gen-strategy` or updater option 11. Compute is offline → the CSV is bundled for GH Pages; the `/performance` page only reads it (no PriceFetcher in TS).
 - **`app/api/`** — FastAPI routers, each `include_router`'d by `app/server.py`: `ai.py` (Promise Score / due-diligence, blocking + SSE), `admin.py` (filing fetches, ticker/CUSIP corrections, NASDAQ ticker-change apply, quarter-gap report), plus `me.py`/`api_keys.py`/`starred.py`. Shared infra lives in `common.py` (rate limiter, request validation, JSON-safe serialization) and `sse.py` (the per-request stdout-capture wrapper — imported on the boot path so it installs once). `server.py` keeps only app setup, static-file/SPA serving, and the quarter-listing routes.
 - **`app/database/`** — CSV data-access layer, a package split into `quarters.py` (quarter discovery + 13F loaders), `stocks.py` (stocks.csv CRUD, the stocks lock, ticker cascades), `funds.py` (hedge-fund add/delete/restore). The package `__init__` owns the shared constants (`DB_FOLDER`, `*_FILE`) + path-safety helpers and re-exports everything, so `from app.database import X` is unchanged. Submodules read `DB_FOLDER` as `_db.DB_FOLDER` (call-time) so tests can monkeypatch it.
@@ -212,15 +212,21 @@ All in `database/`:
 
 ## Data updates / GH Actions automation
 
-Three workflows touch the repo:
+Workflows in `.github/workflows/`:
 
 **`.github/workflows/filings-fetch.yml`** — 4× daily Mon–Fri (01:30, 13:30, 17:30, 21:30 UTC) + Saturday 04:00 UTC. Fetches new filings, commits to **`automated/filings-fetch` branch** (NOT master). Opens GitHub Issues for unidentified filers. To merge: review the branch's diff, then merge into master.
 
 **`.github/workflows/deploy-pages.yml`** — Triggers on push to `master` when `app/frontend/**` or `database/**` change. Builds `--mode gh-pages`, deploys via `actions/deploy-pages@v4`. Requires Settings > Pages > Source = "GitHub Actions".
 
-**`.github/workflows/python-tests.yml`** — Full test suite on push/PR.
+**`.github/workflows/run-tests.yml`** — Python + frontend test suites on push/PR (and manual dispatch).
 
 **`.github/workflows/lint.yml`** — Ruff + format check + mypy + oxlint + Prettier check + tsc on push/PR. Blocks merging if dirty.
+
+**`.github/workflows/refresh-badges.yml`** — every 4h, purges GitHub's Camo cache for README badges that render as broken.
+
+**`.github/workflows/popularity-refresh.yml`** — monthly (1st, 05:00 UTC) popularity refresh of the excluded funds.
+
+**`.github/workflows/dependabot-automerge.yml`** — auto-merges Dependabot PRs.
 
 ## Branch hygiene
 
@@ -233,7 +239,7 @@ Three workflows touch the repo:
 
 ### TDD is mandatory
 
-Iron rule: **no production code without a failing test first**.
+Write the failing test before the production code: a test you never saw fail doesn't prove the change works.
 
 1. Write the failing test
 2. Run it; verify it fails for the *expected* reason
@@ -241,10 +247,7 @@ Iron rule: **no production code without a failing test first**.
 4. Run all tests; nothing else broke
 5. Refactor while green
 
-**Red flags**:
-- Code exists before a test exists → delete the code, start with TDD
-- Test passes immediately → you're testing existing behavior, not new
-- Can't explain the original failure → the test isn't proving anything
+If code already exists without a test, write the test now and confirm it fails with the change reverted, rather than deleting working code. A test that passes immediately is testing existing behavior: that's right for a regression guard around a refactor, but it can't be the test that drives new behavior. If you can't explain why a test failed, it isn't proving anything yet.
 
 ### Done checklist
 
@@ -282,7 +285,8 @@ All code, comments, docstrings, commit messages, and user-facing strings: **Engl
 
 - **AI clients**: subclass `AIClient` (`app/ai/clients/base_client.py`). Same interface, different APIs.
 - **Retries**: `tenacity` library, exponential backoff. Used in scrapers and AI clients.
-- **Validation loop**: `AnalystAgent` retries AI responses up to 7× via `promise_score_validator.py`.
+- **Validation loop**: `AnalystAgent` validates every AI response in code and retries invalid ones (weights 7×, scores and due diligence 5×).
+- **LLM I/O formats**: prompt *inputs* are TOON (`toon_format.encode`, ~2.4× smaller than JSON — matters under Groq's tokens/min limit); *outputs* are JSON enforced by the provider. Each prompt module exports its strict JSON Schema (`WEIGHTS_SCHEMA`, `SCORES_SCHEMA`, `DUE_DILIGENCE_SCHEMA`), passed as `generate_content(..., response_schema=...)`. `AIClient._generate_with_structure` tries provider-enforced schema → plain JSON mode → schema-in-prompt, remembering rejections per (provider, model); providers only implement the request hooks and `_is_structured_output_rejected`. Range/enum/duplicate checks stay in the agent — never trust the schema alone.
 - **Caches**: `__llmcache__/` (AI responses), `__reports__/` (generated reports). Both gitignored.
 - **Lazy imports in handlers**: `app/server.py` route handlers `import` their service deps *inside the function body*, not at module top. This is deliberate — it keeps server startup fast (heavy modules like `yfinance`/`AnalystAgent` load on first use) and avoids import cycles between the server and the analysis/AI layers. Keep new handlers consistent; put business logic in a service module (e.g. `app/stocks/ticker_changes.py`) and have the handler lazy-import and delegate.
 

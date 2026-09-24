@@ -355,12 +355,12 @@ export default function AIRanking() {
                     <ColumnHeader
                       label="Momentum"
                       align="center"
-                      tooltip="Strength of the stock's recent price trend and market enthusiasm (1–100). 90+ = explosive uptrend; 50–69 = moderate; <30 = strong downtrend or selling pressure."
+                      tooltip="12-1 momentum computed from daily price history: the return from 12 months to 1 month ago, ranked across this list (1–100). Higher = stronger trend relative to the other stocks; 50 = neutral or not enough history."
                     />
                     <ColumnHeader
                       label="Low Vol"
                       align="center"
-                      tooltip="Price stability score (1–100). Higher = more stable price action and lower historical volatility. 90+ = very low beta, minimal drawdowns; <30 = high-beta, speculative price action."
+                      tooltip="Price stability computed from daily price history: annualized volatility of the last year of daily returns, ranked across this list (1–100). Higher = calmer than the other stocks; 50 = neutral or not enough history."
                     />
                     <ColumnHeader
                       label="Risk"

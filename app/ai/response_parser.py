@@ -1,117 +1,52 @@
+import json
 import re
 
-from toon_format import decode
-
-from app.ai.promise_score_validator import PromiseScoreValidator
 from app.utils.logger import get_logger, log_safe
 
 logger = get_logger(__name__)
 
+_JSON_FENCE_RE = re.compile(r"```(?:\s*json)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
+
+
+def _reject_constant(name: str) -> None:
+    """
+    Refuses NaN/Infinity, which Python's json module accepts but JSON does not.
+    """
+    raise ValueError(f"non-finite JSON constant {name}")
+
 
 class ResponseParser:
     """
-    Utility class for parsing TOON from LLM responses
+    Utility class for parsing JSON objects from LLM responses.
     """
 
-    # Field keys we expect inside a per-stock or weights toon block. Used to repair
-    # responses where an LLM drops the newline between consecutive key-value pairs.
-    _KNOWN_FIELD_KEYS = (
-        "industry",
-        "momentum_score",
-        "low_volatility_score",
-        "risk_score",
-        "growth_score",
-        *PromiseScoreValidator.AVAILABLE_METRICS,
-    )
-
     @staticmethod
-    def extract_and_decode_toon(response_text: str) -> dict:
+    def parse_json(response_text: str) -> dict:
         """
-        Extract and decode TOON from LLM response text.
-        Always returns the LAST toon block found, as previous ones
-        might be intermediate reasoning steps.
+        Parses the JSON object in an LLM response, or returns {} when there is none.
+
+        Provider-enforced output is a bare object; the fence and outermost-brace
+        fallbacks only serve prompt-only answers that wrap it in text.
         """
-        try:
-            text = response_text.strip()
+        text = response_text.strip()
+        candidates = [text]
+        fences = _JSON_FENCE_RE.findall(text)
+        if fences:
+            candidates.append(fences[-1].strip())
+        start, end = text.find("{"), text.rfind("}")
+        if 0 <= start < end:
+            candidates.append(text[start : end + 1])
 
-            # Find all markdown blocks (toon or generic)
-            # Allow for potential whitespace/newline before 'toon' (e.g. ```\n toon)
-            markdown_blocks = re.findall(r"```(?:\s*toon)?\s*(.*?)```", text, re.DOTALL)
-
-            # Use the last block content, or the whole text as fallback
-            toon_content = markdown_blocks[-1].strip() if markdown_blocks else text
-
-            if toon_content:
-                # Sanitize the content to help toon library (strip comments, collapse lists)
-                clean_content = ResponseParser._sanitize_toon(toon_content)
-                decoded = decode(clean_content)
-                return decoded if isinstance(decoded, dict) else {}
-
-        except Exception:
-            logger.error("Invalid TOON structure", exc_info=True)
-            return {}
+        for candidate in candidates:
+            try:
+                decoded = json.loads(candidate, parse_constant=_reject_constant)
+            except ValueError:
+                continue
+            if isinstance(decoded, dict):
+                return decoded
 
         logger.error(
-            "Could not find TOON in response: %s...",
+            "Could not find a JSON object in response: %s...",
             log_safe(response_text[:200], max_len=200),
-            exc_info=True,
         )
         return {}
-
-    @staticmethod
-    def _sanitize_toon(text: str) -> str:
-        """
-        Refactored to be simple (no over-engineering).
-        Sanitizes TOON content to help the library handle common LLM quirks:
-        1. Strips comments (while respecting quotes).
-        2. Collapses multiline JSON lists (which toon doesn't support).
-        3. Removes YAML-style bullets/checklists (which break toon).
-        """
-        # 1. Strip comments (respecting quotes) using regex
-        # Pattern captures: Group 1 (Quoted String), Group 2 (Comment)
-        pattern_comment = r'("[^"\\]*(?:\\.[^"\\]*)*")|(#.*)'
-        # Replace comments with empty string, keep strings as is
-        text = re.sub(pattern_comment, lambda m: m.group(1) if m.group(1) else "", text)
-
-        # 2. Collapse JSON lists to single line (handling newlines inside [ ... ])
-        # Uses DOTALL to match across lines.
-        text = re.sub(
-            r"\[\s*(.*?)\s*\]",
-            lambda m: "[" + " ".join(m.group(1).split()) + "]",
-            text,
-            flags=re.DOTALL,
-        )
-
-        # 3a. Repair missing newlines between known keys on the same line
-        # (e.g. "momentum_score: 65  low_volatility_score: 70"), preserving indent.
-        keys_alt = "|".join(re.escape(k) for k in ResponseParser._KNOWN_FIELD_KEYS)
-        split_field_re = re.compile(rf"\s+(?=(?:{keys_alt})\s*:)")
-        repaired_lines: list[str] = []
-        for raw_line in text.split("\n"):
-            # `^(\s*)` always matches (zero-width is fine), but mypy can't prove that.
-            indent_match = re.match(r"^(\s*)", raw_line)
-            indent = indent_match.group(1) if indent_match else ""
-            parts = split_field_re.split(raw_line)
-            if len(parts) > 1:
-                repaired_lines.append(parts[0])
-                for p in parts[1:]:
-                    repaired_lines.append(indent + p)
-            else:
-                repaired_lines.append(raw_line)
-        text = "\n".join(repaired_lines)
-
-        # 3b. Repair tickers glued to the previous numeric value
-        # (e.g. "risk_score: 90KRRO:" → ticker on its own line).
-        text = re.sub(r"(\d)(?=[A-Z][A-Z0-9]{1,9}:)", r"\1\n", text)
-
-        # 4. Filter invalid lines (markdown bullets)
-        valid_lines = []
-        for line in text.split("\n"):
-            cleaned = line.rstrip()
-            # Filter lines starting with "- " which are YAML lists or markdown bullets
-            if cleaned.lstrip().startswith("- "):
-                continue
-            if cleaned.strip():
-                valid_lines.append(cleaned)
-
-        return "\n".join(valid_lines)

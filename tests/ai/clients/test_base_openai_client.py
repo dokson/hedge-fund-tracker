@@ -359,5 +359,177 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
             self.assertNotIn("reasoning", call.kwargs)
 
 
+_SCHEMA = {
+    "type": "object",
+    "properties": {"a": {"type": "integer"}},
+    "required": ["a"],
+    "additionalProperties": False,
+}
+
+
+def _structured_output_rejected(status: int = 400, mode: str = "json_schema") -> APIStatusError:
+    """
+    Builds the error a provider raises when a model doesn't support a
+    ``response_format`` mode (mirrors Groq's actual error message).
+    """
+    response = _response(status)
+    message = f"`response_format` of type `{mode}` is not supported with this model"
+    error_cls = {400: BadRequestError, 404: NotFoundError}.get(status, APIStatusError)
+    return error_cls(message, response=response, body=None)
+
+
+class TestOpenAIClientStructuredOutput(unittest.TestCase):
+    """
+    ``response_schema`` maps to ``response_format``, degrading on rejection.
+    """
+
+    def setUp(self):
+        """
+        Patches the OpenAI SDK and sleep, and clears the shared rejection memories.
+        """
+        sleep_patcher = patch("time.sleep")
+        sleep_patcher.start()
+        self.addCleanup(sleep_patcher.stop)
+        openai_patcher = patch("app.ai.clients.base_openai_client.OpenAI")
+        self.create = openai_patcher.start().return_value.chat.completions.create
+        self.addCleanup(openai_patcher.stop)
+        AIClient._reasoning_unsupported.clear()
+        AIClient._structured_rejected.clear()
+        self.addCleanup(AIClient._structured_rejected.clear)
+        with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
+            self.client = ConcreteOpenAIClient()
+
+    def formats(self) -> list:
+        """
+        The response_format of every request sent, in order (None when absent).
+        """
+        return [c.kwargs.get("response_format") for c in self.create.call_args_list]
+
+    def test_schema_mode_sends_strict_json_schema(self):
+        """
+        The strongest mode asks the provider to enforce the schema strictly.
+        """
+        self.create.return_value = _stream('{"a": 1}')
+        self.assertEqual(self.client.generate_content("p", response_schema=_SCHEMA), '{"a": 1}')
+        self.assertEqual(
+            self.formats(),
+            [
+                {
+                    "type": "json_schema",
+                    "json_schema": {"name": "response", "schema": _SCHEMA, "strict": True},
+                }
+            ],
+        )
+        self.assertEqual(self.client.last_structured_mode, "schema")
+
+    def test_no_schema_sends_no_response_format(self):
+        """
+        Plain-text requests are unchanged.
+        """
+        self.create.return_value = _stream("ok")
+        self.client.generate_content("p")
+        self.assertEqual(self.formats(), [None])
+
+    def test_degrades_to_json_object_then_prompt_only(self):
+        """
+        A rejected json_schema falls to json_object, then to no response_format.
+        """
+        self.create.side_effect = [
+            _structured_output_rejected(mode="json_schema"),
+            _structured_output_rejected(mode="json_object"),
+            _stream('{"a": 1}'),
+        ]
+        self.client.generate_content("p", response_schema=_SCHEMA)
+        self.assertEqual(self.formats()[1:], [{"type": "json_object"}, None])
+        last_prompt = self.create.call_args.kwargs["messages"][0]["content"]
+        self.assertIn('"additionalProperties": false', last_prompt)
+        self.assertEqual(self.client.last_structured_mode, "prompt")
+
+    def test_rejection_is_remembered_for_the_model(self):
+        """
+        Later calls skip the modes the model already rejected.
+        """
+        self.create.side_effect = [
+            _structured_output_rejected(),
+            _stream("{}"),
+            _stream("{}"),
+        ]
+        self.client.generate_content("p", response_schema=_SCHEMA)
+        self.client.generate_content("p", response_schema=_SCHEMA)
+        self.assertEqual(self.formats()[2], {"type": "json_object"})
+
+    def test_schema_validation_failure_is_an_invalid_response(self):
+        """
+        Output failing the provider's schema check surfaces as a retryable invalid
+        response, sent once and without degrading the remembered mode.
+        """
+        from app.ai.clients.base_client import InvalidAIResponseError
+
+        message = "Failed to validate JSON. code: json_validate_failed"
+        self.create.side_effect = BadRequestError(message, response=_response(400), body=None)
+
+        with self.assertRaises(InvalidAIResponseError):
+            self.client.generate_content("p", response_schema=_SCHEMA)
+
+        self.assertEqual(self.create.call_count, 1)
+        self.assertEqual(AIClient._structured_rejected, set())
+
+    def test_recognises_unprocessable_and_not_found_rejections(self):
+        """
+        Routers answer an unsupported parameter with 404 or 422 as well as 400.
+        """
+        for status in (404, 422):
+            with self.subTest(status=status):
+                self.assertTrue(
+                    self.client._is_structured_output_rejected(
+                        _structured_output_rejected(status=status)
+                    )
+                )
+
+    def test_recognises_a_router_wrapped_upstream_rejection(self):
+        """
+        Routers forward the upstream refusal inside a generic "Provider returned error".
+        """
+        exc = BadRequestError(
+            "Provider returned error: model features structured outputs not support",
+            response=_response(400),
+            body=None,
+        )
+        self.assertTrue(self.client._is_structured_output_rejected(exc))
+        hyphenated = BadRequestError(
+            "Provider returned error: model does not support feature: structured-outputs",
+            response=_response(400),
+            body=None,
+        )
+        self.assertTrue(self.client._is_structured_output_rejected(hyphenated))
+
+    def test_reasoning_rejection_is_not_a_structured_rejection(self):
+        """
+        The two fallbacks are independent: each only reacts to its own error.
+        """
+        self.assertFalse(self.client._is_structured_output_rejected(_reasoning_effort_rejected()))
+
+    def test_reasoning_and_schema_fallbacks_compose(self):
+        """
+        A model rejecting reasoning_effort keeps its enforced schema.
+        """
+        self.create.side_effect = [_reasoning_effort_rejected(), _stream("{}")]
+        self.client.generate_content("p", response_schema=_SCHEMA)
+        last = self.create.call_args.kwargs
+        self.assertEqual(last["response_format"]["type"], "json_schema")
+        self.assertEqual(last["extra_body"], {})
+
+    def test_unrelated_bad_request_propagates(self):
+        """
+        A 400 that isn't about response_format is not treated as a mode rejection.
+        """
+        self.create.side_effect = BadRequestError(
+            "context length exceeded", response=_response(400), body=None
+        )
+        with self.assertRaises(BadRequestError):
+            self.client.generate_content("p", response_schema=_SCHEMA)
+        self.assertEqual(AIClient._structured_rejected, set())
+
+
 if __name__ == "__main__":
     unittest.main()

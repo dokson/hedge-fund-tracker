@@ -5,14 +5,20 @@ from tenacity import RetryError, retry, retry_if_exception_type, stop_after_atte
 from toon_format import encode
 
 from app.ai.clients import AIClient
+from app.ai.clients.base_client import InvalidAIResponseError
 from app.ai.promise_score_validator import PromiseScoreValidator, normalize_weights
 from app.ai.prompts import (
+    DUE_DILIGENCE_SCHEMA,
+    SCORES_SCHEMA,
+    SENTIMENTS,
+    WEIGHTS_SCHEMA,
     promise_score_weights_prompt,
     quantitative_scores_prompt,
     stock_due_diligence_prompt,
 )
 from app.ai.response_parser import ResponseParser
 from app.analysis.performance_evaluator import PerformanceEvaluator
+from app.analysis.price_scores import NEUTRAL_SCORE, compute_price_scores
 from app.analysis.stocks import quarter_analysis, stock_analysis
 from app.stocks.libraries import YFinance
 from app.stocks.price_fetcher import PriceFetcher
@@ -20,14 +26,6 @@ from app.utils.logger import get_logger, log_safe
 from app.utils.strings import get_quarter_date
 
 logger = get_logger(__name__)
-
-
-class InvalidAIResponseError(Exception):
-    """
-    Custom exception for invalid AI responses that should trigger a retry.
-    """
-
-    pass
 
 
 class AnalystAgent:
@@ -63,13 +61,8 @@ class AnalystAgent:
         )
         prompt = promise_score_weights_prompt(self.quarter)
 
-        response_text = self.ai_client.generate_content(prompt)
-        parsed_weights = ResponseParser().extract_and_decode_toon(response_text)
-
-        try:
-            parsed_weights = {k: float(v) for k, v in parsed_weights.items()}
-        except (TypeError, ValueError) as e:
-            raise InvalidAIResponseError(f"AI returned non-numeric weight value: {e}") from e
+        response_text = self.ai_client.generate_content(prompt, response_schema=WEIGHTS_SCHEMA)
+        parsed_weights = self._weights_from_response(ResponseParser.parse_json(response_text))
 
         invalid_metrics = PromiseScoreValidator.validate_metrics(list(parsed_weights.keys()))
         if invalid_metrics:
@@ -94,6 +87,78 @@ class AnalystAgent:
         )
         logger.success("AI Agent selected weights:%s", weights_str)
         return parsed_weights
+
+    @staticmethod
+    def _weights_from_response(response: dict) -> dict[str, float]:
+        """
+        Converts the ``weights`` list of {metric, weight} items into a metric->weight dict.
+
+        Raises:
+            InvalidAIResponseError: If the list is missing or malformed, a weight is
+                not numeric, or a metric appears twice.
+        """
+        items = response.get("weights")
+        if not isinstance(items, list) or not all(
+            isinstance(item, dict) and "metric" in item and "weight" in item for item in items
+        ):
+            raise InvalidAIResponseError("AI response has no valid list of weights")
+
+        weights: dict[str, float] = {}
+        for item in items:
+            metric = str(item["metric"])
+            if metric in weights:
+                raise InvalidAIResponseError(f"AI returned metric {metric} more than once")
+            try:
+                weights[metric] = float(item["weight"])
+            except (TypeError, ValueError) as e:
+                raise InvalidAIResponseError(f"AI returned non-numeric weight value: {e}") from e
+        return weights
+
+    @staticmethod
+    def _scores_from_response(response: dict) -> dict[str, dict]:
+        """
+        Converts the ``stocks`` list into a dict keyed by ticker, without the ticker field.
+
+        Raises:
+            InvalidAIResponseError: If the list is missing, an entry is not an object
+                with a ticker, or a ticker appears twice.
+        """
+        entries = response.get("stocks")
+        if not isinstance(entries, list) or not entries:
+            raise InvalidAIResponseError("AI returned no data")
+        if not all(isinstance(entry, dict) and "ticker" in entry for entry in entries):
+            raise InvalidAIResponseError("AI response entries are not key/value blocks")
+
+        scores: dict[str, dict] = {}
+        for entry in entries:
+            fields = dict(entry)
+            ticker = str(fields.pop("ticker"))
+            if ticker in scores:
+                raise InvalidAIResponseError(
+                    f"AI returned ticker {log_safe(ticker)} more than once"
+                )
+            scores[ticker] = fields
+        return scores
+
+    @staticmethod
+    def _validate_due_diligence(response: dict) -> None:
+        """
+        Checks the sections are objects and every sentiment is a known value or null.
+
+        Raises:
+            InvalidAIResponseError: On a non-object section or an unknown sentiment.
+        """
+        for section_name in ("analysis", "investment_thesis"):
+            section = response.get(section_name)
+            if section is None:
+                continue
+            if not isinstance(section, dict):
+                raise InvalidAIResponseError(f"AI returned a non-object {section_name}")
+            field_schemas = DUE_DILIGENCE_SCHEMA["properties"][section_name]["properties"]
+            for key, value in section.items():
+                is_sentiment = "enum" in field_schemas.get(key, {})
+                if is_sentiment and value is not None and value not in SENTIMENTS:
+                    raise InvalidAIResponseError(f"AI returned an invalid {key}: {log_safe(value)}")
 
     @staticmethod
     def _is_informative(values: pd.Series) -> bool:
@@ -167,24 +232,18 @@ class AnalystAgent:
     )
     def _get_ai_scores(self, stocks_context: list[dict]) -> dict:
         """
-        Uses the LLM to categorize stocks and generate thematic AI scores.
+        Uses the LLM to classify each stock's industry and score its fundamental risk.
         Retries with tenacity if the response is invalid.
         """
         assert self.ai_client is not None, "AnalystAgent requires an AIClient"
         prompt = quantitative_scores_prompt(encode(stocks_context), self.filing_date)
-        required_keys = ["momentum_score", "low_volatility_score", "risk_score"]
+        required_keys = ["risk_score"]
 
         logger.progress(
             "Sending request to AI (%s) for thematic scores...", self.ai_client.get_model_name()
         )
-        response_text = self.ai_client.generate_content(prompt)
-        parsed_data = ResponseParser().extract_and_decode_toon(response_text)
-
-        if not parsed_data:
-            raise InvalidAIResponseError("AI returned no data")
-
-        if not all(isinstance(data, dict) for data in parsed_data.values()):
-            raise InvalidAIResponseError("AI response entries are not key/value blocks")
+        response_text = self.ai_client.generate_content(prompt, response_schema=SCORES_SCHEMA)
+        parsed_data = self._scores_from_response(ResponseParser.parse_json(response_text))
 
         if not all(all(key in data for key in required_keys) for data in parsed_data.values()):
             raise InvalidAIResponseError("AI response was missing required keys")
@@ -291,9 +350,7 @@ class AnalystAgent:
         suggestions_df = suggestions_df.copy()
         autonomous_scores = self._compute_autonomous_scores(tickers)
 
-        # Seed columns from the programmatic (autonomous) data. The LLM scores
-        # overwrite Industry/Risk/Momentum/Volatility below when available; if the
-        # AI step fails these seeded defaults remain (Growth is always autonomous).
+        # The LLM overwrites Industry/Risk below; if it fails these seeded defaults remain.
         suggestions_df["Industry"] = suggestions_df["Ticker"].map(
             lambda t: autonomous_scores.get(t, {}).get("Industry", "N/A")
         )
@@ -301,8 +358,11 @@ class AnalystAgent:
             lambda t: autonomous_scores.get(t, {}).get("Growth_Score", 0)
         )
         suggestions_df["Risk_Score"] = 0
-        suggestions_df["Momentum_Score"] = 0
-        suggestions_df["Low_Volatility_Score"] = 0
+        price_scores = compute_price_scores(tickers)
+        for column in ("Momentum_Score", "Low_Volatility_Score"):
+            suggestions_df[column] = [
+                int(price_scores.get(t, {}).get(column, NEUTRAL_SCORE)) for t in tickers
+            ]
 
         stocks_context = self._build_stocks_context(tickers, suggestions_df, autonomous_scores)
         try:
@@ -319,12 +379,6 @@ class AnalystAgent:
         )
         suggestions_df["Risk_Score"] = suggestions_df["Ticker"].map(
             lambda t: ai_scores_data.get(t, {}).get("risk_score", 0)
-        )
-        suggestions_df["Momentum_Score"] = suggestions_df["Ticker"].map(
-            lambda t: ai_scores_data.get(t, {}).get("momentum_score", 0)
-        )
-        suggestions_df["Low_Volatility_Score"] = suggestions_df["Ticker"].map(
-            lambda t: ai_scores_data.get(t, {}).get("low_volatility_score", 0)
         )
         return suggestions_df
 
@@ -361,11 +415,14 @@ class AnalystAgent:
             log_safe(ticker),
         )
         prompt = stock_due_diligence_prompt(stock_context_toon)
-        response_text = self.ai_client.generate_content(prompt, reasoning="medium")
-        parsed_data = ResponseParser().extract_and_decode_toon(response_text)
+        response_text = self.ai_client.generate_content(
+            prompt, reasoning="medium", response_schema=DUE_DILIGENCE_SCHEMA
+        )
+        parsed_data = ResponseParser.parse_json(response_text)
 
         if not parsed_data:
-            raise InvalidAIResponseError("AI returned an empty or invalid TOON structure")
+            raise InvalidAIResponseError("AI returned an empty or invalid JSON object")
+        self._validate_due_diligence(parsed_data)
 
         parsed_data["current_price"] = stock_data["current_price"]
         parsed_data["filing_date_price"] = stock_data["filing_date_price"]

@@ -2,6 +2,6 @@
 "gemini-3.8-flash","Gemini 3.8 Flash","Google"
 "openai/gpt-oss-120b","GPT-OSS 120B","Groq"
 "deepseek-ai/DeepSeek-V4-Flash","DeepSeek V4 Flash","HuggingFace"
-"nvidia/nemotron-3.5-lightning:free","NVIDIA Nemotron 3.5 Lightning","OpenRouter"
+"dots-studio/dots-3-note-preview:free","Dots3-Note Preview","OpenRouter"
 "inclusionai/ling-3.0-flash-fin:free","Ling 3.0 Flash Fin","OpenRouter"
 "zai-org/GLM-5.3-Flash","GLM-5.3-Flash","HuggingFace"
