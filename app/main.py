@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from yfinance.exceptions import YFRateLimitError
 
 from app.ai.agent import AnalystAgent
 from app.analysis.performance_evaluator import PerformanceEvaluator
@@ -75,8 +76,11 @@ def run_view_nq_filings():
         >= eastern_today() - pd.Timedelta(days=interesting_day_range)
     ].copy()
     tickers = subset_df["Ticker"].unique().tolist()
-    # Fetch current prices and industry info
-    stock_info = YFinance.get_stocks_info(tickers)
+    try:
+        stock_info = YFinance.get_stocks_info(tickers)
+    except YFRateLimitError:
+        logger.error("Yahoo Finance rate limit reached; prices unavailable. Retry later.")
+        return
 
     # Ensure numeric types and calculate the percentage change
     subset_df["Avg_Price"] = pd.to_numeric(subset_df["Avg_Price"], errors="coerce")
@@ -503,6 +507,8 @@ def run_ai_analyst():
                 },
             )
 
+    except YFRateLimitError:
+        logger.error("Yahoo Finance rate limit reached; ranking aborted. Retry later.")
     except Exception:
         logger.error("An unexpected error occurred while running AI Financial Agent", exc_info=True)
 
@@ -603,6 +609,9 @@ def run_ai_due_diligence():
 
 
 def run_cli():
+    """
+    Run the interactive terminal menu until the user exits.
+    """
     actions = {
         "0": lambda: False,
         "1": run_view_nq_filings,
@@ -656,13 +665,23 @@ def _find_available_port(port: int, max_attempts: int = 10) -> int:
     raise RuntimeError(f"No available port found in range {port}–{port + max_attempts - 1}")
 
 
+_FRONTEND_ROOT_INPUTS = (
+    "package.json",
+    "package-lock.json",
+    "index.html",
+    "*.config.*",
+    "tsconfig*.json",
+)
+
+
 def _frontend_sources_changed(frontend_dir: Path, dist_dir: Path) -> bool:
     """
     Returns True if any frontend source file is newer than the built dist.
 
-    Watches src/, public/, and the top-level config files (package.json, vite/tsconfig,
-    tailwind config). Uses dist/index.html as the build marker. Errors are treated as
-    "needs rebuild" to avoid silently serving a stale bundle.
+    Watches src/, public/, and the root-level build inputs in ``_FRONTEND_ROOT_INPUTS``
+    (package manifests, index.html, every ``*.config.*`` and tsconfig). Uses
+    dist/index.html as the build marker. Errors are treated as "needs rebuild" to
+    avoid silently serving a stale bundle.
     """
     marker = dist_dir / "index.html"
     if not marker.exists():
@@ -674,15 +693,10 @@ def _frontend_sources_changed(frontend_dir: Path, dist_dir: Path) -> bool:
 
     watched_dirs = [frontend_dir / "src", frontend_dir / "public"]
     watched_files = [
-        frontend_dir / name
-        for name in (
-            "package.json",
-            "package-lock.json",
-            "vite.config.ts",
-            "tsconfig.json",
-            "tsconfig.app.json",
-            "tailwind.config.js",
-        )
+        path
+        for pattern in _FRONTEND_ROOT_INPUTS
+        for path in frontend_dir.glob(pattern)
+        if path.is_file()
     ]
 
     for d in watched_dirs:
@@ -740,7 +754,8 @@ def run_server(host: str | None = None, port: int | None = None):
 
     import uvicorn
 
-    uvicorn.run("app.server:app", host=host, port=port, reload=False)
+    # RequestContextMiddleware writes the access log (with request ids).
+    uvicorn.run("app.server:app", host=host, port=port, reload=False, access_log=False)
 
 
 if __name__ == "__main__":

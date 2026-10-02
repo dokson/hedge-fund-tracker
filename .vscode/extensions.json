@@ -2,8 +2,6 @@
   "recommendations": [
     "charliermarsh.ruff",
     "ms-python.python",
-    "ms-python.mypy-type-checker",
-    "esbenp.prettier-vscode",
     "oxc.oxc-vscode",
     "editorconfig.editorconfig",
     "tamasfe.even-better-toml",
@@ -15,6 +13,7 @@
     "vitest.explorer"
   ],
   "unwantedRecommendations": [
+    "ms-python.mypy-type-checker",
     "ms-python.black-formatter",
     "ms-python.isort",
     "ms-python.flake8",

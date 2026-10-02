@@ -1,20 +1,12 @@
 import pandas as pd
 
 from app.stocks.ticker_resolver import TickerResolver
+from app.stocks.utils.identifiers import is_equity_cusip
 from app.utils.logger import get_logger, log_safe
 from app.utils.pd import coalesce, format_value_series
 from app.utils.strings import format_percentage, format_value
 
 logger = get_logger(__name__)
-
-
-def _is_equity_cusip(cusip: object) -> bool:
-    """
-    Returns True for equity-style CUSIPs: 9 characters with a numeric issue
-    code (positions 7-8). Debt issues use alphabetic issue codes, so a bond
-    of the same issuer is never mistaken for the equity.
-    """
-    return isinstance(cusip, str) and len(cusip) == 9 and cusip[6:8].isdigit()
 
 
 def _link_cusip_changes(df_comparison: pd.DataFrame) -> pd.DataFrame:
@@ -29,7 +21,7 @@ def _link_cusip_changes(df_comparison: pd.DataFrame) -> pd.DataFrame:
     """
     df_comparison["CUSIP_Changed"] = False
 
-    equity_mask = df_comparison["CUSIP"].map(_is_equity_cusip)
+    equity_mask = df_comparison["CUSIP"].map(is_equity_cusip)
     new_mask = (
         equity_mask
         & (df_comparison["Shares_previous"] == 0)

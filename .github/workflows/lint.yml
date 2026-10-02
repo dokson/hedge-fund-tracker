@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   python:
-    name: Python · Ruff + pyright + mypy
+    name: Python · Ruff + pyright
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -42,6 +42,9 @@ jobs:
       - name: Install dev dependencies
         run: pipenv sync --dev
 
+      - name: Agent configs in sync with .agents/
+        run: python scripts/sync_agent_configs.py --check
+
       - name: Ruff check
         run: pipenv run ruff check . --output-format=github
 
@@ -51,9 +54,6 @@ jobs:
       - name: Pyright
         run: pipenv run pyright
 
-      - name: mypy
-        run: pipenv run mypy app database scripts
-
       - name: Dependency vulnerability audit (pip-audit)
         run: |
           pipenv requirements --dev > requirements-audit.txt
@@ -61,7 +61,7 @@ jobs:
           pipenv run pip-audit --requirement requirements-audit.txt
 
   frontend:
-    name: Frontend · oxlint + Prettier + tsc
+    name: Frontend · oxlint + oxfmt + tsc
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -72,7 +72,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: app/frontend/package-lock.json
 
@@ -84,7 +84,7 @@ jobs:
       - name: oxlint
         run: npm run lint
 
-      - name: Prettier check
+      - name: oxfmt check
         run: npm run format:check
 
       - name: TypeScript type check

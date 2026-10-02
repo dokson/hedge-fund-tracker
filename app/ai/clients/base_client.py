@@ -7,7 +7,10 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import ClassVar, Literal, get_args
 
+from tenacity import RetryCallState
+
 from app.utils.logger import get_logger
+from app.utils.metrics import LLM_CALLS
 
 logger = get_logger(__name__)
 
@@ -27,6 +30,24 @@ _REASONING_LEVELS: frozenset[str] = frozenset(get_args(ReasoningLevel))
 # JSON mode, then the schema carried only by the prompt.
 StructuredMode = Literal["schema", "json", "prompt"]
 STRUCTURED_MODES: tuple[StructuredMode, ...] = get_args(StructuredMode)
+
+
+def llm_retry_hook(message: str) -> Callable[[RetryCallState], None]:
+    """
+    Build a tenacity ``before_sleep`` hook for a provider call: counts the retry
+    under the client's provider and logs ``message`` with the delay and attempt.
+    """
+
+    def _hook(retry_state: RetryCallState) -> None:
+        """
+        Count and log one backoff before the next attempt.
+        """
+        client = retry_state.args[0]
+        LLM_CALLS.labels(provider=type(client).__name__, outcome="retry").inc()
+        delay = retry_state.next_action.sleep if retry_state.next_action else 0.0
+        logger.progress(message, delay, retry_state.attempt_number)
+
+    return _hook
 
 
 class InvalidAIResponseError(Exception):
@@ -107,7 +128,9 @@ class AIClient(ABC):
                 next_heartbeat += HEARTBEAT_INTERVAL_S
 
         if "exc" in failure:
+            LLM_CALLS.labels(provider=type(self).__name__, outcome="error").inc()
             raise failure["exc"]
+        LLM_CALLS.labels(provider=type(self).__name__, outcome="ok").inc()
 
         response = outcome.get("text", "")
         logger.success(

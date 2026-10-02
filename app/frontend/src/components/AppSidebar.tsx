@@ -34,7 +34,9 @@ function SidebarNav({
               {collapsed ? (
                 sIdx > 0 && <div className="mx-2 mb-2 h-px bg-border" aria-hidden="true" />
               ) : (
-                <div className="px-3 mb-1 text-[11px] text-muted-foreground">{section.label}</div>
+                <div className="px-3 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  {section.label}
+                </div>
               )}
               <ul>
                 {section.doors.map((item) => {
@@ -43,7 +45,7 @@ function SidebarNav({
                     <li key={item.url}>
                       <NavLink
                         to={item.url}
-                        end={item.url === "/"}
+                        end={item.url === ROUTES.home}
                         data-active={active}
                         onClick={onNavigate}
                         title={collapsed ? item.title : undefined}
@@ -136,7 +138,9 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
       </button>
       {!collapsed && (
         <Link to={ROUTES.home} className="min-w-0 leading-none group/brand" title="Home">
-          <p className="text-sm font-semibold text-foreground truncate">Hedge Fund Tracker</p>
+          <p className="text-sm font-semibold tracking-tight text-foreground truncate">
+            Hedge Fund Tracker
+          </p>
           <p className="text-[11px] text-muted-foreground truncate">SEC 13F · 13D/G · Form 4</p>
         </Link>
       )}

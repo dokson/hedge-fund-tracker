@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import pandas as pd
@@ -51,6 +53,34 @@ class TestDatabaseFileServing(unittest.TestCase):
         resp = client.get("/database/definitely_not_here_xyz.csv")
         self.assertEqual(resp.status_code, 404)
 
+    def test_directory_returns_404(self):
+        """
+        A path naming a directory is not a file: 404, not a 500 from read_text.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            (root / "2099Q1").mkdir()
+            with patch("app.api.paths._DB_ROOT", root):
+                resp = client.get("/database/2099Q1")
+        self.assertEqual(resp.status_code, 404)
+
+
+class TestDatabaseFileUploadDirectory(unittest.TestCase):
+    """PUT onto an existing directory is refused before any write."""
+
+    @patch("app.api.data.atomic_write_text")
+    def test_put_on_directory_returns_400(self, mock_write):
+        """
+        Overwriting a directory is rejected instead of failing inside the atomic writer.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            (root / "2099Q1").mkdir()
+            with patch("app.api.paths._DB_ROOT", root):
+                resp = client.put("/database/2099Q1", content=b"a,b\n")
+        self.assertEqual(resp.status_code, 400)
+        mock_write.assert_not_called()
+
 
 class TestDatabaseFileUpload(unittest.TestCase):
     """PUT /database/{filepath} input guards (validated before any write)."""
@@ -71,12 +101,47 @@ class TestDatabaseFileUpload(unittest.TestCase):
         """
         The upload goes through the atomic writer, not a direct truncate-and-write.
         """
-        with patch("app.api.data.stocks_lock") as mock_lock:
+        with (
+            patch("app.api.data.stocks_lock") as mock_lock,
+            patch("app.api.data.file_lock"),
+        ):
             resp = client.put("/database/x_upload_test.csv", content=b"a,b\n")
         self.assertEqual(resp.status_code, 200)
         mock_write.assert_called_once()
         self.assertEqual(mock_write.call_args.args[1], "a,b\n")
         mock_lock.assert_not_called()
+
+    @patch("app.api.data.atomic_write_text")
+    def test_other_upload_takes_its_file_lock(self, mock_write):
+        """
+        Overwriting any other database file holds that file's lock during the write.
+        """
+        events: list[str] = []
+        mock_write.side_effect = lambda *_a, **_k: events.append("write")
+
+        class _Lock:
+            """
+            Context manager recording the lock scope.
+            """
+
+            def __enter__(self):
+                """
+                Record the acquisition.
+                """
+                events.append("enter")
+
+            def __exit__(self, *_exc):
+                """
+                Record the release.
+                """
+                events.append("exit")
+                return False
+
+        with patch("app.api.data.file_lock", return_value=_Lock()) as mock_lock:
+            resp = client.put("/database/x_upload_test.csv", content=b"a,b\n")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(mock_lock.call_args.args[0].name, "x_upload_test.csv")
+        self.assertEqual(events, ["enter", "write", "exit"])
 
     @patch("app.api.data.atomic_write_text")
     def test_stocks_upload_takes_stocks_lock(self, mock_write):

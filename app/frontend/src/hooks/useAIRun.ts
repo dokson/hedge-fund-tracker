@@ -69,7 +69,7 @@ export function useAIRun<T>({
 }: UseAIRunOptions<T>): UseAIRunReturn<T> {
   // Hydrate from the session cache on first render so a page revisit shows the
   // previous output instead of an empty state.
-  const cached = cacheKey ? (AI_RUN_CACHE.get(cacheKey) as CachedRun | undefined) : undefined;
+  const cached = cacheKey ? AI_RUN_CACHE.get(cacheKey) : undefined;
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedProviderId, setSelectedProviderId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -89,12 +89,17 @@ export function useAIRun<T>({
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // A newer run (or unmount) replaces the controller; a superseded run must
+    // not touch state, or its late result and `finally` would clobber the new one.
+    const isCurrent = () => abortRef.current === controller && !controller.signal.aborted;
+
     setLoading(true);
     setResult(null);
     setTerminalLines([]);
 
     try {
       const models = await getModels();
+      if (!isCurrent()) return;
       const modelDesc = models.find((m) => m.id === selectedModel)?.description || selectedModel;
       setModelUsed(modelDesc);
 
@@ -104,10 +109,12 @@ export function useAIRun<T>({
         providerId: selectedProviderId || undefined,
         signal: controller.signal,
         onLog: (line) => {
+          if (!isCurrent()) return;
           collected.push(line);
           setTerminalLines((prev) => [...prev, line]);
         },
       });
+      if (!isCurrent()) return;
 
       setResult(value);
       if (cacheKey) {
@@ -119,12 +126,12 @@ export function useAIRun<T>({
       }
       if (successMessage) toast.success(successMessage(value));
     } catch (err: unknown) {
-      if (controller.signal.aborted) return;
+      if (!isCurrent()) return;
       const msg = err instanceof Error ? err.message : String(err);
       toast.error(`AI Error: ${msg}`);
       console.error(err);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [selectedModel, selectedProviderId, execute, successMessage, cacheKey]);
 

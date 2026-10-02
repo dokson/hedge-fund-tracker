@@ -67,7 +67,8 @@ def get_env() -> dict[str, str]:
 
 @router.put("/api/settings/env")
 async def put_env(request: Request) -> dict[str, bool]:
-    """Merge managed provider keys into the .env file.
+    """
+    Merge managed provider keys into the .env file.
 
     Unmanaged lines — deployment secrets, comments, formatting — are preserved
     verbatim, so a client that only knows about provider keys can never drop

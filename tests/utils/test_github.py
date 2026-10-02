@@ -1,9 +1,10 @@
+import io
 import unittest
 from unittest.mock import MagicMock, patch
 
 from curl_cffi.requests.exceptions import RequestException
 
-from app.utils.github import open_issue
+from app.utils.github import open_issue, raised_alerts
 
 
 def _log_concat(captured) -> str:
@@ -14,6 +15,14 @@ def _log_concat(captured) -> str:
 
 
 class TestGithub(unittest.TestCase):
+    def setUp(self):
+        """
+        Silence workflow commands written straight to stdout.
+        """
+        stdout_patch = patch("sys.stdout", io.StringIO())
+        stdout_patch.start()
+        self.addCleanup(stdout_patch.stop)
+
     @patch("app.utils.github.requests.get")
     @patch("app.utils.github.requests.post")
     @patch("app.utils.github.os.getenv")
@@ -48,7 +57,6 @@ class TestGithub(unittest.TestCase):
         self.assertEqual(args[0], "https://api.github.com/repos/repo/hedge-fund-tracker/issues")
         self.assertEqual(kwargs["json"]["title"], "Test Issue")
         self.assertEqual(kwargs["json"]["assignees"], ["repo"])
-        self.assertIn("::notice::", _log_concat(cm))
         self.assertIn("Successfully created", _log_concat(cm))
 
     @patch("app.utils.github.requests.get")
@@ -165,11 +173,11 @@ class TestGithub(unittest.TestCase):
     @patch("app.utils.github.requests.get")
     @patch("app.utils.github.requests.post")
     @patch("app.utils.github.os.getenv")
-    def test_uses_bearer_authorization_scheme(self, mock_getenv, mock_post, mock_get):
+    def test_sends_bearer_authorization_and_user_agent(self, mock_getenv, mock_post, mock_get):
         """
-        Authorization header must use the ``Bearer`` scheme (GitHub's
-        recommendation for PATs since 2022). The legacy ``token`` scheme
-        still works but is deprecated for fine-grained PATs.
+        Both calls use the ``Bearer`` scheme (GitHub's recommendation for PATs)
+        and set a User-Agent: GitHub's REST API rejects requests without one
+        (HTTP 403) and curl_cffi sends none by default.
         """
         mock_getenv.side_effect = {
             "GITHUB_ACTIONS": "true",
@@ -191,34 +199,6 @@ class TestGithub(unittest.TestCase):
 
         for call in (mock_get.call_args, mock_post.call_args):
             self.assertEqual(call.kwargs["headers"]["Authorization"], "Bearer test_token")
-
-    @patch("app.utils.github.requests.get")
-    @patch("app.utils.github.requests.post")
-    @patch("app.utils.github.os.getenv")
-    def test_sends_user_agent_header(self, mock_getenv, mock_post, mock_get):
-        """
-        GitHub's REST API rejects requests without a User-Agent (HTTP 403) and
-        curl_cffi sends none by default, so both calls must set one explicitly.
-        """
-        mock_getenv.side_effect = {
-            "GITHUB_ACTIONS": "true",
-            "GITHUB_TOKEN": "test_token",
-            "GITHUB_REPOSITORY": "repo/hedge-fund-tracker",
-        }.get
-
-        mock_search_response = MagicMock()
-        mock_search_response.json.return_value = {"total_count": 0}
-        mock_get.return_value = mock_search_response
-
-        mock_response = MagicMock()
-        mock_response.status_code = 201
-        mock_response.json.return_value = {"html_url": "https://example.com/i/1"}
-        mock_post.return_value = mock_response
-
-        with self.assertLogs("app.utils.github", level="INFO"):
-            open_issue("Subject", "Body")
-
-        for call in (mock_get.call_args, mock_post.call_args):
             self.assertTrue(call.kwargs["headers"].get("User-Agent"))
 
     @patch("app.utils.github.requests.get")
@@ -290,6 +270,112 @@ class TestGithub(unittest.TestCase):
         self.assertIn("An exception occurred while creating GitHub Issue", joined)
         self.assertIn("API Error Test", joined)
         self.assertIn("This should be logged as a fallback.", joined)
+
+
+class TestWorkflowCommands(unittest.TestCase):
+    """
+    GitHub only parses workflow commands that start at the beginning of a stdout line.
+    """
+
+    _ENV = {
+        "GITHUB_ACTIONS": "true",
+        "GITHUB_TOKEN": "test_token",
+        "GITHUB_REPOSITORY": "repo/hedge-fund-tracker",
+    }
+
+    def _run(self, mock_getenv, subject="Subject", body="Body"):
+        """
+        Run open_issue with stdout captured and return the captured text and log records.
+        """
+        mock_getenv.side_effect = self._ENV.get
+        buf = io.StringIO()
+        with patch("sys.stdout", buf), self.assertLogs("app.utils.github", level="INFO") as cm:
+            open_issue(subject, body)
+        return buf.getvalue(), _log_concat(cm)
+
+    @patch("app.utils.github.requests.get")
+    @patch("app.utils.github.requests.post")
+    @patch("app.utils.github.os.getenv")
+    def test_notice_is_written_at_line_start(self, mock_getenv, mock_post, mock_get):
+        """
+        A created issue emits a ::notice:: command at column zero, with no emoji marker.
+        """
+        mock_get.return_value.json.return_value = {"total_count": 0}
+        mock_post.return_value.status_code = 201
+        mock_post.return_value.json.return_value = {"html_url": "https://example.com/i/1"}
+
+        out, logs = self._run(mock_getenv)
+
+        lines = out.splitlines()
+        self.assertTrue(any(line.startswith("::notice::") for line in lines), out)
+        self.assertNotIn("✅", out)
+        self.assertNotIn("::notice::", logs)
+        self.assertIn("Successfully created", logs)
+
+    @patch("app.utils.github.requests.get")
+    @patch("app.utils.github.requests.post")
+    @patch("app.utils.github.os.getenv")
+    def test_error_is_written_at_line_start(self, mock_getenv, mock_post, mock_get):
+        """
+        A failed create emits a ::error:: command at column zero, with no emoji marker.
+        """
+        mock_get.return_value.json.return_value = {"total_count": 0}
+        mock_post.side_effect = RequestException("down")
+
+        out, _ = self._run(mock_getenv)
+
+        lines = out.splitlines()
+        self.assertTrue(any(line.startswith("::error::") for line in lines), out)
+        self.assertNotIn("❌", out)
+
+    @patch("app.utils.github.requests.get")
+    @patch("app.utils.github.os.getenv")
+    def test_command_message_newlines_are_escaped(self, mock_getenv, mock_get):
+        """
+        A newline in an interpolated value must not split the workflow command.
+        """
+        mock_get.return_value.json.return_value = {
+            "total_count": 1,
+            "items": [{"html_url": "https://example.com/i/1\n::error::forged"}],
+        }
+
+        out, _ = self._run(mock_getenv)
+
+        self.assertFalse(any(line.startswith("::error::") for line in out.splitlines()), out)
+
+    @patch("app.utils.github.requests.get")
+    @patch("app.utils.github.requests.post")
+    @patch("app.utils.github.os.getenv")
+    def test_malformed_search_response_degrades_gracefully(self, mock_getenv, mock_post, mock_get):
+        """
+        A search body that is not JSON, or lacks the expected keys, must not crash the run.
+        """
+        for json_behaviour in (ValueError("not json"), {"unexpected": 1}, {"total_count": 1}):
+            with self.subTest(json_behaviour=json_behaviour):
+                mock_post.reset_mock()
+                if isinstance(json_behaviour, Exception):
+                    mock_get.return_value.json.side_effect = json_behaviour
+                else:
+                    mock_get.return_value.json.side_effect = None
+                    mock_get.return_value.json.return_value = json_behaviour
+
+                out, logs = self._run(mock_getenv, subject="Malformed")
+
+                mock_post.assert_not_called()
+                self.assertIn("Malformed", logs)
+                self.assertTrue(any(line.startswith("::error::") for line in out.splitlines()))
+
+
+class TestRaisedAlerts(unittest.TestCase):
+    @patch("app.utils.github.os.getenv", return_value=None)
+    def test_open_issue_records_the_subject(self, _mock_getenv):
+        """
+        Every alert raised in the process is recorded for the run summary.
+        """
+        with self.assertLogs("app.utils.github", level="WARNING"):
+            open_issue("Ticker not found for CUSIP 'TEST00001'", "body")
+
+        self.assertIn("Ticker not found for CUSIP 'TEST00001'", raised_alerts())
 
 
 if __name__ == "__main__":

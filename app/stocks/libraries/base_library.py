@@ -46,6 +46,13 @@ class FinanceLibrary(ABC):
         return None
 
     @staticmethod
+    def get_last_price_in_range(ticker: str, start: date, end: date, **kwargs) -> float | None:
+        """
+        Gets the price of the last bar in (start, end] for a ticker. Default no-op.
+        """
+        return None
+
+    @staticmethod
     def get_history(ticker: str, period: str = "5y", **kwargs) -> list[dict] | None:
         """
         Gets historical price points for a ticker. Default no-op.

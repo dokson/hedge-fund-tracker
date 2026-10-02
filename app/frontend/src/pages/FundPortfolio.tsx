@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import { isQuarter } from "@/lib/quarters";
-import { useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 import {
   getHedgeFunds,
   getStocks,
@@ -15,6 +15,7 @@ import {
   type QuarterlyHolding,
 } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
+import { useSortState, type SortDir } from "@/hooks/useSortState";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TickerLink, CompanyLink, formatFundName } from "@/components/EntityLinks";
 import { FundLogo } from "@/components/FundLogo";
@@ -411,7 +412,6 @@ function FundGrid() {
 // ────────────────────────── Helpers ──────────────────────────
 
 type SortKey = "portfolioPct" | "value" | "shares" | "deltaShares" | "delta";
-type SortDir = "asc" | "desc";
 
 // ────────────────────────── Fund Detail ──────────────────────────
 
@@ -507,11 +507,12 @@ function HoldingCard({ h, rank }: { h: QuarterlyHolding; rank: number }) {
   );
 }
 
+const NO_HOLDINGS: QuarterlyHolding[] = [];
+
 function FundDetail({ fundName }: { fundName: string }) {
   const navigate = useNavigate();
   const [quarter, setQuarter] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("portfolioPct");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const { sortKey, sortDir, toggleSort, ariaSort } = useSortState<SortKey>("portfolioPct");
   const [showAll, setShowAll] = useState(false);
   const [positionFilter, setPositionFilter] = useState<
     "all" | "new" | "closed" | "increased" | "decreased"
@@ -557,24 +558,29 @@ function FundDetail({ fundName }: { fundName: string }) {
     [stocksMaster],
   );
 
-  const {
-    data: holdings = [],
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["fundHoldings", selectedQuarter, fundName],
-    queryFn: () => getFundQuarterlyHoldings(selectedQuarter!, fundName),
-    // Collapse multiple CUSIPs of the same ticker (e.g. common stock + a
-    // 13F-reportable note) into a single row, matching the stock page, the
-    // consensus view and the CLI fund analysis.
-    select: (data) =>
+  // Collapse multiple CUSIPs of the same ticker (e.g. common stock + a
+  // 13F-reportable note) into a single row, matching the stock page, the
+  // consensus view and the CLI fund analysis.
+  const selectHoldings = useCallback(
+    (data: QuarterlyHolding[]) =>
       aggregateHoldingsByTicker(
         data.map((h) => ({
           ...h,
           company: tickerNameMap.get(h.ticker) || h.company,
         })),
       ),
-    enabled: !!selectedQuarter,
+    [tickerNameMap],
+  );
+  const {
+    data: holdings = NO_HOLDINGS,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["fundHoldings", selectedQuarter, fundName],
+    queryFn: selectedQuarter
+      ? () => getFundQuarterlyHoldings(selectedQuarter, fundName)
+      : skipToken,
+    select: selectHoldings,
   });
 
   const fundSectors = useMemo(() => {
@@ -713,17 +719,6 @@ function FundDetail({ fundName }: { fundName: string }) {
         h.delta !== "CLOSE" && (tickerSectorMap.get(h.ticker) ?? "Unclassified") === activeSector,
     ).length;
   }, [holdings, activeSector, tickerSectorMap]);
-
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
-    else {
-      setSortKey(key);
-      setSortDir("desc");
-    }
-  }
-
-  const ariaSort = (key: SortKey) =>
-    sortKey === key ? (sortDir === "desc" ? "descending" : "ascending") : "none";
 
   const quarterLabel = selectedQuarter ? selectedQuarter.replace("Q", " Q") : "—";
 
@@ -1086,6 +1081,10 @@ function FundDetail({ fundName }: { fundName: string }) {
 
 export default function FundPortfolio() {
   const { fundId } = useParams();
-  if (fundId) return <FundDetail fundName={decodeURIComponent(fundId)} />;
+  if (fundId) {
+    const fundName = decodeURIComponent(fundId);
+    // Keyed so quarter, sort and filter state reset when navigating between funds.
+    return <FundDetail key={fundName} fundName={fundName} />;
+  }
   return <FundGrid />;
 }

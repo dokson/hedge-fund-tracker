@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "python \".agents/hooks/enforce_pipenv.py\" --format cursor",
+        "timeout": 5
+      }
+    ]
+  }
+}

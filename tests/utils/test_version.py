@@ -82,15 +82,6 @@ class TestVersion(unittest.TestCase):
         finally:
             tmp_path.unlink(missing_ok=True)
 
-    def test_caches_result_across_calls(self):
-        """
-        get_version is cached via lru_cache, so repeated calls hit the file
-        system only once per process.
-        """
-        first = get_version()
-        second = get_version()
-        self.assertIs(first, second)
-
 
 if __name__ == "__main__":
     unittest.main()

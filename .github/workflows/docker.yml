@@ -1,0 +1,93 @@
+name: Docker
+
+on:
+  push:
+    branches: [master]
+    paths: &docker-paths
+      - "Dockerfile"
+      - "compose.yaml"
+      - ".dockerignore"
+      - "entrypoint.sh"
+      - "alembic.ini"
+      - "Pipfile"
+      - "Pipfile.lock"
+      - "app/**"
+      - ".github/workflows/docker.yml"
+  pull_request:
+    branches: [master]
+    paths: *docker-paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: build checks + compose config
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      # BuildKit's native Dockerfile linter: no extra tool, updated with Docker itself.
+      - name: docker build --check
+        run: docker build --check .
+
+      # --quiet keeps interpolated values out of the log.
+      - name: compose config
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          MASTER_KEY: ci-placeholder
+          RESET_PASSWORD_TOKEN_SECRET: ci-placeholder
+          VERIFICATION_TOKEN_SECRET: ci-placeholder
+        run: docker compose config --quiet
+
+  build:
+    name: Build + smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build runtime image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: runtime
+          load: true
+          tags: hedge-fund-tracker:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container
+        run: |
+          docker run -d --name hft -p 8000:8000 \
+            -e DOCKER_ENV=1 \
+            -e MASTER_KEY="$(python3 -c 'import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())')" \
+            -e RESET_PASSWORD_TOKEN_SECRET="$(openssl rand -hex 32)" \
+            -e VERIFICATION_TOKEN_SECRET="$(openssl rand -hex 32)" \
+            hedge-fund-tracker:ci
+
+      - name: Wait for HEALTHCHECK
+        run: |
+          for _ in $(seq 1 30); do
+            status=$(docker inspect hft --format '{{.State.Health.Status}}')
+            [ "$status" = healthy ] && break
+            [ "$status" = unhealthy ] && break
+            sleep 3
+          done
+          echo "health=$status"
+          test "$status" = healthy
+          curl --fail --silent --show-error http://127.0.0.1:8000/health
+          curl --fail --silent --show-error --output /dev/null http://127.0.0.1:8000/
+          test "$(docker inspect hft --format '{{.Config.User}}')" = "1001:1001"
+
+      - name: Container logs
+        if: always()
+        run: docker logs hft || true

@@ -28,20 +28,29 @@ if TYPE_CHECKING:
 router = APIRouter(tags=["admin"], dependencies=[Depends(require_local_or_superuser)])
 
 
-@router.post("/api/database/fetch")
-async def database_fetch(request: Request) -> dict[str, bool]:
+async def _json_object(request: Request) -> dict[str, object]:
     """
-    Run the full 13F fetch/report pipeline for all tracked funds.
+    Parse the request body as a JSON object, rejecting anything else with 422.
     """
-    body = await request.json()
-    fetch_type = body.get("type", "all")
-    if fetch_type != "all":
-        raise HTTPException(status_code=422, detail=f"Unknown fetch type: {fetch_type}")
+    try:
+        body = await request.json()
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Request body must be valid JSON") from None
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="Request body must be a JSON object")
+    return body
 
-    from database.updater import run_all_funds_report
 
-    await run_in_threadpool(run_all_funds_report)
-    return {"ok": True}
+def _optional_str(body: dict[str, object], key: str) -> str | None:
+    """
+    Read an optional string field, stripped; null/absent/blank map to None, other types to 422.
+    """
+    value = body.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise HTTPException(status_code=422, detail=f"{key} must be a string")
+    return value.strip() or None
 
 
 @router.post("/api/update-all")
@@ -97,10 +106,10 @@ async def update_ticker_endpoint(request: Request) -> dict[str, str]:
     """
     from app.database import update_ticker
 
-    body = await request.json()
-    old_ticker = _require_ticker(body.get("old_ticker", "").strip())
-    new_ticker = _require_ticker(body.get("new_ticker", "").strip())
-    new_company = body.get("new_company", "").strip() or None
+    body = await _json_object(request)
+    old_ticker = _require_ticker(_optional_str(body, "old_ticker"))
+    new_ticker = _require_ticker(_optional_str(body, "new_ticker"))
+    new_company = _optional_str(body, "new_company")
     await run_in_threadpool(update_ticker, old_ticker, new_ticker, new_company=new_company)
     return {"message": f"Ticker updated: {old_ticker} → {new_ticker}"}
 
@@ -112,10 +121,10 @@ async def update_cusip_ticker_endpoint(request: Request) -> dict[str, str]:
     """
     from app.database import update_ticker_for_cusip
 
-    body = await request.json()
-    cusip = _require_cusip(body.get("cusip", "").strip())
-    new_ticker = _require_ticker(body.get("new_ticker", "").strip())
-    new_company = body.get("new_company", "").strip() or None
+    body = await _json_object(request)
+    cusip = _require_cusip(_optional_str(body, "cusip"))
+    new_ticker = _require_ticker(_optional_str(body, "new_ticker"))
+    new_company = _optional_str(body, "new_company")
     await run_in_threadpool(update_ticker_for_cusip, cusip, new_ticker, new_company=new_company)
     return {"message": f"CUSIP {cusip} ticker updated to {new_ticker}"}
 

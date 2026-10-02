@@ -5,7 +5,7 @@
 
 import { BASE_PATH, IS_GH_PAGES_MODE } from "../config";
 import { parseQuarters, type Quarter } from "../quarters";
-import { cachedFetch, fetchCSV } from "./fetch";
+import { cachedFetch, DataFormatError, fetchCSV, HttpError } from "./fetch";
 import { formatPct, formatValueShort, parseValueString } from "./format";
 import { fundNameToFileName } from "./funds";
 import type { QuarterlyHolding, RawQuarterlyHolding } from "./types";
@@ -54,8 +54,10 @@ export async function getFundAvailableQuarters(fundName: string): Promise<Quarte
         try {
           const fundList = await getQuarterFundList(q);
           return fundList.includes(fileName) ? q : null;
-        } catch {
-          return null;
+        } catch (err) {
+          // Only a missing quarter is "fund absent"; a transient failure must not cache a stale list.
+          if (err instanceof HttpError && err.status === 404) return null;
+          throw err;
         }
       }),
     );
@@ -68,15 +70,19 @@ export async function getQuarterFundList(quarter: string): Promise<string[]> {
     if (IS_GH_PAGES_MODE) {
       // In GH Pages mode, read from bundled manifest.json
       const response = await fetch(`${BASE_PATH}/database/${quarter}/manifest.json`);
-      if (!response.ok) throw new Error(`No data available for ${quarter}`);
+      if (!response.ok) {
+        throw new HttpError(`No data available for ${quarter}`, response.status);
+      }
       const manifest: unknown = await response.json();
       if (!Array.isArray(manifest) || !manifest.every((f) => typeof f === "string")) {
-        throw new Error(`Malformed manifest.json for ${quarter}`);
+        throw new DataFormatError(`Malformed manifest.json for ${quarter}`);
       }
       return manifest;
     }
     const response = await fetch(`${window.location.origin}/api/database/quarters/${quarter}`);
-    if (!response.ok) throw new Error(`Failed to list funds for ${quarter}`);
+    if (!response.ok) {
+      throw new HttpError(`Failed to list funds for ${quarter}`, response.status);
+    }
     const files: string[] = await response.json();
     return files;
   });

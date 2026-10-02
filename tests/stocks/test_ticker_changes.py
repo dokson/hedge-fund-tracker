@@ -130,44 +130,36 @@ class TestCompanyNamesMatch(unittest.TestCase):
     a NASDAQ symbol change whose company is unrelated to the tracked one.
     """
 
-    def test_identical_names_match(self):
+    def test_same_company_matches(self):
         """
-        The exact same name on both sides matches.
+        The exact same name matches, and so does the NASDAQ name with a
+        share-class suffix appended to the tracked base name.
         """
-        self.assertTrue(company_names_match("Co One", "Co One"))
-
-    def test_share_class_suffix_matches(self):
-        """
-        The NASDAQ name with a share-class suffix appended still matches the
-        tracked base name.
-        """
-        self.assertTrue(
-            company_names_match(
+        cases = [
+            ("Co One", "Co One"),
+            (
                 "Northwind Maritime Group Ltd",
                 "Northwind Maritime Group Ltd Class A Ordinary Shares",
-            )
-        )
+            ),
+        ]
+        for tracked, listed in cases:
+            with self.subTest(tracked=tracked, listed=listed):
+                self.assertTrue(company_names_match(tracked, listed))
 
-    def test_unrelated_names_do_not_match(self):
+    def test_unverifiable_or_unrelated_names_do_not_match(self):
         """
-        Two unrelated companies that happened to share a ticker do not match.
+        Unrelated companies sharing a ticker, a single distinctive token plus
+        generic suffixes, and a blank name on either side never match.
         """
-        self.assertFalse(
-            company_names_match("Orbital Rocket Technologies Corp", "Thematic New Issue ETF")
-        )
-
-    def test_generic_token_overlap_does_not_match(self):
-        """
-        Sharing only one distinctive token plus generic suffixes is not enough.
-        """
-        self.assertFalse(company_names_match("Acme Inc", "Acme Hospitality Trust Inc"))
-
-    def test_empty_name_does_not_match(self):
-        """
-        A blank name on either side can never be verified, so it never matches.
-        """
-        self.assertFalse(company_names_match("", "Co One"))
-        self.assertFalse(company_names_match("Co One", ""))
+        cases = [
+            ("Orbital Rocket Technologies Corp", "Thematic New Issue ETF"),
+            ("Acme Inc", "Acme Hospitality Trust Inc"),
+            ("", "Co One"),
+            ("Co One", ""),
+        ]
+        for tracked, listed in cases:
+            with self.subTest(tracked=tracked, listed=listed):
+                self.assertFalse(company_names_match(tracked, listed))
 
 
 @patch(f"{_MODULE}.OpenFIGI")

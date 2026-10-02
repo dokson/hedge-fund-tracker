@@ -7,6 +7,7 @@ import CompositionPanel from "@/components/CompositionPanel";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { QueryState } from "@/components/ui/QueryState";
 import { TableFrame } from "@/components/ui/TableFrame";
 import { PanelTitle } from "@/components/ui/PanelTitle";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
@@ -145,7 +146,7 @@ export default function StrategyPerformance() {
     canonical: canonicalUrl(ROUTES.strategyPerformance),
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["performance"],
     queryFn: getPerformance,
     staleTime: 10 * 60 * 1000,
@@ -197,7 +198,9 @@ export default function StrategyPerformance() {
         </p>
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <QueryState isError error={error} title="Could not load performance data" />
+      ) : isLoading ? (
         <LoadingState message="Loading performance…" />
       ) : series.length === 0 ? (
         <EmptyState

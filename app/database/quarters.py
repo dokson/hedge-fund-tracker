@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 
 import app.database as _db
+from app.database.locks import file_lock
 from app.patterns import QUARTER_RE
 from app.utils.logger import get_logger, log_safe
 from app.utils.strings import get_quarter
@@ -32,8 +33,12 @@ __all__ = [
     "load_hedge_funds",
     "load_non_quarterly_data",
     "load_quarterly_data",
+    "non_quarterly_path",
+    "nq_position_key",
+    "read_non_quarterly_rows",
     "save_comparison",
     "save_non_quarterly_filings",
+    "write_non_quarterly_filings",
 ]
 
 
@@ -234,18 +239,50 @@ def load_hedge_funds(filepath: str | None = None) -> list:
         return []
 
 
-def load_non_quarterly_data(filepath: str | None = None) -> pd.DataFrame:
+def nq_position_key(df: pd.DataFrame) -> pd.Series:
     """
-    Loads the latest non-quarterly (13D/G and 4) filings from the CSV file.
+    Returns the identity of each non-quarterly row's position: its ticker when
+    resolved, else its CUSIP, else a key unique to the row, so unresolved rows
+    never collapse into one another on an empty ticker.
+    """
+    ticker = df["Ticker"].fillna("").astype(str).str.strip()
+    cusip = df["CUSIP"].fillna("").astype(str).str.strip()
+    row_key = pd.Series("ROW:" + df.index.astype(str), index=df.index)
+    return ("TICKER:" + ticker).where(ticker != "", ("CUSIP:" + cusip).where(cusip != "", row_key))
+
+
+def non_quarterly_path() -> str:
+    """
+    Returns the path of the non-quarterly filings CSV in the current database folder.
+    """
+    return str(Path(_db.DB_FOLDER) / _db.LATEST_SCHEDULE_FILINGS_FILE)
+
+
+def read_non_quarterly_rows(filepath: str) -> pd.DataFrame:
+    """
+    Reads every saved non-quarterly row. A missing file is empty; any other read
+    failure raises, so callers can tell "nothing saved" from "could not read".
+    """
+    if not Path(filepath).exists():
+        return pd.DataFrame()
+    return pd.read_csv(filepath, dtype={"Fund": str, "CUSIP": str}, keep_default_na=False)
+
+
+def load_non_quarterly_data(filepath: str | None = None, latest_only: bool = True) -> pd.DataFrame:
+    """
+    Loads the non-quarterly (13D/G and 4) filings from the CSV file.
+
+    With latest_only (the default) only the most recent row of each fund's
+    position is kept (see nq_position_key); otherwise every saved row is returned.
     """
     if filepath is None:
-        filepath = str(Path(_db.DB_FOLDER) / _db.LATEST_SCHEDULE_FILINGS_FILE)
+        filepath = non_quarterly_path()
     try:
         df = pd.read_csv(filepath, dtype={"Fund": str, "CUSIP": str}, keep_default_na=False)
-        # Keep only the most recent entry for each Ticker for each Fund
-        return df.sort_values(by=["Date", "Filing_Date"], ascending=False).drop_duplicates(
-            subset=["Fund", "Ticker"], keep="first"
-        )
+        if not latest_only:
+            return df
+        df = df.sort_values(by=["Date", "Filing_Date"], ascending=False)
+        return df[~df.assign(_Key=nq_position_key(df)).duplicated(subset=["Fund", "_Key"])]
     except Exception:
         logger.error("while reading schedule filings from '%s'", filepath, exc_info=True)
         return pd.DataFrame()
@@ -266,7 +303,7 @@ def load_quarterly_data(quarter: str) -> pd.DataFrame:
     for file_path in get_all_quarter_files(quarter):
         try:
             fund_df = pd.read_csv(file_path)
-        except (OSError, pd.errors.ParserError, pd.errors.EmptyDataError):
+        except OSError, pd.errors.ParserError, pd.errors.EmptyDataError:
             # One malformed/locked fund file shouldn't abort the whole quarter.
             logger.error("while reading quarterly file '%s'", file_path, exc_info=True)
             continue
@@ -299,7 +336,8 @@ def save_comparison(comparison_dataframe: pd.DataFrame, date: str, fund_name: st
         from app.utils.pd import atomic_to_csv, escape_csv_text_columns
 
         filename = _db._safe_db_join(quarter_name, f"{fund_name.replace(' ', '_')}.csv")
-        atomic_to_csv(escape_csv_text_columns(comparison_dataframe), filename, index=False)
+        with file_lock(filename):
+            atomic_to_csv(escape_csv_text_columns(comparison_dataframe), filename, index=False)
         logger.success("Created %s", filename)
     except Exception:
         logger.error(
@@ -309,32 +347,43 @@ def save_comparison(comparison_dataframe: pd.DataFrame, date: str, fund_name: st
         )
 
 
+def write_non_quarterly_filings(schedule_filings: list, filepath: str) -> None:
+    """
+    Combines the schedule filing DataFrames and atomically rewrites ``filepath``.
+
+    Takes no lock and raises on failure: the caller must hold ``file_lock(filepath)``
+    (the per-path thread lock is not reentrant, so this is the writer to nest under it).
+    """
+    if not schedule_filings:
+        logger.info("No schedule filings found to process.")
+        return
+
+    from app.utils.pd import atomic_to_csv, escape_csv_text_columns
+
+    combined_schedules_df = pd.concat(schedule_filings, ignore_index=True)
+    combined_schedules_df.sort_values(
+        by=["Date", "Filing_Date", "Fund", "Ticker"],
+        ascending=[False, False, True, True],
+        inplace=True,
+    )
+    atomic_to_csv(
+        escape_csv_text_columns(combined_schedules_df),
+        filepath,
+        index=False,
+        quoting=csv.QUOTE_ALL,
+    )
+    logger.success("Latest schedule filings saved to %s", filepath)
+
+
 def save_non_quarterly_filings(schedule_filings: list, filepath: str | None = None) -> None:
     """
     Combines the list of schedule filing DataFrames and saves them to a single CSV file.
     """
     if filepath is None:
-        filepath = str(Path(_db.DB_FOLDER) / _db.LATEST_SCHEDULE_FILINGS_FILE)
-    if not schedule_filings:
-        logger.info("No schedule filings found to process.")
-        return
-
+        filepath = non_quarterly_path()
     try:
-        from app.utils.pd import atomic_to_csv, escape_csv_text_columns
-
-        combined_schedules_df = pd.concat(schedule_filings, ignore_index=True)
-        combined_schedules_df.sort_values(
-            by=["Date", "Filing_Date", "Fund", "Ticker"],
-            ascending=[False, False, True, True],
-            inplace=True,
-        )
-        atomic_to_csv(
-            escape_csv_text_columns(combined_schedules_df),
-            filepath,
-            index=False,
-            quoting=csv.QUOTE_ALL,
-        )
-        logger.success("Latest schedule filings saved to %s", filepath)
+        with file_lock(filepath):
+            write_non_quarterly_filings(schedule_filings, filepath)
     except Exception:
         logger.error(
             "An error occurred while saving latest schedule filings to '%s'",

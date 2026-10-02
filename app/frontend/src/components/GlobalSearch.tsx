@@ -208,7 +208,7 @@ export default function GlobalSearch({
 
   return (
     <div ref={containerRef} className="relative w-full max-w-md">
-      <div className="relative flex items-center h-9 rounded-md border border-input bg-background transition-colors duration-[120ms] focus-within:border-primary">
+      <div className="relative flex items-center h-9 rounded-lg border border-transparent bg-muted transition-colors duration-[120ms] hover:border-border focus-within:border-primary focus-within:bg-background focus-within:ring-2 focus-within:ring-ring/20">
         <Search aria-hidden="true" className="ml-2.5 mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
         <input
           ref={inputRef}
@@ -233,7 +233,7 @@ export default function GlobalSearch({
           // index.css, leaving a 1px border tint as the only indicator.
           className="w-full h-full bg-transparent pr-16 text-[13px] text-foreground placeholder:text-muted-foreground"
         />
-        <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 rounded-sm border border-border px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground">
+        <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-border bg-background px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground">
           {IS_MAC ? "⌘K" : "Ctrl K"}
         </kbd>
       </div>
@@ -251,7 +251,7 @@ export default function GlobalSearch({
         role="listbox"
         aria-label="Search results"
         hidden={!expanded}
-        className="absolute left-0 right-0 mt-1 max-h-96 overflow-auto rounded-md border border-border bg-popover shadow-md z-50 text-[13px]"
+        className="absolute left-0 right-0 mt-2 max-h-96 overflow-auto rounded-xl border border-border bg-popover p-1 shadow-lg z-50 text-[13px]"
       >
         {expanded && isLoading && (
           <li className="flex items-center gap-2 px-3 py-3 text-muted-foreground">
@@ -372,7 +372,7 @@ function Row({
         event.preventDefault();
         onClick();
       }}
-      className={`flex items-center gap-3 px-3 py-1.5 cursor-pointer ${
+      className={`flex items-center gap-3 rounded-lg px-3 py-1.5 cursor-pointer ${
         active ? "bg-muted text-foreground" : ""
       }`}
     >

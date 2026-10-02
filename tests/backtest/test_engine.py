@@ -87,6 +87,13 @@ def _price(ticker: str, day: date) -> float | None:
     return PRICES.get((ticker, day.isoformat()))
 
 
+def _no_bar(_ticker: str, _start: date, _end: date) -> float | None:
+    """
+    Offline range lookup that never finds a bar.
+    """
+    return None
+
+
 def _analysis_fn(quarter: str) -> pd.DataFrame:
     """
     Return the canned analysis frame for a quarter.
@@ -100,6 +107,8 @@ def _run(as_of: date, strategy_ids=("avg_portfolio",)):
     """
     return run_backtest(
         price_fn=_price,
+        last_price_fn=_no_bar,
+        filing_price_fn=lambda _quarter: {},
         as_of=as_of,
         analysis_fn=_analysis_fn,
         quarters=["2025Q1", "2025Q2", "2025Q3"],
@@ -208,6 +217,62 @@ class TestRunBacktest(unittest.TestCase):
         rows = _run(date(2025, 9, 1), strategy_ids=("avg_portfolio", "big_bets"))
         strat_ids = {r["series_id"] for r in rows if r["series_type"] == "strategy"}
         self.assertEqual(strat_ids, {"avg_portfolio", "big_bets"})
+
+    def test_skipped_window_resets_turnover_baseline(self):
+        """
+        After a window with no buyable names (no entry prices), re-entering is a
+        full rebuy (turnover 1.0), never compared against a screen two windows back.
+        """
+        row = {"Holder_Count": 20, "Avg_Portfolio_Pct": 5.0, "Max_Portfolio_Pct": 30.0}
+        analysis = {
+            **ANALYSIS,
+            "2025Q3": _analysis([{"Ticker": "EEE", **row}, {"Ticker": "FFF", **row}]),
+        }
+        prices = {
+            **{k: v for k, v in PRICES.items() if k[0] == "SPY" or k[1] != "2025-08-14"},
+            ("EEE", "2025-11-14"): 100.0,
+            ("FFF", "2025-11-14"): 100.0,
+            ("EEE", "2026-02-14"): 110.0,
+            ("FFF", "2026-02-14"): 110.0,
+            ("SPY", "2026-02-14"): 450.0,
+        }
+
+        rows = run_backtest(
+            price_fn=lambda ticker, day: prices.get((ticker, day.isoformat())),
+            last_price_fn=_no_bar,
+            filing_price_fn=lambda _quarter: {},
+            as_of=date(2026, 3, 1),
+            analysis_fn=lambda q: analysis[q],
+            quarters=["2025Q1", "2025Q2", "2025Q3", "2025Q4"],
+            strategies=[strategy_by_id("avg_portfolio")],
+            benchmarks=[Benchmark("SPY", "S&P 500")],
+            fund_count_fn=lambda _q: 150,
+        )
+
+        strat = {r["quarter_in"]: r for r in rows if r["series_type"] == "strategy"}
+        self.assertIn("2025Q1", strat)
+        self.assertNotIn("2025Q2", strat)
+        self.assertEqual(strat["2025Q1"]["turnover"], 0.0)
+        self.assertEqual(strat["2025Q3"]["turnover"], 1.0)
+
+    def test_delisted_name_uses_the_injected_range_lookup(self):
+        """
+        A holding without an exit price is valued at the injected last-bar lookup.
+        """
+        prices = {k: v for k, v in PRICES.items() if k != ("BBB", "2025-08-14")}
+        rows = run_backtest(
+            price_fn=lambda ticker, day: prices.get((ticker, day.isoformat())),
+            last_price_fn=lambda ticker, _s, _e: 25.0 if ticker == "BBB" else None,
+            filing_price_fn=lambda _quarter: {},
+            as_of=date(2025, 9, 1),
+            analysis_fn=_analysis_fn,
+            quarters=["2025Q1", "2025Q2"],
+            strategies=[strategy_by_id("avg_portfolio")],
+            benchmarks=[Benchmark("SPY", "S&P 500")],
+            fund_count_fn=lambda _q: 150,
+        )
+        strat = next(r for r in rows if r["series_type"] == "strategy")
+        self.assertAlmostEqual(strat["window_return"], (10 / 15) * 0.20 + (5 / 15) * -0.50)
 
 
 if __name__ == "__main__":

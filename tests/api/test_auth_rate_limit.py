@@ -110,27 +110,21 @@ class TestAuthRoutersAreThrottled(unittest.TestCase):
         for _ in range(AUTH_RATE_LIMIT.amount):
             _hit(_TEST_CLIENT_IP)
 
-    def test_login_is_throttled(self):
-        """Password guessing shares the bucket."""
-        response = client.post(
-            "/auth/cookie-db/login", data={"username": "a@b.co", "password": "x"}
+    def test_credential_routes_are_throttled(self):
+        """
+        Password guessing, mass registration, mail bombing and verification
+        resends all share the exhausted bucket.
+        """
+        login = {"username": "a@b.co", "password": "x"}
+        requests: tuple[tuple[str, dict | None, dict | None], ...] = (
+            ("/auth/cookie-db/login", login, None),
+            ("/auth/register", None, {"email": "a@b.co", "password": "x"}),
+            ("/auth/forgot-password", None, {"email": "victim@example.com"}),
+            ("/auth/request-verify-token", None, {"email": "a@b.co"}),
         )
-        self.assertEqual(response.status_code, 429)
-
-    def test_register_is_throttled(self):
-        """Mass account creation shares the bucket."""
-        response = client.post("/auth/register", json={"email": "a@b.co", "password": "x"})
-        self.assertEqual(response.status_code, 429)
-
-    def test_forgot_password_is_throttled(self):
-        """Mail bombing a third party shares the bucket."""
-        response = client.post("/auth/forgot-password", json={"email": "victim@example.com"})
-        self.assertEqual(response.status_code, 429)
-
-    def test_request_verify_token_is_throttled(self):
-        """The verification resend shares the bucket."""
-        response = client.post("/auth/request-verify-token", json={"email": "a@b.co"})
-        self.assertEqual(response.status_code, 429)
+        for path, form, body in requests:
+            with self.subTest(path=path):
+                self.assertEqual(client.post(path, data=form, json=body).status_code, 429)
 
     def test_unrelated_endpoints_keep_the_default_allowance(self):
         """

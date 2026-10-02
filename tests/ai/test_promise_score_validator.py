@@ -3,24 +3,6 @@ import unittest
 from app.ai.promise_score_validator import PromiseScoreValidator, normalize_weights
 
 
-class TestPromiseScoreValidatorInit(unittest.TestCase):
-    def test_stores_default_top_n_stocks(self):
-        """
-        Stores 30 as the default value for top_n_stocks.
-        """
-        validator = PromiseScoreValidator()
-
-        self.assertEqual(validator.top_n_stocks, 30)
-
-    def test_stores_custom_top_n_stocks(self):
-        """
-        Stores the provided top_n_stocks value when given explicitly.
-        """
-        validator = PromiseScoreValidator(top_n_stocks=10)
-
-        self.assertEqual(validator.top_n_stocks, 10)
-
-
 class TestValidateWeightValues(unittest.TestCase):
     def test_accepts_finite_non_zero_weights_with_a_positive_one(self):
         """
@@ -81,19 +63,13 @@ class TestNormalizeWeights(unittest.TestCase):
         self.assertAlmostEqual(result["C"], -0.2)
         self.assertAlmostEqual(sum(abs(v) for v in result.values()), 1.0)
 
-    def test_raises_when_all_weights_are_zero(self):
+    def test_raises_when_there_is_nothing_to_normalize_by(self):
         """
-        There is nothing to normalize by.
+        All-zero and empty mappings both have a zero absolute sum.
         """
-        with self.assertRaises(ValueError):
-            normalize_weights({"A": 0.0, "B": 0.0})
-
-    def test_raises_on_empty_weights(self):
-        """
-        An empty mapping has a zero absolute sum.
-        """
-        with self.assertRaises(ValueError):
-            normalize_weights({})
+        for weights in ({"A": 0.0, "B": 0.0}, {}):
+            with self.subTest(weights=weights), self.assertRaises(ValueError):
+                normalize_weights(weights)
 
 
 class TestPromiseScoreValidatorValidateWeightSigns(unittest.TestCase):
@@ -110,14 +86,16 @@ class TestPromiseScoreValidatorValidateWeightSigns(unittest.TestCase):
 
     def test_flags_positive_weight_on_selling_metric(self):
         """
-        A positive Seller_Count weight would reward institutional selling:
-        it must be reported as an offender.
+        A positive Seller_Count or Close_Count weight would reward institutional
+        selling: it must be reported as an offender.
         """
-        weights = {"Seller_Count": 0.6, "Holder_Count": 0.4}
+        for metric in ("Seller_Count", "Close_Count"):
+            with self.subTest(metric=metric):
+                result = PromiseScoreValidator.validate_weight_signs(
+                    {metric: 0.6, "Holder_Count": 0.4}
+                )
 
-        result = PromiseScoreValidator.validate_weight_signs(weights)
-
-        self.assertEqual(result, ["Seller_Count"])
+                self.assertEqual(result, [metric])
 
     def test_flags_negative_weight_on_positive_metric(self):
         """
@@ -130,28 +108,8 @@ class TestPromiseScoreValidatorValidateWeightSigns(unittest.TestCase):
 
         self.assertEqual(result, ["High_Conviction_Count"])
 
-    def test_flags_positive_close_count(self):
-        """
-        Close_Count is the other must-be-negative metric from the prompt.
-        """
-        weights = {"Close_Count": 0.2, "Holder_Count": 0.8}
-
-        result = PromiseScoreValidator.validate_weight_signs(weights)
-
-        self.assertEqual(result, ["Close_Count"])
-
 
 class TestPromiseScoreValidatorValidateMetrics(unittest.TestCase):
-    def test_returns_empty_list_when_all_metrics_are_valid(self):
-        """
-        Returns an empty list when every metric is in AVAILABLE_METRICS.
-        """
-        metrics = ["Total_Value", "Delta", "Buyer_Count"]
-
-        result = PromiseScoreValidator.validate_metrics(metrics)
-
-        self.assertEqual(result, [])
-
     def test_returns_invalid_metrics(self):
         """
         Returns a list containing only the unrecognized metric names.

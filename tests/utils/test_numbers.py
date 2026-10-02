@@ -4,14 +4,13 @@ from app.utils.numbers import snap_to_simple_ratio
 
 
 class TestSnapToSimpleRatio(unittest.TestCase):
-    def test_snaps_a_near_integer_upwards(self):
-        self.assertEqual(snap_to_simple_ratio(4.98), 5.0)
-
-    def test_snaps_a_near_integer_downwards(self):
-        self.assertEqual(snap_to_simple_ratio(3.0005), 3.0)
-
-    def test_snaps_a_reciprocal(self):
-        self.assertEqual(snap_to_simple_ratio(0.1998), 0.2)
+    def test_snaps_values_near_a_simple_ratio(self):
+        """
+        Near-integers (from either side) and near-reciprocals snap to the ratio.
+        """
+        for value, expected in ((4.98, 5.0), (3.0005, 3.0), (0.1998, 0.2)):
+            with self.subTest(value=value):
+                self.assertEqual(snap_to_simple_ratio(value), expected)
 
     def test_prefers_the_smallest_denominator(self):
         self.assertEqual(snap_to_simple_ratio(1.4999), 1.5)

@@ -1,9 +1,5 @@
 {
-  "include": [
-    "app",
-    "database",
-    "tests"
-  ],
+  "include": ["app", "database", "tests"],
   "exclude": [
     "**/__llmcache__",
     "**/__reports__",
@@ -24,9 +20,7 @@
   "executionEnvironments": [
     {
       "root": "tests",
-      "extraPaths": [
-        "."
-      ],
+      "extraPaths": ["."],
       "reportOptionalSubscript": "none",
       "reportOptionalMemberAccess": "none"
     }

@@ -1,8 +1,9 @@
 import type { Config } from "tailwindcss";
 
-// One family everywhere, the system sans. `mono` and `display` are
-// compatibility aliases so existing call sites resolve to it without a rename.
+// One family everywhere: Inter, then the system sans. `mono` and `display`
+// are compatibility aliases so existing call sites resolve to it without a rename.
 const SANS = [
+  '"Inter Variable"',
   "-apple-system",
   "BlinkMacSystemFont",
   '"Segoe UI"',
@@ -97,27 +98,27 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
-      // Terminal radii: 4px is the panel, 2px the tag, 6px the widest a
-      // surface goes. Nothing here is pill-shaped.
+      // Soft radii: 6px controls, 8px panels, 12px the hero cards. Chips and
+      // pills use `full`.
       borderRadius: {
         none: "0",
-        sm: "2px",
-        DEFAULT: "4px",
-        md: "4px",
-        lg: "6px",
-        xl: "6px",
-        "2xl": "6px",
-        "3xl": "6px",
+        sm: "4px",
+        DEFAULT: "6px",
+        md: "6px",
+        lg: "8px",
+        xl: "12px",
+        "2xl": "16px",
+        "3xl": "20px",
         full: "9999px",
       },
-      // Only floating surfaces cast anything; panels are separated by hairlines.
+      // Panels sit on a faint lift; floating surfaces get a soft, wide shadow.
       boxShadow: {
-        sm: "none",
-        DEFAULT: "none",
-        md: "0 2px 8px rgb(0 0 0 / 0.35)",
-        lg: "0 2px 8px rgb(0 0 0 / 0.35)",
-        xl: "0 2px 8px rgb(0 0 0 / 0.35)",
-        "2xl": "0 2px 8px rgb(0 0 0 / 0.35)",
+        sm: "0 1px 2px rgb(0 0 0 / 0.04)",
+        DEFAULT: "0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04)",
+        md: "0 4px 12px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06)",
+        lg: "0 12px 32px rgb(0 0 0 / 0.12), 0 2px 6px rgb(0 0 0 / 0.06)",
+        xl: "0 20px 48px rgb(0 0 0 / 0.16), 0 4px 12px rgb(0 0 0 / 0.08)",
+        "2xl": "0 24px 64px rgb(0 0 0 / 0.2)",
       },
       keyframes: {
         "accordion-down": {

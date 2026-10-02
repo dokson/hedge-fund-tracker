@@ -20,6 +20,7 @@ from app.ai.response_parser import ResponseParser
 from app.analysis.performance_evaluator import PerformanceEvaluator
 from app.analysis.price_scores import NEUTRAL_SCORE, compute_price_scores
 from app.analysis.stocks import quarter_analysis, stock_analysis
+from app.database import load_stocks
 from app.stocks.libraries import YFinance
 from app.stocks.price_fetcher import PriceFetcher
 from app.utils.logger import get_logger, log_safe
@@ -34,6 +35,9 @@ class AnalystAgent:
     """
 
     def __init__(self, quarter: str, ai_client: AIClient | None = None):
+        """
+        Load the quarter's analysis frame and bind the AI client used for every request.
+        """
         self.quarter = quarter
         self.ai_client = ai_client
         self.filing_date = get_quarter_date(quarter)
@@ -232,7 +236,7 @@ class AnalystAgent:
     )
     def _get_ai_scores(self, stocks_context: list[dict]) -> dict:
         """
-        Uses the LLM to classify each stock's industry and score its fundamental risk.
+        Uses the LLM to score each stock's fundamental risk.
         Retries with tenacity if the response is invalid.
         """
         assert self.ai_client is not None, "AnalystAgent requires an AIClient"
@@ -268,20 +272,21 @@ class AnalystAgent:
     def _compute_autonomous_scores(self, tickers: list[str]) -> dict:
         """
         Compute the non-LLM half of the scored list: fetch programmatic data
-        (YFinance industry/price) and derive the growth score per ticker.
+        (industry from stocks.csv, else YFinance; prices) and derive the growth score per ticker.
         """
         logger.progress(
             "Fetching programmatic data for %d tickers from YFinance...", len(tickers), emoji="🔍"
         )
         stocks_info = YFinance.get_stocks_info(tickers)
+        stocks = load_stocks()
+        classified = stocks[stocks["Industry"] != ""].drop_duplicates("Ticker")
+        industry_by_ticker = dict(zip(classified["Ticker"], classified["Industry"], strict=True))
 
         autonomous_scores = {}
         for ticker in tickers:
             info = stocks_info.get(ticker, {})
             current_price = info.get("price")
-            # The prompt asks the LLM to refine this into a Yahoo Finance industry,
-            # so hand it the industry when YFinance has one and the sector otherwise.
-            industry = info.get("industry") or info.get("sector")
+            industry = industry_by_ticker.get(ticker) or info.get("industry") or info.get("sector")
             filing_price: float | None = None
             pct_change: float | None = None
             growth_score: float | None = None
@@ -348,9 +353,10 @@ class AnalystAgent:
             return suggestions_df
 
         suggestions_df = suggestions_df.copy()
+        # A YFRateLimitError propagates: an empty ranking would look like a successful run.
         autonomous_scores = self._compute_autonomous_scores(tickers)
 
-        # The LLM overwrites Industry/Risk below; if it fails these seeded defaults remain.
+        # The LLM overwrites Risk below; if it fails the seeded default remains.
         suggestions_df["Industry"] = suggestions_df["Ticker"].map(
             lambda t: autonomous_scores.get(t, {}).get("Industry", "N/A")
         )
@@ -371,12 +377,6 @@ class AnalystAgent:
             logger.error("Failed to get valid AI scores after multiple attempts", exc_info=True)
             return suggestions_df
 
-        suggestions_df["Industry"] = suggestions_df["Ticker"].map(
-            lambda t: (
-                ai_scores_data.get(t, {}).get("industry")
-                or autonomous_scores.get(t, {}).get("Industry", "N/A")
-            )
-        )
         suggestions_df["Risk_Score"] = suggestions_df["Ticker"].map(
             lambda t: ai_scores_data.get(t, {}).get("risk_score", 0)
         )

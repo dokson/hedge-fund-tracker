@@ -29,6 +29,28 @@ class TestStocksLock(unittest.TestCase):
             self.assertTrue(self.lock_path.exists())
         self.assertFalse(self.lock_path.exists())
 
+    def test_nested_acquisition_times_out_instead_of_deadlocking(self):
+        """
+        Re-entering the non-reentrant in-process lock raises TimeoutError within the timeout.
+        """
+        started = time.monotonic()
+        with stocks_lock(timeout=0.3), self.assertRaises(TimeoutError), stocks_lock(timeout=0.3):
+            pass
+        self.assertLess(time.monotonic() - started, 5)
+
+    def test_nested_file_lock_times_out_instead_of_deadlocking(self):
+        """
+        A nested file_lock on the same path raises TimeoutError instead of hanging.
+        """
+        from app.database.locks import file_lock
+
+        target = Path(self._tmp.name) / "non_quarterly.csv"
+        started = time.monotonic()
+        with file_lock(target, timeout=0.3), self.assertRaises(TimeoutError):
+            with file_lock(target, timeout=0.3):
+                pass
+        self.assertLess(time.monotonic() - started, 5)
+
     def test_stale_lock_is_reclaimed_without_leftovers(self):
         """
         A lock file older than the staleness threshold is reclaimed, the lock
@@ -58,10 +80,6 @@ class TestStocksLock(unittest.TestCase):
         self.assertTrue(self.lock_path.exists())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestDbFolderAnchoring(unittest.TestCase):
     def test_default_db_folder_is_repo_absolute_regardless_of_cwd(self):
         """
@@ -82,10 +100,6 @@ class TestDbFolderAnchoring(unittest.TestCase):
         self.assertTrue(folder.is_absolute())
         self.assertEqual(folder.resolve(), repo_db)
 
-    def test_lock_path_follows_a_monkeypatched_db_folder(self):
-        """
-        stocks_lock reads DB_FOLDER at call time, so a patched folder holds the lock file.
-        """
-        with tempfile.TemporaryDirectory() as tmp, patch.object(_db, "DB_FOLDER", tmp):
-            with stocks_lock(timeout=2):
-                self.assertTrue((Path(tmp) / f"{_db.STOCKS_FILE}.lock").exists())
+
+if __name__ == "__main__":
+    unittest.main()

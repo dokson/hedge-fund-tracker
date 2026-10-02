@@ -16,6 +16,7 @@ from app.api.common import _df_to_json_safe_records, _require_quarter
 from app.api.paths import DATABASE_DIR, _safe_db_path
 from app.auth.dependencies import require_local_or_superuser
 from app.database import STOCKS_FILE
+from app.database.locks import file_lock
 from app.database.stocks import stocks_lock
 from app.patterns import QUARTER_RE
 from app.utils.pd import atomic_write_text
@@ -28,7 +29,8 @@ _MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
 @router.get("/database/{filepath:path}")
 def get_database_file(filepath: str) -> Response:
-    """Serve a raw CSV/JSON file from the database directory.
+    """
+    Serve a raw CSV/JSON file from the database directory.
 
     Args:
         filepath: Path relative to the database root.
@@ -40,7 +42,7 @@ def get_database_file(filepath: str) -> Response:
         HTTPException: 400 on unsafe path, 404 if the file is missing.
     """
     file_path = _safe_db_path(filepath)
-    if not file_path.exists():
+    if not file_path.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {filepath}")
     content = file_path.read_text(encoding="utf-8")
     media_type = "text/csv" if filepath.endswith(".csv") else "application/json"
@@ -52,7 +54,8 @@ def get_database_file(filepath: str) -> Response:
     dependencies=[Depends(require_local_or_superuser)],
 )
 async def put_database_file(filepath: str, request: Request) -> dict[str, bool]:
-    """Overwrite a database file with the raw request body.
+    """
+    Overwrite a database file with the raw request body.
 
     Args:
         filepath: Path relative to the database root.
@@ -62,9 +65,12 @@ async def put_database_file(filepath: str, request: Request) -> dict[str, bool]:
         ``{"ok": True}`` on success.
 
     Raises:
-        HTTPException: 400 on unsafe path, oversized body, or non-UTF-8 content.
+        HTTPException: 400 on unsafe path, directory target, or non-UTF-8 content;
+            413 on oversized body.
     """
     file_path = _safe_db_path(filepath)
+    if file_path.is_dir():
+        raise HTTPException(status_code=400, detail="Path is a directory")
 
     # Reject oversized uploads via Content-Length *before* buffering the body into
     # memory; the post-read check is the fallback for missing/chunked length headers.
@@ -81,12 +87,16 @@ async def put_database_file(filepath: str, request: Request) -> dict[str, bool]:
         raise HTTPException(status_code=400, detail="Body must be valid UTF-8") from exc
 
     def _write() -> None:
+        """
+        Write the body atomically under the file's lock (the stocks lock for stocks.csv).
+        """
         file_path.parent.mkdir(parents=True, exist_ok=True)
         if file_path == DATABASE_DIR.resolve() / STOCKS_FILE:
             with stocks_lock():
                 atomic_write_text(file_path, text)
         else:
-            atomic_write_text(file_path, text)
+            with file_lock(file_path):
+                atomic_write_text(file_path, text)
 
     await run_in_threadpool(_write)
     return {"ok": True}
@@ -104,7 +114,8 @@ def list_quarters() -> list[str]:
 
 @router.get("/api/database/quarters/latest")
 def latest_quarter() -> dict[str, str | None]:
-    """Return the most recent quarter present, or ``{"quarter": None}`` if empty.
+    """
+    Return the most recent quarter present, or ``{"quarter": None}`` if empty.
 
     Centralizes "latest quarter" resolution on the backend so the frontend
     doesn't have to sort the list itself.
@@ -119,7 +130,8 @@ def latest_quarter() -> dict[str, str | None]:
 
 @router.get("/api/database/quarters/{quarter}")
 def list_quarter_funds(quarter: str) -> list[str]:
-    """List the fund file stems present in a given quarter.
+    """
+    List the fund file stems present in a given quarter.
 
     Args:
         quarter: Quarter string in YYYYQ[1-4] format.
@@ -139,7 +151,8 @@ def list_quarter_funds(quarter: str) -> list[str]:
 
 @router.get("/api/database/quarters/{quarter}/analysis")
 def quarter_analysis_endpoint(quarter: str) -> list[dict[str, object]]:
-    """Return the per-ticker aggregated quarter analysis.
+    """
+    Return the per-ticker aggregated quarter analysis.
 
     Replaces the per-fund CSV fan-out previously done client-side: the frontend
     gets a pre-aggregated leaderboard in a single request instead of fetching
@@ -168,7 +181,8 @@ def quarter_analysis_endpoint(quarter: str) -> list[dict[str, object]]:
 
 @router.get("/api/stocks/{ticker}/history")
 def stock_price_history(ticker: str, range: str = "5y") -> dict[str, object]:
-    """Return monthly close prices for a ticker over the requested range.
+    """
+    Return monthly close prices for a ticker over the requested range.
 
     Args:
         ticker: Stock ticker (validated/normalised to alphanumeric + ``.-``).

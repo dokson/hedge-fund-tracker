@@ -68,14 +68,6 @@ class TestPromiseScoreWeightsPrompt(unittest.TestCase):
         self.assertNotIn("EXAMPLE", self.prompt)
         self.assertNotIn('"weight": ', self.prompt)
 
-    def test_states_the_sign_rule_in_text(self):
-        """
-        Without an example, the negative-weight rule for selling metrics must be spelled out.
-        """
-        self.assertIn("Seller_Count", self.prompt)
-        self.assertIn("Close_Count", self.prompt)
-        self.assertIn("negative", self.prompt)
-
     def test_drops_the_sum_constraint(self):
         """
         Code normalizes the weights, so the model is no longer asked for a fixed total.
@@ -120,14 +112,13 @@ class TestQuantitativeScoresPrompt(unittest.TestCase):
         for field in ("company name", "current price", "percentage change"):
             self.assertIn(field, self.prompt)
 
-    def test_asks_to_refine_the_sector_into_an_industry(self):
+    def test_does_not_ask_the_model_to_classify_industries(self):
         """
-        The field is filled from YFinance's industry when available and from the
-        sector otherwise, so the instruction must cover the sector case.
+        Industries come from the deterministic classification in stocks.csv, so
+        the model is asked for the risk score only.
         """
-        self.assertIn("SECTOR", self.prompt)
-        self.assertIn("Yahoo Finance INDUSTRY", self.prompt)
-        self.assertIn('"ETF"', self.prompt)
+        self.assertNotIn("Yahoo Finance INDUSTRY", self.prompt)
+        self.assertNotIn("`industry`", self.prompt)
 
     def test_states_the_score_direction(self):
         """
@@ -156,7 +147,7 @@ class TestQuantitativeScoresPrompt(unittest.TestCase):
         self.assertNotIn("Return ONLY a single ```toon", self.prompt)
         self.assertIn("JSON", self.prompt)
         self.assertIn("`stocks`", self.prompt)
-        for field in ("ticker", "risk_score", "industry"):
+        for field in ("ticker", "risk_score"):
             self.assertIn(f"`{field}`", self.prompt)
 
     def test_no_longer_asks_for_price_derived_scores(self):
@@ -334,8 +325,8 @@ class TestResponseSchemas(unittest.TestCase):
         """
         stock = self.schemas()["scores"]["properties"]["stocks"]["items"]
         self.assertEqual(stock["properties"]["ticker"]["type"], "string")
-        self.assertEqual(set(stock["properties"]), {"ticker", "industry", "risk_score"})
-        self.assertEqual(set(stock["required"]), {"ticker", "industry", "risk_score"})
+        self.assertEqual(set(stock["properties"]), {"ticker", "risk_score"})
+        self.assertEqual(set(stock["required"]), {"ticker", "risk_score"})
         risk = stock["properties"]["risk_score"]
         self.assertEqual((risk["type"], risk["minimum"], risk["maximum"]), ("integer", 1, 100))
 

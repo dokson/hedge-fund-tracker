@@ -1,9 +1,19 @@
 import asyncio
+import io
 import queue
 import time
 import unittest
 
-from app.api.sse import _make_sse_stream, _queue_get_with_timeout
+from tenacity import retry, stop_after_attempt
+
+from app.api.sse import (
+    _ContextAwareStdout,
+    _make_sse_stream,
+    _queue_get_with_timeout,
+    _request_log_q,
+    _run_sse_target,
+)
+from app.utils.logger import request_id_var
 
 
 class TestQueueGetWithTimeout(unittest.TestCase):
@@ -24,6 +34,28 @@ class TestQueueGetWithTimeout(unittest.TestCase):
         started = time.monotonic()
         self.assertIsNone(_queue_get_with_timeout(q))
         self.assertLess(time.monotonic() - started, 5)
+
+
+class TestRetryErrorMessage(unittest.TestCase):
+    def test_exhausted_retries_report_the_last_failure(self):
+        """
+        A RetryError surfaces the last attempt's message, not tenacity's Future repr.
+        """
+
+        @retry(stop=stop_after_attempt(1))
+        def target():
+            """
+            Fail every attempt.
+            """
+            raise ValueError("AI returned invalid weight values")
+
+        q: queue.SimpleQueue = queue.SimpleQueue()
+        _run_sse_target(target, q)
+
+        kind, payload = q.get_nowait()
+        self.assertEqual(kind, "error")
+        self.assertIn("AI returned invalid weight values", payload)
+        self.assertNotIn("Future", payload)
 
 
 class TestMakeSseStream(unittest.TestCase):
@@ -83,6 +115,58 @@ class TestMakeSseStream(unittest.TestCase):
 
         self.assertIn('"type": "error"', chunks[-1])
         self.assertIn("boom", chunks[-1])
+
+
+class TestRateLimitErrorMessage(unittest.TestCase):
+    def test_yahoo_rate_limit_is_reported_readably(self):
+        """
+        A Yahoo rate limit ends the stream with an error naming the rate limit.
+        """
+        from yfinance.exceptions import YFRateLimitError
+
+        def target():
+            """
+            Fail like a rate-limited price sweep.
+            """
+            raise YFRateLimitError()
+
+        q: queue.SimpleQueue = queue.SimpleQueue()
+        _run_sse_target(target, q)
+
+        kind, payload = q.get_nowait()
+        self.assertEqual(kind, "error")
+        self.assertIn("Yahoo Finance rate limit", payload)
+
+
+class TestCaptureContext(unittest.TestCase):
+    def test_capturing_reflects_the_bound_queue(self):
+        """
+        The wrapper reports capturing only while a request queue is bound.
+        """
+        fallback = io.StringIO()
+        wrapper = _ContextAwareStdout(fallback)
+
+        self.assertFalse(wrapper.capturing)
+        token = _request_log_q.set(queue.SimpleQueue())
+        try:
+            self.assertTrue(wrapper.capturing)
+        finally:
+            _request_log_q.reset(token)
+        self.assertIs(wrapper.fallback, fallback)
+
+    def test_stream_thread_inherits_the_request_id(self):
+        """
+        The worker thread sees the request id bound by the HTTP middleware.
+        """
+        token = request_id_var.set("req-sse")
+        try:
+            response = _make_sse_stream(request_id_var.get)
+        finally:
+            request_id_var.reset(token)
+
+        chunks = TestMakeSseStream()._collect(response)
+
+        self.assertIn("req-sse", chunks[-1])
 
 
 if __name__ == "__main__":

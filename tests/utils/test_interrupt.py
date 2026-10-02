@@ -49,41 +49,20 @@ class TestInstallKeyboardInterruptFilter(unittest.TestCase):
         """
         sys.unraisablehook = self._saved_hook
 
-    def test_replaces_the_unraisable_hook(self):
+    def test_swallows_unraisable_interrupts(self):
         """
-        Installing swaps sys.unraisablehook for our filtering wrapper.
+        A KeyboardInterrupt (the curl_cffi Ctrl+C case) or SystemExit escaping a
+        C callback is dropped instead of being forwarded to the noisy default hook.
         """
-        previous = _spy_hook()
-        sys.unraisablehook = previous
+        for exc_type in (KeyboardInterrupt, SystemExit):
+            with self.subTest(exc_type=exc_type.__name__):
+                previous = _spy_hook()
+                sys.unraisablehook = previous
 
-        install_keyboardinterrupt_filter()
+                install_keyboardinterrupt_filter()
+                sys.unraisablehook(_unraisable(exc_type))
 
-        self.assertIsNot(sys.unraisablehook, previous)
-
-    def test_swallows_unraisable_keyboardinterrupt(self):
-        """
-        A KeyboardInterrupt escaping a C callback (the curl_cffi Ctrl+C case)
-        is dropped instead of being forwarded to the noisy default hook.
-        """
-        previous = _spy_hook()
-        sys.unraisablehook = previous
-
-        install_keyboardinterrupt_filter()
-        sys.unraisablehook(_unraisable(KeyboardInterrupt))
-
-        previous.assert_not_called()
-
-    def test_swallows_unraisable_systemexit(self):
-        """
-        SystemExit raised inside a callback is treated the same as Ctrl+C.
-        """
-        previous = _spy_hook()
-        sys.unraisablehook = previous
-
-        install_keyboardinterrupt_filter()
-        sys.unraisablehook(_unraisable(SystemExit))
-
-        previous.assert_not_called()
+                previous.assert_not_called()
 
     def test_forwards_other_unraisables(self):
         """

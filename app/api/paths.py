@@ -24,7 +24,8 @@ _FRONTEND_ROOT = FRONTEND_DIST.resolve()
 
 
 def _sanitize_path_parts(filepath: str) -> list[str]:
-    """Split a path into components and validate each with os.path.basename().
+    """
+    Split a path into components and validate each with os.path.basename().
 
     os.path.basename() is the CodeQL-recognised sanitizer for py/path-injection:
     if basename(part) != part, the part contained a directory separator and is
@@ -57,7 +58,8 @@ def _sanitize_path_parts(filepath: str) -> list[str]:
 
 
 def _safe_db_path(filepath: str) -> Path:
-    """Resolve a path inside DATABASE_DIR, rejecting traversal with HTTP 400.
+    """
+    Resolve a path inside DATABASE_DIR, rejecting traversal with HTTP 400.
 
     Each component is validated via os.path.basename() before being joined to
     the database root, breaking the taint chain CodeQL (py/path-injection)
@@ -88,7 +90,8 @@ def _safe_db_path(filepath: str) -> Path:
 
 
 def _safe_frontend_path(filepath: str) -> Path:
-    """Resolve a path inside FRONTEND_DIST, rejecting traversal with HTTP 403.
+    """
+    Resolve a path inside FRONTEND_DIST, rejecting traversal with HTTP 403.
 
     Same basename()-based sanitisation as _safe_db_path.
 

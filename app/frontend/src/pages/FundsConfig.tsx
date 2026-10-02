@@ -44,6 +44,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AddFundDialog } from "@/components/AddFundDialog";
+import { useInlineFundEdit, type FundDraft } from "@/hooks/useInlineFundEdit";
 import { toast } from "sonner";
 
 const SEC_CIK_URL = (cik: string) => `https://www.sec.gov/edgar/browse/?CIK=${cik}`;
@@ -69,8 +72,8 @@ function InlineInput({
 }: {
   value: string;
   field: string;
-  draft: Record<string, string>;
-  setDraft: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  draft: FundDraft;
+  setDraft: React.Dispatch<React.SetStateAction<FundDraft>>;
   className?: string;
   id?: string;
 }) {
@@ -135,8 +138,8 @@ function FundConfigCard({
   mode: "active" | "excluded";
   readOnly: boolean;
   isEditing: boolean;
-  draft: Record<string, string>;
-  setDraft: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  draft: FundDraft;
+  setDraft: React.Dispatch<React.SetStateAction<FundDraft>>;
   isDraftValid: boolean;
   onStartEdit: () => void;
   onSave: () => void;
@@ -251,18 +254,6 @@ export default function FundsConfig() {
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [fundToRestore, setFundToRestore] = useState<ExcludedHedgeFund | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newCik, setNewCik] = useState("");
-  const [newFundName, setNewFundName] = useState("");
-  const [newManager, setNewManager] = useState("");
-  const [newDenomination, setNewDenomination] = useState("");
-  const [newCiks, setNewCiks] = useState("");
-  const [newUrl, setNewUrl] = useState("");
-
-  const [editingCik, setEditingCik] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState<Record<string, string>>({});
-  const [editingExcludedCik, setEditingExcludedCik] = useState<string | null>(null);
-  const [editExcludedDraft, setEditExcludedDraft] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"active" | "excluded">("active");
 
   const queryClient = useQueryClient();
 
@@ -298,188 +289,66 @@ export default function FundsConfig() {
     void queryClient.invalidateQueries({ queryKey: ["excludedHedgeFunds"] });
   };
 
-  const isValidUrl = (url: string) => url.trim().startsWith("https://");
-
-  // ── Active fund inline edit ──
-  const startEdit = (f: HedgeFund) => {
-    setEditingCik(f.cik);
-    setEditDraft({
-      fund: f.fund,
-      manager: f.manager,
-      denomination: f.denomination,
-      cik: f.cik,
-      ciks: f.ciks,
-      url: f.url,
-    });
-  };
-  const cancelEdit = () => {
-    setEditingCik(null);
-    setEditDraft({});
-  };
-  const isEditDraftValid = () =>
-    !!(
-      editDraft.fund?.trim() &&
-      editDraft.manager?.trim() &&
-      editDraft.denomination?.trim() &&
-      editDraft.cik?.trim()
-    );
-  const saveEdit = async () => {
-    if (!editingCik || !isEditDraftValid()) return;
-    if (editDraft.url && !isValidUrl(editDraft.url)) {
-      toast.error("Website URL must start with https://");
-      return;
-    }
-    const updated = funds.map((f) =>
-      f.cik === editingCik
-        ? {
-            ...f,
-            fund: editDraft.fund,
-            manager: editDraft.manager,
-            denomination: editDraft.denomination,
-            cik: editDraft.cik,
-            ciks: editDraft.ciks,
-            url: editDraft.url || "",
-          }
-        : f,
-    );
-    const csv = generateHedgeFundsCSV(updated);
+  // Every write to a funds CSV reports the same way: a toast, then a refresh on success.
+  const persist = async (writes: readonly (readonly [string, string])[], message: string) => {
     try {
-      await saveFileToDisk(csv, "hedge_funds.csv");
-      toast.success("Fund updated");
+      for (const [csv, file] of writes) await saveFileToDisk(csv, file);
+      toast.success(message);
       invalidateAll();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : String(e));
     }
-    setEditingCik(null);
-    setEditDraft({});
   };
 
-  // ── Excluded fund inline edit ──
-  const startExcludedEdit = (f: ExcludedHedgeFund) => {
-    setEditingExcludedCik(f.cik);
-    setEditExcludedDraft({
-      fund: f.fund,
-      manager: f.manager,
-      denomination: f.denomination,
-      cik: f.cik,
-      ciks: f.ciks,
-      url: f.url,
-    });
-  };
-  const cancelExcludedEdit = () => {
-    setEditingExcludedCik(null);
-    setEditExcludedDraft({});
-  };
-  const isExcludedDraftValid = () =>
-    !!(
-      editExcludedDraft.fund?.trim() &&
-      editExcludedDraft.manager?.trim() &&
-      editExcludedDraft.denomination?.trim() &&
-      editExcludedDraft.cik?.trim()
+  const activeEdit = useInlineFundEdit({
+    funds,
+    save: (updated) => saveFileToDisk(generateHedgeFundsCSV(updated), "hedge_funds.csv"),
+    successMessage: "Fund updated",
+    onSaved: invalidateAll,
+  });
+  const excludedEdit = useInlineFundEdit({
+    funds: excludedFunds,
+    save: (updated) =>
+      saveFileToDisk(generateExcludedFundsCSV(updated), "excluded_hedge_funds.csv"),
+    successMessage: "Excluded fund updated",
+    onSaved: invalidateAll,
+  });
+
+  // Delete and restore both move a fund between the two lists, rewriting both files.
+  const moveFund = (
+    { hedgeFundsCSV, excludedCSV }: { hedgeFundsCSV: string; excludedCSV: string },
+    message: string,
+  ) =>
+    persist(
+      [
+        [hedgeFundsCSV, "hedge_funds.csv"],
+        [excludedCSV, "excluded_hedge_funds.csv"],
+      ],
+      message,
     );
-  const saveExcludedEdit = async () => {
-    if (!editingExcludedCik || !isExcludedDraftValid()) return;
-    if (editExcludedDraft.url && !isValidUrl(editExcludedDraft.url)) {
-      toast.error("Website URL must start with https://");
-      return;
-    }
-    const updated = excludedFunds.map((f) =>
-      f.cik === editingExcludedCik
-        ? {
-            ...f,
-            fund: editExcludedDraft.fund,
-            manager: editExcludedDraft.manager,
-            denomination: editExcludedDraft.denomination,
-            cik: editExcludedDraft.cik,
-            ciks: editExcludedDraft.ciks,
-            url: editExcludedDraft.url,
-          }
-        : f,
-    );
-    const csv = generateExcludedFundsCSV(updated);
-    try {
-      await saveFileToDisk(csv, "excluded_hedge_funds.csv");
-      toast.success("Excluded fund updated");
-      invalidateAll();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
-    setEditingExcludedCik(null);
-    setEditExcludedDraft({});
-  };
 
   const handleConfirmDelete = async () => {
     if (!fundToDelete) return;
-    const { hedgeFundsCSV, excludedCSV } = generateDeleteFundCSVs(
-      funds,
-      excludedFunds,
-      fundToDelete,
+    await moveFund(
+      generateDeleteFundCSVs(funds, excludedFunds, fundToDelete),
+      `"${fundToDelete.fund}" moved to excluded`,
     );
-    try {
-      await saveFileToDisk(hedgeFundsCSV, "hedge_funds.csv");
-      await saveFileToDisk(excludedCSV, "excluded_hedge_funds.csv");
-      toast.success(`"${fundToDelete.fund}" moved to excluded`);
-      invalidateAll();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
     setDeleteDialogOpen(false);
     setFundToDelete(null);
   };
 
   const handleConfirmRestore = async () => {
     if (!fundToRestore) return;
-    const { hedgeFundsCSV, excludedCSV } = generateRestoreFundCSVs(
-      funds,
-      excludedFunds,
-      fundToRestore,
+    await moveFund(
+      generateRestoreFundCSVs(funds, excludedFunds, fundToRestore),
+      `"${fundToRestore.fund}" restored to active`,
     );
-    try {
-      await saveFileToDisk(hedgeFundsCSV, "hedge_funds.csv");
-      await saveFileToDisk(excludedCSV, "excluded_hedge_funds.csv");
-      toast.success(`"${fundToRestore.fund}" restored to active`);
-      invalidateAll();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
     setRestoreDialogOpen(false);
     setFundToRestore(null);
   };
 
-  const resetAddForm = () => {
-    setNewCik("");
-    setNewFundName("");
-    setNewManager("");
-    setNewDenomination("");
-    setNewCiks("");
-    setNewUrl("");
-  };
-
-  const handleAddFund = async () => {
-    if (!newCik.trim() || !newFundName.trim() || !newManager.trim()) return;
-    if (newUrl.trim() && !isValidUrl(newUrl)) {
-      toast.error("Website URL must start with https://");
-      return;
-    }
-    const newFund: HedgeFund = {
-      cik: newCik.trim(),
-      fund: newFundName.trim(),
-      manager: newManager.trim(),
-      denomination: newDenomination.trim(),
-      ciks: newCiks.trim() || newCik.trim(),
-      url: newUrl.trim(),
-    };
-    const csv = generateAddFundCSV(funds, newFund);
-    try {
-      await saveFileToDisk(csv, "hedge_funds.csv");
-      toast.success(`"${newFundName.trim()}" added`);
-      invalidateAll();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
-    setAddDialogOpen(false);
-    resetAddForm();
-  };
+  const handleAddFund = (newFund: HedgeFund) =>
+    persist([[generateAddFundCSV(funds, newFund), "hedge_funds.csv"]], `"${newFund.fund}" added`);
 
   return (
     <div className="space-y-6 max-w-screen-2xl">
@@ -501,34 +370,19 @@ export default function FundsConfig() {
         </p>
       )}
 
-      {/* Underline tabs: active gets the primary rule and the text colour. */}
-      <div role="tablist" className="flex items-stretch gap-1 border-b border-border">
-        {(
-          [
-            ["active", "Active Funds", funds.length],
-            ["excluded", "Excluded", excludedFunds.length],
-          ] as const
-        ).map(([id, label, count]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === id}
-            onClick={() => setActiveTab(id)}
-            className={`h-9 px-3 -mb-px border-b-2 text-[13px] transition-colors duration-[120ms] cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
-              activeTab === id
-                ? "border-primary text-foreground font-medium"
-                : "border-transparent text-muted-foreground font-normal hover:text-foreground"
-            }`}
-          >
-            {label} <span className="ml-1 text-muted-foreground tabular-nums">{count}</span>
-          </button>
-        ))}
-      </div>
+      <Tabs defaultValue="active">
+        <TabsList>
+          <TabsTrigger value="active">
+            Active Funds{" "}
+            <span className="ml-1 text-muted-foreground tabular-nums">{funds.length}</span>
+          </TabsTrigger>
+          <TabsTrigger value="excluded">
+            Excluded{" "}
+            <span className="ml-1 text-muted-foreground tabular-nums">{excludedFunds.length}</span>
+          </TabsTrigger>
+        </TabsList>
 
-      {activeTab === "active" ? (
-        /* ── Active Funds ── */
-        <div className="space-y-3">
+        <TabsContent value="active" className="mt-6 space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
             <SearchInput
               label="Search fund, manager, CIK"
@@ -541,14 +395,7 @@ export default function FundsConfig() {
               {filteredFunds.length} / {funds.length} funds
             </span>
             {!IS_GH_PAGES_MODE && (
-              <Button
-                size="sm"
-                className="gap-1.5 ml-auto"
-                onClick={() => {
-                  resetAddForm();
-                  setAddDialogOpen(true);
-                }}
-              >
+              <Button size="sm" className="gap-1.5 ml-auto" onClick={() => setAddDialogOpen(true)}>
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add Fund
               </Button>
             )}
@@ -570,13 +417,13 @@ export default function FundsConfig() {
                     rank={idx + 1}
                     mode="active"
                     readOnly={IS_GH_PAGES_MODE}
-                    isEditing={editingCik === f.cik}
-                    draft={editDraft}
-                    setDraft={setEditDraft}
-                    isDraftValid={isEditDraftValid()}
-                    onStartEdit={() => startEdit(f)}
-                    onSave={saveEdit}
-                    onCancel={cancelEdit}
+                    isEditing={activeEdit.editingCik === f.cik}
+                    draft={activeEdit.draft}
+                    setDraft={activeEdit.setDraft}
+                    isDraftValid={activeEdit.isDraftValid}
+                    onStartEdit={() => activeEdit.startEdit(f)}
+                    onSave={activeEdit.saveEdit}
+                    onCancel={activeEdit.cancelEdit}
                     onSecondary={() => {
                       setFundToDelete(f);
                       setDeleteDialogOpen(true);
@@ -628,7 +475,7 @@ export default function FundsConfig() {
                     </thead>
                     <tbody>
                       {filteredFunds.map((f, idx) => {
-                        const isEditing = editingCik === f.cik;
+                        const isEditing = activeEdit.editingCik === f.cik;
                         return (
                           <tr key={f.cik} className="data-table-row group">
                             <td className="p-3 text-right text-muted-foreground font-mono text-xs">
@@ -640,32 +487,32 @@ export default function FundsConfig() {
                                   <InlineInput
                                     value={f.fund}
                                     field="fund"
-                                    draft={editDraft}
-                                    setDraft={setEditDraft}
+                                    draft={activeEdit.draft}
+                                    setDraft={activeEdit.setDraft}
                                   />
                                 </td>
                                 <td className="p-2">
                                   <InlineInput
                                     value={f.manager}
                                     field="manager"
-                                    draft={editDraft}
-                                    setDraft={setEditDraft}
+                                    draft={activeEdit.draft}
+                                    setDraft={activeEdit.setDraft}
                                   />
                                 </td>
                                 <td className="p-2">
                                   <InlineInput
                                     value={f.denomination}
                                     field="denomination"
-                                    draft={editDraft}
-                                    setDraft={setEditDraft}
+                                    draft={activeEdit.draft}
+                                    setDraft={activeEdit.setDraft}
                                   />
                                 </td>
                                 <td className="p-2">
                                   <InlineInput
                                     value={f.cik}
                                     field="cik"
-                                    draft={editDraft}
-                                    setDraft={setEditDraft}
+                                    draft={activeEdit.draft}
+                                    setDraft={activeEdit.setDraft}
                                     className="font-mono"
                                   />
                                 </td>
@@ -673,8 +520,8 @@ export default function FundsConfig() {
                                   <InlineInput
                                     value={f.ciks}
                                     field="ciks"
-                                    draft={editDraft}
-                                    setDraft={setEditDraft}
+                                    draft={activeEdit.draft}
+                                    setDraft={activeEdit.setDraft}
                                     className="font-mono"
                                   />
                                 </td>
@@ -682,8 +529,8 @@ export default function FundsConfig() {
                                   <InlineInput
                                     value={f.url}
                                     field="url"
-                                    draft={editDraft}
-                                    setDraft={setEditDraft}
+                                    draft={activeEdit.draft}
+                                    setDraft={activeEdit.setDraft}
                                   />
                                 </td>
                                 <td className="p-2 text-right whitespace-nowrap">
@@ -691,10 +538,10 @@ export default function FundsConfig() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7 text-positive hover:text-positive hover:bg-positive/10"
-                                    onClick={saveEdit}
+                                    onClick={activeEdit.saveEdit}
                                     title="Save"
                                     aria-label="Save fund"
-                                    disabled={!isEditDraftValid()}
+                                    disabled={!activeEdit.isDraftValid}
                                   >
                                     <Check className="h-3.5 w-3.5" />
                                   </Button>
@@ -702,7 +549,7 @@ export default function FundsConfig() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                    onClick={cancelEdit}
+                                    onClick={activeEdit.cancelEdit}
                                     title="Cancel"
                                     aria-label="Cancel edit"
                                   >
@@ -763,7 +610,7 @@ export default function FundsConfig() {
                                       variant="ghost"
                                       size="icon"
                                       className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                                      onClick={() => startEdit(f)}
+                                      onClick={() => activeEdit.startEdit(f)}
                                       title="Edit fund"
                                       aria-label={`Edit ${f.fund}`}
                                     >
@@ -795,10 +642,9 @@ export default function FundsConfig() {
               </div>
             </>
           )}
-        </div>
-      ) : activeTab === "excluded" ? (
-        /* ── Excluded Funds ── */
-        <div className="space-y-3">
+        </TabsContent>
+
+        <TabsContent value="excluded" className="mt-6 space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
             <SearchInput
               label="Search excluded fund, manager, URL"
@@ -836,13 +682,13 @@ export default function FundsConfig() {
                     rank={idx + 1}
                     mode="excluded"
                     readOnly={IS_GH_PAGES_MODE}
-                    isEditing={editingExcludedCik === f.cik}
-                    draft={editExcludedDraft}
-                    setDraft={setEditExcludedDraft}
-                    isDraftValid={isExcludedDraftValid()}
-                    onStartEdit={() => startExcludedEdit(f)}
-                    onSave={saveExcludedEdit}
-                    onCancel={cancelExcludedEdit}
+                    isEditing={excludedEdit.editingCik === f.cik}
+                    draft={excludedEdit.draft}
+                    setDraft={excludedEdit.setDraft}
+                    isDraftValid={excludedEdit.isDraftValid}
+                    onStartEdit={() => excludedEdit.startEdit(f)}
+                    onSave={excludedEdit.saveEdit}
+                    onCancel={excludedEdit.cancelEdit}
                     onSecondary={() => {
                       setFundToRestore(f);
                       setRestoreDialogOpen(true);
@@ -893,7 +739,7 @@ export default function FundsConfig() {
                     </thead>
                     <tbody>
                       {filteredExcluded.map((f, idx) => {
-                        const isEditing = editingExcludedCik === f.cik;
+                        const isEditing = excludedEdit.editingCik === f.cik;
                         return (
                           <tr key={f.cik} className="data-table-row group">
                             <td className="p-3 text-right text-muted-foreground font-mono text-xs">
@@ -905,32 +751,32 @@ export default function FundsConfig() {
                                   <InlineInput
                                     value={f.fund}
                                     field="fund"
-                                    draft={editExcludedDraft}
-                                    setDraft={setEditExcludedDraft}
+                                    draft={excludedEdit.draft}
+                                    setDraft={excludedEdit.setDraft}
                                   />
                                 </td>
                                 <td className="p-2">
                                   <InlineInput
                                     value={f.manager}
                                     field="manager"
-                                    draft={editExcludedDraft}
-                                    setDraft={setEditExcludedDraft}
+                                    draft={excludedEdit.draft}
+                                    setDraft={excludedEdit.setDraft}
                                   />
                                 </td>
                                 <td className="p-2">
                                   <InlineInput
                                     value={f.denomination}
                                     field="denomination"
-                                    draft={editExcludedDraft}
-                                    setDraft={setEditExcludedDraft}
+                                    draft={excludedEdit.draft}
+                                    setDraft={excludedEdit.setDraft}
                                   />
                                 </td>
                                 <td className="p-2">
                                   <InlineInput
                                     value={f.cik}
                                     field="cik"
-                                    draft={editExcludedDraft}
-                                    setDraft={setEditExcludedDraft}
+                                    draft={excludedEdit.draft}
+                                    setDraft={excludedEdit.setDraft}
                                     className="font-mono"
                                   />
                                 </td>
@@ -938,8 +784,8 @@ export default function FundsConfig() {
                                   <InlineInput
                                     value={f.ciks}
                                     field="ciks"
-                                    draft={editExcludedDraft}
-                                    setDraft={setEditExcludedDraft}
+                                    draft={excludedEdit.draft}
+                                    setDraft={excludedEdit.setDraft}
                                     className="font-mono"
                                   />
                                 </td>
@@ -947,8 +793,8 @@ export default function FundsConfig() {
                                   <InlineInput
                                     value={f.url}
                                     field="url"
-                                    draft={editExcludedDraft}
-                                    setDraft={setEditExcludedDraft}
+                                    draft={excludedEdit.draft}
+                                    setDraft={excludedEdit.setDraft}
                                   />
                                 </td>
                                 <td className="p-2 text-right whitespace-nowrap">
@@ -956,10 +802,10 @@ export default function FundsConfig() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7 text-positive hover:text-positive hover:bg-positive/10"
-                                    onClick={saveExcludedEdit}
+                                    onClick={excludedEdit.saveEdit}
                                     title="Save"
                                     aria-label="Save fund"
-                                    disabled={!isExcludedDraftValid()}
+                                    disabled={!excludedEdit.isDraftValid}
                                   >
                                     <Check className="h-3.5 w-3.5" />
                                   </Button>
@@ -967,7 +813,7 @@ export default function FundsConfig() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                    onClick={cancelExcludedEdit}
+                                    onClick={excludedEdit.cancelEdit}
                                     title="Cancel"
                                     aria-label="Cancel edit"
                                   >
@@ -1012,7 +858,7 @@ export default function FundsConfig() {
                                       variant="ghost"
                                       size="icon"
                                       className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                                      onClick={() => startExcludedEdit(f)}
+                                      onClick={() => excludedEdit.startEdit(f)}
                                       title="Edit fund"
                                       aria-label={`Edit ${f.fund}`}
                                     >
@@ -1044,8 +890,8 @@ export default function FundsConfig() {
               </div>
             </>
           )}
-        </div>
-      ) : null}
+        </TabsContent>
+      </Tabs>
 
       {!IS_GH_PAGES_MODE && (
         <>
@@ -1131,105 +977,11 @@ export default function FundsConfig() {
             </DialogContent>
           </Dialog>
 
-          {/* ── Add Fund Dialog ── */}
-          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" aria-hidden="true" /> Add Hedge Fund
-                </DialogTitle>
-                <DialogDescription>Add a new fund to the monitored list.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                  <Label htmlFor="new-cik">CIK</Label>
-                  <Input
-                    id="new-cik"
-                    placeholder="e.g. 0001067983"
-                    value={newCik}
-                    onChange={(e) => setNewCik(e.target.value.replace(/[^0-9]/g, ""))}
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Central Index Key: the unique SEC identifier for filing entities.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-fund">Fund Name</Label>
-                  <Input
-                    id="new-fund"
-                    placeholder="e.g. Berkshire Hathaway"
-                    value={newFundName}
-                    onChange={(e) => setNewFundName(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Short name used to generate quarterly file names.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-manager">Manager</Label>
-                  <Input
-                    id="new-manager"
-                    placeholder="e.g. Warren Buffett"
-                    value={newManager}
-                    onChange={(e) => setNewManager(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Portfolio manager as listed in official fund filings.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-denomination">Denomination</Label>
-                  <Input
-                    id="new-denomination"
-                    placeholder="e.g. Berkshire Hathaway Inc."
-                    value={newDenomination}
-                    onChange={(e) => setNewDenomination(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Full legal name from SEC filings. Used to identify positions in non-quarterly
-                    filings containing multiple institutional entities.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-ciks">CIKs (optional)</Label>
-                  <Input
-                    id="new-ciks"
-                    placeholder="Defaults to CIK if empty"
-                    value={newCiks}
-                    onChange={(e) => setNewCiks(e.target.value.replace(/[^0-9,]/g, ""))}
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Comma-separated list of related CIKs, if different from primary.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-url">Website (optional)</Label>
-                  <Input
-                    id="new-url"
-                    placeholder="https://www.example.com"
-                    value={newUrl}
-                    onChange={(e) => setNewUrl(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Official fund website. Must start with <code>https://</code> if provided.
-                  </p>
-                </div>
-              </div>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  disabled={!newCik.trim() || !newFundName.trim() || !newManager.trim()}
-                  onClick={handleAddFund}
-                >
-                  Add Fund
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <AddFundDialog
+            open={addDialogOpen}
+            onOpenChange={setAddDialogOpen}
+            onAdd={handleAddFund}
+          />
         </>
       )}
     </div>

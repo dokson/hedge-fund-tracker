@@ -32,35 +32,21 @@ def _make_empty_response():
 
 
 class TestNasdaqParsePrice(unittest.TestCase):
-    def test_parses_plain_number(self):
+    def test_parses_numbers_with_or_without_currency_formatting(self):
         """
-        Parses a simple numeric string.
+        Parses plain numbers and strips the $ prefix and comma separators.
         """
-        self.assertEqual(Nasdaq._parse_price("10.23"), 10.23)
+        for raw, expected in (("10.23", 10.23), ("$1,234.56", 1234.56)):
+            with self.subTest(raw=raw):
+                self.assertEqual(Nasdaq._parse_price(raw), expected)
 
-    def test_parses_dollar_sign_and_commas(self):
+    def test_returns_none_for_missing_values(self):
         """
-        Strips $ prefix and comma separators from stock prices.
+        Returns None for N/A, empty and None inputs.
         """
-        self.assertEqual(Nasdaq._parse_price("$1,234.56"), 1234.56)
-
-    def test_returns_none_for_na(self):
-        """
-        Returns None for N/A values.
-        """
-        self.assertIsNone(Nasdaq._parse_price("N/A"))
-
-    def test_returns_none_for_empty_string(self):
-        """
-        Returns None for empty strings.
-        """
-        self.assertIsNone(Nasdaq._parse_price(""))
-
-    def test_returns_none_for_none(self):
-        """
-        Returns None when input is None.
-        """
-        self.assertIsNone(Nasdaq._parse_price(None))
+        for raw in ("N/A", "", None):
+            with self.subTest(raw=raw):
+                self.assertIsNone(Nasdaq._parse_price(raw))
 
 
 class TestNasdaqFetchHistorical(unittest.TestCase):
@@ -226,23 +212,6 @@ class TestNasdaqGetCurrentPrice(unittest.TestCase):
         price = Nasdaq.get_current_price("FMSMX")
 
         self.assertIsNone(price)
-
-    @patch("app.stocks.libraries.nasdaq.requests.get")
-    def test_strips_dollar_sign_from_stock_price(self, mock_get):
-        """
-        Correctly parses prices with $ prefix.
-        """
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = _make_api_response(
-            [
-                {"date": "03/31/2026", "close": "$248.80"},
-            ]
-        )
-        mock_get.return_value = mock_resp
-
-        price = Nasdaq.get_current_price("AAPL")
-
-        self.assertEqual(price, 248.80)
 
 
 class TestNasdaqGetSymbolChanges(unittest.TestCase):

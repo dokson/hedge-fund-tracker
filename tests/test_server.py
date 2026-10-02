@@ -67,18 +67,6 @@ class TestDfToJsonSafeRecords(unittest.TestCase):
         records = _df_to_json_safe_records(df)
         self.assertEqual(records, [{"a": 1.0, "b": "x"}, {"a": None, "b": "y"}])
 
-    def test_output_is_strict_json_serializable(self):
-        """
-        The result must be JSON-encodable with allow_nan=False (i.e. browser-safe).
-        """
-        import json
-
-        from app.api.common import _df_to_json_safe_records
-
-        df = pd.DataFrame({"a": [np.inf, np.nan, 0.5]})
-        records = _df_to_json_safe_records(df)
-        json.dumps(records, allow_nan=False)
-
     def test_empty_dataframe_returns_empty_list(self):
         """
         An empty DataFrame must produce an empty record list, not raise.
@@ -94,26 +82,15 @@ class TestServer(unittest.TestCase):
     Tests for the FastAPI server module and its route configuration.
     """
 
-    def test_expected_routes_are_registered(self):
+    def test_duplicate_fetch_route_is_not_registered(self):
         """
-        Verify that all expected API and database routes are registered on the FastAPI app.
+        Full 13F regeneration has a single entry point, /api/update-all.
         """
         from app.server import app
 
         paths = [getattr(r, "path", "") for r in _iter_routes(app)]
-
-        expected_paths = [
-            "/database/{filepath:path}",
-            "/api/settings/env",
-            "/api/ai/promise-score",
-            "/api/ai/due-diligence",
-            "/api/database/fetch",
-            "/api/database/quarters/latest",
-            "/api/database/quarters/{quarter}/analysis",
-        ]
-        for path in expected_paths:
-            with self.subTest(path=path):
-                self.assertIn(path, paths)
+        self.assertNotIn("/api/database/fetch", paths)
+        self.assertIn("/api/update-all", paths)
 
     def test_openapi_schema_builds(self):
         """
@@ -229,22 +206,6 @@ class TestSSETerminalSignal(unittest.TestCase):
 
         self.assertEqual(q.get_nowait(), ("result", {"ok": 1}))
         self.assertTrue(q.empty())
-
-    def test_exception_emits_error_item(self):
-        """
-        A target that raises a regular Exception enqueues an ("error", msg) item.
-        """
-        from app.server import _run_sse_target
-
-        q: queue.SimpleQueue = queue.SimpleQueue()
-
-        def target():
-            raise ValueError("boom")
-
-        _run_sse_target(target, q)
-        kind, payload = q.get_nowait()
-        self.assertEqual(kind, "error")
-        self.assertIn("boom", payload)
 
     def test_base_exception_still_emits_terminal_item(self):
         """

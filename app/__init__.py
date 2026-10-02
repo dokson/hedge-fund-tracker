@@ -1,9 +1,6 @@
-import sys
+from app.utils.encoding import use_utf8_stdio
 
-for _stream in (sys.stdout, sys.stderr):
-    _reconfigure = getattr(_stream, "reconfigure", None)
-    if _reconfigure is not None:
-        _reconfigure(encoding="utf-8")
+use_utf8_stdio()
 
 # Safety net: ensure the shared logger handler + custom levels are installed
 # even if a future entry point doesn't import any module that uses get_logger().

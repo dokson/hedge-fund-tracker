@@ -1,36 +1,43 @@
 .git
 .gitignore
 .gitattributes
-
-Dockerfile
-docker-compose*.yml
-.dockerignore
-
-.idea
+.github
 .vscode
+.idea
+.claude
+.codegraph
 *.swp
 
-__pycache__
-*.py[cod]
+Dockerfile
+compose*.yaml
+.dockerignore
+
+# `**/` is required: a bare pattern only matches at the context root.
+**/node_modules
+**/__pycache__
+**/*.py[cod]
 .venv
 venv
-
-node_modules
+app/frontend/dist
+*.tsbuildinfo
 npm-debug.log
 
-app/frontend/dist
-
+# Secrets (.env is bind-mounted at runtime)
 .env
-.env.local
-.env.*.local
-
-README.md
-LICENSE
-CLAUDE.md
-
-.coverage
-htmlcov
-.pytest_cache
+.env.*
+!.env.example
 
 __llmcache__
 __reports__
+__pricecache__
+__wikicache__
+.ruff_cache
+.mypy_cache
+.pytest_cache
+.coverage
+htmlcov
+
+tests
+docs
+*.md
+LICENSE*

@@ -70,8 +70,8 @@ def delete_fund_from_database(fund_info: dict) -> None:
     Deletes a hedge fund from the database.
 
     This function:
-    1. Removes all quarterly filing files for the fund.
-    2. Moves the fund record from hedge_funds.csv to excluded_hedge_funds.csv.
+    1. Moves the fund record from hedge_funds.csv to excluded_hedge_funds.csv.
+    2. Only once that move succeeded, removes all quarterly filing files for the fund.
 
     Args:
         fund_info (dict): A dictionary containing fund information ('Fund', 'CIK', ...).
@@ -83,18 +83,6 @@ def delete_fund_from_database(fund_info: dict) -> None:
 
     logger.info("Deleting '%s' from database...", log_safe(fund_name))
 
-    # 1. Delete quarterly filing files
-    fund_filename = f"{fund_name.replace(' ', '_')}.csv"
-    for quarter in _db.get_all_quarters():
-        try:
-            filepath = _db._safe_db_join(quarter, fund_filename)
-            if filepath.exists():
-                filepath.unlink()
-                logger.info("  - Deleted: %s/%s", quarter, fund_filename)
-        except Exception:
-            logger.error("  - Error deleting record in %s", quarter, exc_info=True)
-
-    # 2. Update CSV files
     hedge_funds_path = Path(_db.DB_FOLDER) / _db.HEDGE_FUNDS_FILE
     excluded_path = Path(_db.DB_FOLDER) / _db.EXCLUDED_HEDGE_FUNDS_FILE
 
@@ -130,6 +118,16 @@ def delete_fund_from_database(fund_info: dict) -> None:
     except Exception:
         logger.error("updating CSV files", exc_info=True)
         return
+
+    fund_filename = f"{fund_name.replace(' ', '_')}.csv"
+    for quarter in _db.get_all_quarters():
+        try:
+            filepath = _db._safe_db_join(quarter, fund_filename)
+            if filepath.exists():
+                filepath.unlink()
+                logger.info("  - Deleted: %s/%s", quarter, log_safe(fund_filename))
+        except Exception:
+            logger.error("  - Error deleting record in %s", quarter, exc_info=True)
 
     logger.success("Deletion of '%s' completed.", log_safe(fund_name))
 

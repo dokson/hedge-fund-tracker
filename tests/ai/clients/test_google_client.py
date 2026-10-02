@@ -135,29 +135,12 @@ class TestGoogleAIClient(unittest.TestCase):
         response = self.client.generate_content("Hello, Gemini!")
 
         self.assertEqual(response, "Mocked Gemini response")
-        self.assertEqual(self.mock_instance.models.generate_content_stream.call_count, 2)
-        last_call_kwargs = self.mock_instance.models.generate_content_stream.call_args.kwargs
-        # The retry drops thinking_config but must keep the AFC-disabling config.
-        last_config = last_call_kwargs["config"]
-        _assert_afc_disabled(self, last_config)
-        self.assertIsNone(last_config.thinking_config)
-
-    def test_disables_automatic_function_calling_on_every_call(self):
-        """
-        Both the thinking attempt and the no-thinking retry must disable AFC,
-        or google-genai logs its "direct use of AFC" warning on each call.
-        """
-        self.mock_instance.models.generate_content_stream.side_effect = [
-            _thinking_level_rejected(),
-            [self.mock_response],
-        ]
-
-        self.client.generate_content("Hello, Gemini!")
-
         calls = self.mock_instance.models.generate_content_stream.call_args_list
         self.assertEqual(len(calls), 2)
+        # The retry drops thinking_config, but both attempts must disable AFC.
         for call in calls:
             _assert_afc_disabled(self, call.kwargs["config"])
+        self.assertIsNone(calls[1].kwargs["config"].thinking_config)
 
     def test_skips_thinking_config_on_subsequent_calls_after_rejection(self):
         """

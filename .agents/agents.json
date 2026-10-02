@@ -1,0 +1,16 @@
+{
+  "instructions": "AGENTS.md",
+  "hooks": [
+    {
+      "name": "enforce-pipenv",
+      "event": "pre-shell",
+      "script": ".agents/hooks/enforce_pipenv.py",
+      "timeout_seconds": 5
+    }
+  ],
+  "codex": {
+    "approval_policy": "on-request",
+    "sandbox_mode": "workspace-write",
+    "sandbox_workspace_write": { "network_access": true }
+  }
+}

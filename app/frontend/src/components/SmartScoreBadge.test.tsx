@@ -10,18 +10,12 @@ describe("SmartScoreBadge", () => {
     expect(container.textContent).toContain("/10");
   });
 
-  it("uses the positive tone for high scores", () => {
-    const { container } = render(<SmartScoreBadge score={9.1} />);
-    expect((container.firstElementChild as HTMLElement).className).toContain("positive");
-  });
-
-  it("uses the negative tone for low scores", () => {
-    const { container } = render(<SmartScoreBadge score={2.0} />);
-    expect((container.firstElementChild as HTMLElement).className).toContain("negative");
-  });
-
-  it("uses the neutral tone for mid scores", () => {
-    const { container } = render(<SmartScoreBadge score={5.5} />);
-    expect((container.firstElementChild as HTMLElement).className).toContain("warning");
+  it.each([
+    [9.1, "positive"],
+    [5.5, "warning"],
+    [2.0, "negative"],
+  ])("tones a %d score as %s", (score, tone) => {
+    const { container } = render(<SmartScoreBadge score={score} />);
+    expect((container.firstElementChild as HTMLElement).className).toContain(tone);
   });
 });

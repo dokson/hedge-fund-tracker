@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$(git rev-parse --show-toplevel)/.agents/hooks/enforce_pipenv.py\" --format codex",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

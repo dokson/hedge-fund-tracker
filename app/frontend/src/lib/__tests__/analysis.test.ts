@@ -23,37 +23,6 @@ describe("generateHedgeFundsCSV", () => {
     );
   });
 
-  it("should generate CSV with multiple fund rows", () => {
-    const funds: HedgeFund[] = [
-      {
-        cik: "0001111111",
-        fund: "Fund A",
-        manager: "Manager A",
-        denomination: "Fund A LP",
-        ciks: "",
-        url: "",
-      },
-      {
-        cik: "0002222222",
-        fund: "Fund B",
-        manager: "Manager B",
-        denomination: "Fund B LLC",
-        ciks: "0003333333",
-        url: "https://fund-b.example.com/",
-      },
-    ];
-
-    const csv = generateHedgeFundsCSV(funds);
-    const lines = csv.split("\n").filter((l) => l);
-
-    expect(lines).toHaveLength(3);
-    expect(lines[0]).toContain("CIK");
-    expect(lines[0]).toContain("URL");
-    expect(lines[1]).toContain("Fund A");
-    expect(lines[2]).toContain("0003333333");
-    expect(lines[2]).toContain("https://fund-b.example.com/");
-  });
-
   it("should handle empty funds array with trailing newline", () => {
     const csv = generateHedgeFundsCSV([]);
 

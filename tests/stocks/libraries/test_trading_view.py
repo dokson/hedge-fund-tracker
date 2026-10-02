@@ -70,37 +70,21 @@ class TestTradingViewGetCurrentPrice(unittest.TestCase):
         self.assertEqual(price, 149.99)
 
     @patch("app.stocks.libraries.trading_view.TvDatafeed")
-    def test_returns_none_when_all_exchanges_return_none(self, mock_tv_class):
+    def test_returns_none_when_no_exchange_has_data(self, mock_tv_class):
         """
-        Returns None when no exchange can provide data for the ticker.
+        Returns None (not an exception) when every exchange returns None, an
+        empty DataFrame, or raises.
         """
-        mock_tv_class.return_value.get_hist.return_value = None
+        get_hist = mock_tv_class.return_value.get_hist
+        for label, configure in (
+            ("none", lambda: setattr(get_hist, "return_value", None)),
+            ("empty", lambda: setattr(get_hist, "return_value", pd.DataFrame())),
+            ("raises", lambda: setattr(get_hist, "side_effect", Exception("Network error"))),
+        ):
+            with self.subTest(case=label):
+                configure()
 
-        price = TradingView.get_current_price("UNKNOWN")
-
-        self.assertIsNone(price)
-
-    @patch("app.stocks.libraries.trading_view.TvDatafeed")
-    def test_returns_none_when_all_exchanges_raise(self, mock_tv_class):
-        """
-        Returns None (not an exception) when every exchange raises.
-        """
-        mock_tv_class.return_value.get_hist.side_effect = Exception("Network error")
-
-        price = TradingView.get_current_price("AAPL")
-
-        self.assertIsNone(price)
-
-    @patch("app.stocks.libraries.trading_view.TvDatafeed")
-    def test_returns_none_when_dataframe_is_empty(self, mock_tv_class):
-        """
-        Returns None when an exchange returns an empty DataFrame.
-        """
-        mock_tv_class.return_value.get_hist.return_value = pd.DataFrame()
-
-        price = TradingView.get_current_price("AAPL")
-
-        self.assertIsNone(price)
+                self.assertIsNone(TradingView.get_current_price("AAPL"))
 
     @patch("app.stocks.libraries.trading_view.TvDatafeed")
     def test_uses_injected_tv_session_instead_of_creating_new(self, mock_tv_class):
@@ -128,20 +112,6 @@ class TestTradingViewGetAvgPrice(unittest.TestCase):
         price = TradingView.get_avg_price("AAPL", date(2023, 12, 25))
 
         self.assertEqual(price, 150.0)  # (160 + 140) / 2
-
-    @patch("app.stocks.libraries.trading_view.TvDatafeed")
-    def test_uses_last_trading_day_before_requested_date(self, mock_tv_class):
-        """
-        Returns the most recent bar at or before the requested date when that
-        exact date has no bar (e.g., the requested date is a weekend/holiday).
-        """
-        # Data only for 2023-12-24, requested 2023-12-25 (a holiday).
-        hist_df = _make_hist_df(high=155.0, low=145.0, date_str="2023-12-24")
-        mock_tv_class.return_value.get_hist.return_value = hist_df
-
-        price = TradingView.get_avg_price("AAPL", date(2023, 12, 25))
-
-        self.assertEqual(price, 150.0)  # (155 + 145) / 2 from the 24th
 
     @patch("app.stocks.libraries.trading_view.TvDatafeed")
     def test_picks_latest_bar_at_or_before_date(self, mock_tv_class):
@@ -372,14 +342,6 @@ class TestTradingViewIdentifierLookup(unittest.TestCase):
 
         self.assertIsNone(TradingView.get_ticker("282644400"))
         self.assertEqual(mock_get.call_count, 1)
-
-    @patch("app.stocks.libraries.trading_view.requests.get")
-    def test_get_ticker_returns_none_when_no_symbols(self, mock_get):
-        """
-        Returns None when the endpoint reports zero matches.
-        """
-        mock_get.return_value = _symbol_search_response([])
-        self.assertIsNone(TradingView.get_ticker("037833100"))
 
     @patch("app.stocks.libraries.trading_view.requests.get")
     def test_get_ticker_returns_none_on_invalid_cusip(self, mock_get):

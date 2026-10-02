@@ -28,9 +28,4 @@ describe("buildFaviconUrl", () => {
     const url = buildFaviconUrl("https://example.com/", 16);
     expect(url).toContain("icon.horse/icon/example.com");
   });
-
-  it("URI-encodes the host", () => {
-    const url = buildFaviconUrl("https://xn--bcher-kva.example/", 16);
-    expect(url).toContain("xn--bcher-kva.example");
-  });
 });

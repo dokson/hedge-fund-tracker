@@ -6,12 +6,32 @@
 import Papa from "papaparse";
 import { DATABASE_URL, IS_GH_PAGES_MODE, BASE_PATH } from "../config";
 
+/** A non-ok HTTP response; `status` lets callers tell client from server errors. */
+export class HttpError extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+
+/** A payload that arrived but doesn't have the expected shape: retrying can't fix it. */
+export class DataFormatError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DataFormatError";
+  }
+}
+
 export async function fetchCSV<T>(url: string, requiredColumns?: readonly string[]): Promise<T[]> {
   const fullUrl = IS_GH_PAGES_MODE
     ? `${BASE_PATH}${url}`
     : `${DATABASE_URL}${url.replace(/^\/database/, "")}`;
   const response = await fetch(fullUrl);
-  if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  if (!response.ok) {
+    throw new HttpError(`Failed to fetch ${url}: ${response.status}`, response.status);
+  }
   const text = await response.text();
 
   return new Promise((resolve, reject) => {
@@ -25,7 +45,9 @@ export async function fetchCSV<T>(url: string, requiredColumns?: readonly string
           const fields = results.meta.fields ?? [];
           const missing = requiredColumns.filter((c) => !fields.includes(c));
           if (missing.length > 0) {
-            reject(new Error(`${url} is missing expected column(s): ${missing.join(", ")}`));
+            reject(
+              new DataFormatError(`${url} is missing expected column(s): ${missing.join(", ")}`),
+            );
             return;
           }
         }
@@ -38,15 +60,23 @@ export async function fetchCSV<T>(url: string, requiredColumns?: readonly string
 
 // ---------- Simple in-memory cache ----------
 
-const cache = new Map<string, { data: unknown; ts: number }>();
+const cache = new Map<string, { promise: Promise<unknown>; ts: number }>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
-export async function cachedFetch<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+/**
+ * Caches the promise rather than the value so concurrent callers share one
+ * in-flight request; a rejected promise is evicted so the next call retries.
+ */
+export function cachedFetch<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
   const cached = cache.get(key);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data as T;
-  const data = await fetcher();
-  cache.set(key, { data, ts: Date.now() });
-  return data;
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.promise as Promise<T>;
+  const promise = fetcher();
+  const entry = { promise, ts: Date.now() };
+  cache.set(key, entry);
+  promise.catch(() => {
+    if (cache.get(key) === entry) cache.delete(key);
+  });
+  return promise;
 }
 
 export function clearCache(key?: string) {
@@ -84,5 +114,6 @@ export function downloadFile(content: string, filename: string) {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Revoking synchronously can cancel the download before the browser starts it.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

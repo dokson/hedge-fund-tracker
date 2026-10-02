@@ -9,7 +9,7 @@ from google.genai.errors import ClientError, ServerError
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from app.ai.clients import AIClient
-from app.ai.clients.base_client import ReasoningLevel, StructuredMode
+from app.ai.clients.base_client import ReasoningLevel, StructuredMode, llm_retry_hook
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -90,10 +90,8 @@ class GoogleAIClient(AIClient):
         wait=wait_exponential(multiplier=2, min=1, max=8),
         stop=stop_after_attempt(3),
         retry=retry_if_exception(_is_transient),
-        before_sleep=lambda rs: logger.progress(
-            "Google AI service unavailable, retrying in %.2fs... (Attempt #%d)",
-            rs.next_action.sleep,  # type: ignore[union-attr]
-            rs.attempt_number,
+        before_sleep=llm_retry_hook(
+            "Google AI service unavailable, retrying in %.2fs... (Attempt #%d)"
         ),
     )
     def _generate_content_impl(

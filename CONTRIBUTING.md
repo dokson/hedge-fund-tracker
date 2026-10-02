@@ -82,10 +82,9 @@ pre-commit run --all-files
 # Or individually
 pipenv run lint                                 # Ruff
 pipenv run format                               # Ruff format
-pipenv run typecheck                            # mypy (informational, not blocking)
 cd app/frontend && npm run lint                 # oxlint --deny-warnings
 cd app/frontend && npm run type-check           # tsc --noEmit
-cd app/frontend && npm run format:check         # Prettier
+cd app/frontend && npm run format:check         # oxfmt
 ```
 
 If you hit a rule that genuinely doesn't fit your case, **prefer rewriting the code over disabling the rule**. If you must disable, do it inline with a one-line reason (`# noqa: PTH119 — CodeQL sanitizer pattern`), never via blanket config.

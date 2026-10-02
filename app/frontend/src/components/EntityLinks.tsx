@@ -94,15 +94,18 @@ export function TickerLink({
   ticker,
   className = "",
   showLogo = true,
+  title,
 }: {
   ticker: string;
   className?: string;
   showLogo?: boolean;
+  title?: string;
 }) {
   return (
     <Link
       to={stockPath(ticker)}
       className={`ticker-pill min-h-6 ${className}`}
+      title={title}
       onClick={(e) => e.stopPropagation()}
     >
       {showLogo && <CompanyLogo ticker={ticker} size={16} />}

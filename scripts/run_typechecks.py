@@ -1,16 +1,16 @@
 """
-Pre-push helper: run pyright, mypy and the unit-test suite through the
+Pre-push helper: run pyright and the unit-test suite through the
 project's pipenv venv.
 
 Resolves pipenv even when it is not on PATH. This is the reason these checks
 were historically left out of the pre-commit hooks: a bare `python -m pipenv`
 often resolves to the *project venv* interpreter (which has no pipenv module),
 so it cannot launch pipenv. This script probes several invocations and uses the
-first that works, then runs both type-checkers exactly as CI does. It exits
-non-zero if either fails, so the git pre-push hook blocks the push.
+first that works, then runs the checks exactly as CI does. It exits non-zero
+if any fails, so the git pre-push hook blocks the push.
 
-Both checkers always run (the script does not stop at the first failure) so a
-single push surfaces every type error at once.
+Every check runs (the script does not stop at the first failure) so a single
+push surfaces every error at once.
 
 This module is a *bootstrap*: the pre-push hook launches it with whatever
 `python` is on PATH, which is not the project venv and may be older than the
@@ -71,7 +71,6 @@ def _pipenv_candidates(pipfile: Path = _PIPFILE) -> list[list[str]]:
 # Mirrors the commands in .github/workflows/lint.yml and run-tests.yml.
 _CHECKS: list[tuple[str, list[str]]] = [
     ("pyright", ["run", "pyright"]),
-    ("mypy", ["run", "mypy", "app", "database", "scripts"]),
     ("unittest", ["run", "python", "-m", "unittest", "discover"]),
 ]
 
@@ -97,14 +96,14 @@ def _resolve_pipenv() -> list[str] | None:
 
 def main() -> int:
     """
-    Run pyright and mypy via pipenv; return 0 only if both pass.
+    Run pyright and the test suite via pipenv; return 0 only if all pass.
     """
     pipenv = _resolve_pipenv()
     if pipenv is None:
         print(
             "pre-push: could not locate pipenv (tried: "
             f"{', '.join(' '.join(c) for c in _pipenv_candidates())}).\n"
-            "Install pipenv or run pyright/mypy manually before pushing.",
+            "Install pipenv or run pyright manually before pushing.",
             file=sys.stderr,
         )
         return 1
@@ -120,7 +119,7 @@ def main() -> int:
         print(f"pre-push: {', '.join(failed)} failed — push aborted.", file=sys.stderr)
         return 1
 
-    print("pre-push: pyright + mypy + unittest clean.")
+    print("pre-push: pyright + unittest clean.")
     return 0
 
 

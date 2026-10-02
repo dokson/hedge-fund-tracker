@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 import sys
 import threading
@@ -20,31 +21,6 @@ class TestGetLogger(unittest.TestCase):
         """
         self._orig_stdout = sys.stdout
         self.addCleanup(setattr, sys, "stdout", self._orig_stdout)
-
-    def test_info_message_reaches_current_stdout(self):
-        """
-        logger.info() must write to whatever sys.stdout points to at emit time.
-        """
-        buf = io.StringIO()
-        sys.stdout = buf
-
-        logger = get_logger("test.info")
-        logger.info("hello")
-
-        self.assertIn("hello", buf.getvalue())
-
-    def test_error_message_reaches_current_stdout(self):
-        """
-        logger.error() goes to the same stream — there is no separate stderr
-        path that would bypass SSE capture.
-        """
-        buf = io.StringIO()
-        sys.stdout = buf
-
-        logger = get_logger("test.error")
-        logger.error("kaboom")
-
-        self.assertIn("kaboom", buf.getvalue())
 
     def test_stdout_swap_after_logger_creation_is_honored(self):
         """
@@ -110,86 +86,28 @@ class TestGetLogger(unittest.TestCase):
         self.assertIn("ranking ticker AAPL", joined)
         self.assertIn("upstream API failed", joined)
 
-    def test_warning_records_get_warning_prefix(self):
+    def test_each_level_gets_its_default_prefix(self):
         """
-        logger.warning() output must start with the configured 🚨 WARNING: prefix.
+        Every level method prepends its configured marker via the formatter, so
+        call sites never bake the emoji into the message.
         """
-        buf = io.StringIO()
-        sys.stdout = buf
+        cases = [
+            ("warning", "🚨 WARNING: "),
+            ("error", "❌ ERROR - "),
+            ("progress", "⏳ "),
+            ("money", "💲 "),
+            ("success", "✅ "),
+            # Double space after ⚠️ — see note in _PrefixFormatter._PREFIXES.
+            ("deprecated", "⚠️  DEPRECATED: "),
+        ]
+        for method, prefix in cases:
+            with self.subTest(method=method):
+                buf = io.StringIO()
+                sys.stdout = buf
 
-        get_logger("test.prefix.warn").warning("low disk")
+                getattr(get_logger(f"test.prefix.{method}"), method)("payload")
 
-        self.assertIn("🚨 WARNING: low disk", buf.getvalue())
-
-    def test_error_records_get_error_prefix(self):
-        """
-        logger.error() output must start with the configured ❌ ERROR - prefix.
-        """
-        buf = io.StringIO()
-        sys.stdout = buf
-
-        get_logger("test.prefix.err").error("upstream down")
-
-        self.assertIn("❌ ERROR - upstream down", buf.getvalue())
-
-    def test_progress_method_emits_with_hourglass_prefix(self):
-        """
-        logger.progress() renders with the ⏳ marker — used for "trying" /
-        "fallback" / "in flight" status messages.
-        """
-        buf = io.StringIO()
-        sys.stdout = buf
-
-        get_logger("test.progress").progress("fetching ticker AAPL")
-
-        self.assertIn("⏳ fetching ticker AAPL", buf.getvalue())
-
-    def test_money_method_emits_with_dollar_prefix(self):
-        """
-        logger.money() renders with the 💲 marker — used for price/value reporting.
-        """
-        buf = io.StringIO()
-        sys.stdout = buf
-
-        get_logger("test.money").money("price for AAPL: $150.00")
-
-        self.assertIn("💲 price for AAPL: $150.00", buf.getvalue())
-
-    def test_success_method_emits_with_success_prefix(self):
-        """
-        logger.success() emits at the SUCCESS level with the ✅ marker via the
-        formatter — call sites avoid baking the emoji into every message.
-        """
-        buf = io.StringIO()
-        sys.stdout = buf
-
-        get_logger("test.success").success("scrape complete")
-
-        self.assertIn("✅ scrape complete", buf.getvalue())
-
-    def test_deprecated_method_emits_with_deprecation_prefix(self):
-        """
-        logger.deprecated() must be available on every logger and prepend
-        the ⚠️ DEPRECATED: marker via the formatter.
-        """
-        buf = io.StringIO()
-        sys.stdout = buf
-
-        get_logger("test.prefix.dep").deprecated("old API removed in v2")
-
-        # Double space after ⚠️ — see note in _PrefixFormatter._PREFIXES.
-        self.assertIn("⚠️  DEPRECATED: old API removed in v2", buf.getvalue())
-
-    def test_info_with_emoji_kwarg_gets_custom_prefix(self):
-        """
-        Stylistic emoji passed via emoji= becomes the message prefix on info.
-        """
-        buf = io.StringIO()
-        sys.stdout = buf
-
-        get_logger("test.styled.info").info("scrape complete", emoji="✅")
-
-        self.assertIn("✅ scrape complete", buf.getvalue())
+                self.assertIn(f"{prefix}payload", buf.getvalue())
 
     def test_emoji_kwarg_overrides_level_default_prefix(self):
         """
@@ -350,6 +268,116 @@ class TestGetLogger(unittest.TestCase):
         logger.debug("inspecting state")
 
         self.assertIn("🚧 inspecting state", buf.getvalue())
+
+
+class _CaptureStdout(io.StringIO):
+    """
+    Stand-in for the SSE stdout wrapper while a request is being captured.
+    """
+
+    capturing = True
+
+    def __init__(self):
+        """
+        Hold the container stream the wrapper falls back to.
+        """
+        super().__init__()
+        self.fallback = io.StringIO()
+
+
+class TestLogFormat(unittest.TestCase):
+    """
+    LOG_FORMAT=json switches the stdout handler to one JSON object per line.
+    """
+
+    def setUp(self):
+        """
+        Route a private logger through a fresh handler and restore sys.stdout after.
+        """
+        from app.utils.logger import _make_formatter, _StdoutHandler
+
+        self._orig_stdout = sys.stdout
+        self.addCleanup(setattr, sys, "stdout", self._orig_stdout)
+        self.logger = get_logger(f"test.format.{self._testMethodName}")
+        self.logger.propagate = False
+        self.addCleanup(setattr, self.logger, "propagate", True)
+        self.handler = _StdoutHandler()
+        self.logger.addHandler(self.handler)
+        self.addCleanup(self.logger.removeHandler, self.handler)
+        self.use = lambda env: self.handler.setFormatter(_make_formatter(env))
+
+    def test_default_format_is_human_with_prefix(self):
+        """
+        Without LOG_FORMAT the human format with the level marker is kept.
+        """
+        sys.stdout = buf = io.StringIO()
+        self.use({})
+
+        self.logger.warning("disk low")
+
+        self.assertEqual(buf.getvalue(), "🚨 WARNING: disk low\n")
+
+    def test_json_format_emits_one_object_per_line(self):
+        """
+        Each record is a single JSON line with timestamp, level, logger and message.
+        """
+        sys.stdout = buf = io.StringIO()
+        self.use({"LOG_FORMAT": "JSON"})
+
+        self.logger.success("saved %d rows", 3)
+
+        lines = buf.getvalue().splitlines()
+        self.assertEqual(len(lines), 1)
+        record = json.loads(lines[0])
+        self.assertEqual(record["level"], "SUCCESS")
+        self.assertEqual(record["logger"], self.logger.name)
+        self.assertEqual(record["message"], "saved 3 rows")
+        self.assertRegex(record["timestamp"], r"^\d{4}-\d{2}-\d{2}T.*Z$")
+        self.assertNotIn("request_id", record)
+
+    def test_json_format_carries_the_request_id(self):
+        """
+        A record logged while a request id is bound carries it.
+        """
+        from app.utils.logger import request_id_var
+
+        sys.stdout = buf = io.StringIO()
+        self.use({"LOG_FORMAT": "json"})
+        token = request_id_var.set("req-123")
+        self.addCleanup(request_id_var.reset, token)
+
+        self.logger.info("hello")
+
+        self.assertEqual(json.loads(buf.getvalue())["request_id"], "req-123")
+
+    def test_json_format_keeps_the_traceback_on_one_line(self):
+        """
+        exc_info is serialized inside the object, never as extra lines.
+        """
+        sys.stdout = buf = io.StringIO()
+        self.use({"LOG_FORMAT": "json"})
+
+        try:
+            raise ValueError("root cause")
+        except ValueError:
+            self.logger.error("wrapper", exc_info=True)
+
+        lines = buf.getvalue().splitlines()
+        self.assertEqual(len(lines), 1)
+        self.assertIn("ValueError: root cause", json.loads(lines[0])["exc_info"])
+
+    def test_json_mode_keeps_sse_clients_on_the_human_format(self):
+        """
+        While an SSE request captures stdout, the browser gets the human line
+        and the container stream still gets the JSON record.
+        """
+        sys.stdout = capture = _CaptureStdout()
+        self.use({"LOG_FORMAT": "json"})
+
+        self.logger.info("ranking")
+
+        self.assertEqual(capture.getvalue(), "ℹ️  ranking\n")
+        self.assertEqual(json.loads(capture.fallback.getvalue())["message"], "ranking")
 
 
 if __name__ == "__main__":

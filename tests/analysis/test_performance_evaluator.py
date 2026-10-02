@@ -111,8 +111,7 @@ class TestPerformanceEvaluator(unittest.TestCase):
             ]
         )
 
-        df_curr = pd.DataFrame()  # Position C1 is closed, so no data in 2025Q1
-        # Wait, if df_curr is empty, the function returns an error early. Let's provide a dummy other row.
+        # C1 is closed; an unrelated row keeps the quarter from reading as missing.
         df_curr = pd.DataFrame(
             [{"CUSIP": "OTHER", "Shares": 10, "Value": 100, "Reported_Price": 10.0}]
         )

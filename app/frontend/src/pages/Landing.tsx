@@ -1,10 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
+import { ArrowRight, Code2, Layers, Trophy } from "lucide-react";
 
 import { GitHubMark } from "@/components/GitHubMark";
 import { PanelTitle } from "@/components/ui/PanelTitle";
+import { QueryState } from "@/components/ui/QueryState";
 import { BASE_PATH } from "@/lib/config";
-import { getEnrichedNQFilings, getHedgeFunds, getStocks } from "@/lib/dataService";
+import { getHedgeFunds, getStocks } from "@/lib/dataService";
+import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
+import { useEnrichedNQFilings } from "@/hooks/useEnrichedNQFilings";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { ROUTES, fundPath, learnItem, stockPath } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
@@ -22,62 +26,68 @@ const FRESHNESS = [
 ];
 const MAX_LAG = 45;
 
-// The wire fills whatever height the hero row leaves, so the panel bottoms out
-// on the footer rule instead of leaving a void under it. The list is longer
-// than the shortest viewport shows and the frame's `overflow-hidden` clips the
-// remainder: no visible overflow, no scrollbar inside the hero.
-const WIRE_ROWS = 16;
+const WIRE_ROWS = 8;
 
 const FEATURES = [
   {
+    icon: Trophy,
     title: "A roster picked by track record",
     body: "Not the household names. Funds enter the list on measured performance, and the method is one click away.",
   },
   {
+    icon: Layers,
     title: "Three filing types, one timeline",
     body: "Form 4 and 13D/G land on top of the quarterly 13F, so consensus reflects what funds are doing now.",
   },
   {
+    icon: Code2,
     title: "Open source, runs anywhere",
     body: "FastAPI and React, self-hostable, with a static demo in which every analysis feature works without a backend.",
   },
 ];
 
-/** The newest filings on the wire: the hero's right column, real data. */
+/** The newest filings on the wire, real data. */
 function Wire() {
-  const { data: filings = [], isLoading } = useQuery({
-    queryKey: ["enrichedNQFilings"],
-    queryFn: () => getEnrichedNQFilings(),
-  });
+  const { data: filings = [], isLoading, isError, error } = useEnrichedNQFilings();
   const rows = [...filings]
     .sort((a, b) => (b.filingDate > a.filingDate ? 1 : b.filingDate < a.filingDate ? -1 : 0))
     .slice(0, WIRE_ROWS);
 
   return (
-    <div className="frame flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="frame flex flex-col overflow-hidden">
       <div className="frame-title">
         <PanelTitle>Latest filings</PanelTitle>
         <Link
           to={ROUTES.latest}
-          className="text-[13px] font-normal text-primary-text hover:underline"
+          className="inline-flex items-center gap-1 text-[13px] font-normal text-primary-text hover:underline"
         >
-          View all
+          View all <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
       </div>
-      <ol className="flex-1 divide-y divide-border/60">
+      <ol className="divide-y divide-border/60">
         {isLoading &&
           Array.from({ length: WIRE_ROWS }, (_, i) => (
-            <li key={i} className="h-9 flex items-center px-3">
-              <span className="h-3 w-full max-w-64 animate-pulse rounded-sm bg-muted" />
+            <li key={i} className="h-10 flex items-center px-3">
+              <span className="h-3 w-full max-w-64 animate-pulse rounded-full bg-muted" />
             </li>
           ))}
-        {!isLoading && rows.length === 0 && (
+        {isError && (
+          <li>
+            <QueryState
+              isError
+              error={error}
+              title="Could not load the latest filings"
+              className="rounded-none border-0 py-6 shadow-none"
+            />
+          </li>
+        )}
+        {!isLoading && !isError && rows.length === 0 && (
           <li className="px-3 py-3 text-[13px] text-muted-foreground">No filings yet.</li>
         )}
         {rows.map((f) => (
           <li
             key={`${f.fund}-${f.ticker}-${f.filingDate}`}
-            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-3 h-9 text-[13px]"
+            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-3 h-10 text-[13px] transition-colors duration-[120ms] hover:bg-muted/60"
           >
             <span className="text-xs text-muted-foreground tabular-nums">
               {f.filingDate.slice(5)}
@@ -109,10 +119,24 @@ function Wire() {
   );
 }
 
+/** A headline number over its label, one cell of the stats strip. */
+function Stat({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-1 px-4 py-5">
+      <span className="text-[28px] font-semibold leading-8 tracking-[-0.03em] text-foreground tabular-nums">
+        {value}
+      </span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
 export default function Landing() {
   const { data: funds = [] } = useQuery({ queryKey: ["hedge_funds"], queryFn: getHedgeFunds });
   const { data: stocks = [] } = useQuery({ queryKey: ["stocks"], queryFn: getStocks });
+  const { latestQuarter } = useAvailableQuarters();
   const tickers = new Set(stocks.map((s) => s.ticker)).size;
+  const asOf = latestQuarter ? latestQuarter.replace("Q", " Q") : "…";
 
   usePageMeta({
     title: "Hedge Fund Tracker — SEC Filing Tracker & Hedge Fund Analytics",
@@ -122,73 +146,116 @@ export default function Landing() {
   });
 
   return (
-    // One screen on desktop: the root owns the height main gives it and the
-    // hero row takes what is left, so nothing pushes the footer out of view.
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 lg:h-full lg:min-h-0">
-      <section className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-6">
-        {/* The claim, with the mark carrying it. */}
-        <div className="flex min-w-0 min-h-0 flex-col gap-4">
-          {/* The mark is the column's optical weight, not an app icon: no
-              plate, no border, sized against the headline block beside it. */}
-          <div className="flex items-center gap-4 sm:gap-6">
-            <img
-              src={`${BASE_PATH}/logo.png`}
-              alt="Hedge Fund Tracker"
-              className="h-24 w-24 shrink-0 object-contain sm:h-52 sm:w-52"
-            />
-            <div className="min-w-0 space-y-3">
-              <h1 className="max-w-[18ch] text-[clamp(1.5rem,3.4vw,2.25rem)] font-semibold leading-[1.15] tracking-[-0.01em] text-foreground">
-                No Buffett. No Burry. Only the best track records.
-              </h1>
-              <p className="max-w-[62ch] text-[13px] leading-5 text-muted-foreground">
-                SEC filings from a roster of funds selected by measured performance, turned into
-                portfolios, deltas and consensus you can read in seconds.
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 pb-4 sm:gap-16">
+      <section className="flex flex-col items-center pt-6 text-center sm:pt-12">
+        <Link
+          to={ROUTES.latest}
+          className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card py-1 pl-2.5 pr-3 text-xs text-muted-foreground shadow-sm transition-colors duration-[120ms] hover:text-foreground"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-positive" aria-hidden="true" />
+          <span>
+            Data as of <span className="font-medium text-foreground">{asOf}</span> · SEC EDGAR
+          </span>
+          <ArrowRight className="h-3 w-3" aria-hidden="true" />
+        </Link>
+        <img
+          src={`${BASE_PATH}/logo.png`}
+          alt="Hedge Fund Tracker"
+          className="mb-4 h-24 w-24 object-contain sm:h-28 sm:w-28"
+        />
+        <h1 className="max-w-[24ch] text-[clamp(2rem,5vw,3.5rem)] font-semibold leading-[1.05] tracking-[-0.035em] text-foreground">
+          No Buffett. No Burry.{" "}
+          <span className="block text-muted-foreground">Only the best track records.</span>
+        </h1>
+        <p className="mt-5 max-w-[58ch] text-[15px] leading-6 text-muted-foreground">
+          SEC filings from a roster of funds selected by measured performance, turned into
+          portfolios, deltas and consensus you can read in seconds.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            to={ROUTES.latest}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm transition-[filter] duration-[120ms] hover:brightness-110"
+          >
+            Open the board <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+          <a
+            href="https://github.com/dokson/hedge-fund-tracker"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 text-sm font-medium text-foreground shadow-sm transition-colors duration-[120ms] hover:bg-muted"
+          >
+            <GitHubMark className="h-4 w-4" /> Source
+          </a>
+        </div>
+      </section>
+
+      <section
+        aria-label="At a glance"
+        className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border shadow-sm sm:grid-cols-4"
+      >
+        <div className="bg-card">
+          <Stat value={funds.length || "…"} label="Funds tracked" />
+        </div>
+        <div className="bg-card">
+          <Stat value={tickers ? tickers.toLocaleString("en-US") : "…"} label="Tickers" />
+        </div>
+        <div className="bg-card">
+          <Stat value={3} label="Filing types" />
+        </div>
+        <div className="bg-card">
+          <Stat value={asOf} label="Latest quarter" />
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {FEATURES.map((f) => (
+          <div
+            key={f.title}
+            className="rounded-xl border border-border bg-card p-5 shadow-sm transition-[border-color,box-shadow] duration-[120ms] hover:border-input hover:shadow-md"
+          >
+            <div className="mb-4 grid h-9 w-9 place-items-center rounded-lg border border-border bg-muted text-primary-text">
+              <f.icon className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <h2 className="text-sm font-semibold text-foreground">{f.title}</h2>
+            <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">{f.body}</p>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-6">
+        <Wire />
+        <div className="flex flex-col gap-4">
+          <div className="frame">
+            <div className="frame-title">
+              <PanelTitle level={2}>A consensus that is current</PanelTitle>
+              <span className="text-xs text-muted-foreground">Time to public</span>
+            </div>
+            <div className="space-y-3 p-3">
+              {FRESHNESS.map((f) => (
+                <div
+                  key={f.tag}
+                  className="grid grid-cols-[7ch_minmax(0,1fr)_11ch] items-center gap-3 text-[13px]"
+                >
+                  <span className="font-medium text-foreground">{f.tag}</span>
+                  <div className="h-2 rounded-full bg-muted" aria-hidden="true">
+                    <div
+                      className={cn("h-full rounded-full", f.bar)}
+                      style={{ width: `${(f.days / MAX_LAG) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-right text-muted-foreground tabular-nums">{f.lag}</span>
+                  <span className="sr-only">{f.label}</span>
+                </div>
+              ))}
+              <p className="border-t border-border pt-3 text-xs leading-5 text-muted-foreground">
+                Each bar is the delay until that filing becomes public, on a calendar-day scale.
+                Form 4 and Schedule 13D land on top of the 45-day-old 13F. A Schedule 13G can be
+                just as fast, but a large institution's is due 45 days after quarter end, the same
+                lag as a 13F.
               </p>
             </div>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              to={ROUTES.latest}
-              className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-[13px] font-medium text-primary-foreground transition-colors duration-[120ms] hover:brightness-110"
-            >
-              Open the board
-            </Link>
-            <a
-              href="https://github.com/dokson/hedge-fund-tracker"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md px-3 text-[13px] font-medium text-muted-foreground transition-colors duration-[120ms] hover:bg-muted hover:text-foreground"
-            >
-              <GitHubMark className="h-4 w-4" /> Source
-            </a>
-          </div>
-
-          <div className="status-line flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span>
-              <span className="k">Funds tracked</span> {funds.length || "…"}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span>
-              <span className="k">Tickers</span> {tickers || "…"}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span>
-              <span className="k">Source</span> SEC EDGAR
-            </span>
-          </div>
-
-          {/* What it is: three lines on hairlines, not three cards. */}
-          <ul className="border-t border-border">
-            {FEATURES.map((f) => (
-              <li key={f.title} className="border-b border-border py-2">
-                <h2 className="text-[13px] font-semibold text-foreground">{f.title}</h2>
-                <p className="text-[13px] leading-5 text-muted-foreground">{f.body}</p>
-              </li>
-            ))}
-          </ul>
-
-          <p className="text-[13px] leading-5 text-muted-foreground">
+          <p className="px-1 text-[13px] leading-5 text-muted-foreground">
             Most 13F trackers show holdings that are 45 or more days stale. The faster filings are
             stacked on top of the quarterly snapshot, so the picture reflects what funds are doing
             now.{" "}
@@ -197,44 +264,9 @@ export default function Landing() {
             </Link>
           </p>
         </div>
-
-        {/* The proof: live filings, and the lag that makes them worth reading. */}
-        <div className="flex min-w-0 min-h-0 flex-col gap-4 lg:gap-6">
-          <Wire />
-          <div className="frame">
-            <div className="frame-title">
-              <PanelTitle level={2}>A consensus that is current</PanelTitle>
-              <span className="text-xs text-muted-foreground">Time to public, same scale</span>
-            </div>
-            <div className="space-y-2 p-3">
-              {FRESHNESS.map((f) => (
-                <div
-                  key={f.tag}
-                  className="grid grid-cols-[7ch_minmax(0,1fr)_11ch] items-center gap-3 text-[13px]"
-                >
-                  <span className="font-medium text-foreground">{f.tag}</span>
-                  <div className="h-2 rounded-sm bg-muted" aria-hidden="true">
-                    <div
-                      className={cn("h-full rounded-sm", f.bar)}
-                      style={{ width: `${(f.days / MAX_LAG) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-right text-muted-foreground tabular-nums">{f.lag}</span>
-                  <span className="sr-only">{f.label}</span>
-                </div>
-              ))}
-              <p className="border-t border-border pt-2 text-xs leading-5 text-muted-foreground">
-                Each bar is the delay until that filing becomes public, on a calendar-day scale.
-                Form 4 and Schedule 13D land on top of the 45-day-old 13F. A Schedule 13G can be
-                just as fast, but a large institution's is due 45 days after quarter end, the same
-                lag as a 13F.
-              </p>
-            </div>
-          </div>
-        </div>
       </section>
 
-      <footer className="status-note flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-3">
+      <footer className="status-note flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-4">
         <span>
           Built by{" "}
           <a

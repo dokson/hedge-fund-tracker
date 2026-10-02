@@ -3,7 +3,7 @@ from typing import cast
 import pandas as pd
 from pandas import Series
 
-from app.database import load_stocks, save_stock, save_stocks
+from app.database import load_stocks, save_stock
 from app.stocks.classification import resolve_industry
 from app.stocks.libraries import (
     FMP,
@@ -12,7 +12,7 @@ from app.stocks.libraries import (
     TradingView,
     YFinance,
 )
-from app.stocks.libraries.nasdaq import Nasdaq
+from app.stocks.libraries.openfigi import OpenFIGIUnavailableError
 from app.utils.github import open_issue
 from app.utils.logger import get_logger, log_safe
 
@@ -57,13 +57,19 @@ class TickerResolver:
             cusip = row["CUSIP"]
             company = row["Company"]
             ticker = None
+            lookup_unavailable = False
 
             if cusip not in stocks.index:
                 for library in libraries:
                     try:
-                        ticker = library.get_ticker(cusip, company_name=company)
+                        ticker = library.get_ticker(
+                            cusip, company_name=company, raise_unavailable=True
+                        )
                         if ticker:
                             break
+                    except OpenFIGIUnavailableError:
+                        lookup_unavailable = True
+                        continue
                     except Exception:
                         logger.warning(
                             "%s: Failed to resolve ticker for CUSIP %s",
@@ -110,6 +116,12 @@ class TickerResolver:
                     stocks.loc[cusip, "Company"] = company_name
                     stocks.loc[cusip, "Industry"] = industry
                     save_stock(cusip, ticker, company_name, industry=industry)
+                elif lookup_unavailable:
+                    logger.warning(
+                        "Ticker for CUSIP %s unresolved while a provider was unavailable; "
+                        "no issue opened, it will be retried on the next run",
+                        log_safe(cusip),
+                    )
                 else:
                     subject = f"Ticker not found for CUSIP '{cusip}'"
                     body = f"Could not resolve ticker for CUSIP: {cusip} / Company: '{company}'"
@@ -120,59 +132,10 @@ class TickerResolver:
 
             df.at[index, "Ticker"] = _scalar(ticker)
 
-            if company == "":
+            if company == "" and cusip in stocks.index:
                 df.at[index, "Company"] = _scalar(stocks.loc[cusip, "Company"])
 
         return df
-
-    @staticmethod
-    def update_changed_tickers() -> list[dict]:
-        """
-        Fetches recent ticker symbol changes from NASDAQ and updates stocks.csv accordingly.
-        Returns a list of dicts describing each applied update (cusip, old, new, company).
-        """
-        changes = Nasdaq.get_symbol_changes()
-        if not changes:
-            return []
-
-        stocks = load_stocks()
-        if stocks.empty:
-            return []
-
-        updates = []
-        for change in changes:
-            old_symbol = change.get("oldSymbol")
-            new_symbol = change.get("newSymbol")
-            company_name = change.get("companyName", "")
-
-            if not old_symbol or not new_symbol:
-                continue
-
-            matching = stocks[stocks["Ticker"] == old_symbol]
-            for cusip in matching.index:
-                stocks.at[cusip, "Ticker"] = new_symbol
-                stocks.at[cusip, "Company"] = company_name
-                updates.append(
-                    {
-                        "cusip": cusip,
-                        "old": old_symbol,
-                        "new": new_symbol,
-                        "company": company_name,
-                    }
-                )
-                logger.info(
-                    "%s → %s (CUSIP %s) — %s",
-                    log_safe(old_symbol),
-                    log_safe(new_symbol),
-                    log_safe(cusip),
-                    log_safe(company_name),
-                    emoji="🔄",
-                )
-
-        if updates:
-            save_stocks(stocks)
-
-        return updates
 
     @staticmethod
     def assign_cusip(df: pd.DataFrame) -> pd.DataFrame:

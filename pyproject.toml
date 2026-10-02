@@ -2,40 +2,44 @@
 target-version = "py314"
 line-length = 100
 extend-exclude = [
-    "__llmcache__",
-    "__reports__",
-    "database",
-    "app/frontend",
-    ".venv",
-    "build",
-    "dist",
+  "__llmcache__",
+  "__reports__",
+  "database",
+  "app/frontend",
+  ".venv",
+  "build",
+  "dist",
 ]
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "F",   # pyflakes
-    "W",   # pycodestyle warnings
-    "I",   # isort
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "UP",  # pyupgrade
-    "SIM", # flake8-simplify
-    "RET", # flake8-return
-    "PTH", # flake8-use-pathlib
-    "N",   # pep8-naming
-    "G",   # flake8-logging-format — no f-string / .format in logger calls; forces lazy %-formatting
+  "E", # pycodestyle errors
+  "F", # pyflakes
+  "W", # pycodestyle warnings
+  "I", # isort
+  "B", # flake8-bugbear
+  "C4", # flake8-comprehensions
+  "UP", # pyupgrade
+  "SIM", # flake8-simplify
+  "RET", # flake8-return
+  "PTH", # flake8-use-pathlib
+  "N", # pep8-naming
+  "G", # flake8-logging-format — no f-string / .format in logger calls; forces lazy %-formatting
+  "PLW1514", # unspecified-encoding: text I/O must not depend on the OS locale
 ]
+# Opt in to the preview rules listed above only, not to every preview rule.
+preview = true
+explicit-preview-rules = true
 ignore = [
-    "E501",  # line-too-long (formatter handles it)
-    "B008",  # do not perform function call in argument defaults (FastAPI Depends pattern)
-    "N803",  # argument name should be lowercase (DataFrame columns often PascalCase)
-    "N806",  # variable in function should be lowercase (idem)
-    "G201",  # use .exception() instead of .error(..., exc_info=True) — stylistic, not security
+  "E501", # line-too-long (formatter handles it)
+  "B008", # do not perform function call in argument defaults (FastAPI Depends pattern)
+  "N803", # argument name should be lowercase (DataFrame columns often PascalCase)
+  "N806", # variable in function should be lowercase (idem)
+  "G201", # use .exception() instead of .error(..., exc_info=True) — stylistic, not security
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["N802"]  # test method names can deviate from pep8
+"tests/**" = ["N802"] # test method names can deviate from pep8
 
 [tool.ruff.format]
 quote-style = "double"
@@ -43,17 +47,3 @@ indent-style = "space"
 # Bootstrap script: the pre-push hook runs it with whatever `python` is on
 # PATH, so it must parse on interpreters older than the py314 target.
 exclude = ["scripts/run_typechecks.py"]
-
-[tool.mypy]
-python_version = "3.14"
-ignore_missing_imports = true
-warn_unused_ignores = true
-warn_redundant_casts = true
-check_untyped_defs = true
-exclude = [
-    "app/frontend",
-    "__llmcache__",
-    "__reports__",
-    "build",
-    "dist",
-]

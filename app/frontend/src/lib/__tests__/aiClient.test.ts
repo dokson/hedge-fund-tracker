@@ -1,28 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import * as aiClient from "../aiClient";
 import { parseSSEEvent, runDueDiligenceStream, runPromiseScoreStream } from "../aiClient";
 
 describe("parseSSEEvent", () => {
-  it("parses a log event", () => {
-    expect(parseSSEEvent('{"type":"log","text":"Working"}')).toEqual({
-      type: "log",
-      text: "Working",
-    });
-  });
-
-  it("parses a result event, passing data through untouched", () => {
-    expect(parseSSEEvent('{"type":"result","data":[1,2]}')).toEqual({
-      type: "result",
-      data: [1, 2],
-    });
-  });
-
-  it("parses an error event", () => {
-    expect(parseSSEEvent('{"type":"error","message":"boom"}')).toEqual({
-      type: "error",
-      message: "boom",
-    });
+  it.each([
+    ['{"type":"log","text":"Working"}', { type: "log", text: "Working" }],
+    ['{"type":"result","data":[1,2]}', { type: "result", data: [1, 2] }],
+    ['{"type":"error","message":"boom"}', { type: "error", message: "boom" }],
+  ])("parses %s", (payload, expected) => {
+    expect(parseSSEEvent(payload)).toEqual(expected);
   });
 
   it("supplies a fallback message for an error event without one", () => {
@@ -71,9 +57,40 @@ describe("AI stream requests", () => {
     await runDueDiligenceStream("XYZ", "2026Q2", undefined, "", () => {});
     expect(sentBody(fetchMock)).toMatchObject({ model_id: null, provider_id: null });
   });
+});
 
-  it("exposes only the streaming entry points", () => {
-    expect(Object.keys(aiClient)).not.toContain("runPromiseScore");
-    expect(Object.keys(aiClient)).not.toContain("runDueDiligence");
+describe("AI request errors", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function stubErrorFetch(status: number, body: unknown) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () => new Response(JSON.stringify(body), { status })),
+    );
+  }
+
+  it("turns a validation-error list into readable text", async () => {
+    stubErrorFetch(422, {
+      detail: [{ loc: ["body", "top_n"], msg: "Input should be a valid integer", type: "x" }],
+    });
+    await expect(runPromiseScoreStream("2026Q2", 10, "m", "p", () => {})).rejects.toThrow(
+      "body.top_n: Input should be a valid integer",
+    );
+  });
+
+  it("keeps a plain string detail as the message", async () => {
+    stubErrorFetch(400, { detail: "Unknown provider" });
+    await expect(runDueDiligenceStream("XYZ", "2026Q2", "m", "p", () => {})).rejects.toThrow(
+      "Unknown provider",
+    );
+  });
+
+  it("falls back to the status when there is no detail", async () => {
+    stubErrorFetch(500, {});
+    await expect(runDueDiligenceStream("XYZ", "2026Q2", "m", "p", () => {})).rejects.toThrow(
+      "Server error 500",
+    );
   });
 });

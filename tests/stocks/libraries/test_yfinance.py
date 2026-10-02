@@ -239,6 +239,35 @@ class TestYFinance(unittest.TestCase):
         self.assertEqual(kwargs["end"], sunday + timedelta(days=1))
 
     @patch("app.stocks.libraries.yfinance.yf.download")
+    def test_get_last_price_in_range_takes_the_last_bar(self, mock_download):
+        """
+        One download over (start, end] returns the average of the last bar inside it.
+        """
+        df = pd.DataFrame(
+            {"High": [50.0, 44.0], "Low": [46.0, 36.0]},
+            index=[pd.Timestamp("2025-06-18"), pd.Timestamp("2025-06-20")],
+        )
+        mock_download.return_value = df
+        start, end = date(2025, 5, 15), date(2025, 8, 14)
+
+        price = YFinance.get_last_price_in_range("GONE", start, end)
+
+        self.assertEqual(price, 40.0)
+        mock_download.assert_called_once()
+        _, kwargs = mock_download.call_args
+        self.assertEqual(kwargs["start"], start + timedelta(days=1))
+        self.assertEqual(kwargs["end"], end + timedelta(days=1))
+
+    @patch("app.stocks.libraries.yfinance.yf.download")
+    def test_get_last_price_in_range_without_bars_is_none(self, mock_download):
+        """
+        An empty window returns None (after the international-suffix fallbacks).
+        """
+        mock_download.return_value = pd.DataFrame()
+        price = YFinance.get_last_price_in_range("GONE", date(2025, 5, 15), date(2025, 8, 14))
+        self.assertIsNone(price)
+
+    @patch("app.stocks.libraries.yfinance.yf.download")
     @patch("app.stocks.libraries.yfinance.yf.Ticker")
     def test_get_stocks_info(self, mock_yf_ticker, mock_download):
         """
@@ -314,6 +343,57 @@ class TestYFinance(unittest.TestCase):
         stocks_info = YFinance.get_stocks_info.__wrapped__(["AAA"])
 
         self.assertEqual(stocks_info, {"AAA": {"price": 10.0, "sector": None, "industry": None}})
+
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_get_current_price_rate_limit_is_reraised(self, mock_ticker):
+        """
+        Exhausted retries surface YFRateLimitError itself, not tenacity's RetryError.
+        """
+        from yfinance.exceptions import YFRateLimitError
+
+        mock_ticker.side_effect = YFRateLimitError()
+
+        with (
+            patch.object(YFinance.get_current_price.retry, "sleep", lambda _s: None),
+            self.assertLogs("app.stocks.libraries.yfinance", level="ERROR"),
+            self.assertRaises(YFRateLimitError),
+        ):
+            YFinance.get_current_price("AAA")
+
+    @patch("app.stocks.libraries.yfinance.yf.download")
+    @patch("app.stocks.libraries.yfinance.yf.Ticker")
+    def test_get_stocks_info_price_fallback_rate_limit_escapes(self, mock_ticker, mock_download):
+        """
+        A rate limit hit in the per-ticker price fallback aborts the batch instead of
+        being swallowed as a missing price.
+        """
+        from yfinance.exceptions import YFRateLimitError
+
+        mock_download.return_value = pd.DataFrame()
+        mock_ticker.side_effect = [MagicMock(info={})] + [YFRateLimitError()] * 5
+
+        with (
+            patch.object(YFinance.get_current_price.retry, "sleep", lambda _s: None),
+            self.assertLogs("app.stocks.libraries.yfinance", level="WARNING"),
+            self.assertRaises(YFRateLimitError),
+        ):
+            YFinance.get_stocks_info.__wrapped__(["AAA"])
+
+    @patch("app.stocks.libraries.yfinance.yf.download")
+    def test_get_stocks_info_exhausted_retries_reraise(self, mock_download):
+        """
+        After the final attempt the original error propagates, not RetryError.
+        """
+        from yfinance.exceptions import YFRateLimitError
+
+        mock_download.side_effect = YFRateLimitError()
+
+        with (
+            patch.object(YFinance.get_stocks_info.retry, "sleep", lambda _s: None),
+            self.assertLogs("app.stocks.libraries.yfinance", level="WARNING"),
+            self.assertRaises(YFRateLimitError),
+        ):
+            YFinance.get_stocks_info(["AAA"])
 
     @patch("app.stocks.libraries.yfinance.yf.Sector")
     def test_get_sector_tickers(self, mock_yf_sector):

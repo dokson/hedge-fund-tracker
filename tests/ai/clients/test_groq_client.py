@@ -14,7 +14,7 @@ class TestGroqClient(unittest.TestCase):
     def test_generate_content_invocation(self, mock_openai):
         # Setup mock
         mock_instance = mock_openai.return_value
-        mock_instance.chat.completions.create.return_value = [
+        mock_instance.chat.completions.create.return_value.__enter__.return_value = [
             MagicMock(choices=[MagicMock(delta=MagicMock(content="Mocked Groq response"))])
         ]
 

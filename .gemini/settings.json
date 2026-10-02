@@ -1,0 +1,22 @@
+{
+  "context": {
+    "fileName": [
+      "AGENTS.md"
+    ]
+  },
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "run_shell_command",
+        "hooks": [
+          {
+            "name": "enforce-pipenv",
+            "type": "command",
+            "command": "python \"$GEMINI_PROJECT_DIR/.agents/hooks/enforce_pipenv.py\" --format gemini",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}

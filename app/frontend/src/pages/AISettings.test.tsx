@@ -34,7 +34,8 @@ function renderPage() {
 
 async function openModelsTab() {
   renderPage();
-  fireEvent.click(screen.getByRole("tab", { name: /AI Models/ }));
+  // Radix tabs activate on mousedown, not click.
+  fireEvent.mouseDown(screen.getByRole("tab", { name: /AI Models/ }));
   await screen.findByText("2 / 2 models");
 }
 
@@ -69,5 +70,24 @@ describe("AI Settings model search", () => {
     await openModelsTab();
     search("   ");
     expect(screen.getByText("2 / 2 models")).toBeTruthy();
+  });
+});
+
+describe("AI Settings tabs", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 })),
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("links each tab to the panel it controls", () => {
+    renderPage();
+    const tab = screen.getByRole("tab", { name: /API Keys/ });
+    const panel = screen.getByRole("tabpanel");
+    expect(tab.getAttribute("aria-controls")).toBe(panel.id);
   });
 });

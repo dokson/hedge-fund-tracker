@@ -27,6 +27,7 @@ import threading
 from collections.abc import Callable
 
 from fastapi.responses import StreamingResponse
+from tenacity import RetryError
 
 _request_log_q: contextvars.ContextVar[queue.SimpleQueue | None] = contextvars.ContextVar(
     "_request_log_q", default=None
@@ -40,28 +41,80 @@ class _ContextAwareStdout:
     """
 
     def __init__(self, fallback):
-        self._fallback = fallback
+        """
+        Wrap the stream that receives writes made outside any SSE request.
+        """
+        self.fallback = fallback
+
+    @property
+    def capturing(self) -> bool:
+        """
+        True while the current context's writes go to an SSE request queue.
+        """
+        return _request_log_q.get() is not None
 
     def write(self, text: str) -> int:
+        """
+        Route non-blank lines to the current request's queue, or pass through.
+        """
         q = _request_log_q.get()
         if q is None:
-            return self._fallback.write(text)
+            return self.fallback.write(text)
         for line in text.splitlines():
             if line.strip():
                 q.put(("log", line))
         return len(text)
 
     def flush(self) -> None:
-        self._fallback.flush()
+        """
+        Flush the fallback stream.
+        """
+        self.fallback.flush()
 
     def __getattr__(self, name):
-        # Delegate everything else (encoding, fileno, isatty, ...) to fallback.
-        return getattr(self._fallback, name)
+        """
+        Delegate every other attribute (encoding, fileno, isatty, ...) to the fallback.
+        """
+        return getattr(self.fallback, name)
 
 
 # Install once at module import. Idempotent: re-importing won't re-wrap.
 if not isinstance(sys.stdout, _ContextAwareStdout):
     sys.stdout = _ContextAwareStdout(sys.stdout)
+
+
+RATE_LIMIT_MESSAGE = "Yahoo Finance rate limit reached; retry in a few minutes."
+
+
+def is_rate_limit_error(exc: BaseException) -> bool:
+    """
+    True when ``exc`` is a Yahoo Finance rate limit.
+    """
+    # Imported lazily: this module is on the boot path and yfinance is heavy.
+    from yfinance.exceptions import YFRateLimitError
+
+    return isinstance(exc, YFRateLimitError)
+
+
+def describe_retry_error(exc: RetryError) -> str:
+    """
+    Describe an exhausted retry by its last attempt's failure, not tenacity's Future repr.
+    """
+    last = exc.last_attempt.exception() if exc.last_attempt.failed else None
+    if last is None:
+        return "retries exhausted"
+    return str(last) or last.__class__.__name__
+
+
+def _describe_error(exc: BaseException) -> str:
+    """
+    Turn an exception into the message shown to the SSE client.
+    """
+    if isinstance(exc, RetryError):
+        return describe_retry_error(exc)
+    if is_rate_limit_error(exc):
+        return RATE_LIMIT_MESSAGE
+    return str(exc) or exc.__class__.__name__
 
 
 def _run_sse_target(target_fn: Callable[[], object], log_q: queue.SimpleQueue) -> None:
@@ -82,7 +135,7 @@ def _run_sse_target(target_fn: Callable[[], object], log_q: queue.SimpleQueue) -
         log_q.put(("result", result))
         emitted = True
     except BaseException as e:  # noqa: BLE001 — consumer must be signalled on every failure
-        log_q.put(("error", str(e) or e.__class__.__name__))
+        log_q.put(("error", _describe_error(e)))
         emitted = True
     finally:
         _request_log_q.reset(token)
@@ -112,9 +165,17 @@ def _make_sse_stream(target_fn: Callable[[], object]) -> StreamingResponse:
     """
     log_q: queue.SimpleQueue = queue.SimpleQueue()
 
-    threading.Thread(target=_run_sse_target, args=(target_fn, log_q), daemon=True).start()
+    # Copy the context so the worker's log records keep the request id.
+    threading.Thread(
+        target=contextvars.copy_context().run,
+        args=(_run_sse_target, target_fn, log_q),
+        daemon=True,
+    ).start()
 
     async def generate():
+        """
+        Yield queued log lines as SSE events until a result or error arrives.
+        """
         loop = asyncio.get_running_loop()
         while True:
             item = await loop.run_in_executor(None, _queue_get_with_timeout, log_q)

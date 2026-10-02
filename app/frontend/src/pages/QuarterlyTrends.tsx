@@ -2,8 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, Link } from "react-router";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import {
-  fetchQuarterAnalysis,
-  runQuarterAnalysis,
   getQuarterFundList,
   formatValue,
   type NumericStockKey,
@@ -15,6 +13,8 @@ import { performanceFor, ROUTES } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
+import { useSortState } from "@/hooks/useSortState";
+import { useQuarterAnalysis } from "@/hooks/useQuarterAnalysis";
 import { TickerLink, CompanyLink } from "@/components/EntityLinks";
 import { Delta } from "@/components/Delta";
 import { SmartScoreBadge } from "@/components/SmartScoreBadge";
@@ -30,8 +30,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { BarChart3, Filter, LineChart, ArrowUpRight, ArrowUp, ArrowDown } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { LoadingState } from "@/components/ui/LoadingState";
+import { AnalysisProgress } from "@/components/ui/AnalysisProgress";
+import { QueryState } from "@/components/ui/QueryState";
 import { TableFrame } from "@/components/ui/TableFrame";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
@@ -135,19 +135,10 @@ function AnalysisTable({
   /** Hard constraint: keep only positive / negative deltas (Increasing / Decreasing). */
   deltaSign?: "positive" | "negative";
 }) {
-  const [sortKey, setSortKey] = useState<SortKey>(defaultSort);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultDir);
+  const { sortKey, sortDir, toggleSort } = useSortState<SortKey>(defaultSort, defaultDir);
   const [minHolders, setMinHolders] = useState(defaultMinHolders);
   const [filterInfinite, setFilterInfinite] = useState(defaultFilterInfinite);
   const [limit, setLimit] = useState(defaultLimit);
-
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
-    else {
-      setSortKey(key);
-      setSortDir("desc");
-    }
-  }
 
   const filtered = useMemo(() => {
     let arr = disableFilters ? data : data.filter((s) => s.holderCount >= minHolders);
@@ -438,24 +429,14 @@ export default function QuarterlyTrends() {
 
   const activeFundFilter = filterStarredFunds && starredFunds.size > 0 ? starredFunds : undefined;
 
-  // Unfiltered view: same loader AND same query key as the stock page
-  // (backend frame first, client fallback), so the smart score a stock shows
-  // here is identical to its detail-page badge. The starred-funds filter is
-  // client-only, so that variant keeps its own key and computation.
-  const { data: rawData = [], isLoading } = useQuery({
-    queryKey: activeFundFilter
-      ? ["quarterAnalysis", quarter, [...activeFundFilter].sort().join(",")]
-      : ["quarterAnalysis", quarter],
-    queryFn: quarter
-      ? async () => {
-          const onProgress = (msg: string, pct: number) => setProgress({ msg, pct });
-          if (activeFundFilter) return runQuarterAnalysis(quarter, onProgress, activeFundFilter);
-          return (
-            (await fetchQuarterAnalysis(quarter)) ?? (await runQuarterAnalysis(quarter, onProgress))
-          );
-        }
-      : skipToken,
-    staleTime: 10 * 60 * 1000,
+  const {
+    data: rawData = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuarterAnalysis(quarter, {
+    onProgress: (msg, pct) => setProgress({ msg, pct }),
+    fundFilter: activeFundFilter,
   });
 
   const { data: quarterFundList = [] } = useQuery({
@@ -533,11 +514,10 @@ export default function QuarterlyTrends() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="frame p-8 flex flex-col items-center gap-3">
-          <LoadingState size="sm" className="py-0" message={progress.msg || "Loading analysis…"} />
-          <Progress value={progress.pct} className="w-64" />
-        </div>
+      {isError ? (
+        <QueryState isError error={error} title="Could not load the quarter analysis" />
+      ) : isLoading ? (
+        <AnalysisProgress msg={progress.msg} pct={progress.pct} className="frame p-8" />
       ) : (
         <Tabs
           value={activeTab}

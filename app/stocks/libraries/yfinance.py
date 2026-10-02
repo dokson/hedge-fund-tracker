@@ -11,6 +11,7 @@ from yfinance.exceptions import YFRateLimitError
 
 from app.stocks.libraries.base_library import FinanceLibrary
 from app.utils.logger import get_logger, log_safe
+from app.utils.metrics import PRICE_RATE_LIMITED
 
 logger = get_logger(__name__)
 
@@ -159,6 +160,9 @@ class YFinance(FinanceLibrary):
         """
 
         def _get_single_avg_price(t: str) -> float | None:
+            """
+            Average the High/Low of the last bar at or before the date for one symbol.
+            """
             search_ticker = YFinance._sanitize_ticker(t)
             # Look back a few days so non-trading dates (weekends/holidays) resolve to
             # the last trading day at or before the requested date. 'end' is exclusive.
@@ -211,9 +215,48 @@ class YFinance(FinanceLibrary):
             raise e
 
     @staticmethod
+    def get_last_price_in_range(ticker: str, start: date, end: date, **kwargs) -> float | None:
+        """
+        Gets the average (High + Low) / 2 of the last bar strictly after `start` and at
+        or before `end`, with one download over the whole range. Returns None when the
+        ticker has no bar inside it.
+        """
+
+        def _get_single_last_price(t: str) -> float | None:
+            """
+            Average the High/Low of the last bar in (start, end] for one symbol.
+            """
+            price_data = yf.download(
+                tickers=YFinance._sanitize_ticker(t),
+                start=start + timedelta(days=1),
+                end=end + timedelta(days=1),
+                auto_adjust=False,
+                progress=False,
+            )
+            if price_data is None or price_data.empty:
+                return None
+            return round(
+                (price_data["High"].iloc[-1].item() + price_data["Low"].iloc[-1].item()) / 2, 2
+            )
+
+        price = _get_single_last_price(ticker)
+        if price is not None:
+            return price
+        if "." not in ticker and "-" not in ticker:
+            for suffix in YFinance.FALLBACK_SUFFIXES:
+                try:
+                    price = _get_single_last_price(ticker + suffix)
+                except Exception:
+                    continue
+                if price is not None:
+                    return price
+        return None
+
+    @staticmethod
     @retry(
         stop=stop_after_attempt(2),
         wait=wait_exponential(multiplier=1, min=2, max=8),
+        reraise=True,
         before_sleep=lambda retry_state: logger.progress(
             f"Retrying get_current_price for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
         ),
@@ -260,6 +303,7 @@ class YFinance(FinanceLibrary):
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=8),
+        reraise=True,
         before_sleep=lambda retry_state: logger.progress(
             f"Retrying get_stocks_info for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
         ),
@@ -347,6 +391,7 @@ class YFinance(FinanceLibrary):
         except YFRateLimitError:
             # Escape the per-ticker loops so the outer retry backs off instead
             # of silently recording every remaining ticker as a data gap.
+            PRICE_RATE_LIMITED.labels(provider="YFinance").inc()
             logger.warning("YFinance rate limit hit during bulk info fetch: backing off.")
             raise
         except Exception as e:

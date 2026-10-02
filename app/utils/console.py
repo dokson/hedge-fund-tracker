@@ -1,8 +1,6 @@
 import math
 import os
 import shutil
-import sys
-from contextlib import suppress
 
 from tabulate import tabulate
 
@@ -14,16 +12,6 @@ from app.database import (
     load_models,
 )
 from app.utils.strings import get_previous_quarter
-
-# Ensure UTF-8 encoding for stdout and stderr, especially on Windows.
-# `reconfigure` exists on TextIOWrapper at runtime but not on the abstract TextIO
-# type, hence the `# type: ignore[union-attr]` for mypy's narrower view.
-if sys.stdout.encoding.lower() != "utf-8":
-    with suppress(AttributeError, Exception):
-        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
-if sys.stderr.encoding.lower() != "utf-8":
-    with suppress(AttributeError, Exception):
-        sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
 
 def get_terminal_width(fallback=110):

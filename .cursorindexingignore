@@ -1,0 +1,5 @@
+# Per-quarter filing CSVs: still readable on demand, kept out of the semantic index.
+database/20*Q*/
+__llmcache__/
+__reports__/
+__pricecache__/

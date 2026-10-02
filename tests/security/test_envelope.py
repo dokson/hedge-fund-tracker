@@ -8,7 +8,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 
 from app.security import envelope
 
@@ -97,36 +97,21 @@ class TestEncryptDecryptValue(unittest.TestCase):
 
     def test_roundtrip_returns_same_string(self) -> None:
         """
-        encrypt_value then decrypt_value yields the original UTF-8 string.
+        encrypt_value then decrypt_value yields the original string, non-ASCII included.
         """
         dek = envelope.generate_dek()
-        plaintext = "sk-test-very-secret-12345"
-        ciphertext = envelope.encrypt_value(plaintext, dek)
-        self.assertEqual(envelope.decrypt_value(ciphertext, dek), plaintext)
+        for plaintext in ("sk-test-very-secret-12345", "key-with-émoji-🔑-and-ümlaut"):
+            with self.subTest(plaintext=plaintext):
+                ciphertext = envelope.encrypt_value(plaintext, dek)
+                self.assertEqual(envelope.decrypt_value(ciphertext, dek), plaintext)
 
-    def test_unicode_payload_roundtrips(self) -> None:
+    def test_another_users_dek_cannot_decrypt(self) -> None:
         """
-        Non-ASCII keys (rare but possible) survive the trip.
+        A value is bound to its own DEK, so one user's key cannot read another's.
         """
-        dek = envelope.generate_dek()
-        plaintext = "key-with-émoji-🔑-and-ümlaut"
-        self.assertEqual(
-            envelope.decrypt_value(envelope.encrypt_value(plaintext, dek), dek), plaintext
-        )
-
-    def test_different_deks_produce_different_ciphertexts(self) -> None:
-        """
-        Two users with two DEKs must not produce comparable ciphertexts for
-        the same plaintext — sanity check that we're not accidentally using
-        the KEK as the value-layer key.
-        """
-        dek_a = envelope.generate_dek()
-        dek_b = envelope.generate_dek()
-        plaintext = "sk-test-shared"
-        self.assertNotEqual(
-            envelope.encrypt_value(plaintext, dek_a),
-            envelope.encrypt_value(plaintext, dek_b),
-        )
+        ciphertext = envelope.encrypt_value("sk-test-shared", envelope.generate_dek())
+        with self.assertRaises(InvalidToken):
+            envelope.decrypt_value(ciphertext, envelope.generate_dek())
 
 
 if __name__ == "__main__":

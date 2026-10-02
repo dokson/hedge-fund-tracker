@@ -1,7 +1,9 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from app.stocks.libraries.openfigi import OpenFIGI
+from curl_cffi.requests.exceptions import RequestException
+
+from app.stocks.libraries.openfigi import OpenFIGI, OpenFIGIUnavailableError
 
 
 def _mock_response(status_code: int, payload):
@@ -74,20 +76,47 @@ class TestOpenFIGI(unittest.TestCase):
         self.assertEqual(OpenFIGI.get_company("88160R101"), "Tesla Inc")
 
     @patch("app.stocks.libraries.openfigi.requests.post")
-    def test_rate_limit_returns_none(self, mock_post):
+    def test_rate_limit_returns_none_by_default(self, mock_post):
         """
-        On HTTP 429 (rate limit), logs and returns None instead of raising.
+        Without opting in, HTTP 429 still reads as a miss for lenient callers.
         """
         mock_post.return_value = _mock_response(429, {"message": "Too Many Requests"})
-        self.assertIsNone(OpenFIGI.get_ticker("88160R101"))
+        self.assertIsNone(OpenFIGI.get_ticker("000000000"))
 
     @patch("app.stocks.libraries.openfigi.requests.post")
-    def test_http_error_returns_none(self, mock_post):
+    def test_rate_limit_raises_unavailable(self, mock_post):
         """
-        On non-OK HTTP responses (other than 429), returns None rather than raising.
+        HTTP 429 is a transient failure, distinct from a confirmed miss.
+        """
+        mock_post.return_value = _mock_response(429, {"message": "Too Many Requests"})
+        with self.assertRaises(OpenFIGIUnavailableError):
+            OpenFIGI.get_ticker("000000000", raise_unavailable=True)
+
+    @patch("app.stocks.libraries.openfigi.requests.post")
+    def test_server_error_raises_unavailable(self, mock_post):
+        """
+        A 5xx response is a transient failure, distinct from a confirmed miss.
         """
         mock_post.return_value = _mock_response(500, {"message": "Server Error"})
-        self.assertIsNone(OpenFIGI.get_ticker("88160R101"))
+        with self.assertRaises(OpenFIGIUnavailableError):
+            OpenFIGI.get_ticker("000000000", raise_unavailable=True)
+
+    @patch("app.stocks.libraries.openfigi.requests.post")
+    def test_network_error_raises_unavailable(self, mock_post):
+        """
+        A network failure is transient, distinct from a confirmed miss.
+        """
+        mock_post.side_effect = RequestException("connection reset")
+        with self.assertRaises(OpenFIGIUnavailableError):
+            OpenFIGI.get_ticker("000000000", raise_unavailable=True)
+
+    @patch("app.stocks.libraries.openfigi.requests.post")
+    def test_client_error_returns_none(self, mock_post):
+        """
+        A non-retryable 4xx response is reported as a plain miss.
+        """
+        mock_post.return_value = _mock_response(400, {"message": "Bad Request"})
+        self.assertIsNone(OpenFIGI.get_ticker("000000000", raise_unavailable=True))
 
     @patch("app.stocks.libraries.openfigi.time.sleep")
     @patch("app.stocks.libraries.openfigi.OpenFIGI._post")
@@ -143,21 +172,23 @@ class TestOpenFIGI(unittest.TestCase):
     @patch("app.stocks.libraries.openfigi.OpenFIGI._post")
     def test_map_cusips_skips_failed_batches(self, mock_post, _mock_sleep):
         """
-        A batch that fails outright (rate limit / network) is skipped without
-        losing the other batches' results.
+        A batch that fails outright (no response, or a transient rate-limit /
+        network error) is skipped without losing the other batches' results.
         """
         cusips = [f"CUSIP{i:04d}" for i in range(12)]
         second_batch = [
             {"data": [{"ticker": "T10", "name": "Co 10", "securityType": "Common Stock"}]},
             {"data": [{"ticker": "T11", "name": "Co 11", "securityType": "Common Stock"}]},
         ]
-        mock_post.side_effect = [None, second_batch]
+        for failure in (None, OpenFIGIUnavailableError("rate limited")):
+            with self.subTest(failure=repr(failure)):
+                mock_post.side_effect = [failure, second_batch]
 
-        with patch.object(OpenFIGI, "API_KEY", None):
-            result = OpenFIGI.map_cusips(cusips)
+                with patch.object(OpenFIGI, "API_KEY", None):
+                    result = OpenFIGI.map_cusips(cusips)
 
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result["CUSIP0011"]["ticker"], "T11")
+                self.assertEqual(sorted(result), ["CUSIP0010", "CUSIP0011"])
+                self.assertEqual(result["CUSIP0011"]["ticker"], "T11")
 
     @patch("app.stocks.libraries.openfigi.requests.post")
     def test_sends_api_key_when_present(self, mock_post):

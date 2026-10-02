@@ -286,7 +286,7 @@ hedge-fund-tracker/
 ├── 📝 .env.example                 # Template for your API keys and secrets
 ├── ⛔ .gitignore                   # Git ignore rules
 ├── ⚙️ alembic.ini                  # Database migration configuration
-├── 🐳 docker-compose.yml           # App + Postgres services
+├── 🐳 compose.yaml                 # App + Postgres services
 ├── 🐳 Dockerfile                   # Multi-stage image (Node build → Python runtime)
 ├── ▶️ entrypoint.sh                # Container start-up: seed data, write .env, run migrations
 ├── 🧾 LICENSE                      # Proprietary (code) + bundled MIT (original work)
@@ -576,8 +576,8 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 | **Reliability** | [Tenacity](https://github.com/jd/tenacity), [Python-Dotenv](https://github.com/theskumar/python-dotenv) |
 | **Stocks Data** | [yfinance](https://github.com/ranaroussi/yfinance), [OpenFIGI](https://www.openfigi.com/), [TradingView](https://www.tradingview.com/), [Financial Modeling Prep](https://site.financialmodelingprep.com/), [Nasdaq API](https://www.nasdaq.com/) |
 | **Gen AI** | [toon-format](https://github.com/toon-format/toon-python), [Google AI SDK](https://googleapis.github.io/python-genai/), [OpenAI SDK](https://github.com/openai/openai-python) |
-| **Code Quality (Python)** | [Ruff](https://docs.astral.sh/ruff/) (lint + format), [mypy](https://mypy.readthedocs.io/) (type-check), [pre-commit](https://pre-commit.com/) |
-| **Code Quality (Frontend)** | [oxlint](https://oxc.rs/docs/guide/usage/linter) (React, JSX-a11y, TypeScript rules), [Prettier](https://prettier.io/), [TypeScript strict](https://www.typescriptlang.org/) |
+| **Code Quality (Python)** | [Ruff](https://docs.astral.sh/ruff/) (lint + format), [Pyright](https://github.com/microsoft/pyright) (type-check), [pre-commit](https://pre-commit.com/) |
+| **Code Quality (Frontend)** | [oxlint](https://oxc.rs/docs/guide/usage/linter) (React, JSX-a11y, TypeScript rules), [oxfmt](https://oxc.rs/docs/guide/usage/formatter), [TypeScript strict](https://www.typescriptlang.org/) |
 | **CI/CD** | [GitHub Actions](https://docs.github.com/actions) (lint, tests, deploy), [Vitest](https://vitest.dev/) (frontend tests), `unittest` (Python tests) |
 
 ## 🤝🏼 Contributing & Support

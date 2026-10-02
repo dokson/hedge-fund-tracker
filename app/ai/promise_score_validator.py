@@ -37,12 +37,6 @@ class PromiseScoreValidator:
     MIN_METRICS: int = 6
     MAX_METRICS: int = 10
 
-    def __init__(self, top_n_stocks: int = 30):
-        """
-        Stores how many top-ranked stocks the analysis keeps.
-        """
-        self.top_n_stocks = top_n_stocks
-
     @staticmethod
     def validate_weight_values(weights: dict[str, float]) -> list[str]:
         """

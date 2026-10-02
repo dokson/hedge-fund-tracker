@@ -35,16 +35,15 @@ describe("getStocks", () => {
   beforeEach(() => {
     clearCache();
     vi.restoreAllMocks();
-  });
-
-  it("derives the Sector from the Industry via sector_hierarchy.csv", async () => {
     vi.spyOn(global, "fetch").mockImplementation((async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : (input as URL).toString();
       if (url.includes("stocks.csv")) return csvResponse(STOCKS_CSV) as Response;
       if (url.includes("sector_hierarchy.csv")) return csvResponse(HIERARCHY_CSV) as Response;
       throw new Error(`Unexpected fetch: ${url}`);
     }) as unknown as typeof fetch);
+  });
 
+  it("derives the Sector from the Industry via sector_hierarchy.csv", async () => {
     const stocks = await getStocks();
     const aapl = stocks.find((s) => s.ticker === "AAPL");
     const msft = stocks.find((s) => s.ticker === "MSFT");
@@ -55,13 +54,6 @@ describe("getStocks", () => {
   });
 
   it("leaves sector undefined when the Industry is not in the hierarchy", async () => {
-    vi.spyOn(global, "fetch").mockImplementation((async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : (input as URL).toString();
-      if (url.includes("stocks.csv")) return csvResponse(STOCKS_CSV) as Response;
-      if (url.includes("sector_hierarchy.csv")) return csvResponse(HIERARCHY_CSV) as Response;
-      throw new Error(`Unexpected fetch: ${url}`);
-    }) as unknown as typeof fetch);
-
     const stocks = await getStocks();
     const weird = stocks.find((s) => s.ticker === "WEIRD");
 
@@ -70,13 +62,6 @@ describe("getStocks", () => {
   });
 
   it("leaves both industry and sector undefined when stocks.csv has empty Industry", async () => {
-    vi.spyOn(global, "fetch").mockImplementation((async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : (input as URL).toString();
-      if (url.includes("stocks.csv")) return csvResponse(STOCKS_CSV) as Response;
-      if (url.includes("sector_hierarchy.csv")) return csvResponse(HIERARCHY_CSV) as Response;
-      throw new Error(`Unexpected fetch: ${url}`);
-    }) as unknown as typeof fetch);
-
     const stocks = await getStocks();
     const blank = stocks.find((s) => s.ticker === "BLANK");
 

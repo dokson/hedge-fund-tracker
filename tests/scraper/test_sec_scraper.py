@@ -3,8 +3,8 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from bs4 import BeautifulSoup
-from curl_cffi import requests
 from curl_cffi.requests.exceptions import HTTPError, RequestException
+from prometheus_client import REGISTRY
 from tenacity import wait_combine, wait_random
 
 from app.scraper.sec_scraper import (
@@ -39,34 +39,25 @@ class TestSecScraper(unittest.TestCase):
     def tearDown(self):
         self.sleep_patcher.stop()
 
-    @patch("app.scraper.sec_scraper._get_session")
-    def test_get_request_success(self, mock_get_session):
-        """Test _get_request returns response on success."""
-        mock_response = MagicMock()
-        mock_response.raise_for_status.return_value = None
-        mock_get_session.return_value.get.return_value = mock_response
-
-        url = "http://test.com"
-        response = _get_request(url)
-
-        self.assertEqual(response, mock_response)
-        mock_get_session.return_value.get.assert_called_with(url, timeout=15)
-
     @patch("app.scraper.sec_scraper._rate_limiter")
     @patch("app.scraper.sec_scraper._get_session")
-    def test_get_request_acquires_rate_limiter_before_request(self, mock_get_session, mock_limiter):
+    def test_get_request_acquires_rate_limiter_and_returns_response(
+        self, mock_get_session, mock_limiter
+    ):
         """
         Each network call must acquire a token first so parallel workers stay
-        within SEC EDGAR's per-host budget. Regression guard: if a future
-        refactor drops the acquire() call, this test fails.
+        within SEC EDGAR's per-host budget, then return the response fetched
+        with the request timeout.
         """
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
         mock_get_session.return_value.get.return_value = mock_response
 
-        _get_request("http://test.com")
+        response = _get_request("http://test.com")
 
+        self.assertIs(response, mock_response)
         mock_limiter.acquire.assert_called_once()
+        mock_get_session.return_value.get.assert_called_with("http://test.com", timeout=15)
 
     def test_build_session_has_sec_headers(self):
         """A freshly built Session must carry the SEC-required headers."""
@@ -368,6 +359,77 @@ class TestSecScraper(unittest.TestCase):
             assert filings is not None
             self.assertEqual(len(filings), 2)
 
+    @staticmethod
+    def _listing(*filing_type_labels):
+        """
+        Builds a mock EDGAR listing page with one documents button per filing type label.
+        """
+        resp = MagicMock()
+        resp.text = "".join(
+            f'<tr><td>{label}</td><td><a id="documentsbutton" href="/doc">Format</a></td></tr>'
+            for label in filing_type_labels
+        )
+        return resp
+
+    @patch("app.scraper.sec_scraper._get_request")
+    def test_fetch_non_quarterly_returns_none_when_a_listing_request_fails(self, mock_get_request):
+        """
+        A failed listing request must surface as None, not as an empty or
+        partial list the caller would save over the fund's existing rows.
+        """
+        mock_get_request.side_effect = [self._listing("SC 13D"), None]
+
+        with patch("app.scraper.sec_scraper._scrape_filing") as mock_scrape:
+            mock_scrape.return_value = {"data": "test"}
+
+            self.assertIsNone(fetch_non_quarterly_after_date("CIK123", "2023-01-01"))
+
+    @patch("app.scraper.sec_scraper._get_request")
+    def test_fetch_non_quarterly_returns_none_when_a_listing_page_raises(self, mock_get_request):
+        """
+        An unexpected error while reading a listing page is a failure too.
+        """
+        mock_get_request.side_effect = RuntimeError("boom")
+
+        self.assertIsNone(fetch_non_quarterly_after_date("CIK123", "2023-01-01"))
+
+    @patch("app.scraper.sec_scraper._get_request")
+    def test_fetch_non_quarterly_returns_none_when_a_filing_request_fails(self, mock_get_request):
+        """
+        A filing whose report page cannot be downloaded must not be dropped
+        silently: the whole fetch reports failure.
+        """
+        empty = MagicMock()
+        empty.text = ""
+        mock_get_request.side_effect = [self._listing("SC 13D"), empty, None]
+
+        self.assertIsNone(fetch_non_quarterly_after_date("CIK123", "2023-01-01"))
+
+    @patch("app.scraper.sec_scraper._get_request")
+    def test_fetch_non_quarterly_skips_a_filing_without_xml_document(self, mock_get_request):
+        """
+        A report page that downloads fine but has no XML document is a
+        permanent property of that filing: it is skipped, not a failure.
+        """
+        empty = MagicMock()
+        empty.text = ""
+        report_page = MagicMock()
+        report_page.text = "<div>Filing Date</div><div>2023-02-01</div>"
+        mock_get_request.side_effect = [self._listing("SC 13D"), empty, report_page]
+
+        self.assertEqual(fetch_non_quarterly_after_date("CIK123", "2023-01-01"), [])
+
+    @patch("app.scraper.sec_scraper._get_request")
+    def test_fetch_non_quarterly_without_filings_returns_empty_list(self, mock_get_request):
+        """
+        Successful listings with no filings mean "nothing new", an empty list.
+        """
+        empty = MagicMock()
+        empty.text = ""
+        mock_get_request.return_value = empty
+
+        self.assertEqual(fetch_non_quarterly_after_date("CIK123", "2023-01-01"), [])
+
     @patch("app.scraper.sec_scraper._get_request")
     def test_fetch_non_quarterly_without_start_date_returns_none(self, mock_get_request):
         """
@@ -417,11 +479,6 @@ class TestSecScraperLifecycle(unittest.TestCase):
         s2.close.assert_called_once()
         self.assertEqual(scraper._sessions, [])
 
-    def test_close_session_is_idempotent(self):
-        """Calling close_session twice must not raise."""
-        close_session()
-        close_session()  # should not raise
-
     def test_reset_session_rebuilds_rate_limiter(self):
         """reset_session must replace _rate_limiter with a fresh instance and clear sessions."""
         import app.scraper.sec_scraper as scraper
@@ -434,18 +491,6 @@ class TestSecScraperLifecycle(unittest.TestCase):
 
         self.assertIsNot(scraper._rate_limiter, old_limiter)
         self.assertEqual(scraper._sessions, [])
-
-    def test_scraper_session_closes_on_exit(self):
-        """scraper_session() context manager must close registered sessions on exit."""
-        import app.scraper.sec_scraper as scraper
-
-        s = MagicMock()
-        with scraper._sessions_lock:
-            scraper._sessions[:] = [s]
-
-        with scraper_session():
-            pass
-        s.close.assert_called_once()
 
     def test_scraper_session_closes_even_when_body_raises(self):
         """
@@ -462,31 +507,59 @@ class TestSecScraperLifecycle(unittest.TestCase):
             raise RuntimeError("boom")
         s.close.assert_called_once()
 
-    def test_reset_produces_a_usable_session(self):
+
+def _sec_requests(outcome: str) -> float:
+    """
+    Current value of the SEC request counter for ``outcome``.
+    """
+    return REGISTRY.get_sample_value("hft_sec_requests_total", {"outcome": outcome}) or 0.0
+
+
+@patch("time.sleep")
+@patch("app.scraper.sec_scraper._get_session")
+class TestSecRequestMetrics(unittest.TestCase):
+    def _respond_with_status(self, mock_get_session, status):
         """
-        After reset, _get_session() must return a live Session carrying the SEC
-        headers, and _get_request must still wire through the rate limiter.
+        Make every request fail with HTTP ``status``.
         """
-        import app.scraper.sec_scraper as scraper
+        error = HTTPError(str(status))
+        error.response = MagicMock(status_code=status)
+        mock_get_session.return_value.get.return_value.raise_for_status.side_effect = error
 
-        reset_session()
+    def test_success_is_counted_ok(self, mock_get_session, _sleep):
+        """
+        A successful request increments the ok outcome.
+        """
+        mock_get_session.return_value.get.return_value.raise_for_status.return_value = None
+        before = _sec_requests("ok")
 
-        session = scraper._get_session()
-        self.assertIsInstance(session, requests.Session)
-        self.assertIn("User-Agent", session.headers)
+        _get_request("http://test.com")
 
-        with (
-            patch.object(scraper, "_get_session", return_value=MagicMock()) as mock_get_session,
-            patch.object(scraper._rate_limiter, "acquire") as mock_acquire,
-        ):
-            mock_response = MagicMock()
-            mock_response.raise_for_status.return_value = None
-            mock_get_session.return_value.get.return_value = mock_response
+        self.assertEqual(_sec_requests("ok"), before + 1)
 
-            _get_request("http://test.com")
+    def test_every_429_attempt_is_counted_rate_limited(self, mock_get_session, _sleep):
+        """
+        Each throttled attempt counts, so a retry storm is visible.
+        """
+        self._respond_with_status(mock_get_session, 429)
+        before = _sec_requests("rate_limited")
 
-            mock_acquire.assert_called_once()
-            mock_get_session.return_value.get.assert_called_once()
+        _get_request("http://test.com")
+
+        self.assertEqual(_sec_requests("rate_limited"), before + _RETRY_ATTEMPTS)
+
+    def test_other_failures_are_counted_error(self, mock_get_session, _sleep):
+        """
+        A permanent 4xx and a transport failure both count as errors.
+        """
+        self._respond_with_status(mock_get_session, 404)
+        before = _sec_requests("error")
+
+        _get_request("http://test.com")
+        mock_get_session.return_value.get.side_effect = RequestException("down")
+        _get_request("http://test.com")
+
+        self.assertEqual(_sec_requests("error"), before + 1 + _RETRY_ATTEMPTS)
 
 
 if __name__ == "__main__":

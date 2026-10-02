@@ -1,4 +1,6 @@
 import os
+import sys
+import threading
 
 from curl_cffi import requests
 from curl_cffi.requests.exceptions import RequestException
@@ -11,6 +13,17 @@ logger = get_logger(__name__)
 GITHUB_API_TIMEOUT_S = 10
 
 _dotenv_loaded = False
+
+_raised_alerts: list[str] = []
+_raised_alerts_lock = threading.Lock()
+
+
+def raised_alerts() -> list[str]:
+    """
+    Subjects of every alert raised by ``open_issue`` in this process, oldest first.
+    """
+    with _raised_alerts_lock:
+        return list(_raised_alerts)
 
 
 def _ensure_dotenv() -> None:
@@ -54,6 +67,30 @@ def _escape_search_qualifier(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def _workflow_command(kind: str, message: str) -> None:
+    """
+    Emit a GitHub Actions workflow command (``::error::`` / ``::notice::``) on stdout.
+
+    The message is escaped per the runner's rules so an interpolated newline
+    cannot split the command or forge a second one.
+    """
+    escaped = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    # The runner only parses commands at column zero, which the logger's prefix breaks.
+    sys.stdout.write(f"::{kind}::{escaped}\n")
+    sys.stdout.flush()
+
+
+def _report(kind: str, message: str, *, exc_info: bool = False) -> None:
+    """
+    Log a human-readable message and mirror it as a workflow annotation.
+    """
+    if kind == "error":
+        logger.error(message, exc_info=exc_info)
+    else:
+        logger.success(message)
+    _workflow_command(kind, message)
+
+
 def open_issue(subject, body):
     """
     Creates an issue on GitHub if running in a GitHub Action, otherwise prints the alert to the console.
@@ -70,6 +107,8 @@ def open_issue(subject, body):
         logger.warning("%s", log_safe(subject, max_len=200))
         logger.info(body)
 
+    with _raised_alerts_lock:
+        _raised_alerts.append(subject)
     _ensure_dotenv()
 
     # If not in a GitHub Action, just print to console and exit
@@ -82,17 +121,15 @@ def open_issue(subject, body):
     repo = os.getenv("GITHUB_REPOSITORY")
 
     if not token:
-        logger.info(
-            "::error::❌ GITHUB_TOKEN or GITHUB_REPOSITORY not set in the Action environment."
-        )
+        _report("error", "GITHUB_TOKEN not set in the Action environment.")
         print_error()
         return
 
     split = _split_repo(repo)
     if split is None:
-        logger.error(
-            "::error::❌ GITHUB_REPOSITORY missing or malformed (expected 'owner/name', got %r).",
-            repo,
+        _report(
+            "error",
+            f"GITHUB_REPOSITORY missing or malformed (expected 'owner/name', got {log_safe(repo)!r}).",
         )
         print_error()
         return
@@ -123,16 +160,18 @@ def open_issue(subject, body):
 
         if search_results["total_count"] > 0:
             issue_url = search_results["items"][0]["html_url"]
-            logger.info("::notice::✅ Issue already exists: %s", issue_url)
+            _report("notice", f"Issue already exists: {log_safe(issue_url, max_len=200)}")
             return
 
         # If no existing issue is found, create a new one
         create_url = f"https://api.github.com/repos/{repo}/issues"
 
     except RequestException:
-        logger.error(
-            "::error::❌ An exception occurred while searching for GitHub Issue", exc_info=True
-        )
+        _report("error", "An exception occurred while searching for GitHub Issue", exc_info=True)
+        print_error()
+        return
+    except ValueError, KeyError, IndexError, TypeError:
+        _report("error", "Malformed GitHub search response; issue not filed", exc_info=True)
         print_error()
         return
 
@@ -156,18 +195,18 @@ def open_issue(subject, body):
         response.raise_for_status()
 
         if response.status_code == 201:
-            logger.info(
-                "::notice::✅ Successfully created GitHub Issue: %s", response.json()["html_url"]
+            issue_url = response.json().get("html_url", "")
+            _report(
+                "notice", f"Successfully created GitHub Issue: {log_safe(issue_url, max_len=200)}"
             )
         else:
             # Unlikely after raise_for_status(); body intentionally not logged to avoid
             # leaking API diagnostics into CI logs.
-            logger.error(
-                "::error::❌ Failed to create GitHub Issue with status code: %s",
-                response.status_code,
+            _report(
+                "error", f"Failed to create GitHub Issue with status code: {response.status_code}"
             )
             print_error()
 
-    except RequestException:
-        logger.error("::error::❌ An exception occurred while creating GitHub Issue", exc_info=True)
+    except RequestException, ValueError, AttributeError:
+        _report("error", "An exception occurred while creating GitHub Issue", exc_info=True)
         print_error()

@@ -33,11 +33,6 @@ describe("Delta", () => {
     expect(root.querySelector("svg")).not.toBeNull();
   });
 
-  it("keeps the custom formatter output for zero values", () => {
-    const { container } = render(<Delta value={0} mode="percent" format={() => "flat"} />);
-    expect(container.textContent).toContain("flat");
-  });
-
   it("formats currency values with sign + compact suffix", () => {
     const { container } = render(<Delta value={12_500_000} mode="currency" />);
     expect(container.textContent).toContain("+$12.50M");
@@ -50,8 +45,10 @@ describe("Delta", () => {
     expect(root.textContent).toContain("NEW");
   });
 
-  it("honours a custom formatter when provided", () => {
-    const { container } = render(<Delta value={42} mode="percent" format={(v) => `${v} units`} />);
-    expect(container.textContent).toContain("42 units");
+  it.each([42, 0])("honours a custom formatter for %d", (value) => {
+    const { container } = render(
+      <Delta value={value} mode="percent" format={(v) => `${v} units`} />,
+    );
+    expect(container.textContent).toContain(`${value} units`);
   });
 });

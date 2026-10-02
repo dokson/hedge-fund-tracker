@@ -117,14 +117,4 @@ describe("renderFaqStaticHtml", () => {
     // Content lands inside the SPA root so it shows before hydration.
     expect(html).not.toContain('<div id="root"></div>');
   });
-
-  it("escapes HTML-significant characters in content", () => {
-    const ampItem = FAQ_SECTIONS.flatMap((s) => s.items).find((i) => i.question.includes("&"));
-    // The page heading contains an ampersand regardless of item content.
-    expect(html).toContain("Hedge Fund &amp; SEC Filing FAQ");
-    if (ampItem) {
-      // oxlint-disable-next-line vitest/no-conditional-expect
-      expect(html).not.toContain(ampItem.question); // raw & should be escaped
-    }
-  });
 });

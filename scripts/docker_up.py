@@ -3,7 +3,7 @@ Wrapper around `docker compose up` that auto-discovers the first available host 
 starting from 8000 (mirroring the Python local server behavior).
 
 Sets HOST_PORT in the environment before launching compose so that the
-${HOST_PORT:-8000}:8000 mapping in docker-compose.yml resolves to a free port.
+${HOST_PORT:-8000}:8000 mapping in compose.yaml resolves to a free port.
 """
 
 from __future__ import annotations

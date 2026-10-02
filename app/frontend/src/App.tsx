@@ -10,6 +10,7 @@ import Dashboard from "@/pages/Dashboard";
 import Landing from "@/pages/Landing";
 import { IS_GH_PAGES_MODE, BASE_PATH } from "@/lib/config";
 import { ROUTES } from "@/lib/routes";
+import { shouldRetryQuery } from "@/lib/queryRetry";
 
 // Route-level code splitting: each page ships as its own chunk and loads on navigation.
 const QuarterlyTrends = lazy(() => import("@/pages/QuarterlyTrends"));
@@ -25,13 +26,12 @@ const FundsConfig = lazy(() => import("@/pages/FundsConfig"));
 const DatabasePage = lazy(() => import("@/pages/DatabasePage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
-// Explicit defaults: retry transient CSV/API failures with backoff (the
-// library default, made intentional) and treat data as fresh for a minute so
-// rapid navigation between pages doesn't refetch the whole CSV database.
+// Retry only transient CSV/API failures (see shouldRetryQuery) and treat data
+// as fresh for a minute so rapid navigation doesn't refetch the CSV database.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 3,
+      retry: shouldRetryQuery,
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
       staleTime: 60_000,
     },

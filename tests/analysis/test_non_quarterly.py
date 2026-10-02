@@ -146,6 +146,26 @@ class TestGetNonQuarterlyFilingsDataframe(unittest.TestCase):
         self.assertEqual(result.iloc[0]["Shares"], 750)
         mock_issue.assert_not_called()
 
+    def test_unresolved_tickers_on_the_same_date_are_not_collapsed(
+        self, mock_xml, mock_resolve, _mock_price, mock_issue
+    ):
+        """
+        Two filings for different CUSIPs whose tickers cannot be resolved stay
+        two rows instead of collapsing on the missing ticker.
+        """
+        mock_resolve.side_effect = lambda df: df.assign(Ticker=None)
+        mock_xml.side_effect = [
+            _schedule_df(DENOMINATION, FUND_CIK, cusip="CUSIP0001"),
+            _schedule_df(DENOMINATION, FUND_CIK, cusip="CUSIP0002"),
+        ]
+
+        result = get_non_quarterly_filings_dataframe(
+            [self._filing(), self._filing()], DENOMINATION, FUND_CIK
+        )
+
+        assert result is not None
+        self.assertEqual(sorted(result["CUSIP"]), ["CUSIP0001", "CUSIP0002"])
+
 
 class TestUpdateQuarterWithNqFilings(unittest.TestCase):
     @staticmethod

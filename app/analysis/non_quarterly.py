@@ -1,7 +1,7 @@
 import pandas as pd
 
 from app.analysis.depositary import listed_units
-from app.database import load_non_quarterly_data
+from app.database import load_non_quarterly_data, nq_position_key
 from app.scraper.xml_processor import xml_to_dataframe_4, xml_to_dataframe_schedule
 from app.stocks.libraries.yfinance import YFinance
 from app.stocks.price_fetcher import PriceFetcher
@@ -100,10 +100,15 @@ def get_non_quarterly_filings_dataframe(
     non_quarterly_filings_df = pd.concat(filing_list, ignore_index=True)
     non_quarterly_filings_df = TickerResolver.resolve_ticker(non_quarterly_filings_df)
 
-    # Keep only the most recent accepted entry for each Ticker-Date combination because there can be amendments on the same Filing Date
-    non_quarterly_filings_df = non_quarterly_filings_df.sort_values(
-        by=["Ticker", "Date", "Accepted_On"], ascending=False
-    ).drop_duplicates(subset=["Ticker", "Date"], keep="first")
+    # Keep only the most recent accepted entry per position and Date: amendments can share a Filing Date
+    non_quarterly_filings_df = non_quarterly_filings_df.assign(
+        _Key=nq_position_key(non_quarterly_filings_df)
+    )
+    non_quarterly_filings_df = (
+        non_quarterly_filings_df.sort_values(by=["_Key", "Date", "Accepted_On"], ascending=False)
+        .drop_duplicates(subset=["_Key", "Date"], keep="first")
+        .drop(columns="_Key")
+    )
 
     non_quarterly_filings_df = _normalize_to_listed_units(non_quarterly_filings_df)
 

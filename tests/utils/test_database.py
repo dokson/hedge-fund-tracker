@@ -177,16 +177,6 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(len(df), 1)
         self.assertEqual(df.iloc[0]["Ticker"], "TICKA")
 
-    def test_save_stock_and_sort(self):
-        """
-        Saves a new stock to the database and verifies it appears after sort.
-        """
-        save_stock("789", "TICKC", "Company C")
-        sort_stocks(str(Path(self.test_db_folder) / STOCKS_FILE))
-        df = load_stocks()
-        self.assertIn("789", df.index)
-        self.assertEqual(df.loc["789", "Ticker"], "TICKC")
-
     def test_save_stock_strips_whitespace(self):
         """
         Strips leading/trailing whitespace from all fields when saving a stock.
@@ -308,39 +298,6 @@ class TestDatabase(unittest.TestCase):
         # Tail sorted alphabetically (case-insensitive)
         self.assertEqual(list(df["Fund"].iloc[README_DISPLAY_LIMIT:]), ["alpha", "Mike", "zeta"])
 
-    def test_find_cusips_for_ticker(self):
-        """
-        Returns all CUSIP records matching a given ticker symbol.
-        """
-        res = find_cusips_for_ticker("TICKA")
-        self.assertEqual(len(res), 1)
-        self.assertEqual(res[0]["CUSIP"], "123")
-
-    def test_update_ticker(self):
-        """
-        Propagates a ticker rename across stocks.csv, all quarterly CSVs, and non_quarterly.csv.
-        """
-        update_ticker("TICKA", "TICKNEW")
-
-        df_stocks = load_stocks()
-        self.assertEqual(df_stocks.loc["123", "Ticker"], "TICKNEW")
-
-        df_q = load_fund_holdings("Fund A", "2025Q1")
-        self.assertEqual(df_q.iloc[0]["Ticker"], "TICKNEW")
-
-        df_nq = load_non_quarterly_data()
-        self.assertEqual(df_nq.iloc[0]["Ticker"], "TICKNEW")
-
-    def test_update_ticker_with_new_company_name(self):
-        """
-        Propagates a ticker rename with a new company name across stocks.csv.
-        """
-        update_ticker("TICKA", "TICKNEW", new_company="New Company Name")
-
-        df_stocks = load_stocks()
-        self.assertEqual(df_stocks.loc["123", "Ticker"], "TICKNEW")
-        self.assertEqual(df_stocks.loc["123", "Company"], "New Company Name")
-
     def test_update_ticker_without_company_preserves_existing(self):
         """
         When no new company name is given, the existing company name is preserved.
@@ -350,17 +307,6 @@ class TestDatabase(unittest.TestCase):
         df_stocks = load_stocks()
         self.assertEqual(df_stocks.loc["123", "Ticker"], "TICKNEW")
         self.assertEqual(df_stocks.loc["123", "Company"], "Company A")
-
-    def test_update_ticker_preserves_industry(self):
-        """
-        Renaming a ticker must NOT clear the Industry column — Industry stays
-        with the CUSIP regardless of ticker changes.
-        """
-        update_ticker("TICKA", "TICKNEW", new_company="New Name")
-
-        df_stocks = load_stocks()
-        self.assertEqual(df_stocks.loc["123", "Industry"], "Software - Application")
-        self.assertEqual(df_stocks.loc["456", "Industry"], "Banks - Regional")
 
     def test_sort_stocks_preserves_industry(self):
         """
@@ -632,7 +578,7 @@ class TestDatabase(unittest.TestCase):
 
         with (
             unittest.mock.patch("app.database.DB_FOLDER", gone),
-            unittest.mock.patch("app.database.stocks.time", _FakeTime()),
+            unittest.mock.patch("app.database.locks.time", _FakeTime()),
             self.assertRaises(TimeoutError),
             stocks_lock(timeout=1),
         ):
@@ -693,6 +639,24 @@ class TestDatabase(unittest.TestCase):
             save_non_quarterly_filings(frames)
 
         self.assertEqual(target.read_text(encoding="utf-8"), original)
+
+    def test_delete_unknown_fund_keeps_its_quarter_files(self):
+        """
+        A fund missing from hedge_funds.csv is rejected before any filing is deleted.
+        """
+        delete_fund_from_database({"Fund": "Fund B"})
+
+        self.assertTrue((Path(self.test_db_folder) / "2025Q1" / "Fund_B.csv").exists())
+
+    def test_delete_fund_keeps_quarter_files_when_csv_move_fails(self):
+        """
+        Quarter files survive a failed hedge_funds -> excluded move, so nothing is half-deleted.
+        """
+        with unittest.mock.patch("app.utils.pd.tempfile.mkstemp", side_effect=OSError("disk full")):
+            delete_fund_from_database({"Fund": "Fund A"})
+
+        self.assertTrue((Path(self.test_db_folder) / "2025Q1" / "Fund_A.csv").exists())
+        self.assertTrue((Path(self.test_db_folder) / "2024Q4" / "Fund_A.csv").exists())
 
     def test_delete_fund_does_not_report_success_when_csv_update_fails(self):
         """

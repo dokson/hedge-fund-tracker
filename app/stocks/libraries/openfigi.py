@@ -13,6 +13,13 @@ from app.utils.strings import format_string
 logger = get_logger(__name__)
 
 
+class OpenFIGIUnavailableError(RuntimeError):
+    """
+    OpenFIGI could not answer (rate limit, server error, network failure), so
+    an empty result would not mean the identifier is unknown.
+    """
+
+
 class OpenFIGI(FinanceLibrary):
     """
     Client for OpenFIGI's identifier mapping API (https://www.openfigi.com/api).
@@ -34,7 +41,11 @@ class OpenFIGI(FinanceLibrary):
     def _post(payload: list[dict]) -> list | None:
         """
         POSTs a mapping payload to OpenFIGI. Returns the parsed JSON list on
-        success, or None on rate limit / HTTP error / network failure.
+        success, or None on a non-retryable client error.
+
+        Raises:
+            OpenFIGIUnavailableError: on rate limit, server error, network
+                failure or an unparsable body, where no answer was obtained.
         """
         headers = {"Content-Type": "application/json"}
         if OpenFIGI.API_KEY:
@@ -47,13 +58,17 @@ class OpenFIGI(FinanceLibrary):
                 headers=headers,
                 timeout=OpenFIGI.TIMEOUT,
             )
-        except RequestException:
+        except RequestException as exc:
             logger.warning("OpenFIGI: network error", exc_info=True)
-            return None
+            raise OpenFIGIUnavailableError("network error") from exc
 
         if response.status_code == 429:
             logger.warning("OpenFIGI: rate limit hit (HTTP 429)")
-            return None
+            raise OpenFIGIUnavailableError("rate limited (HTTP 429)")
+
+        if response.status_code >= 500:
+            logger.warning("OpenFIGI: HTTP %s response", response.status_code)
+            raise OpenFIGIUnavailableError(f"server error (HTTP {response.status_code})")
 
         if not response.ok:
             logger.warning("OpenFIGI: HTTP %s response", response.status_code)
@@ -61,12 +76,12 @@ class OpenFIGI(FinanceLibrary):
 
         try:
             return response.json()
-        except ValueError:
+        except ValueError as exc:
             logger.warning("OpenFIGI: invalid JSON response", exc_info=True)
-            return None
+            raise OpenFIGIUnavailableError("invalid JSON response") from exc
 
     @staticmethod
-    def _lookup_by_cusip(cusip: str) -> dict | None:
+    def _lookup_by_cusip(cusip: str, raise_unavailable: bool = False) -> dict | None:
         """
         Looks up a CUSIP and returns the best-matching record, preferring
         Common Stock and similar equity-like security types.
@@ -74,8 +89,16 @@ class OpenFIGI(FinanceLibrary):
         Restricted to the US composite exchange: without exchCode the API can
         return a foreign listing's symbol first, which is useless for this
         US-equity database and poisons ticker comparisons.
+
+        A transient failure returns None unless ``raise_unavailable`` is set,
+        in which case ``OpenFIGIUnavailableError`` propagates.
         """
-        results = OpenFIGI._post([{"idType": "ID_CUSIP", "idValue": cusip, "exchCode": "US"}])
+        try:
+            results = OpenFIGI._post([{"idType": "ID_CUSIP", "idValue": cusip, "exchCode": "US"}])
+        except OpenFIGIUnavailableError:
+            if raise_unavailable:
+                raise
+            return None
         if not results:
             return None
 
@@ -122,7 +145,10 @@ class OpenFIGI(FinanceLibrary):
             payload = [
                 {"idType": "ID_CUSIP", "idValue": cusip, "exchCode": "US"} for cusip in chunk
             ]
-            responses = OpenFIGI._post(payload)
+            try:
+                responses = OpenFIGI._post(payload)
+            except OpenFIGIUnavailableError:
+                continue
             if not responses:
                 continue
             for cusip, response in zip(chunk, responses, strict=False):
@@ -135,8 +161,13 @@ class OpenFIGI(FinanceLibrary):
     def get_ticker(cusip: str, **kwargs) -> str | None:
         """
         Returns the ticker for a given CUSIP, or None if no match.
+
+        With ``raise_unavailable=True`` a transient failure raises
+        ``OpenFIGIUnavailableError`` instead of looking like a miss.
         """
-        match = OpenFIGI._lookup_by_cusip(cusip)
+        match = OpenFIGI._lookup_by_cusip(
+            cusip, raise_unavailable=bool(kwargs.get("raise_unavailable"))
+        )
         if not match:
             logger.warning("OpenFIGI: No ticker found for CUSIP %s", log_safe(cusip))
             return None

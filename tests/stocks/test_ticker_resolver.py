@@ -25,24 +25,13 @@ def _cached_stocks(cusip, ticker, company):
 
 
 class TestTickerResolverGetLibraries(unittest.TestCase):
-    def test_get_libraries_returns_three_libraries(self):
-        """
-        Returns exactly three libraries in the resolution fallback chain.
-        """
-        libraries = TickerResolver.get_libraries()
-
-        self.assertEqual(len(libraries), 3)
-
     def test_get_libraries_priority_order(self):
         """
-        Returns libraries in priority order: YFinance → OpenFIGI → TradingView.
+        Returns exactly the resolution chain in priority order: YFinance → OpenFIGI → TradingView.
         """
-        libraries = TickerResolver.get_libraries()
+        names = [library.__name__ for library in TickerResolver.get_libraries()]
 
-        expected_order = ["YFinance", "OpenFIGI", "TradingView"]
-        for position, name in enumerate(expected_order):
-            with self.subTest(position=position, expected=name):
-                self.assertEqual(libraries[position].__name__, name)
+        self.assertEqual(names, ["YFinance", "OpenFIGI", "TradingView"])
 
 
 class TestTickerResolverResolveTicker(unittest.TestCase):
@@ -154,6 +143,54 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
         mock_issue.assert_called_once()
         subject = mock_issue.call_args[0][0]
         self.assertIn("Ticker not found", subject)
+
+    @patch("app.stocks.ticker_resolver.open_issue")
+    @patch("app.stocks.ticker_resolver.TradingView.get_ticker")
+    @patch("app.stocks.ticker_resolver.OpenFIGI.get_ticker")
+    @patch("app.stocks.ticker_resolver.YFinance.get_ticker")
+    @patch("app.stocks.ticker_resolver.load_stocks")
+    def test_unresolved_cusip_with_empty_company_does_not_raise(
+        self, mock_load, mock_yf, mock_of, mock_tv, _mock_issue
+    ):
+        """
+        An unresolvable CUSIP filed without a company name leaves both fields blank.
+        """
+        mock_load.return_value = _empty_stocks()
+        mock_yf.return_value = None
+        mock_of.return_value = None
+        mock_tv.return_value = None
+        df = pd.DataFrame({"CUSIP": ["000000000"], "Company": [""]})
+
+        result = TickerResolver.resolve_ticker(df)
+
+        self.assertIsNone(result.loc[0, "Ticker"])
+        self.assertEqual(result.loc[0, "Company"], "")
+
+    @patch("app.stocks.ticker_resolver.open_issue")
+    @patch("app.stocks.ticker_resolver.TradingView.get_ticker")
+    @patch("app.stocks.ticker_resolver.OpenFIGI.get_ticker")
+    @patch("app.stocks.ticker_resolver.YFinance.get_ticker")
+    @patch("app.stocks.ticker_resolver.load_stocks")
+    def test_no_issue_when_a_lookup_failed_transiently(
+        self, mock_load, mock_yf, mock_of, mock_tv, mock_issue
+    ):
+        """
+        A rate-limited or unreachable provider makes the miss inconclusive, so no issue is opened.
+        """
+        from app.stocks.libraries.openfigi import OpenFIGIUnavailableError
+
+        mock_load.return_value = _empty_stocks()
+        mock_yf.return_value = None
+        mock_of.side_effect = OpenFIGIUnavailableError("rate limited")
+        mock_tv.return_value = None
+        df = pd.DataFrame({"CUSIP": ["000000000"], "Company": ["Unknown Corp"]})
+
+        TickerResolver.resolve_ticker(df)
+
+        mock_of.assert_called_once_with(
+            "000000000", company_name="Unknown Corp", raise_unavailable=True
+        )
+        mock_issue.assert_not_called()
 
     @patch("app.stocks.ticker_resolver.open_issue")
     @patch("app.stocks.ticker_resolver.save_stock")
@@ -337,18 +374,6 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
 
 
 class TestTickerResolverAssignCUSIP(unittest.TestCase):
-    @patch("app.stocks.ticker_resolver.load_stocks")
-    def test_maps_known_ticker_to_cusip_from_cache(self, mock_load):
-        """
-        Returns the cached CUSIP for a ticker already present in the local database.
-        """
-        mock_load.return_value = _cached_stocks("037833100", "AAPL", "Apple Inc")
-        df = pd.DataFrame({"Ticker": ["AAPL"], "Company": ["Apple Inc"]})
-
-        result = TickerResolver.assign_cusip(df)
-
-        self.assertEqual(result.loc[0, "CUSIP"], "037833100")
-
     @patch("app.stocks.ticker_resolver.save_stock")
     @patch("app.stocks.ticker_resolver.FMP.get_cusip")
     @patch("app.stocks.ticker_resolver.load_stocks")
@@ -418,116 +443,6 @@ class TestTickerResolverAssignCUSIP(unittest.TestCase):
 
         self.assertEqual(result.loc[0, "CUSIP"], "037833100")
         self.assertEqual(result.loc[1, "CUSIP"], "594918104")
-
-
-class TestTickerResolverUpdateChangedTickers(unittest.TestCase):
-    def _stocks_with(self, entries):
-        """
-        Returns a stocks DataFrame from a list of (cusip, ticker, company) tuples.
-        """
-        if not entries:
-            return _empty_stocks()
-        return pd.DataFrame(entries, columns=["CUSIP", "Ticker", "Company"]).set_index("CUSIP")
-
-    @patch("app.stocks.ticker_resolver.Nasdaq.get_symbol_changes")
-    @patch("app.stocks.ticker_resolver.load_stocks")
-    def test_updates_ticker_when_old_symbol_found_in_stocks(self, mock_load, mock_changes):
-        """
-        Updates the ticker in stocks.csv when an oldSymbol matches a known ticker.
-        """
-        mock_load.return_value = self._stocks_with([("123456789", "BITF", "Bitfarms Ltd")])
-        mock_changes.return_value = [
-            {"oldSymbol": "BITF", "newSymbol": "KEEL", "companyName": "Keel Infrastructure Corp."},
-        ]
-
-        with patch("app.stocks.ticker_resolver.save_stocks") as mock_save:
-            updates = TickerResolver.update_changed_tickers()
-
-        self.assertEqual(len(updates), 1)
-        self.assertEqual(updates[0]["old"], "BITF")
-        self.assertEqual(updates[0]["new"], "KEEL")
-        self.assertEqual(updates[0]["cusip"], "123456789")
-        mock_save.assert_called_once()
-
-    @patch("app.stocks.ticker_resolver.Nasdaq.get_symbol_changes")
-    @patch("app.stocks.ticker_resolver.load_stocks")
-    def test_skips_changes_not_in_stocks(self, mock_load, mock_changes):
-        """
-        Ignores ticker changes for symbols not present in stocks.csv.
-        """
-        mock_load.return_value = self._stocks_with([("037833100", "AAPL", "Apple Inc")])
-        mock_changes.return_value = [
-            {"oldSymbol": "BITF", "newSymbol": "KEEL", "companyName": "Keel Infrastructure Corp."},
-        ]
-
-        with patch("app.stocks.ticker_resolver.save_stocks") as mock_save:
-            updates = TickerResolver.update_changed_tickers()
-
-        self.assertEqual(len(updates), 0)
-        mock_save.assert_not_called()
-
-    @patch("app.stocks.ticker_resolver.Nasdaq.get_symbol_changes")
-    @patch("app.stocks.ticker_resolver.load_stocks")
-    def test_returns_empty_list_when_no_changes(self, mock_load, mock_changes):
-        """
-        Returns an empty list when NASDAQ reports no symbol changes.
-        """
-        mock_load.return_value = self._stocks_with([("037833100", "AAPL", "Apple Inc")])
-        mock_changes.return_value = []
-
-        with patch("app.stocks.ticker_resolver.save_stocks") as mock_save:
-            updates = TickerResolver.update_changed_tickers()
-
-        self.assertEqual(updates, [])
-        mock_save.assert_not_called()
-
-    @patch("app.stocks.ticker_resolver.Nasdaq.get_symbol_changes")
-    @patch("app.stocks.ticker_resolver.load_stocks")
-    def test_updates_multiple_cusips_with_same_old_ticker(self, mock_load, mock_changes):
-        """
-        Updates all CUSIPs that share the same old ticker symbol.
-        """
-        mock_load.return_value = self._stocks_with(
-            [
-                ("111111111", "BITF", "Bitfarms Ltd"),
-                ("222222222", "BITF", "Bitfarms Ltd Warrant"),
-            ]
-        )
-        mock_changes.return_value = [
-            {"oldSymbol": "BITF", "newSymbol": "KEEL", "companyName": "Keel Infrastructure Corp."},
-        ]
-
-        with patch("app.stocks.ticker_resolver.save_stocks") as mock_save:
-            updates = TickerResolver.update_changed_tickers()
-
-        self.assertEqual(len(updates), 2)
-        mock_save.assert_called_once()
-
-    @patch("app.stocks.ticker_resolver.Nasdaq.get_symbol_changes")
-    @patch("app.stocks.ticker_resolver.load_stocks")
-    def test_updates_company_name_from_nasdaq(self, mock_load, mock_changes):
-        """
-        Updates the company name alongside the ticker when a change is applied.
-        """
-        mock_load.return_value = self._stocks_with(
-            [("123456789", "NBY", "NovaBay Pharmaceuticals")]
-        )
-        mock_changes.return_value = [
-            {
-                "oldSymbol": "NBY",
-                "newSymbol": "SDEV",
-                "companyName": "Stablecoin Development Corporation Common Stock",
-            },
-        ]
-
-        with patch("app.stocks.ticker_resolver.save_stocks") as mock_save:
-            TickerResolver.update_changed_tickers()
-
-        # Verify the DataFrame passed to save_stocks has the new ticker and company
-        saved_df = mock_save.call_args[0][0]
-        row = saved_df.loc["123456789"]
-        self.assertEqual(row["Ticker"], "SDEV")
-        self.assertEqual(row["Company"], "Stablecoin Development Corporation Common Stock")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,46 @@
+# Pre-installs the toolchain for the Copilot coding agent, mirroring CI.
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/copilot-setup-steps.yml]
+  pull_request:
+    paths: [.github/workflows/copilot-setup-steps.yml]
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      PIPENV_VENV_IN_PROJECT: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        id: setup-python
+        with:
+          python-version: "3.14"
+
+      - name: Cache pipenv virtualenv
+        uses: actions/cache@v6
+        with:
+          path: .venv
+          key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip pipenv
+          pipenv sync --dev
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: app/frontend
+        run: npm ci --prefer-offline --no-audit --fund=false

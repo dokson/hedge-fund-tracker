@@ -4,6 +4,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from prometheus_client import REGISTRY
+
 from app.ai.clients.base_client import DEFAULT_REASONING, AIClient
 
 
@@ -412,6 +414,59 @@ class TestSharedStructuredOutputFlow(unittest.TestCase):
         client = StructuredFakeClient(rejecting={"fake-model": {"schema", "json", "prompt"}})
         with self.assertRaises(_StructureRejectedError):
             client.generate_content("p", response_schema=_SCHEMA)
+
+
+def _llm_calls(provider: str, outcome: str) -> float:
+    """
+    Current value of the LLM call counter.
+    """
+    labels = {"provider": provider, "outcome": outcome}
+    return REGISTRY.get_sample_value("hft_llm_calls_total", labels) or 0.0
+
+
+class _FailingClient(MockAIClient):
+    """
+    Client whose provider call always fails.
+    """
+
+    def _generate_content_impl(self, prompt: str, **kwargs) -> str:
+        """
+        Fail like an unreachable provider.
+        """
+        raise RuntimeError("provider down")
+
+
+class TestLlmCallMetrics(unittest.TestCase):
+    def setUp(self):
+        """
+        Keep response logs out of the real cache directory.
+        """
+        self.cache_dir = tempfile.mkdtemp(prefix="hft_llmcache_")
+        cache_patcher = patch.object(AIClient, "CACHE_DIR", self.cache_dir)
+        cache_patcher.start()
+        self.addCleanup(cache_patcher.stop)
+        self.addCleanup(shutil.rmtree, self.cache_dir, ignore_errors=True)
+
+    def test_successful_call_is_counted_ok(self):
+        """
+        A completed generation increments the ok outcome for its provider.
+        """
+        before = _llm_calls("MockAIClient", "ok")
+
+        MockAIClient().generate_content("hi")
+
+        self.assertEqual(_llm_calls("MockAIClient", "ok"), before + 1)
+
+    def test_failed_call_is_counted_error(self):
+        """
+        A generation that raises increments the error outcome and still raises.
+        """
+        before = _llm_calls("_FailingClient", "error")
+
+        with self.assertRaises(RuntimeError):
+            _FailingClient().generate_content("hi")
+
+        self.assertEqual(_llm_calls("_FailingClient", "error"), before + 1)
 
 
 if __name__ == "__main__":

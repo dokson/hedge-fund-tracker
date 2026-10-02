@@ -23,7 +23,7 @@ All the necessary information about the stock to analyze is provided below in TO
 ```
 
 # ANALYSIS REQUIREMENTS
-Your analysis must cover the following key areas. Be concise but insightful. For each section (except Business Summary), you must provide a sentiment indicator.
+Your analysis must cover the following key areas. Be concise but insightful.
 
 1.  **Business Summary**: Describe the company's operations, business model, and market position.
 2.  **Financial Health**: Briefly assess its financial stability. Mention metrics such as revenue growth, profitability (e.g., net margins) and debt levels only if you know them; never invent figures.
@@ -40,7 +40,7 @@ Your analysis must cover the following key areas. Be concise but insightful. For
     -   Estimate a realistic price target for the next 3 months.
 
 # SENTIMENT INDICATOR
-For each analysis section below, provide a sentiment indicator:
+For each analysis section above except Business Summary, provide a sentiment indicator:
 - **Bullish**: Positive outlook / Favorable
 - **Neutral**: Mixed or neutral outlook
 - **Bearish**: Negative outlook / Unfavorable

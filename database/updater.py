@@ -1,5 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import NamedTuple
 
+import pandas as pd
 from tabulate import tabulate
 
 from app.analysis.non_quarterly import get_non_quarterly_filings_dataframe
@@ -16,13 +18,16 @@ from app.database import (
     load_split_factors,
     restore_fund_to_database,
     save_comparison,
-    save_non_quarterly_filings,
+    non_quarterly_path,
+    read_non_quarterly_rows,
     sort_excluded_hedge_funds,
     sort_hedge_funds,
     sort_stocks,
     update_ticker,
     update_ticker_for_cusip,
+    write_non_quarterly_filings,
 )
+from app.database.locks import file_lock
 from app.scraper.sec_scraper import (
     fetch_latest_two_13f_filings,
     fetch_non_quarterly_after_date,
@@ -38,6 +43,7 @@ from app.utils.console import (
     select_period,
 )
 from app.utils.logger import get_logger, log_safe
+from app.utils.metrics import NQ_FUNDS_CARRIED_OVER
 from app.utils.readme import update_readme
 from app.utils.strings import get_previous_quarter_end_date, get_quarter
 
@@ -47,6 +53,17 @@ APP_NAME = "HEDGE FUND TRACKER - DATABASE UPDATER"
 # Hard ceiling on the back-search through a fund's filing history, so a fund
 # that never matches the target quarter can't loop indefinitely hammering EDGAR.
 MAX_SEARCH_OFFSET = 20
+
+
+class NqFetchOutcome(NamedTuple):
+    """
+    Result of a non-quarterly fetch run, for the GitHub Actions run summary.
+    """
+
+    funds: int
+    rows_saved: int
+    failed_funds: tuple[str, ...]
+    saved: bool
 
 
 def exit_app():
@@ -65,7 +82,7 @@ def exit_app():
     return False
 
 
-def process_fund(fund_info, offset=0, skip_old=False):
+def process_fund(fund_info, offset=0, skip_old=False) -> bool:
     """
     Fetches 13F filings for a single fund and generates a comparison report.
 
@@ -76,6 +93,9 @@ def process_fund(fund_info, offset=0, skip_old=False):
     Args:
         fund_info (dict): A dictionary containing fund information, including 'CIK' and 'Fund' name.
         offset (int, optional): The number of filings to skip. Defaults to 0 (latest filing).
+
+    Returns:
+        bool: True when a comparison was saved.
     """
     cik = fund_info.get("CIK")
     fund_name = fund_info.get("Fund") or fund_info.get("CIK")
@@ -85,7 +105,7 @@ def process_fund(fund_info, offset=0, skip_old=False):
         while True:
             filings = fetch_latest_two_13f_filings(cik, offset)
             if not filings:
-                return
+                return False
 
             latest_date = filings[0]["reference_date"]
 
@@ -149,16 +169,18 @@ def process_fund(fund_info, offset=0, skip_old=False):
             dataframe_latest, dataframe_previous, split_factors
         )
         save_comparison(dataframe_comparison, latest_date, fund_name)
+        return True
     except Exception as e:
         print(f"❌ An unexpected error occurred while processing {fund_name} (CIK = {cik}): {e}")
+        return False
 
 
-def run_all_funds_report():
+def run_all_funds_report() -> int:
     """
     1. Generates and saves the latest 13F comparison reports for all known hedge funds.
 
     This function iterates through all funds listed in the database, processing them in parallel using a thread pool to fetch filings
-    and generate quarterly comparison reports.
+    and generate quarterly comparison reports. Returns the number of comparisons saved.
     """
     hedge_funds = load_hedge_funds()
     total_funds = len(hedge_funds)
@@ -171,12 +193,15 @@ def run_all_funds_report():
             for fund in hedge_funds
         }
 
+        reports_saved = 0
         for i, future in enumerate(as_completed(futures)):
             fund = futures[future]
+            reports_saved += bool(future.result())
             print_centered(f"Processed {i + 1:2}/{total_funds}: {fund['Fund']}", "-")
 
     print_centered("All funds processed", "-")
     _warn_on_unregistered_splits()
+    return reports_saved
 
 
 def _warn_on_unregistered_splits():
@@ -212,39 +237,87 @@ def process_fund_nq(fund):
 
     Returns:
         tuple: A tuple containing the fund's name and a list of pandas DataFrames, where each DataFrame represents the processed non-quarterly filings.
-               Returns an empty list if no new filings are found.
+               The list is empty if no new filings are found, and None if any fetch failed.
     """
-    fund_results = []
+    fund_results: list[pd.DataFrame] = []
 
-    def _fetch_nq(cik_to_process, fund_name, fund_denomination, latest_date):
+    def _fetch_nq(cik_to_process, latest_date) -> pd.DataFrame | None | bool:
+        """
+        Returns the processed filings of one CIK, None when there are none, or False on failure.
+        """
         if not cik_to_process or not cik_to_process.strip():
             return None
 
         filings = fetch_non_quarterly_after_date(cik_to_process, latest_date)
+        if filings is None:
+            return False
         if filings:
             filings_df = get_non_quarterly_filings_dataframe(
-                filings, fund_denomination, cik_to_process
+                filings, fund["Denomination"], cik_to_process
             )
             if filings_df is not None:
                 filings_df = filings_df.copy()
-                filings_df.insert(0, "Fund", fund_name)
+                filings_df.insert(0, "Fund", fund["Fund"])
                 return filings_df
         return None
 
     latest_13f_date = get_latest_13f_filing_date(fund["CIK"])
 
-    result_cik = _fetch_nq(fund["CIK"], fund["Fund"], fund["Denomination"], latest_13f_date)
-    if result_cik is not None:
-        fund_results.append(result_cik)
-
-    result_ciks = _fetch_nq(fund["CIKs"], fund["Fund"], fund["Denomination"], latest_13f_date)
-    if result_ciks is not None:
-        fund_results.append(result_ciks)
+    for cik in (fund["CIK"], fund["CIKs"]):
+        result = _fetch_nq(cik, latest_13f_date)
+        if result is False:
+            logger.warning(
+                "Non-quarterly fetch failed for %s: keeping its existing filings.",
+                log_safe(fund["Fund"]),
+            )
+            return (fund["Fund"], None)
+        if isinstance(result, pd.DataFrame):
+            fund_results.append(result)
 
     return (fund["Fund"], fund_results)
 
 
-def run_fetch_nq_filings():
+def _carried_over_nq_filings(existing: pd.DataFrame, failed_funds: list[str]) -> list[pd.DataFrame]:
+    """
+    Returns the saved non-quarterly rows of funds whose fetch failed, so a transient
+    SEC failure does not erase them when the file is rewritten.
+    """
+    if not failed_funds or existing.empty:
+        return []
+    kept = existing[existing["Fund"].isin(failed_funds)].copy()
+    for column in ("Date", "Filing_Date"):
+        kept[column] = pd.to_datetime(kept[column], errors="coerce")
+    return [kept] if not kept.empty else []
+
+
+def _save_nq_with_carry_over(nq_filings: list[pd.DataFrame], failed_funds: list[str]) -> bool:
+    """
+    Rewrites non_quarterly.csv with this run's filings plus the failed funds' saved
+    rows, reading and writing under one lock. Returns False when the file was left
+    untouched because the existing rows could not be read or the write failed.
+    """
+    nq_path = non_quarterly_path()
+    with file_lock(nq_path):
+        if failed_funds:
+            try:
+                existing = read_non_quarterly_rows(nq_path)
+            except Exception:
+                logger.error(
+                    "Could not read existing non-quarterly filings: file left untouched",
+                    exc_info=True,
+                )
+                return False
+            nq_filings = nq_filings + _carried_over_nq_filings(existing, failed_funds)
+            NQ_FUNDS_CARRIED_OVER.inc(len(failed_funds))
+        try:
+            write_non_quarterly_filings(nq_filings, nq_path)
+        except Exception:
+            logger.error("Could not save non-quarterly filings to %s", nq_path, exc_info=True)
+            return False
+    return True
+
+
+def run_fetch_nq_filings() -> NqFetchOutcome:
     """
     2. Fetches and saves the latest non-quarterly filings for all known hedge funds.
 
@@ -255,6 +328,7 @@ def run_fetch_nq_filings():
     total_funds = len(hedge_funds)
     print(f"Fetching Non Quarterly filings for all {total_funds} funds...")
     nq_filings = []
+    failed_funds: list[str] = []
     completed_count = 0
     error_occurred = False
 
@@ -268,7 +342,9 @@ def run_fetch_nq_filings():
             completed_count += 1
             try:
                 fund_name, results = future.result()
-                if results:
+                if results is None:
+                    failed_funds.append(fund_name)
+                elif results:
                     nq_filings.extend(results)
                 print_centered(f"Processed {completed_count:2}/{total_funds}: {fund_name}", "-")
             except Exception as e:
@@ -276,12 +352,23 @@ def run_fetch_nq_filings():
                 error_occurred = True
                 break  # Exit the loop on unrecoverable error
 
+    failed = tuple(sorted(failed_funds))
     if error_occurred:
         print_centered("❌ Processing was halted due to an error. No filings were saved.")
-        return
+        return NqFetchOutcome(total_funds, 0, failed, saved=False)
 
-    save_non_quarterly_filings(nq_filings)
-    print_centered(f"All funds processed - {len(nq_filings)} filing(s) saved", "-")
+    if not _save_nq_with_carry_over(nq_filings, failed_funds):
+        print_centered("❌ Non-quarterly filings were not saved; the existing file is unchanged.")
+        return NqFetchOutcome(total_funds, 0, failed, saved=False)
+    rows_saved = sum(len(frame) for frame in nq_filings)
+    print_centered(f"All funds processed - {rows_saved} new filing row(s) saved", "-")
+    if failed_funds:
+        logger.warning(
+            "Kept existing non-quarterly filings for %d fund(s) whose fetch failed: %s",
+            len(failed_funds),
+            log_safe(", ".join(failed), max_len=500),
+        )
+    return NqFetchOutcome(total_funds, rows_saved, failed, saved=True)
 
 
 def run_fund_report():

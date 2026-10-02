@@ -1,11 +1,19 @@
+import os
+import stat
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 import app.database as _db
 from app.database import update_ticker, update_ticker_for_cusip
-from app.database.stocks import load_stocks
+from app.database.stocks import (
+    load_stocks,
+    update_non_quarterly_filings,
+    update_quarterly_filings,
+)
 
 _STOCKS_CSV = (
     "CUSIP,Ticker,Company,Industry\n"
@@ -102,6 +110,94 @@ class TestTickerCascade(unittest.TestCase):
         self.assertCountEqual(self._stocks_rows(), [("C1", "SOLO"), ("C2", "OLD"), ("C3", "KEEP")])
         quarter_text = (self.root / "2025Q1" / "FundA.csv").read_text(encoding="utf-8")
         self.assertIn("C1,SOLO,", quarter_text)
+
+    def _stocks_companies(self):
+        """
+        Return stocks.csv as a list of (cusip, company) tuples.
+        """
+        df = load_stocks().reset_index()
+        return list(zip(df["CUSIP"], df["Company"], strict=True))
+
+    def test_update_ticker_normalizes_the_new_company_name(self):
+        """
+        A provider-padded company name is normalized like every other stocks.csv writer.
+        """
+        update_ticker("OLD", "NEW", new_company="New Corp, Inc. Common Stock")
+
+        self.assertCountEqual(
+            self._stocks_companies(),
+            [("C1", "New Corp Inc"), ("C2", "New Corp Inc"), ("C3", "Keep Inc")],
+        )
+
+    def test_update_ticker_for_cusip_normalizes_the_new_company_name(self):
+        """
+        The single-CUSIP rename normalizes the new company name too.
+        """
+        update_ticker_for_cusip("C1", "SOLO", new_company="Solo Holdings, Inc. Ordinary Shares")
+
+        self.assertIn(("C1", "Solo Holdings Inc"), self._stocks_companies())
+
+    def test_update_ticker_keeps_the_stocks_file_mode(self):
+        """
+        The rewrite goes through the shared atomic writer, which restores the target's mode.
+        """
+        mode = stat.S_IMODE((self.root / "stocks.csv").stat().st_mode)
+
+        with patch("app.utils.pd.Path.chmod") as chmod:
+            update_ticker("OLD", "NEW")
+
+        self.assertIn(mode, [call.args[0] for call in chmod.call_args_list])
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits")
+    def test_update_ticker_does_not_narrow_a_0644_stocks_file(self):
+        """
+        mkstemp creates 0600 temp files; the swapped-in stocks.csv must stay 0644.
+        """
+        stocks_path = self.root / "stocks.csv"
+        stocks_path.chmod(0o644)
+
+        update_ticker("OLD", "NEW")
+
+        self.assertEqual(stat.S_IMODE(stocks_path.stat().st_mode), 0o644)
+
+    def _assert_waits_for_lock(self, target, lock_path, run):
+        """
+        Runs ``run`` in a thread while ``lock_path`` is held and checks that
+        ``target`` is only rewritten once the lock is released.
+        """
+        original = target.read_text(encoding="utf-8")
+        lock_path.touch()
+        worker = threading.Thread(target=run)
+        worker.start()
+        try:
+            time.sleep(0.4)
+            self.assertEqual(target.read_text(encoding="utf-8"), original)
+        finally:
+            lock_path.unlink()
+            worker.join(timeout=10)
+        self.assertFalse(worker.is_alive())
+        self.assertNotEqual(target.read_text(encoding="utf-8"), original)
+
+    def test_non_quarterly_update_waits_for_the_file_lock(self):
+        """
+        A concurrent holder of the non_quarterly.csv lock blocks the ticker rewrite.
+        """
+        self._assert_waits_for_lock(
+            self.root / "non_quarterly.csv",
+            self.root / "non_quarterly.csv.lock",
+            lambda: update_non_quarterly_filings(["C2"], "NEW"),
+        )
+
+    def test_quarterly_update_waits_for_the_file_lock(self):
+        """
+        A concurrent holder of a quarter file's lock blocks the ticker rewrite.
+        """
+        quarter_file = self.root / "2025Q1" / "FundA.csv"
+        self._assert_waits_for_lock(
+            quarter_file,
+            quarter_file.with_name("FundA.csv.lock"),
+            lambda: update_quarterly_filings(["C1"], "NEW"),
+        )
 
     def test_update_unknown_ticker_is_a_noop(self):
         """

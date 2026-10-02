@@ -58,7 +58,7 @@ jobs:
           pipenv install --dev
 
       - name: Refresh excluded funds popularity ranking
-        run: pipenv run python -X utf8 scripts/rank_excluded_funds_by_popularity.py --apply
+        run: pipenv run python scripts/rank_excluded_funds_by_popularity.py --apply
 
       - name: Stage and check for real changes
         id: changes

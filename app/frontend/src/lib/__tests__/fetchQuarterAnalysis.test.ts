@@ -69,4 +69,12 @@ describe("fetchQuarterAnalysis", () => {
     mockAnalysisFetch([{ ...BASE_ROW, Total_Value: "1000" }]);
     await expect(fetchQuarterAnalysis("2026Q2")).rejects.toThrow(/Malformed quarter analysis/);
   });
+
+  it("returns null on a non-ok response so callers fall back to the client pipeline", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("", { status: 404 })),
+    );
+    await expect(fetchQuarterAnalysis("2026Q2")).resolves.toBeNull();
+  });
 });

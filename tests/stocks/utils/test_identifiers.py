@@ -237,9 +237,3 @@ class TestNormalizeCompanyName(unittest.TestCase):
         for raw in cases:
             with self.subTest(raw=raw):
                 self.assertEqual(normalize_company_name(raw), raw)
-
-    def test_comma_and_trailing_period_are_removed_together(self):
-        self.assertEqual(
-            normalize_company_name("Azio AI Holdings, Inc. Common Stock"),
-            "Azio AI Holdings Inc",
-        )

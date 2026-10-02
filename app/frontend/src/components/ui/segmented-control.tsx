@@ -31,7 +31,7 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       role="radiogroup"
-      className={cn("inline-flex items-stretch rounded-md bg-muted p-0.5", className)}
+      className={cn("inline-flex items-stretch rounded-lg border border-border bg-muted p-0.5", className)}
       {...props}
     >
       {options.map((opt) => {
@@ -46,9 +46,9 @@ export function SegmentedControl<T extends string>({
             title={opt.title}
             onClick={() => onValueChange(opt.value)}
             className={cn(
-              "rounded-sm font-medium transition-colors duration-[120ms] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+              "rounded-md font-medium transition-colors duration-[120ms] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
               size === "sm" ? "px-2 h-6 text-xs" : "px-3 h-8 text-[13px]",
-              isActive ? "bg-card text-foreground" : "text-muted-foreground hover:text-foreground",
+              isActive ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}
           >
             {opt.label}

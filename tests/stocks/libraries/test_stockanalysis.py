@@ -178,16 +178,11 @@ class TestStockAnalysisGetHistory(unittest.TestCase):
 
 
 class TestStockAnalysisUnsupported(unittest.TestCase):
-    def test_get_ticker_returns_none(self):
+    def test_identifier_lookups_return_none(self):
         """
-        CUSIP-to-ticker resolution is not supported by this source.
+        CUSIP-to-ticker and CUSIP-to-company resolution are not supported by this source.
         """
         self.assertIsNone(StockAnalysis.get_ticker("123456789"))
-
-    def test_get_company_returns_none(self):
-        """
-        CUSIP-to-company resolution is not supported by this source.
-        """
         self.assertIsNone(StockAnalysis.get_company("123456789"))
 
 

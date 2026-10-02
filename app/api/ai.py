@@ -9,11 +9,13 @@ single-user mode. In a production posture anonymous AI calls are rejected.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
+from tenacity import RetryError
 
 from app.api.common import (
     _df_to_json_safe_records,
@@ -21,7 +23,12 @@ from app.api.common import (
     _require_ticker,
     limiter,
 )
-from app.api.sse import _make_sse_stream
+from app.api.sse import (
+    RATE_LIMIT_MESSAGE,
+    _make_sse_stream,
+    describe_retry_error,
+    is_rate_limit_error,
+)
 from app.auth.dependencies import current_optional_user
 from app.db.session import AsyncSessionLocal
 from app.utils.logger import get_logger
@@ -132,6 +139,90 @@ async def _resolve_request_key(user: User | None, provider_id: str) -> str | Non
             await session.commit()  # persist last_used_at update from get_for_use
 
 
+_DEFAULT_TOP_N = 20
+_MAX_TOP_N = 50
+
+
+@dataclass(frozen=True)
+class _AIRequest:
+    """
+    Validated inputs shared by the AI endpoints.
+    """
+
+    quarter: str
+    ai_client: AIClient
+    ticker: str | None = None
+    top_n: int = _DEFAULT_TOP_N
+
+
+def _parse_top_n(value: object) -> int:
+    """
+    Coerce ``top_n`` to an int in ``1.._MAX_TOP_N``; anything else is a 422.
+    """
+    if isinstance(value, bool) or not isinstance(value, int | str):
+        raise HTTPException(status_code=422, detail="top_n must be an integer")
+    try:
+        top_n = int(value)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="top_n must be an integer") from None
+    if not 1 <= top_n <= _MAX_TOP_N:
+        raise HTTPException(status_code=422, detail=f"top_n must be between 1 and {_MAX_TOP_N}")
+    return top_n
+
+
+def _str_field(body: dict[str, object], key: str) -> str | None:
+    """
+    Return a body field when it is a string; any other type reads as absent.
+    """
+    value = body.get(key)
+    return value if isinstance(value, str) else None
+
+
+async def _parse_ai_request(
+    request: Request, user: User | None, *, with_ticker: bool = False, with_top_n: bool = False
+) -> _AIRequest:
+    """
+    Validate an AI request body and build its client, rejecting a non-object body with 422.
+    """
+    try:
+        body = await request.json()
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Request body must be valid JSON") from None
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="Request body must be a JSON object")
+
+    ticker = _require_ticker(_str_field(body, "ticker")) if with_ticker else None
+    quarter = _require_quarter(_str_field(body, "quarter"))
+    top_n = _parse_top_n(body.get("top_n", _DEFAULT_TOP_N)) if with_top_n else _DEFAULT_TOP_N
+    provider_id, model_id = _resolve_provider(
+        _str_field(body, "provider_id") or "", _str_field(body, "model_id")
+    )
+    api_key = await _resolve_request_key(user, provider_id)
+    ai_client = _build_ai_client(provider_id, api_key, model_id)
+    return _AIRequest(quarter=quarter, ai_client=ai_client, ticker=ticker, top_n=top_n)
+
+
+def _scored_list(req: _AIRequest) -> list[dict[str, object]]:
+    """
+    Run the Promise Score ranking for a validated request.
+    """
+    from app.ai.agent import AnalystAgent
+
+    agent = AnalystAgent(quarter=req.quarter, ai_client=req.ai_client)
+    return _df_to_json_safe_records(agent.generate_scored_list(top_n=req.top_n))
+
+
+def _due_diligence(req: _AIRequest) -> dict[str, object]:
+    """
+    Run due diligence for a validated request.
+    """
+    from app.ai.agent import AnalystAgent
+
+    assert req.ticker is not None
+    agent = AnalystAgent(quarter=req.quarter, ai_client=req.ai_client)
+    return agent.run_stock_due_diligence(ticker=req.ticker)
+
+
 @router.post("/api/ai/promise-score")
 @limiter.limit("10/minute")
 async def ai_promise_score(
@@ -140,23 +231,17 @@ async def ai_promise_score(
 ) -> list[dict[str, object]]:
     """
     Score-rank the top N stocks for a quarter via the configured AI provider.
+
+    Raises:
+        HTTPException: 503 when Yahoo Finance rate-limits the price lookups.
     """
-    from app.ai.agent import AnalystAgent
-
-    body = await request.json()
-    quarter = _require_quarter(body.get("quarter"))
-    top_n = body.get("top_n", 20)
-    provider_id, model_id = _resolve_provider(body.get("provider_id"), body.get("model_id"))
-    api_key = await _resolve_request_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, model_id)
-
-    # Offload the blocking AI/analysis work so it doesn't stall the event loop.
-    def _run() -> list[dict[str, object]]:
-        agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
-        df = agent.generate_scored_list(top_n=top_n)
-        return _df_to_json_safe_records(df)
-
-    return await run_in_threadpool(_run)
+    req = await _parse_ai_request(request, user, with_top_n=True)
+    try:
+        return await run_in_threadpool(_scored_list, req)
+    except Exception as exc:
+        if is_rate_limit_error(exc):
+            raise HTTPException(status_code=503, detail=RATE_LIMIT_MESSAGE) from exc
+        raise
 
 
 @router.post("/api/ai/due-diligence")
@@ -167,22 +252,18 @@ async def ai_due_diligence(
 ) -> dict[str, object]:
     """
     AI due-diligence on one ticker for one quarter.
+
+    Raises:
+        HTTPException: 502 when the provider never returns a valid answer.
     """
-    from app.ai.agent import AnalystAgent
-
-    body = await request.json()
-    ticker = _require_ticker(body.get("ticker"))
-    quarter = _require_quarter(body.get("quarter"))
-    provider_id, model_id = _resolve_provider(body.get("provider_id"), body.get("model_id"))
-    api_key = await _resolve_request_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, model_id)
-
-    # Offload the blocking AI/analysis work so it doesn't stall the event loop.
-    def _run() -> dict[str, object]:
-        agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
-        return agent.run_stock_due_diligence(ticker=ticker)
-
-    return await run_in_threadpool(_run)
+    req = await _parse_ai_request(request, user, with_ticker=True)
+    try:
+        return await run_in_threadpool(_due_diligence, req)
+    except RetryError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI provider returned no valid answer: {describe_retry_error(exc)}",
+        ) from exc
 
 
 @router.post("/api/ai/promise-score/stream")
@@ -194,21 +275,8 @@ async def ai_promise_score_stream(
     """
     SSE-streamed Promise Score analysis.
     """
-    from app.ai.agent import AnalystAgent
-
-    body = await request.json()
-    quarter = _require_quarter(body.get("quarter"))
-    top_n = body.get("top_n", 20)
-    provider_id, model_id = _resolve_provider(body.get("provider_id"), body.get("model_id"))
-    api_key = await _resolve_request_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, model_id)
-
-    def run():
-        agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
-        df = agent.generate_scored_list(top_n=top_n)
-        return _df_to_json_safe_records(df)
-
-    return _make_sse_stream(run)
+    req = await _parse_ai_request(request, user, with_top_n=True)
+    return _make_sse_stream(lambda: _scored_list(req))
 
 
 @router.post("/api/ai/due-diligence/stream")
@@ -220,17 +288,5 @@ async def ai_due_diligence_stream(
     """
     SSE-streamed due diligence.
     """
-    from app.ai.agent import AnalystAgent
-
-    body = await request.json()
-    ticker = _require_ticker(body.get("ticker"))
-    quarter = _require_quarter(body.get("quarter"))
-    provider_id, model_id = _resolve_provider(body.get("provider_id"), body.get("model_id"))
-    api_key = await _resolve_request_key(user, provider_id)
-    ai_client = _build_ai_client(provider_id, api_key, model_id)
-
-    def run():
-        agent = AnalystAgent(quarter=quarter, ai_client=ai_client)
-        return agent.run_stock_due_diligence(ticker=ticker)
-
-    return _make_sse_stream(run)
+    req = await _parse_ai_request(request, user, with_ticker=True)
+    return _make_sse_stream(lambda: _due_diligence(req))

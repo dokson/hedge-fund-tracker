@@ -26,11 +26,6 @@ function renderWithRouter(ui: React.ReactElement, initialPath = "/") {
 }
 
 describe("CompanyLink", () => {
-  it("renders the company name", () => {
-    const { getByText } = renderWithRouter(<CompanyLink ticker="AAPL" company="Apple Inc" />);
-    expect(getByText("Apple Inc")).toBeDefined();
-  });
-
   it("navigates to /stock/<ticker> on click", () => {
     const { getByText, queryByTestId } = renderWithRouter(
       <CompanyLink ticker="AAPL" company="Apple Inc" />,
@@ -40,19 +35,16 @@ describe("CompanyLink", () => {
     expect(queryByTestId("stock-page")).not.toBeNull();
   });
 
-  it("prepends a star button when showStar is true", () => {
-    const { container, getByText } = renderWithRouter(
+  it("renders a star button only when showStar is true", () => {
+    const { container: withStar } = renderWithRouter(
       <CompanyLink ticker="AAPL" company="Apple Inc" showStar />,
     );
-    expect(getByText("Apple Inc")).toBeDefined();
-    // Star is rendered as the first interactive node inside the wrapper.
-    const buttons = container.querySelectorAll("button");
-    expect(buttons.length).toBeGreaterThanOrEqual(1);
-  });
+    expect(withStar.querySelectorAll("button").length).toBe(1);
 
-  it("omits the star button by default", () => {
-    const { container } = renderWithRouter(<CompanyLink ticker="AAPL" company="Apple Inc" />);
-    expect(container.querySelectorAll("button").length).toBe(0);
+    const { container: withoutStar } = renderWithRouter(
+      <CompanyLink ticker="AAPL" company="Apple Inc" />,
+    );
+    expect(withoutStar.querySelectorAll("button").length).toBe(0);
   });
 });
 
@@ -72,10 +64,11 @@ describe("entity links are real anchors", () => {
 });
 
 describe("TickerLink", () => {
-  it("renders the ticker text inside a .ticker-pill", () => {
-    const { container, getByText } = renderWithRouter(<TickerLink ticker="NVDA" />);
-    expect(getByText("NVDA")).toBeDefined();
-    expect(container.querySelector(".ticker-pill")).not.toBeNull();
+  it("carries an optional title, so a stretched link can surface the company on hover", () => {
+    const { getByRole } = renderWithRouter(
+      <TickerLink ticker="NVDA" showLogo={false} title="Nvidia Corp" />,
+    );
+    expect(getByRole("link", { name: "NVDA" }).getAttribute("title")).toBe("Nvidia Corp");
   });
 
   it("includes a logo by default and skips it when showLogo is false", () => {

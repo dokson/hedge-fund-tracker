@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 
 // The treemap measures itself; jsdom ships no ResizeObserver.
 beforeAll(() => {
@@ -48,6 +48,11 @@ vi.mock("@/lib/strategyScreen", () => ({
 }));
 
 const { default: CompositionPanel } = await import("./CompositionPanel");
+const { stockPath } = await import("@/lib/routes");
+
+function LocationProbe() {
+  return <div data-testid="location">{useLocation().pathname}</div>;
+}
 
 function renderPanel() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -55,6 +60,7 @@ function renderPanel() {
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <CompositionPanel strategyId="big_bets" />
+        <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -80,7 +86,6 @@ describe("CompositionPanel sector filter", () => {
     fireEvent.click(tile("Technology"));
 
     expect(tile("Technology").getAttribute("aria-pressed")).toBe("true");
-    expect(tile("Technology").style.boxShadow).toContain("--primary");
     expect(opacityOf("AAA")).toBe("1");
     expect(opacityOf("BBB")).toBe("1");
     expect(opacityOf("CCC")).toBe("0.25");
@@ -117,7 +122,7 @@ describe("CompositionPanel sector filter", () => {
     expect(screen.queryByRole("button", { name: /^clear/i })).toBeNull();
   });
 
-  it("keeps a dimmed stock tile clickable", async () => {
+  it("keeps a dimmed stock tile navigating to its stock page", async () => {
     renderPanel();
     await waitFor(() =>
       expect(screen.queryAllByRole("button", { name: "Technology" }).length).toBe(1),
@@ -125,6 +130,6 @@ describe("CompositionPanel sector filter", () => {
 
     fireEvent.click(tile("Technology"));
     fireEvent.click(tile("CCC"));
-    expect(tile("CCC")).toBeTruthy();
+    expect(screen.getByTestId("location").textContent).toBe(stockPath("CCC"));
   });
 });

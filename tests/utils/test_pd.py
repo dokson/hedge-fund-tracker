@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import numpy as np
@@ -161,6 +162,62 @@ class TestAtomicWriteText(unittest.TestCase):
         self._tmp = Path(tempfile.mkdtemp(prefix="hft_atomic_txt_"))
         self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
 
+    def test_transient_replace_failure_is_retried(self):
+        """
+        A PermissionError from os.replace (a reader holds the target on Windows) is retried.
+        """
+        from unittest.mock import patch
+
+        from app.utils.pd import atomic_write_text
+
+        target = self._tmp / "out.txt"
+        target.write_text("old", encoding="utf-8")
+        real_replace = os.replace
+        calls: list[int] = []
+
+        def flaky_replace(src, dst):
+            """
+            Fail the first swap like a file open for reading, then swap for real.
+            """
+            calls.append(1)
+            if len(calls) == 1:
+                raise PermissionError("target in use")
+            real_replace(src, dst)
+
+        with (
+            patch("app.utils.pd.os.replace", side_effect=flaky_replace),
+            patch("app.utils.pd.time.sleep") as mock_sleep,
+        ):
+            atomic_write_text(target, "new")
+
+        self.assertEqual(target.read_text(encoding="utf-8"), "new")
+        self.assertEqual(len(calls), 2)
+        mock_sleep.assert_called_once()
+        self.assertEqual([p.name for p in self._tmp.iterdir()], ["out.txt"])
+
+    def test_persistent_replace_failure_gives_up_and_cleans_up(self):
+        """
+        After a bounded number of attempts the error propagates and no temp file is left.
+        """
+        from unittest.mock import patch
+
+        from app.utils.pd import atomic_write_text
+
+        target = self._tmp / "out.txt"
+        target.write_text("old", encoding="utf-8")
+
+        with (
+            patch("app.utils.pd.os.replace", side_effect=PermissionError("in use")) as mock_replace,
+            patch("app.utils.pd.time.sleep"),
+            self.assertRaises(PermissionError),
+        ):
+            atomic_write_text(target, "new")
+
+        self.assertLessEqual(mock_replace.call_count, 10)
+        self.assertGreater(mock_replace.call_count, 1)
+        self.assertEqual(target.read_text(encoding="utf-8"), "old")
+        self.assertEqual([p.name for p in self._tmp.iterdir()], ["out.txt"])
+
     def test_writes_text_and_leaves_no_tmp_files(self):
         """
         The target holds exactly the text written and no temp file survives.
@@ -237,13 +294,90 @@ class TestAtomicWriteText(unittest.TestCase):
         target.write_text("original", encoding="utf-8")
 
         with (
-            patch("app.utils.pd.Path.replace", side_effect=OSError("boom")),
+            patch("app.utils.pd.os.replace", side_effect=OSError("boom")),
             self.assertRaises(OSError),
         ):
             atomic_write_text(target, "new")
 
         self.assertEqual(target.read_text(encoding="utf-8"), "original")
         self.assertEqual([p.name for p in self._tmp.iterdir()], ["out.txt"])
+
+
+class TestAtomicWriteRows(unittest.TestCase):
+    def setUp(self):
+        """
+        Create an isolated temp directory for the write targets.
+        """
+        import shutil
+        import tempfile
+        from pathlib import Path
+
+        self._tmp = Path(tempfile.mkdtemp(prefix="hft_atomic_rows_"))
+        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
+
+    def test_writes_rows_with_header_and_quoting(self):
+        """
+        Rows land under the header, fully quoted by default and minimally on request.
+        """
+        from app.utils.pd import atomic_write_rows
+
+        target = self._tmp / "out.csv"
+        atomic_write_rows(target, ["A", "B"], [{"A": "1", "B": "x"}])
+        self.assertEqual(target.read_bytes(), b'"A","B"\r\n"1","x"\r\n')
+
+        atomic_write_rows(target, ["A", "B"], [{"A": "1", "B": "x"}], quote_all=False)
+        self.assertEqual(target.read_bytes(), b"A,B\r\n1,x\r\n")
+        self.assertEqual([p.name for p in self._tmp.iterdir()], ["out.csv"])
+
+    def test_preserves_the_existing_file_mode(self):
+        """
+        The row writer shares the permission handling of the other atomic writers.
+        """
+        import stat
+        from unittest.mock import patch
+
+        from app.utils.pd import atomic_write_rows
+
+        target = self._tmp / "out.csv"
+        target.write_text("A\n", encoding="utf-8")
+        mode = stat.S_IMODE(target.stat().st_mode)
+
+        with patch("app.utils.pd.Path.chmod") as chmod:
+            atomic_write_rows(target, ["A"], [{"A": "1"}])
+
+        self.assertEqual(chmod.call_args.args[0], mode)
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits")
+    def test_does_not_narrow_a_0644_file(self):
+        """
+        mkstemp's 0600 must not leak onto a target that was 0644.
+        """
+        import stat
+
+        from app.utils.pd import atomic_write_rows
+
+        target = self._tmp / "out.csv"
+        target.write_text("A\n", encoding="utf-8")
+        target.chmod(0o644)
+
+        atomic_write_rows(target, ["A"], [{"A": "1"}])
+
+        self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o644)
+
+
+class TestEscapeCsvTextRows(unittest.TestCase):
+    def test_escapes_company_and_industry_only(self):
+        """
+        Free-text fields are formula-escaped; identifiers and non-strings pass through.
+        """
+        from app.utils.pd import escape_csv_text_rows
+
+        rows = [{"CUSIP": "=1", "Company": "=cmd", "Industry": "+x", "Shares": 5}]
+
+        self.assertEqual(
+            escape_csv_text_rows(rows),
+            [{"CUSIP": "=1", "Company": "'=cmd", "Industry": "'+x", "Shares": 5}],
+        )
 
 
 if __name__ == "__main__":

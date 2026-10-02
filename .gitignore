@@ -16,4 +16,8 @@ app/frontend/dist/
 
 # Coverage
 .coverage
+app/frontend/coverage/
 htmlcov/
+
+# Lock files left behind by a killed writer
+database/**/*.lock

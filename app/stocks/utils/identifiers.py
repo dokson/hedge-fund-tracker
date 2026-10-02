@@ -125,3 +125,12 @@ def normalize_company_name(raw: str) -> str:
         name = stripped
     name = _COMMA_BEFORE_LEGAL_SUFFIX.sub(r"\1", name)
     return _TRAILING_ABBREVIATION_PERIOD.sub(r" \1", name).strip()
+
+
+def is_equity_cusip(cusip: object) -> bool:
+    """
+    Returns True for equity-style CUSIPs: 9 characters with a numeric issue
+    code (positions 7-8). Debt issues use alphabetic issue codes, so a bond
+    of the same issuer is never mistaken for the equity.
+    """
+    return isinstance(cusip, str) and len(cusip) == 9 and cusip[6:8].isdigit()

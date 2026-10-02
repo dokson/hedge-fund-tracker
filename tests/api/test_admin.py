@@ -37,12 +37,49 @@ class TestUpdateTickerEndpoint(unittest.TestCase):
         self.assertEqual(resp.status_code, 422)
 
 
-class TestDatabaseFetchEndpoint(unittest.TestCase):
-    """/api/database/fetch input validation (runs before any heavy import)."""
+class TestNonStringFieldsRejected(unittest.TestCase):
+    """Ticker/CUSIP correction endpoints reject non-string fields with 422."""
 
-    def test_unknown_type_returns_422(self):
-        """An unknown fetch type is rejected with 422."""
-        resp = client.post("/api/database/fetch", json={"type": "weird"})
+    @patch("app.database.update_ticker_for_cusip")
+    @patch("app.database.update_ticker")
+    def test_null_or_number_fields_return_422(self, mock_update, mock_update_cusip):
+        """
+        A null or numeric field is a client error, not an AttributeError 500.
+        """
+        cases = [
+            ("/api/update-ticker", {"old_ticker": None, "new_ticker": "NEW"}),
+            ("/api/update-ticker", {"old_ticker": "OLD", "new_ticker": 7}),
+            ("/api/update-ticker", {"old_ticker": "OLD", "new_ticker": "NEW", "new_company": 3}),
+            ("/api/update-cusip-ticker", {"cusip": None, "new_ticker": "NEW"}),
+            ("/api/update-cusip-ticker", {"cusip": 123456789, "new_ticker": "NEW"}),
+            ("/api/update-cusip-ticker", {"cusip": "123456789", "new_ticker": ["X"]}),
+        ]
+        for path, body in cases:
+            with self.subTest(path=path, body=body):
+                resp = client.post(path, json=body)
+                self.assertEqual(resp.status_code, 422)
+        mock_update.assert_not_called()
+        mock_update_cusip.assert_not_called()
+
+    @patch("app.database.update_ticker")
+    def test_null_company_is_treated_as_absent(self, mock_update):
+        """
+        An explicit null company keeps the stored name.
+        """
+        resp = client.post(
+            "/api/update-ticker",
+            json={"old_ticker": "old", "new_ticker": "new", "new_company": None},
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_update.assert_called_once_with("OLD", "NEW", new_company=None)
+
+    def test_non_object_body_returns_422(self):
+        """
+        A JSON array body is rejected with 422.
+        """
+        resp = client.post(
+            "/api/update-ticker", content=b"[1]", headers={"Content-Type": "application/json"}
+        )
         self.assertEqual(resp.status_code, 422)
 
 

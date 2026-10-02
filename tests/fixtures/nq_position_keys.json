@@ -1,0 +1,95 @@
+{
+  "rows": [
+    {
+      "Fund": "Fund A",
+      "Ticker": "AAA",
+      "CUSIP": "000000001",
+      "Date": "2026-07-01",
+      "Filing_Date": "2026-07-03"
+    },
+    {
+      "Fund": "Fund A",
+      "Ticker": "AAA",
+      "CUSIP": "000000001",
+      "Date": "2026-07-10",
+      "Filing_Date": "2026-07-12"
+    },
+    {
+      "Fund": "Fund A",
+      "Ticker": "",
+      "CUSIP": "000000002",
+      "Date": "2026-07-01",
+      "Filing_Date": "2026-07-02"
+    },
+    {
+      "Fund": "Fund A",
+      "Ticker": "",
+      "CUSIP": "000000002",
+      "Date": "2026-07-05",
+      "Filing_Date": "2026-07-06"
+    },
+    {
+      "Fund": "Fund A",
+      "Ticker": "",
+      "CUSIP": "000000003",
+      "Date": "2026-07-01",
+      "Filing_Date": "2026-07-02"
+    },
+    {
+      "Fund": "Fund A",
+      "Ticker": "",
+      "CUSIP": "",
+      "Date": "2026-07-01",
+      "Filing_Date": "2026-07-02"
+    },
+    {
+      "Fund": "Fund A",
+      "Ticker": "",
+      "CUSIP": "",
+      "Date": "2026-07-01",
+      "Filing_Date": "2026-07-02"
+    },
+    {
+      "Fund": "Fund B",
+      "Ticker": "AAA",
+      "CUSIP": "000000001",
+      "Date": "2026-07-01",
+      "Filing_Date": "2026-07-02"
+    },
+    {
+      "Fund": "Fund A",
+      "Ticker": " ",
+      "CUSIP": "000000002",
+      "Date": "2026-07-08",
+      "Filing_Date": "2026-07-09"
+    },
+    {
+      "Fund": "Fund A",
+      "Ticker": "AAA",
+      "CUSIP": "000000001",
+      "Date": "2026-07-10",
+      "Filing_Date": "2026-07-15"
+    },
+    {
+      "Fund": "Fund B",
+      "Ticker": "BBB",
+      "CUSIP": "",
+      "Date": "2026-07-01",
+      "Filing_Date": "2026-07-02"
+    }
+  ],
+  "keys": [
+    "TICKER:AAA",
+    "TICKER:AAA",
+    "CUSIP:000000002",
+    "CUSIP:000000002",
+    "CUSIP:000000003",
+    "ROW:5",
+    "ROW:6",
+    "TICKER:AAA",
+    "CUSIP:000000002",
+    "TICKER:AAA",
+    "TICKER:BBB"
+  ],
+  "surviving": [4, 5, 6, 7, 8, 9, 10]
+}

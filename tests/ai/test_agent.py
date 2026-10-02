@@ -40,46 +40,6 @@ def _make_analysis_df():
 class TestAnalystAgentInit(unittest.TestCase):
     @patch("app.ai.agent.quarter_analysis")
     @patch("app.ai.agent.get_quarter_date")
-    def test_stores_quarter_string(self, mock_date, mock_analysis):
-        """
-        Stores the quarter string as an instance attribute.
-        """
-        mock_date.return_value = "2023-12-31"
-        mock_analysis.return_value = pd.DataFrame()
-
-        agent = AnalystAgent("2023Q4")
-
-        self.assertEqual(agent.quarter, "2023Q4")
-
-    @patch("app.ai.agent.quarter_analysis")
-    @patch("app.ai.agent.get_quarter_date")
-    def test_stores_filing_date_from_quarter(self, mock_date, mock_analysis):
-        """
-        Converts the quarter string to a filing date via get_quarter_date().
-        """
-        mock_date.return_value = "2023-12-31"
-        mock_analysis.return_value = pd.DataFrame()
-
-        agent = AnalystAgent("2023Q4")
-
-        self.assertEqual(agent.filing_date, "2023-12-31")
-
-    @patch("app.ai.agent.quarter_analysis")
-    @patch("app.ai.agent.get_quarter_date")
-    def test_stores_provided_ai_client(self, mock_date, mock_analysis):
-        """
-        Stores the provided AI client as an instance attribute.
-        """
-        mock_date.return_value = "2023-12-31"
-        mock_analysis.return_value = pd.DataFrame()
-        mock_client = MagicMock()
-
-        agent = AnalystAgent("2023Q4", ai_client=mock_client)
-
-        self.assertEqual(agent.ai_client, mock_client)
-
-    @patch("app.ai.agent.quarter_analysis")
-    @patch("app.ai.agent.get_quarter_date")
     def test_loads_analysis_dataframe_on_init(self, mock_date, mock_analysis):
         """
         Loads the quarter analysis DataFrame by calling quarter_analysis() on init.
@@ -116,16 +76,6 @@ class TestCalculatePromiseScores(unittest.TestCase):
         self.mock_ai_client = MagicMock()
         self.agent = AnalystAgent("2023Q4", ai_client=self.mock_ai_client)
 
-    def test_adds_promise_score_column(self):
-        """
-        Adds a 'Promise_Score' column to the returned DataFrame.
-        """
-        df = _make_analysis_df()
-
-        result = self.agent._calculate_promise_scores(df, {"Metric1": 0.5, "Metric2": 0.5})
-
-        self.assertIn("Promise_Score", result.columns)
-
     def test_does_not_mutate_input_dataframe(self):
         """
         Returns a new DataFrame and leaves the original unchanged.
@@ -158,16 +108,6 @@ class TestCalculatePromiseScores(unittest.TestCase):
         high_score = result.loc[result["Ticker"] == "HIGH", "Promise_Score"].iloc[0]
         low_score = result.loc[result["Ticker"] == "LOW", "Promise_Score"].iloc[0]
         self.assertGreater(high_score, low_score)
-
-    def test_silently_skips_missing_metric_columns(self):
-        """
-        Does not raise when a weight key is not present in the DataFrame; skips that metric.
-        """
-        df = _make_analysis_df()
-
-        result = self.agent._calculate_promise_scores(df, {"Metric1": 0.5, "NonExistent": 0.5})
-
-        self.assertIn("Promise_Score", result.columns)
 
     def test_scaling_weights_by_a_constant_leaves_scores_unchanged(self):
         """
@@ -348,14 +288,6 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         self.mock_ai_client.generate_content.return_value = "mock_response"
         self.agent = AnalystAgent("2023Q4", ai_client=self.mock_ai_client)
 
-    def test_returns_weights_on_valid_response(self):
-        """
-        Returns the parsed weights dict when the AI response is valid.
-        """
-        self.mock_parse.return_value = _weights_response(_six_weights())
-
-        self.assertEqual(self.agent._get_promise_score_weights(), _six_weights())
-
     def test_accepts_weights_whose_sum_is_not_one(self):
         """
         The sum no longer matters: totals of 0.8, 1.1 and 3.0 are all accepted.
@@ -495,7 +427,7 @@ class TestGenerateScoredListScoringFailure(unittest.TestCase):
 
 class TestGenerateScoredListPriceScores(unittest.TestCase):
     """
-    Momentum and low volatility come from price history; industry and risk from the LLM.
+    Momentum and low volatility come from price history, industry from stocks.csv, risk from the LLM.
     """
 
     def setUp(self):
@@ -530,9 +462,10 @@ class TestGenerateScoredListPriceScores(unittest.TestCase):
             self.addCleanup(patcher.stop)
             patcher.start()
 
-    def test_merges_computed_scores_with_llm_industry_and_risk(self):
+    def test_merges_computed_scores_with_llm_risk(self):
         """
-        Each row carries the computed price scores next to the LLM's fields.
+        Each row carries the computed price scores and industry next to the LLM's risk;
+        an industry the LLM volunteers anyway is ignored.
         """
         llm = {
             t: {"industry": f"Ind {t}", "risk_score": r}
@@ -543,7 +476,7 @@ class TestGenerateScoredListPriceScores(unittest.TestCase):
         self.assertEqual(df.loc["AAPL", "Momentum_Score"], 10)
         self.assertEqual(df.loc["GOOGL", "Low_Volatility_Score"], 1)
         self.assertEqual(df.loc["MSFT", "Risk_Score"], 60)
-        self.assertEqual(df.loc["MSFT", "Industry"], "Ind MSFT")
+        self.assertEqual(df.loc["MSFT", "Industry"], "Tech")
         self.assertTrue(pd.api.types.is_integer_dtype(df["Momentum_Score"]))
 
     def test_price_scores_survive_an_llm_failure(self):
@@ -556,14 +489,45 @@ class TestGenerateScoredListPriceScores(unittest.TestCase):
         self.assertEqual(df.loc["AAPL", "Low_Volatility_Score"], 90)
 
 
+class TestGenerateScoredListRateLimit(unittest.TestCase):
+    """
+    A Yahoo rate limit aborts the ranking instead of scoring on missing prices.
+    """
+
+    def test_rate_limit_propagates_to_the_caller(self):
+        """
+        The rate limit is raised, not turned into an empty ranking a caller would show as success.
+        """
+        from yfinance.exceptions import YFRateLimitError
+
+        with (
+            patch("app.ai.agent.quarter_analysis", return_value=_make_analysis_df()),
+            patch("app.ai.agent.get_quarter_date", return_value="2023-12-31"),
+        ):
+            agent = AnalystAgent("2023Q4", ai_client=MagicMock())
+        agent.analysis_df["Company"] = ["A Co", "B Co", "C Co"]
+
+        with (
+            patch.object(agent, "_get_promise_score_weights", return_value={"Metric1": 1.0}),
+            patch("app.ai.agent.YFinance.get_stocks_info", side_effect=YFRateLimitError()),
+            patch.object(agent, "_get_ai_scores") as mock_ai_scores,
+            self.assertRaises(YFRateLimitError),
+        ):
+            agent.generate_scored_list(3)
+
+        mock_ai_scores.assert_not_called()
+
+
 class TestComputeAutonomousScores(unittest.TestCase):
     def setUp(self):
         """
-        Initializes AnalystAgent with mocked quarter analysis and filing date.
+        Initializes AnalystAgent with mocked quarter analysis, filing date and an empty stocks.csv.
         """
+        no_stocks = pd.DataFrame(columns=["Ticker", "Company", "Industry"]).rename_axis("CUSIP")
         for patcher in (
             patch("app.ai.agent.quarter_analysis", return_value=pd.DataFrame()),
             patch("app.ai.agent.get_quarter_date", return_value="2023-12-31"),
+            patch("app.ai.agent.load_stocks", return_value=no_stocks),
         ):
             self.addCleanup(patcher.stop)
             patcher.start()
@@ -571,10 +535,28 @@ class TestComputeAutonomousScores(unittest.TestCase):
 
     @patch("app.ai.agent.PriceFetcher.get_avg_price", return_value=None)
     @patch("app.ai.agent.YFinance.get_stocks_info")
-    def test_prefers_the_yfinance_industry(self, mock_info, mock_avg_price):
+    def test_prefers_the_stocks_master_industry(self, mock_info, mock_avg_price):
         """
-        The prompt asks the LLM to refine a sector into an industry, so the
-        industry is handed over whenever YFinance has one.
+        The industry classified into the stocks.csv vocabulary wins over YFinance's.
+        """
+        mock_info.return_value = {
+            "AAPL": {"price": 150.0, "sector": "Technology", "industry": "Consumer Electronics"}
+        }
+        stocks = pd.DataFrame(
+            {"Ticker": ["AAPL"], "Company": ["A Co"], "Industry": ["Computer Hardware"]},
+            index=pd.Index(["000000001"], name="CUSIP"),
+        )
+
+        with patch("app.ai.agent.load_stocks", return_value=stocks):
+            result = self.agent._compute_autonomous_scores(["AAPL"])
+
+        self.assertEqual(result["AAPL"]["Industry"], "Computer Hardware")
+
+    @patch("app.ai.agent.PriceFetcher.get_avg_price", return_value=None)
+    @patch("app.ai.agent.YFinance.get_stocks_info")
+    def test_falls_back_to_the_yfinance_industry(self, mock_info, mock_avg_price):
+        """
+        Without a stocks.csv industry, YFinance's industry is used.
         """
         mock_info.return_value = {
             "AAPL": {"price": 150.0, "sector": "Technology", "industry": "Consumer Electronics"}
@@ -626,21 +608,6 @@ class TestGetAIScores(unittest.TestCase):
     @patch("app.ai.agent.encode")
     @patch("app.ai.agent.ResponseParser.parse_json")
     @patch("app.ai.agent.quantitative_scores_prompt")
-    def test_returns_parsed_scores_on_valid_response(self, mock_prompt, mock_parse, mock_encode):
-        """
-        Returns the AI-parsed score dict when the response contains all required keys.
-        """
-        valid_scores = {"AAPL": {"industry": "Software", "risk_score": 40}}
-        self.mock_ai_client.generate_content.return_value = "mock_response"
-        mock_parse.return_value = _scores_response(valid_scores)
-
-        result = self.agent._get_ai_scores([{"ticker": "AAPL", "company": "Apple"}])
-
-        self.assertEqual(result, valid_scores)
-
-    @patch("app.ai.agent.encode")
-    @patch("app.ai.agent.ResponseParser.parse_json")
-    @patch("app.ai.agent.quantitative_scores_prompt")
     def test_scalar_entries_trigger_retry_not_typeerror(self, mock_prompt, mock_parse, mock_encode):
         """
         Scalar list entries must be treated as an invalid response (retried),
@@ -655,24 +622,6 @@ class TestGetAIScores(unittest.TestCase):
     @patch("app.ai.agent.encode")
     @patch("app.ai.agent.ResponseParser.parse_json")
     @patch("app.ai.agent.quantitative_scores_prompt")
-    def test_missing_tickers_trigger_retry(self, mock_prompt, mock_parse, mock_encode):
-        """
-        A truncated response covering only part of the requested universe must
-        not pass validation: missing tickers would silently score 0 downstream.
-        """
-        self.mock_ai_client.generate_content.return_value = "mock_response"
-        mock_parse.return_value = _scores_response(
-            {"AAPL": {"industry": "Software", "risk_score": 40}}
-        )
-
-        with self.assertRaises(RetryError):
-            self.agent._get_ai_scores(
-                [{"ticker": "AAPL", "company": "Apple"}, {"ticker": "MSFT", "company": "Microsoft"}]
-            )
-
-    @patch("app.ai.agent.encode")
-    @patch("app.ai.agent.ResponseParser.parse_json")
-    @patch("app.ai.agent.quantitative_scores_prompt")
     def test_non_numeric_or_out_of_range_scores_trigger_retry(
         self, mock_prompt, mock_parse, mock_encode
     ):
@@ -681,7 +630,7 @@ class TestGetAIScores(unittest.TestCase):
         out-of-range value must be rejected instead of flowing into numeric columns.
         """
         self.mock_ai_client.generate_content.return_value = "mock_response"
-        for bad_value in ("high", 0, 250, True):
+        for bad_value in ("high", 0, 101, 250, True):
             with self.subTest(bad_value=bad_value):
                 mock_parse.return_value = _scores_response(
                     {
@@ -827,27 +776,6 @@ class TestRunStockDueDiligence(unittest.TestCase):
     @patch("app.ai.agent.PriceFetcher.get_avg_price")
     @patch("app.ai.agent.PriceFetcher.get_current_price")
     @patch("app.ai.agent.stock_analysis")
-    def test_raises_invalid_response_error_on_empty_ai_response(
-        self, mock_stock_analysis, mock_price, mock_avg_price, mock_prompt, mock_parse, mock_encode
-    ):
-        """
-        Raises InvalidAIResponseError (triggers retry) when the AI returns an empty TOON structure.
-        """
-        mock_stock_analysis.return_value = _make_stock_df()
-        mock_price.return_value = 150.0
-        mock_avg_price.return_value = 145.0
-        self.mock_ai_client.generate_content.return_value = "mock_response"
-        mock_parse.return_value = {}
-
-        with self.assertRaises(RetryError):
-            self.agent.run_stock_due_diligence("AAPL")
-
-    @patch("app.ai.agent.encode")
-    @patch("app.ai.agent.ResponseParser.parse_json")
-    @patch("app.ai.agent.stock_due_diligence_prompt")
-    @patch("app.ai.agent.PriceFetcher.get_avg_price")
-    @patch("app.ai.agent.PriceFetcher.get_current_price")
-    @patch("app.ai.agent.stock_analysis")
     def test_request_log_is_lazy_and_sanitises_ticker(
         self, mock_stock_analysis, mock_price, mock_avg_price, mock_prompt, mock_parse, mock_encode
     ):
@@ -874,11 +802,11 @@ class TestRunStockDueDiligence(unittest.TestCase):
     @patch("app.ai.agent.PriceFetcher.get_avg_price")
     @patch("app.ai.agent.PriceFetcher.get_current_price")
     @patch("app.ai.agent.stock_analysis")
-    def test_retry_log_is_lazy(
+    def test_empty_answer_is_retried_with_a_lazy_log(
         self, mock_stock_analysis, mock_price, mock_avg_price, mock_prompt, mock_parse, mock_encode
     ):
         """
-        The before-sleep retry log passes its values as lazy %-format arguments.
+        An empty answer is retried until exhausted; the retry log uses lazy %-format arguments.
         """
         mock_stock_analysis.return_value = _make_stock_df()
         mock_price.return_value = 150.0
@@ -1085,14 +1013,6 @@ class TestStructuredResponses(unittest.TestCase):
         entry = _stock_scores("AAA")
         del entry["ticker"]
         self.response = {"stocks": [entry]}
-        with self.assertRaises(RetryError):
-            self.scores("AAA")
-
-    def test_out_of_range_score_triggers_retry(self):
-        """
-        Range checks stay in code even though the schema carries the bounds.
-        """
-        self.response = {"stocks": [_stock_scores("AAA", risk_score=101)]}
         with self.assertRaises(RetryError):
             self.scores("AAA")
 

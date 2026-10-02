@@ -115,6 +115,31 @@ async function _readSSEStream(res: Response, onLog: (line: string) => void): Pro
   throw new Error("Stream ended without result");
 }
 
+/**
+ * Builds an Error from a failed FastAPI response. `detail` is a string for
+ * HTTPException but a list of `{loc, msg}` objects for request-validation errors.
+ */
+async function responseError(res: Response): Promise<Error> {
+  const body: unknown = await res.json().catch(() => null);
+  const detail =
+    typeof body === "object" && body !== null && "detail" in body ? body.detail : undefined;
+  return new Error(formatErrorDetail(detail) || `Server error ${res.status}`);
+}
+
+function formatErrorDetail(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (!Array.isArray(detail)) return "";
+  return detail
+    .map((item: unknown) => {
+      if (typeof item !== "object" || item === null) return String(item);
+      const msg = "msg" in item && typeof item.msg === "string" ? item.msg : "";
+      const loc = "loc" in item && Array.isArray(item.loc) ? item.loc.join(".") : "";
+      return loc ? `${loc}: ${msg}` : msg;
+    })
+    .filter(Boolean)
+    .join("; ");
+}
+
 export async function runPromiseScoreStream(
   quarter: string,
   topN: number,
@@ -134,10 +159,7 @@ export async function runPromiseScoreStream(
       provider_id: providerId || null,
     }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Server error ${res.status}`);
-  }
+  if (!res.ok) throw await responseError(res);
   const data = await _readSSEStream(res, onLog);
   if (!Array.isArray(data)) throw new Error("Malformed AI response: expected a list of stocks");
   return data;
@@ -162,10 +184,7 @@ export async function runDueDiligenceStream(
       provider_id: providerId || null,
     }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Server error ${res.status}`);
-  }
+  if (!res.ok) throw await responseError(res);
   return _readSSEStream(res, onLog);
 }
 

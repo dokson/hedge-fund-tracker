@@ -21,3 +21,13 @@ export function matchesQuery(query: string, ...fields: (string | null | undefine
   if (!q) return true;
   return fields.some((f) => f != null && f.toLowerCase().includes(q));
 }
+
+/**
+ * The `YYYY-MM-DD` date `days` days before `ref`.
+ */
+export function isoDaysBefore(ref: Date, days: number): string {
+  const d = new Date(ref);
+  d.setDate(d.getDate() - days);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}

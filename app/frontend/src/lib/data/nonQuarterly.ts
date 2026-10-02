@@ -49,6 +49,36 @@ export async function getNonQuarterlyFilings(): Promise<NonQuarterlyFiling[]> {
 }
 
 /**
+ * A filing's position identity, mirroring the Python nq_position_key: its ticker
+ * when resolved, else its CUSIP, else a key unique to the row (`index`), so
+ * unresolved rows never collapse into one another on an empty ticker.
+ */
+export function nqPositionKey(f: NonQuarterlyFiling, index: number): string {
+  const ticker = f.ticker.trim();
+  if (ticker) return `TICKER:${ticker}`;
+  const cusip = f.cusip.trim();
+  if (cusip) return `CUSIP:${cusip}`;
+  return `ROW:${index}`;
+}
+
+/** Keeps the latest filing (by Date, then Filing Date) of each fund's position. */
+export function latestNQPerPosition(filings: readonly NonQuarterlyFiling[]): NonQuarterlyFiling[] {
+  const latest = new Map<string, NonQuarterlyFiling>();
+  filings.forEach((f, i) => {
+    const key = `${f.fund}||${nqPositionKey(f, i)}`;
+    const existing = latest.get(key);
+    if (
+      !existing ||
+      f.date > existing.date ||
+      (f.date === existing.date && f.filingDate > existing.filingDate)
+    ) {
+      latest.set(key, f);
+    }
+  });
+  return [...latest.values()];
+}
+
+/**
  * Computes the delta of one non-quarterly filing against the fund's latest 13F
  * snapshot. NEW positions get an estimated portfolio weight over the merged
  * total (mirrors the backend, which recomputes weights after the merge).
@@ -116,20 +146,7 @@ export async function getEnrichedNQFilings(
     onProgress?.("Loading filings…", 5);
     const allFilings = await getNonQuarterlyFilings();
 
-    // Deduplicate: keep only the latest filing per Fund+Ticker
-    const latestMap = new Map<string, NonQuarterlyFiling>();
-    for (const f of allFilings) {
-      const key = `${f.fund}||${f.ticker}`;
-      const existing = latestMap.get(key);
-      if (
-        !existing ||
-        f.date > existing.date ||
-        (f.date === existing.date && f.filingDate > existing.filingDate)
-      ) {
-        latestMap.set(key, f);
-      }
-    }
-    const filings = [...latestMap.values()];
+    const filings = latestNQPerPosition(allFilings);
 
     onProgress?.("Resolving per-fund latest quarter…", 10);
 
@@ -148,35 +165,33 @@ export async function getEnrichedNQFilings(
     for (let i = 0; i < uniqueFunds.length; i += batchSize) {
       const batch = uniqueFunds.slice(i, i + batchSize);
       const results = await Promise.all(
+        // A failed load must reject the whole result: an empty snapshot would
+        // report every one of the fund's filings as a NEW position.
         batch.map(async (fundName) => {
-          try {
-            const fundQuarters = await getFundAvailableQuarters(fundName);
-            const fundLatest = fundQuarters[fundQuarters.length - 1];
-            if (!fundLatest) {
-              return { fundName, snapshot: emptySnapshot() };
-            }
-            const holdings = await getFundQuarterlyHoldings(fundLatest, fundName);
-            const snapshot = emptySnapshot();
-            for (const h of holdings) {
-              if (h.cusip === "Total") {
-                snapshot.totalValue = parseValueString(h.value);
-              } else if (h.ticker) {
-                const existing = snapshot.tickerMap.get(h.ticker);
-                if (existing) {
-                  existing.shares += h.shares;
-                  existing.portfolioPct += h.portfolioPct;
-                } else {
-                  snapshot.tickerMap.set(h.ticker, {
-                    shares: h.shares,
-                    portfolioPct: h.portfolioPct,
-                  });
-                }
-              }
-            }
-            return { fundName, snapshot };
-          } catch {
+          const fundQuarters = await getFundAvailableQuarters(fundName);
+          const fundLatest = fundQuarters[fundQuarters.length - 1];
+          if (!fundLatest) {
             return { fundName, snapshot: emptySnapshot() };
           }
+          const holdings = await getFundQuarterlyHoldings(fundLatest, fundName);
+          const snapshot = emptySnapshot();
+          for (const h of holdings) {
+            if (h.cusip === "Total") {
+              snapshot.totalValue = parseValueString(h.value);
+            } else if (h.ticker) {
+              const existing = snapshot.tickerMap.get(h.ticker);
+              if (existing) {
+                existing.shares += h.shares;
+                existing.portfolioPct += h.portfolioPct;
+              } else {
+                snapshot.tickerMap.set(h.ticker, {
+                  shares: h.shares,
+                  portfolioPct: h.portfolioPct,
+                });
+              }
+            }
+          }
+          return { fundName, snapshot };
         }),
       );
       for (const { fundName, snapshot } of results) {

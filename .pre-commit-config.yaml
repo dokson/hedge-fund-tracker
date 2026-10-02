@@ -10,7 +10,7 @@ repos:
   # pre-commit stage: auto-fix and reformat (mutates files)
   # pre-push stage: read-only check (fails if anything is dirty — CI safety net)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.9
+    rev: v0.16.10
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -27,20 +27,29 @@ repos:
         args: [--check]
         stages: [pre-push]
 
-  # mypy + pyright: NOT in pre-commit (per-commit is too slow and mirrors-mypy
-  # version-drifts vs pipenv's locked stubs). They run on PUSH instead, via the
-  # local hook at the bottom of this file (scripts/run_typechecks.py), which
-  # resolves pipenv robustly and runs them against the project venv — the same
-  # versions CI uses. CI (lint.yml) remains the source of truth.
+  # pyright: NOT in pre-commit (too slow per commit). It runs on PUSH via the
+  # local hook at the bottom of this file (scripts/run_typechecks.py), against
+  # the project venv, the same version CI uses.
 
-  # Frontend: format with Prettier
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v4.0.0-alpha.8
+  # Everything except Python: oxfmt, configured once in .oxfmtrc.json (ignores included).
+  - repo: local
     hooks:
-      - id: prettier
-        files: ^app/frontend/.*\.(ts|tsx|js|jsx|json|css|md)$
-        additional_dependencies:
-          - prettier@3.9.9
+      - id: oxfmt
+        name: oxfmt
+        # The frontend's installed oxfmt: one version, tracked by Dependabot's npm updates.
+        entry: npm exec --prefix app/frontend -- oxfmt --no-error-on-unmatched-pattern
+        language: system
+        files: \.(ts|tsx|js|jsx|mjs|cjs|json|jsonc|css|ya?ml|toml)$|(^|/)Pipfile$
+
+  # Agent configs under .claude/.codex/.gemini/.cursor are generated from .agents/.
+  - repo: local
+    hooks:
+      - id: sync-agent-configs
+        name: agent configs in sync with .agents/
+        entry: python scripts/sync_agent_configs.py --check
+        language: python
+        pass_filenames: false
+        files: ^(\.agents/|\.claude/|\.codex/|\.gemini/|\.cursor/|\.github/skills/|scripts/sync_agent_configs\.py$)
 
   # NOTE: oxlint + tsc are NOT in pre-commit by design.
   # They require `cd app/frontend && npx ...`, which doesn't run cross-platform
@@ -97,11 +106,11 @@ repos:
   # Skip with `git push --no-verify` if you really need to (don't).
   # NOTE: ruff (check + format) for Python is at the top of this file with
   # stages: [pre-push]. Here we add the checks that need a runtime on PATH:
-  # pyright + mypy (via pipenv) and the frontend check (via npm).
+  # pyright + unittest (via pipenv) and the frontend check (via npm).
   - repo: local
     hooks:
       - id: typecheck
-        name: pyright + mypy + unittest (pre-push)
+        name: pyright + unittest (pre-push)
         entry: python scripts/run_typechecks.py
         language: system
         stages: [pre-push]

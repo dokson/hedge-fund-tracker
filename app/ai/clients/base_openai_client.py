@@ -19,6 +19,7 @@ from app.ai.clients.base_client import (
     InvalidAIResponseError,
     ReasoningLevel,
     StructuredMode,
+    llm_retry_hook,
 )
 from app.utils.logger import get_logger
 
@@ -142,11 +143,7 @@ class OpenAIClient(AIClient):
         wait=wait_exponential(multiplier=2, min=1, max=8),
         stop=stop_after_attempt(3),
         retry=retry_if_exception(_is_transient),
-        before_sleep=lambda rs: logger.progress(
-            "Retrying in %.2fs... (Attempt #%d)",
-            rs.next_action.sleep,  # type: ignore[union-attr]
-            rs.attempt_number,
-        ),
+        before_sleep=llm_retry_hook("Retrying in %.2fs... (Attempt #%d)"),
     )
     def _generate_content_impl(
         self,
@@ -260,23 +257,23 @@ class OpenAIClient(AIClient):
         chunks: list[str] = []
         ttft_logged = False
 
-        stream = self.client.chat.completions.create(
+        with self.client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
             extra_body=extra_body,
             stream=True,
             **kwargs,
-        )
-        for chunk in stream:
-            if not chunk.choices:
-                continue
-            delta = chunk.choices[0].delta.content
-            if not delta:
-                continue
-            if not ttft_logged:
-                ttft_logged = True
-                logger.progress(
-                    "%s: first token after %.1fs", model_name, time.perf_counter() - start
-                )
-            chunks.append(delta)
+        ) as stream:
+            for chunk in stream:
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta.content
+                if not delta:
+                    continue
+                if not ttft_logged:
+                    ttft_logged = True
+                    logger.progress(
+                        "%s: first token after %.1fs", model_name, time.perf_counter() - start
+                    )
+                chunks.append(delta)
         return "".join(chunks)

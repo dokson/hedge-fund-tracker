@@ -126,6 +126,7 @@ def load_models(filepath: str | None = None) -> list:
 # Imported last: submodules do `import app.database as _db` and read the
 # constants/helpers above at call time, so the partially-initialised package is fine.
 from app.database.funds import *  # noqa: E402,F401,F403
+from app.database.locks import *  # noqa: E402,F401,F403
 from app.database.quarters import *  # noqa: E402,F401,F403
 from app.database.splits import *  # noqa: E402,F401,F403
 from app.database.stocks import *  # noqa: E402,F401,F403

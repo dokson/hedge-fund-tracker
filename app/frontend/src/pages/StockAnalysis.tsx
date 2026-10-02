@@ -5,8 +5,6 @@ import { useStarred } from "@/hooks/useStarred";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import {
   runStockAnalysis,
-  fetchQuarterAnalysis,
-  runQuarterAnalysis,
   formatValue,
   formatPct,
   getStocks,
@@ -21,6 +19,7 @@ import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { getSectorStyle, sectorPillStyle, SECTOR_PILL } from "@/lib/sectorStyle";
 import { isQuarter, type Quarter } from "@/lib/quarters";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
+import { useQuarterAnalysis } from "@/hooks/useQuarterAnalysis";
 import { FundCell } from "@/components/EntityLinks";
 import {
   Select,
@@ -34,15 +33,17 @@ import { MeasuredChart } from "@/components/MeasuredChart";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { TableFrame } from "@/components/ui/TableFrame";
-import { ArrowDown, ArrowUp, Brain, ChevronDown, Loader2 } from "lucide-react";
+import { Brain, ChevronDown } from "lucide-react";
+import { SortArrow } from "@/components/ui/SortArrow";
+import { QueryState } from "@/components/ui/QueryState";
+import { useSortState } from "@/hooks/useSortState";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { StockPriceChart } from "@/components/StockPriceChart";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { useNavigate } from "react-router";
-import { Progress } from "@/components/ui/progress";
+import { AnalysisProgress } from "@/components/ui/AnalysisProgress";
 
 type SortKey = "shares" | "value" | "deltaValue" | "portfolioPct";
-type SortDir = "asc" | "desc";
 type HoldingFilter = "all" | "buyers" | "sellers" | "new" | "closed";
 
 const HOLDING_FILTER_OPTIONS: readonly { value: HoldingFilter; label: string }[] = [
@@ -157,7 +158,12 @@ export default function StockAnalysis() {
   const quarter = selectedQuarter ?? latestQuarter;
   const [progress, setProgress] = useState({ msg: "", pct: 0 });
 
-  const { data: holdings = [], isLoading } = useQuery({
+  const {
+    data: holdings = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["stockAnalysis", ticker, quarter],
     queryFn: quarter
       ? () => runStockAnalysis(ticker, quarter, (msg, pct) => setProgress({ msg, pct }))
@@ -170,13 +176,11 @@ export default function StockAnalysis() {
   const { data: stocks = [] } = useQuery({ queryKey: ["stocks"], queryFn: getStocks });
   // The smart score is derived on the fly from the selected quarter's analysis
   // (same cached data the browser pages use), so it always matches the dropdown.
-  const { data: quarterRows = [] } = useQuery({
-    queryKey: ["quarterAnalysis", quarter],
-    queryFn: quarter
-      ? async () => (await fetchQuarterAnalysis(quarter)) ?? (await runQuarterAnalysis(quarter))
-      : skipToken,
-    staleTime: 10 * 60 * 1000,
-  });
+  const {
+    data: quarterRows = [],
+    isError: scoreError,
+    error: scoreErrorDetail,
+  } = useQuarterAnalysis(quarter);
   const scoreRow = quarterRows.find((r) => r.ticker === ticker);
   const smartScore: SmartScoreView | undefined =
     scoreRow?.smartScore !== undefined
@@ -274,26 +278,8 @@ export default function StockAnalysis() {
     { label: "Value Sold", value: kpi.totalValueSold, fill: "hsl(var(--negative))" },
   ];
 
-  const [sortKey, setSortKey] = useState<SortKey>("portfolioPct");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const { sortKey, sortDir, toggleSort, ariaSort } = useSortState<SortKey>("portfolioPct");
   const [holdingFilter, setHoldingFilter] = useState<HoldingFilter>("all");
-
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
-    else {
-      setSortKey(key);
-      setSortDir("desc");
-    }
-  }
-
-  function SortArrow({ column }: { column: SortKey }) {
-    if (sortKey !== column) return null;
-    const Icon = sortDir === "desc" ? ArrowDown : ArrowUp;
-    return <Icon className="ml-1 inline-block h-3 w-3 align-[-1px]" aria-hidden="true" />;
-  }
-  function ariaSort(key: SortKey) {
-    return sortKey === key ? (sortDir === "desc" ? "descending" : "ascending") : "none";
-  }
 
   const sortedHoldings = (() => {
     let list = [...holdings];
@@ -328,7 +314,7 @@ export default function StockAnalysis() {
         className="w-full p-3 text-right whitespace-nowrap hover:text-foreground hover:bg-muted"
       >
         {label}
-        <SortArrow column={keyName} />
+        <SortArrow active={sortKey === keyName} direction={sortDir} />
       </button>
     </th>
   );
@@ -408,15 +394,19 @@ export default function StockAnalysis() {
 
       {/* Smart score: independent of the selected quarter's 13F holdings, so it
           renders even for stocks no tracked fund currently holds. */}
-      <SmartScorePanel score={smartScore} quarterLabel={quarter} />
+      <QueryState
+        isError={scoreError}
+        error={scoreErrorDetail}
+        title="Could not load the smart score"
+      >
+        <SmartScorePanel score={smartScore} quarterLabel={quarter} />
+      </QueryState>
 
-      {isLoading ? (
+      {isError ? (
+        <QueryState isError error={error} title="Could not load this stock's holders" />
+      ) : isLoading ? (
         <div className="surface p-8">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
-            <p className="text-sm text-muted-foreground">{progress.msg}</p>
-            <Progress value={progress.pct} className="w-64" />
-          </div>
+          <AnalysisProgress msg={progress.msg} pct={progress.pct} />
         </div>
       ) : holdings.length === 0 ? (
         <div className="surface p-8 text-center text-muted-foreground">

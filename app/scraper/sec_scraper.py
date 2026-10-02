@@ -12,6 +12,7 @@ from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponentia
 
 from app.scraper.rate_limiter import RateLimiter
 from app.utils.logger import get_logger, log_safe
+from app.utils.metrics import SEC_REQUESTS
 from app.utils.strings import get_next_yyyymmdd_day
 
 logger = get_logger(__name__)
@@ -141,6 +142,12 @@ class _PermanentHTTPError(Exception):
     """
 
 
+class _FilingRequestError(Exception):
+    """
+    A filing's report page or XML document could not be downloaded.
+    """
+
+
 # The random term desynchronizes retries so requests 429'd together by SEC (a
 # shared cloud IP fails in bursts) don't back off in lockstep and collide again.
 _RETRY_ATTEMPTS = 5
@@ -170,8 +177,10 @@ def _attempt_request(url: str) -> requests.Response | None:
     try:
         response = _get_session().get(url, timeout=15)
         response.raise_for_status()
+        SEC_REQUESTS.labels(outcome="ok").inc()
         return response
     except (curl_exc.Timeout, curl_exc.ConnectionError) as exc:
+        SEC_REQUESTS.labels(outcome="error").inc()
         logger.warning(
             "Transient network error for %s: %s",
             log_safe(url, max_len=200),
@@ -180,12 +189,14 @@ def _attempt_request(url: str) -> requests.Response | None:
         return None
     except curl_exc.HTTPError as exc:
         status = exc.response.status_code if exc.response is not None else None
+        SEC_REQUESTS.labels(outcome="rate_limited" if status == 429 else "error").inc()
         if status is not None and (status >= 500 or status == 429):
             logger.warning("Transient HTTP %s for %s", status, log_safe(url, max_len=200))
             return None
         logger.error("Request failed for %s", log_safe(url, max_len=200), exc_info=True)
         raise _PermanentHTTPError(str(status)) from exc
     except curl_exc.RequestException:
+        SEC_REQUESTS.labels(outcome="error").inc()
         logger.error("Request failed for %s", log_safe(url, max_len=200), exc_info=True)
         return None
 
@@ -280,13 +291,15 @@ def _get_primary_xml_url(report_page_soup, filing_type):
     return None
 
 
-def _scrape_filing(document_tag, filing_type):
+def _scrape_filing(document_tag, filing_type, *, raise_on_request_error=False):
     """
     Processes a single filing document tag and extracts the XML content and metadata.
 
     Args:
         document_tag: BeautifulSoup tag for the document link
         filing_type: Type of filing being processed
+        raise_on_request_error: raise _FilingRequestError when a download fails,
+            so callers can tell a transient failure from a filing without XML
 
     Returns:
         Dictionary with 'date' and 'xml_content' or None if processing fails
@@ -294,6 +307,8 @@ def _scrape_filing(document_tag, filing_type):
     report_page_url = SEC_URL + document_tag["href"]
     report_page_response = _get_request(report_page_url)
     if not report_page_response:
+        if raise_on_request_error:
+            raise _FilingRequestError(report_page_url)
         return None
 
     report_page_soup = BeautifulSoup(report_page_response.text, "html.parser")
@@ -311,6 +326,8 @@ def _scrape_filing(document_tag, filing_type):
     xml_response = _get_request(xml_url)
     if not xml_response:
         logger.info("Failed to download XML from %s", log_safe(xml_url, max_len=200))
+        if raise_on_request_error:
+            raise _FilingRequestError(xml_url)
         return None
 
     if filing_type == "13F-HR":
@@ -368,7 +385,9 @@ def fetch_latest_two_13f_filings(cik, offset=0):
 def fetch_non_quarterly_after_date(cik: str, start_date: str | None) -> list[dict] | None:
     """
     Fetches the raw content and filing dates for the latest schedule (13D/G) and Form 4 filings for a given CIK.
-    Returns a list of dictionaries, or None if an error occurs or no start date is available.
+    Returns a list of dictionaries (empty when nothing was filed), or None when no start date is
+    available or any listing or filing request fails: a partial list would be saved over the
+    fund's existing rows, so failure must be distinguishable from "no filings".
     """
     if not start_date:
         logger.warning(
@@ -380,8 +399,11 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str | None) -> list[dic
     filings: list[dict] = []
     yyyymmdd_date = start_date.replace("-", "")
 
-    # Helper to fetch tags for a specific type with pagination
     def get_tags(filing_type):
+        """
+        Collects the (tag, filing_type) pairs of every listing page for one filing type,
+        or returns None if any page cannot be fetched or parsed.
+        """
         all_type_tags = []
         offset = 0
         while True:
@@ -395,7 +417,7 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str | None) -> list[dic
                         log_safe(cik),
                         offset,
                     )
-                    break
+                    return None
                 soup = BeautifulSoup(resp.text, "html.parser")
                 all_tags_on_page = soup.find_all("a", id="documentsbutton")
 
@@ -439,12 +461,15 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str | None) -> list[dic
                     offset,
                     exc_info=True,
                 )
-                break
+                return None
         return all_type_tags
 
     all_tags = []
-    all_tags.extend(get_tags("SCHEDULE"))
-    all_tags.extend(get_tags("4"))
+    for filing_type in ("SCHEDULE", "4"):
+        type_tags = get_tags(filing_type)
+        if type_tags is None:
+            return None
+        all_tags.extend(type_tags)
 
     if not all_tags:
         logger.info(
@@ -455,7 +480,15 @@ def fetch_non_quarterly_after_date(cik: str, start_date: str | None) -> list[dic
         return filings
 
     for tag, f_type in all_tags:
-        filing_data = _scrape_filing(tag, f_type)
+        try:
+            filing_data = _scrape_filing(tag, f_type, raise_on_request_error=True)
+        except _FilingRequestError:
+            logger.warning(
+                "Could not download a %s filing for CIK %s; skipping the fetch to keep existing data.",
+                f_type,
+                log_safe(cik),
+            )
+            return None
         if filing_data:
             filings.append(filing_data)
 

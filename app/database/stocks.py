@@ -7,25 +7,23 @@ monkeypatching in tests).
 """
 
 import csv
-import os
-import tempfile
-import time
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
 
 import app.database as _db
+from app.database.locks import file_lock, held_thread_lock, lock_file
 from app.utils.logger import get_logger, log_safe
 from app.utils.strings import escape_csv_formula
 
 logger = get_logger(__name__)
 
 
-def _atomic_write_rows(
+def _write_rows(
     path: Path,
     fieldnames: Sequence[str],
     rows: list[dict],
@@ -33,10 +31,7 @@ def _atomic_write_rows(
     quote_all: bool = True,
 ) -> None:
     """
-    Write CSV rows to ``path`` atomically.
-
-    Writes to a temp file in the same directory, then ``os.replace()`` swaps it
-    in — so a crash mid-write can never truncate or corrupt the target file.
+    Formula-escapes the free-text fields and writes the rows atomically.
 
     Args:
         path: Destination CSV path.
@@ -45,33 +40,9 @@ def _atomic_write_rows(
         quote_all: Quote every field (default, matching stocks.csv / non_quarterly.csv);
             pass False for files written elsewhere with pandas defaults (quarterly funds).
     """
-    # Escape free-text columns against spreadsheet formula injection (issuer /
-    # company names come from external filings and the CSVs are versioned/opened).
-    safe_rows = [
-        {
-            key: escape_csv_formula(value)
-            if key in ("Company", "Industry") and isinstance(value, str)
-            else value
-            for key, value in row.items()
-        }
-        for row in rows
-    ]
-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
-            # Pass the csv constant directly (a typed variable widens to int and
-            # trips the stub's _QuotingType check).
-            if quote_all:
-                writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-            else:
-                writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
-            writer.writeheader()
-            writer.writerows(safe_rows)
-        os.replace(tmp, path)
-    except BaseException:
-        with suppress(OSError):
-            os.unlink(tmp)
-        raise
+    from app.utils.pd import atomic_write_rows, escape_csv_text_rows
+
+    atomic_write_rows(path, fieldnames, escape_csv_text_rows(rows), quote_all=quote_all)
 
 
 __all__ = [
@@ -158,7 +129,7 @@ load_stocks.cache_clear = _clear_load_stocks_cache  # type: ignore[attr-defined]
 
 
 @contextmanager
-def stocks_lock(timeout=30):
+def stocks_lock(timeout: float = 30):
     """
     Synchronize access to stocks.csv across both threads (in-process) and
     processes (cross-process).
@@ -169,59 +140,11 @@ def stocks_lock(timeout=30):
     lock, sibling threads on Windows can starve waiting for the lock-file
     creation/removal cycle to settle.
     """
-    lock_path = Path(_db.DB_FOLDER) / f"{_db.STOCKS_FILE}.lock"
-    start_time = time.time()
-    acquired_file = False
-
-    with _db._stocks_thread_lock:
-        try:
-            while True:
-                try:
-                    fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                    os.close(fd)
-                    acquired_file = True
-                    break
-                except FileExistsError as exc:
-                    if time.time() - start_time > timeout:
-                        raise TimeoutError(
-                            f"Could not acquire lock for {_db.STOCKS_FILE} within {timeout} seconds."
-                        ) from exc
-
-                    # Reclaim a stale lock that outlived its owner (>60s).
-                    # Rename before deleting: the rename is atomic, so when
-                    # several contenders reclaim at once only one wins and a
-                    # lock just re-acquired by a third party can't be deleted.
-                    try:
-                        if time.time() - Path(lock_path).stat().st_mtime > 60:
-                            stale_path = lock_path.with_name(
-                                f"{lock_path.name}.stale-{os.getpid()}"
-                            )
-                            try:
-                                Path(lock_path).rename(stale_path)
-                                stale_path.unlink()
-                                continue
-                            except OSError:
-                                pass
-                    except OSError:
-                        pass
-
-                    time.sleep(0.05)
-                except OSError as exc:
-                    # Windows hot path: unlink of a held-open lock file raises
-                    # PermissionError on the next O_CREAT|O_EXCL. Retry, but
-                    # honor the timeout — spinning forever here would hold the
-                    # thread lock and wedge every stocks.csv access.
-                    if time.time() - start_time > timeout:
-                        raise TimeoutError(
-                            f"Could not acquire lock for {_db.STOCKS_FILE} within {timeout} seconds."
-                        ) from exc
-                    time.sleep(0.05)
-
-            yield
-        finally:
-            if acquired_file:
-                with suppress(OSError):
-                    Path(lock_path).unlink()
+    with (
+        held_thread_lock(_db._stocks_thread_lock, timeout, _db.STOCKS_FILE),
+        lock_file(Path(_db.DB_FOLDER) / _db.STOCKS_FILE, timeout),
+    ):
+        yield
 
 
 def save_stock(
@@ -230,7 +153,8 @@ def save_stock(
     company: str,
     industry: str = "",
 ) -> None:
-    """Appends a new stock record to the master stocks CSV file.
+    """
+    Appends a new stock record to the master stocks CSV file.
 
     This function appends a new row while ensuring no duplicates are created.
     It uses a lock and then re-checks if the CUSIP exists (Double-Checked Locking).
@@ -282,8 +206,9 @@ def save_stocks(stocks_df: pd.DataFrame, filepath: str | None = None) -> None:
 
     Company names are normalized here rather than at each caller, so provider
     padding ("... Common Stock", "Foo, Inc.") cannot reach the file however the
-    frame was assembled. ``save_stock`` normalizes its own appended row — the
-    two together are the only writers.
+    frame was assembled. Every other stocks.csv writer that sets a company name
+    (``save_stock``, ``update_stocks_csv``, ``update_ticker_for_cusip``) normalizes
+    it the same way.
     """
     if filepath is None:
         filepath = str(Path(_db.DB_FOLDER) / _db.STOCKS_FILE)
@@ -320,6 +245,9 @@ def clean_stocks(filepath: str | None = None) -> None:
         # Stream usecols=["CUSIP"] in parallel instead of loading full fund CSVs —
         # this used to read every column of ~600 files just to extract CUSIP.
         def _cusips_from_file(file_path: str) -> set[str]:
+            """
+            Returns the CUSIPs held in one fund file, excluding the Total row.
+            """
             cusips = pd.read_csv(file_path, usecols=["CUSIP"], dtype=str)["CUSIP"]
             return {c for c in cusips.dropna() if c != "Total"}
 
@@ -453,6 +381,9 @@ def update_stocks_csv(
         logger.error("%s not found", _db.STOCKS_FILE)
         return 0
 
+    from app.stocks.utils.identifiers import normalize_company_name
+
+    company = normalize_company_name(new_company) if new_company else None
     rows = []
     updated_count = 0
 
@@ -466,59 +397,75 @@ def update_stocks_csv(
             for row in reader:
                 if row["Ticker"] == old_ticker:
                     row["Ticker"] = new_ticker
-                    if new_company:
-                        row["Company"] = new_company
+                    if company:
+                        row["Company"] = company
                     if new_industry:
                         row["Industry"] = new_industry
                     updated_count += 1
                 rows.append(row)
 
-        _atomic_write_rows(stocks_path, fieldnames, rows)
+        _write_rows(stocks_path, fieldnames, rows)
 
     return updated_count
+
+
+def _retick_rows(
+    path: Path, cusips: set[str], new_ticker: str
+) -> tuple[list[str], list[dict], int]:
+    """
+    Reads a filing CSV and returns its header, its rows with the given CUSIPs
+    switched to ``new_ticker``, and how many rows changed (0 when the file has
+    no CUSIP/Ticker columns).
+    """
+    with path.open(encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        fieldnames = list(reader.fieldnames or [])
+        if "CUSIP" not in fieldnames or "Ticker" not in fieldnames:
+            return fieldnames, [], 0
+
+        rows = []
+        changed = 0
+        for row in reader:
+            if row["CUSIP"] in cusips:
+                row["Ticker"] = new_ticker
+                changed += 1
+            rows.append(row)
+    return fieldnames, rows, changed
 
 
 def update_quarterly_filings(cusips: list[str], new_ticker: str) -> None:
     """
     Updates the ticker in all quarterly filing CSV files for the specified CUSIPs.
 
+    Each affected file is re-read and rewritten under its ``file_lock``, so a
+    concurrent writer of the same fund file cannot be clobbered.
+
     Args:
         cusips (list): List of CUSIPs to update.
         new_ticker (str): The new ticker to use.
     """
-    quarters = _db.get_all_quarters()
+    targets = set(cusips)
 
-    for quarter in quarters:
+    for quarter in _db.get_all_quarters():
         quarter_path = Path(_db.DB_FOLDER) / quarter
 
         if not quarter_path.exists():
             continue
 
-        csv_files = list(quarter_path.glob("*.csv"))
-
-        for csv_file in csv_files:
+        for csv_file in quarter_path.glob("*.csv"):
             try:
-                rows = []
-                file_updated = False
+                # Unlocked pre-check: only files that hold a target CUSIP pay for the lock.
+                if not _retick_rows(csv_file, targets, new_ticker)[2]:
+                    continue
 
-                with Path(csv_file).open(encoding="utf-8", newline="") as f:
-                    reader = csv.DictReader(f)
-                    fieldnames = reader.fieldnames or []
-
-                    if "CUSIP" not in fieldnames or "Ticker" not in fieldnames:
+                with file_lock(csv_file):
+                    fieldnames, rows, changed = _retick_rows(csv_file, targets, new_ticker)
+                    if not changed:
                         continue
-
-                    for row in reader:
-                        if row["CUSIP"] in cusips:
-                            row["Ticker"] = new_ticker
-                            file_updated = True
-                        rows.append(row)
-
-                if file_updated:
                     # quote_all=False: quarterly fund CSVs are written by
                     # save_comparison with pandas' default (minimal) quoting.
-                    _atomic_write_rows(Path(csv_file), fieldnames, rows, quote_all=False)
-                    logger.success("Updated %s/%s", quarter, csv_file.name)
+                    _write_rows(csv_file, fieldnames, rows, quote_all=False)
+                logger.success("Updated %s/%s", quarter, csv_file.name)
 
             except Exception:
                 logger.error("processing %s", csv_file, exc_info=True)
@@ -527,6 +474,8 @@ def update_quarterly_filings(cusips: list[str], new_ticker: str) -> None:
 def update_non_quarterly_filings(cusips: list[str], new_ticker: str) -> int:
     """
     Updates the ticker in the non_quarterly.csv file for the specified CUSIPs.
+
+    The read-modify-write runs under the file's ``file_lock``.
 
     Args:
         cusips (list): List of CUSIPs to update.
@@ -537,21 +486,11 @@ def update_non_quarterly_filings(cusips: list[str], new_ticker: str) -> int:
     """
     nq_path = Path(_db.DB_FOLDER) / _db.LATEST_SCHEDULE_FILINGS_FILE
 
-    rows = []
-    updated_count = 0
-
     try:
-        with nq_path.open(encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            fieldnames = reader.fieldnames or []
-
-            for row in reader:
-                if row["CUSIP"] in cusips:
-                    row["Ticker"] = new_ticker
-                    updated_count += 1
-                rows.append(row)
-
-        _atomic_write_rows(nq_path, fieldnames, rows)
+        with file_lock(nq_path):
+            fieldnames, rows, updated_count = _retick_rows(nq_path, set(cusips), new_ticker)
+            if updated_count:
+                _write_rows(nq_path, fieldnames, rows)
 
         if updated_count > 0:
             logger.success(
@@ -585,8 +524,11 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str, new_company: str | None
         logger.error("%s not found", _db.STOCKS_FILE)
         return
 
+    from app.stocks.utils.identifiers import normalize_company_name
+
     # Update stocks.csv — read, check, and write under one lock (avoids the
     # TOCTOU race where a concurrent writer's changes are clobbered).
+    replacement_company = normalize_company_name(new_company) if new_company else None
     rows = []
     found = False
     old_ticker = None
@@ -602,8 +544,8 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str, new_company: str | None
                     old_ticker = row["Ticker"]
                     company = row["Company"]
                     row["Ticker"] = new_ticker
-                    if new_company:
-                        row["Company"] = new_company
+                    if replacement_company:
+                        row["Company"] = replacement_company
                     found = True
                 rows.append(row)
 
@@ -618,7 +560,7 @@ def update_ticker_for_cusip(cusip: str, new_ticker: str, new_company: str | None
             log_safe(old_ticker),
             log_safe(new_ticker),
         )
-        _atomic_write_rows(stocks_path, fieldnames, rows)
+        _write_rows(stocks_path, fieldnames, rows)
 
     # Update quarterly filings and non-quarterly filings (other files; the
     # stocks lock is released first since these don't touch stocks.csv).
@@ -654,7 +596,9 @@ def update_ticker(
         return
 
     for stock in matching_stocks:
-        logger.info("  - CUSIP: %s, Company: %s", stock["CUSIP"], stock["Company"])
+        logger.info(
+            "  - CUSIP: %s, Company: %s", log_safe(stock["CUSIP"]), log_safe(stock["Company"])
+        )
 
     cusips = [stock["CUSIP"] for stock in matching_stocks]
 

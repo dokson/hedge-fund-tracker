@@ -24,13 +24,15 @@ class TestPackageReconfiguresConsoleEncoding(unittest.TestCase):
             check=False,
         )
 
-    def test_app_import_allows_emoji_print(self):
+    def test_app_import_switches_stdout_to_utf8(self):
         """
-        After ``import app`` an emoji print must succeed on any locale.
+        After ``import app`` stdout is utf-8 and an emoji print succeeds on any locale.
         """
-        result = self._run("import app; print('❌ ok')")
+        result = self._run("import app, sys; print(sys.stdout.encoding); print('❌ ok')")
         self.assertEqual(result.returncode, 0, msg=result.stderr)
-        self.assertIn("❌ ok", result.stdout)
+        encoding, line = result.stdout.splitlines()
+        self.assertEqual(encoding.strip().lower().replace("-", ""), "utf8")
+        self.assertEqual(line, "❌ ok")
 
     def test_database_import_allows_emoji_print(self):
         """
@@ -39,14 +41,6 @@ class TestPackageReconfiguresConsoleEncoding(unittest.TestCase):
         result = self._run("import database; print('✅ ok')")
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertIn("✅ ok", result.stdout)
-
-    def test_stdout_encoding_is_utf8_after_app_import(self):
-        """
-        ``sys.stdout.encoding`` must be utf-8 (case-insensitive) after import.
-        """
-        result = self._run("import app, sys; print(sys.stdout.encoding)")
-        self.assertEqual(result.returncode, 0, msg=result.stderr)
-        self.assertEqual(result.stdout.strip().lower().replace("-", ""), "utf8")
 
 
 if __name__ == "__main__":

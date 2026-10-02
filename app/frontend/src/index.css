@@ -2,143 +2,141 @@
 @config "../tailwind.config.ts";
 
 @layer base {
-  /* Light: white page, tinted panels, one blue. Values are HSL triples so
-     every existing hsl(var(--x)) consumer keeps working. */
+  /* Light: white page and white panels told apart by hairlines and a faint
+     lift, neutral zinc greys, one indigo. Values are HSL triples so every
+     hsl(var(--x)) consumer keeps working. */
   :root {
     --background: 0 0% 100%;
-    --foreground: 224 28% 10%; /* #131722, 17.6:1 */
+    --foreground: 240 6% 10%; /* #18181b, 17.7:1 */
 
-    --card: 222 50% 96%; /* #f0f3fa */
-    --card-foreground: 224 28% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 6% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 224 28% 10%;
+    --popover-foreground: 240 6% 10%;
 
-    --primary: 226 79% 51%; /* #1e53e5, 5.2:1 with white */
+    --primary: 243 75% 59%; /* #5048e5, 6.18:1 with white */
     --primary-foreground: 0 0% 100%;
-    --primary-text: 226 79% 45%; /* link text: muted 6.69, card 7.00, bg 7.78 */
+    --primary-text: 243 75% 52%; /* link text: muted 7.57, card/bg 8.30 */
 
-    --secondary: 222 30% 94%;
-    --secondary-foreground: 224 28% 16%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
 
-    --muted: 222 30% 94%; /* hover / track surface */
-    /* #656772: labels go down to 11px, so the muted tone carries the AA bar
-       on every surface. muted 4.84, card 5.06, bg 5.62. */
-    --muted-foreground: 227 6% 42%;
+    --muted: 240 5% 96%; /* #f4f4f5, hover / track surface */
+    /* #67676f: labels go down to 11px, so the muted tone carries the AA bar
+       on every surface. muted 5.12, card/bg 5.62. */
+    --muted-foreground: 240 4% 42%;
 
-    --accent: 226 79% 51%;
+    --accent: 243 75% 59%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 355 74% 44%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 224 22% 90%;
-    --input: 224 18% 84%;
-    --ring: 226 79% 51%;
+    --border: 240 6% 90%; /* #e4e4e7 */
+    --input: 240 5% 84%;
+    --ring: 243 75% 59%;
 
-    --radius: 4px;
+    --radius: 8px;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 227 6% 42%; /* mirrors --muted-foreground */
-    --sidebar-primary: 226 79% 51%;
+    --sidebar-foreground: 240 4% 42%; /* mirrors --muted-foreground */
+    --sidebar-primary: 243 75% 59%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 30% 94%;
-    --sidebar-accent-foreground: 224 28% 10%;
-    --sidebar-border: 224 22% 90%;
-    --sidebar-ring: 226 79% 51%;
+    --sidebar-accent: 240 5% 96%;
+    --sidebar-accent-foreground: 240 6% 10%;
+    --sidebar-border: 240 6% 90%;
+    --sidebar-ring: 243 75% 59%;
 
-    /* Deltas are darkened off the canon greens/reds: the display values
-       (#089981 / #f23645) sit at 3.3:1 on white, under the AA bar for text.
-       Every ratio below is measured on --muted (#ebeef4), the darkest ground
-       a delta, a chip or a hover row reaches in this theme, so it holds on
-       --card (#f0f3fa) and --background (#ffffff) too. */
-    --positive: 171 92% 24%; /* #057665: muted 4.77, card 4.99, bg 5.55 */
+    /* Deltas are darkened off the canon greens/reds, which sit near 3.3:1
+       on white. Every ratio below is measured on --muted (#f4f4f5), the
+       darkest ground a delta, a chip or a hover row reaches in this theme,
+       so it holds on --card and --background too. */
+    --positive: 171 92% 24%; /* #057665: muted 5.09, bg 5.58 */
     --positive-foreground: 0 0% 100%;
-    --negative: 355 74% 44%; /* #c31d2b: muted 5.12, card 5.35, bg 5.95 */
+    --negative: 355 74% 44%; /* #c31d2b: muted 5.41, bg 5.93 */
     --negative-foreground: 0 0% 100%;
     --closed: 355 74% 44%;
-    --warning: 36 100% 30%; /* #995c00: muted 4.65, card 4.87, bg 5.40 */
+    --warning: 36 100% 30%; /* #995c00: muted 4.94, bg 5.41 */
     --warning-foreground: 0 0% 100%;
-    --info: 226 79% 51%;
-    --magenta: 282 68% 38%; /* #7b1fa2, AI: muted 7.04, card 7.36, bg 8.18 */
+    --info: 243 75% 59%;
+    --magenta: 282 68% 38%; /* #7b1fa3, AI: muted 7.45, bg 8.17 */
 
-    --chart-1: 226 79% 51%;
+    --chart-1: 243 75% 59%;
     --chart-2: 171 92% 24%;
     --chart-3: 36 100% 30%;
     --chart-4: 282 68% 38%;
     --chart-5: 187 100% 32%;
     /* Two more sector hues, so Industrials and ETF stop borrowing a neutral.
        A chart mark needs 3:1 (SC 1.4.11); both clear it on every ground. */
-    --chart-6: 80 95% 26%; /* #578103: muted 3.97, card 4.16, bg 4.62 */
-    --chart-7: 140 85% 28%; /* #0b8433: muted 4.14, card 4.33, bg 4.81 */
+    --chart-6: 80 95% 26%; /* #578103: muted 4.3, bg 4.62 */
+    --chart-7: 140 85% 28%; /* #0b8433: muted 4.4, bg 4.81 */
   }
 
-  /* Dark is the default look: charcoal page, one step lighter panel, 1px
-     hairlines, TradingView blue for primary and selection. */
+  /* Dark is the default look: near-black page, one step lighter panel,
+     zinc hairlines, indigo for primary and selection. */
   .dark {
-    --background: 222 28% 10%; /* #131722 */
-    --foreground: 224 13% 84%; /* #d1d4dc, 12.4:1 */
+    --background: 240 6% 4%; /* #0a0a0b */
+    --foreground: 240 5% 90%; /* #e4e4e7, 15.7:1 */
 
-    --card: 224 20% 15%; /* #1e222d */
-    --card-foreground: 224 13% 84%;
+    --card: 240 5% 7%; /* #111113 */
+    --card-foreground: 240 5% 90%;
 
-    --popover: 224 20% 15%;
-    --popover-foreground: 224 13% 84%;
+    --popover: 240 5% 8%;
+    --popover-foreground: 240 5% 90%;
 
-    --primary: 226 100% 58%; /* #2962ff */
+    --primary: 239 78% 63%; /* #575aea, 5.19:1 with white */
     --primary-foreground: 0 0% 100%;
-    --primary-text: 226 100% 74%; /* #2962ff is 3.02 on a panel; link text takes this: muted 5.13, card 5.85, bg 6.69 */
+    --primary-text: 234 89% 80%; /* #9fa8f9 link text: muted 7.51, card 8.46, bg 8.89 */
 
-    --secondary: 223 15% 19%;
-    --secondary-foreground: 224 13% 84%;
+    --secondary: 240 4% 12%;
+    --secondary-foreground: 240 5% 90%;
 
-    --muted: 223 15% 19%; /* hover / track surface */
-    /* #9799a1 rather than the canon #787b86: labels here go down to 11px,
-       where 4.0:1 on a panel fails. muted 4.84, card 5.52, bg 6.31. */
-    --muted-foreground: 225 5% 61%;
+    --muted: 240 4% 12%; /* #1d1d20, hover / track surface */
+    /* #a1a1aa: labels go down to 11px. muted 6.56, card 7.39, bg 7.77. */
+    --muted-foreground: 240 5% 65%;
 
-    --accent: 226 100% 58%;
+    --accent: 239 78% 63%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 355 88% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 223 15% 19%;
-    --input: 224 12% 24%; /* #363a45 */
-    --ring: 226 100% 58%;
+    --border: 240 4% 15%; /* #252528 */
+    --input: 240 4% 20%;
+    --ring: 239 78% 63%;
 
-    --radius: 4px;
+    --radius: 8px;
 
-    --sidebar-background: 224 20% 15%;
-    --sidebar-foreground: 225 5% 61%;
-    --sidebar-primary: 226 100% 58%;
+    --sidebar-background: 240 6% 4%;
+    --sidebar-foreground: 240 5% 65%;
+    --sidebar-primary: 239 78% 63%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 223 15% 19%;
-    --sidebar-accent-foreground: 224 13% 84%;
-    --sidebar-border: 223 15% 19%;
-    --sidebar-ring: 226 100% 58%;
+    --sidebar-accent: 240 4% 12%;
+    --sidebar-accent-foreground: 240 5% 90%;
+    --sidebar-border: 240 4% 15%;
+    --sidebar-ring: 239 78% 63%;
 
-    /* Lifted off the canon #089981 / #f23645, which are 3.95 and 3.53 on
-       --muted. Ratios are measured on --muted (#292d38), the lightest ground
-       a delta, a chip or a hover row reaches in this theme, so they hold on
-       --card (#1f232e) and --background (#121721) too. */
-    --positive: 170 90% 36%; /* #09ae93: muted 4.90, card 5.60, bg 6.40 */
+    /* Lifted off the canon greens/reds. Ratios are measured on --muted
+       (#1d1d20), the lightest ground a delta, a chip or a hover row reaches
+       in this theme, so they hold on --card and --background too. */
+    --positive: 170 90% 36%; /* #09ae93: muted 6.00, card 6.76, bg 7.10 */
     --positive-foreground: 0 0% 100%;
-    --negative: 355 88% 68%; /* #f56672: muted 4.60, card 5.25, bg 6.00 */
+    --negative: 355 88% 68%; /* #f56672: muted 5.60, card 6.30, bg 6.63 */
     --negative-foreground: 0 0% 100%;
     --closed: 355 88% 68%;
-    --warning: 36 100% 50%; /* #ff9800: muted 6.42, card 7.33, bg 8.38 */
-    --warning-foreground: 222 28% 10%;
-    --info: 226 100% 58%;
-    --magenta: 288 53% 66%; /* #c47ad6, the AI purple lightened for text: muted 4.65, card 5.31, bg 6.07 */
+    --warning: 36 100% 50%; /* #ff9900: muted 7.83, card 8.81, bg 9.26 */
+    --warning-foreground: 240 6% 4%;
+    --info: 239 78% 63%;
+    --magenta: 288 53% 66%; /* #c47ad6, the AI purple lightened for text: muted 5.68, card 6.40, bg 6.72 */
 
-    --chart-1: 226 100% 58%;
+    --chart-1: 239 78% 63%;
     --chart-2: 170 90% 36%;
     --chart-3: 36 100% 50%;
-    --chart-4: 291 64% 55%; /* #c043d6: a chart line needs 3:1: bg 4.29, card 3.75 */
+    --chart-4: 291 64% 55%;
     --chart-5: 187 100% 42%;
-    --chart-6: 80 55% 50%; /* #97c639: muted 6.85, card 7.81, bg 8.93 */
-    --chart-7: 140 60% 44%; /* #2db45a: muted 5.10, card 5.82, bg 6.65 */
+    --chart-6: 80 55% 50%;
+    --chart-7: 140 60% 44%;
   }
 }
 
@@ -159,6 +157,8 @@
     font-size: 13px;
     line-height: 20px;
     font-variant-numeric: tabular-nums;
+    /* Inter's open digits and single-storey a read cleaner at 13px. */
+    font-feature-settings: "cv11", "ss01";
   }
 
   ::selection {
@@ -215,6 +215,7 @@
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
     border-radius: var(--radius);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
   }
 
   /* The panel header row: title left, controls right. Meant as the panel's
@@ -224,7 +225,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    height: 2.25rem;
+    height: 2.75rem;
     padding-inline: 0.75rem;
     font-size: 14px;
     font-weight: 600;
@@ -263,16 +264,18 @@
   }
   .metric-value {
     @apply text-foreground;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 600;
-    line-height: 26px;
+    line-height: 28px;
+    letter-spacing: -0.02em;
   }
 
   .page-title {
     @apply flex items-center gap-2 text-foreground;
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 600;
-    line-height: 28px;
+    line-height: 32px;
+    letter-spacing: -0.025em;
   }
   .section-title {
     font-size: 14px;
@@ -281,10 +284,9 @@
     color: hsl(var(--foreground));
   }
 
-  /* A nav row: icon and label. Active gets the surface plus a 2px
-     primary bar on the leading edge. */
+  /* A nav row: icon and label. Active is a filled, rounded row. */
   .menu-line {
-    @apply relative flex items-center gap-2 h-9 px-3 rounded-md;
+    @apply relative flex items-center gap-2.5 h-9 px-3 rounded-lg;
     font-size: 13px;
     line-height: 20px;
     color: hsl(var(--muted-foreground));
@@ -301,15 +303,8 @@
     background: hsl(var(--muted));
     font-weight: 500;
   }
-  .menu-line[data-active="true"]::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0.25rem;
-    bottom: 0.25rem;
-    width: 2px;
-    border-radius: 1px;
-    background: hsl(var(--primary));
+  .menu-line[data-active="true"] svg {
+    color: hsl(var(--primary-text));
   }
 
   /* `Key value · Key value`: keys muted, values in the text colour. */
@@ -336,7 +331,7 @@
   }
   thead th {
     font-size: 12px;
-    font-weight: 400;
+    font-weight: 500;
     color: hsl(var(--muted-foreground));
     border-bottom: 1px solid hsl(var(--border));
   }
@@ -365,8 +360,9 @@
   .badge-neutral {
     display: inline-flex;
     align-items: center;
-    padding: 0 0.375rem;
-    border-radius: calc(var(--radius) - 2px);
+    padding: 0 0.5rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 9999px;
     font-size: 12px;
     font-weight: 500;
     line-height: 18px;

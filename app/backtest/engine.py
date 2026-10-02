@@ -12,6 +12,7 @@ from app.analysis.stocks import (
     _calculate_fund_level_flags,
     aggregate_quarter_by_fund,
 )
+from app.backtest.filing_prices import filing_implied_prices, latest_filing_price
 from app.backtest.price_cache import PriceCache
 from app.backtest.strategies import DEFAULT_TOP_N, STRATEGIES, StrategySpec, select_screen
 from app.database import count_funds_in_quarter, get_all_quarters, load_quarterly_data
@@ -104,29 +105,64 @@ def build_screen(
     return {ticker: weight / total for ticker, weight in zip(tickers, weights, strict=True)}
 
 
+def _last_known_price(
+    ticker: str,
+    entry: date,
+    exit_date: date,
+    entry_price: float,
+    price_fn: Callable[[str, date], float | None],
+    last_price_fn: Callable[[str, date, date], float | None],
+) -> float:
+    """
+    Price at which a holding leaves the window: the exit-date price, else the last
+    bar between entry and exit (the name stopped trading), else the entry price.
+    """
+    price = price_fn(ticker, exit_date)
+    if price is not None and price > 0:
+        return price
+    price = last_price_fn(ticker, entry, exit_date)
+    if price is not None and price > 0:
+        return price
+    return entry_price
+
+
 def _window_return(
     screen: dict[str, float],
     entry: date,
     exit_date: date,
     price_fn: Callable[[str, date], float | None],
+    last_price_fn: Callable[[str, date, date], float | None],
+    filing_price_fn: Callable[[str], float | None],
     label: str,
 ) -> tuple[float, set[str]] | None:
     """
     Conviction-weighted return for one window plus the set of priced names.
 
-    Constituents missing an entry/exit price are dropped (logged) and the rest
-    renormalized. Returns None if no constituent has prices.
+    A name that stops trading inside the window is valued at its last known
+    price, and one the providers can no longer price at entry enters at its
+    filing-implied price, so delisted names still count. Only a name with
+    neither price is dropped and the rest renormalized. Returns None if no
+    constituent has an entry price.
     """
     kept: dict[str, tuple[float, float]] = {}
     for ticker, weight in screen.items():
         p_entry = price_fn(ticker, entry)
-        p_exit = price_fn(ticker, exit_date)
-        if p_entry and p_exit and p_entry > 0:
-            kept[ticker] = (weight, p_exit / p_entry - 1)
-        else:
-            logger.warning(
-                "Backtest excluded %s in %s: missing price", log_safe(ticker), log_safe(label)
+        if p_entry is None or p_entry <= 0:
+            p_entry = filing_price_fn(ticker)
+            if p_entry is None or p_entry <= 0:
+                logger.warning(
+                    "Backtest excluded %s in %s: missing entry price",
+                    log_safe(ticker),
+                    log_safe(label),
+                )
+                continue
+            logger.info(
+                "Backtest priced %s in %s at its filing-implied entry price",
+                log_safe(ticker),
+                log_safe(label),
             )
+        p_exit = _last_known_price(ticker, entry, exit_date, p_entry, price_fn, last_price_fn)
+        kept[ticker] = (weight, p_exit / p_entry - 1)
     if not kept:
         return None
     total_weight = sum(w for w, _ in kept.values())
@@ -137,6 +173,8 @@ def _window_return(
 def run_backtest(
     *,
     price_fn: Callable[[str, date], float | None] | None = None,
+    last_price_fn: Callable[[str, date, date], float | None] | None = None,
+    filing_price_fn: Callable[[str], dict[str, float]] | None = None,
     as_of: date | None = None,
     analysis_fn: Callable[[str], pd.DataFrame] | None = None,
     quarters: list[str] | None = None,
@@ -153,7 +191,12 @@ def run_backtest(
     cumulative return; strategy rows also carry stock count, excess vs the anchor
     benchmark, and turnover. Dependencies are injectable for testing.
     """
-    price = price_fn or PriceCache().get
+    if price_fn is None or last_price_fn is None:
+        cache = PriceCache()
+        price_fn = price_fn or cache.get
+        last_price_fn = last_price_fn or cache.last_in_range
+    price = price_fn
+    filing_prices = filing_price_fn or filing_implied_prices
     resolved_as_of = as_of or date.today()
     resolved_quarters = quarters if quarters is not None else sorted(get_all_quarters())
     anchor = benchmarks[0].ticker if benchmarks else None
@@ -162,6 +205,7 @@ def run_backtest(
     bench_cum = {b.ticker: 1.0 for b in benchmarks}
     strat_cum = {s.strategy_id: 1.0 for s in strategies}
     prev_screen: dict[str, set[str]] = {}
+    ever_held: set[str] = set()
 
     for quarter_in, quarter_out in zip(resolved_quarters, resolved_quarters[1:], strict=False):
         entry = quarter_entry_date(quarter_in)
@@ -208,13 +252,30 @@ def run_backtest(
             screen = build_screen(
                 quarter_in, spec, threshold=threshold, analysis_fn=analysis_fn, top_n=top_n
             )
-            window = _window_return(screen, entry, exit_date, price, spec.strategy_id)
+            window = _window_return(
+                screen,
+                entry,
+                exit_date,
+                price,
+                last_price_fn,
+                lambda ticker, quarter=quarter_in: latest_filing_price(
+                    ticker, quarter, resolved_quarters, filing_prices
+                ),
+                spec.strategy_id,
+            )
             if window is None:
+                # The next window's predecessor is this unheld one, not the last held screen.
+                prev_screen.pop(spec.strategy_id, None)
                 continue
             conviction, kept = window
             strat_cum[spec.strategy_id] *= 1 + conviction
             prev = prev_screen.get(spec.strategy_id)
-            turnover = 0.0 if prev is None else 1.0 - len(kept & prev) / len(kept)
+            if prev is not None:
+                turnover = 1.0 - len(kept & prev) / len(kept)
+            else:
+                # Re-entering after an unheld window is a full rebuy; only the first is free.
+                turnover = 1.0 if spec.strategy_id in ever_held else 0.0
+            ever_held.add(spec.strategy_id)
             rows.append(
                 {
                     **common,

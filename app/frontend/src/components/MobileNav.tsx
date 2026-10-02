@@ -131,7 +131,7 @@ export function MobileNav() {
                       <li key={item.url}>
                         <NavLink
                           to={item.url}
-                          end={item.url === "/"}
+                          end={item.url === ROUTES.home}
                           data-active={active}
                           onClick={close}
                           className={cn(

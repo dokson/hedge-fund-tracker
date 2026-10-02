@@ -370,6 +370,97 @@ class TestXmlToDataframe4(unittest.TestCase):
 
         self.assertEqual(df.iloc[0]["Shares"], 15000)
 
+    @staticmethod
+    def _with_titled_holding(xml, main_title, extra_title, extra_shares, before=False):
+        """
+        Titles the base transaction and adds a direct holding of another security title,
+        placed before or after it in the non-derivative table.
+        """
+        xml = xml.replace(
+            "<nonDerivativeTransaction>",
+            f"<nonDerivativeTransaction><securityTitle><value>{main_title}</value></securityTitle>",
+        )
+        holding = f"""
+            <nonDerivativeHolding>
+              <securityTitle><value>{extra_title}</value></securityTitle>
+              <postTransactionAmounts>
+                <sharesOwnedFollowingTransaction><value>{extra_shares}</value></sharesOwnedFollowingTransaction>
+              </postTransactionAmounts>
+              <ownershipNature>
+                <directOrIndirectOwnership><value>I</value></directOrIndirectOwnership>
+                <natureOfOwnership><value>By Fund</value></natureOfOwnership>
+              </ownershipNature>
+            </nonDerivativeHolding>
+            """
+        if before:
+            return xml.replace("<nonDerivativeTable>", "<nonDerivativeTable>" + holding)
+        return xml.replace("</nonDerivativeTable>", holding + "</nonDerivativeTable>")
+
+    def test_other_security_classes_are_not_summed(self, _assign):
+        """
+        A preferred holding reported alongside common stock is a different
+        security: only the common position counts.
+        """
+        xml = self._with_titled_holding(
+            self.FORM4_XML, "Common Stock", "Series A Preferred Stock", 5000
+        )
+
+        self.assertEqual(xml_to_dataframe_4(xml).iloc[0]["Shares"], 12000)
+
+    def test_common_stock_wins_even_when_listed_after_another_class(self, _assign):
+        """
+        The common position is chosen regardless of the order of the rows.
+        """
+        xml = self._with_titled_holding(
+            self.FORM4_XML, "Common Stock", "Convertible Preferred Stock", 5000, before=True
+        )
+
+        self.assertEqual(xml_to_dataframe_4(xml).iloc[0]["Shares"], 12000)
+
+    def test_distinct_common_classes_prefer_class_a(self, _assign):
+        """
+        Two common classes are distinct securities: Class A is kept even when an
+        (often unlisted) Class B is listed first, and the ambiguity is logged.
+        """
+        xml = self._with_titled_holding(
+            self.FORM4_XML, "Class A Common Stock", "Class B Common Stock", 3000, before=True
+        )
+
+        with self.assertLogs("app.scraper.xml_processor", level="WARNING"):
+            self.assertEqual(xml_to_dataframe_4(xml).iloc[0]["Shares"], 12000)
+
+    def test_undesignated_common_class_wins_over_a_designated_one(self, _assign):
+        """
+        Plain common stock (no class designator) is preferred over a lettered class.
+        """
+        xml = self._with_titled_holding(
+            self.FORM4_XML, "Common Stock", "Class B Common Stock", 3000, before=True
+        )
+
+        with self.assertLogs("app.scraper.xml_processor", level="WARNING"):
+            self.assertEqual(xml_to_dataframe_4(xml).iloc[0]["Shares"], 12000)
+
+    def test_without_class_a_the_first_common_class_is_kept(self, _assign):
+        """
+        With neither plain common nor Class A, the first common class listed is kept.
+        """
+        xml = self._with_titled_holding(
+            self.FORM4_XML, "Class B Common Stock", "Class C Common Stock", 3000
+        )
+
+        self.assertEqual(xml_to_dataframe_4(xml).iloc[0]["Shares"], 12000)
+
+    def test_title_wording_variants_of_one_class_are_summed(self, _assign):
+        """
+        The same common class written with and without its par value is one
+        security, so its direct and indirect positions are still summed.
+        """
+        xml = self._with_titled_holding(
+            self.FORM4_XML, "Common Stock", "Common Stock, par value $0.01", 3000
+        )
+
+        self.assertEqual(xml_to_dataframe_4(xml).iloc[0]["Shares"], 15000)
+
 
 if __name__ == "__main__":
     unittest.main()

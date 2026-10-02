@@ -183,7 +183,6 @@ class TestLlmClassify(unittest.TestCase):
         result, gemini_cls, groq_cls = self._run()
         self.assertEqual(result, "Banks - Regional")
         self.assertEqual(gemini_cls.call_args.kwargs["model"], GEMINI_CLASSIFIER_MODEL)
-        self.assertEqual(GEMINI_CLASSIFIER_MODEL, "gemini-3.5-flash-lite")
         self.assertEqual(gemini_cls.call_args.kwargs["api_key"], "g-key")
         kwargs = gemini_cls.return_value.generate_content.call_args.kwargs
         self.assertEqual(kwargs["reasoning"], "low")

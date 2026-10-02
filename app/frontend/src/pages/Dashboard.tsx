@@ -1,15 +1,15 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  getEnrichedNQFilings,
   getStocks,
   getHedgeFunds,
   parseValueString,
-  clearCache,
   formatPct,
   type EnrichedNQFiling,
 } from "@/lib/dataService";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
+import { useSortState, type SortDir } from "@/hooks/useSortState";
+import { SortArrow } from "@/components/ui/SortArrow";
 import { ROUTES } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { getSectorStyle, sectorPillStyle, SECTOR_PILL } from "@/lib/sectorStyle";
@@ -24,12 +24,13 @@ import {
 } from "@/components/ui/select";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { QueryState } from "@/components/ui/QueryState";
 import { TableFrame } from "@/components/ui/TableFrame";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StarredFilterToggle } from "@/components/StarredFilterToggle";
-import { toInitCap, matchesQuery } from "@/lib/utils";
+import { isoDaysBefore, toInitCap, matchesQuery } from "@/lib/utils";
 import { useStarred } from "@/hooks/useStarred";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { useEnrichedNQFilings } from "@/hooks/useEnrichedNQFilings";
 
 /** Sector tag: a tinted pill in the sector's own colour, applied inline. */
 function SectorPill({ sector, industry }: { sector?: string; industry?: string }) {
@@ -71,33 +72,19 @@ function formatDelta(f: EnrichedNQFiling): { text: string; className: string; so
 }
 
 type SortField = "date" | "delta" | "value";
-type SortDir = "asc" | "desc";
+
+const COUNTED_DELTA_TYPES = ["NEW", "INCREASE", "DECREASE", "CLOSED"] as const;
+type CountedDeltaType = (typeof COUNTED_DELTA_TYPES)[number];
+
+function isCountedDeltaType(t: EnrichedNQFiling["deltaType"]): t is CountedDeltaType {
+  return COUNTED_DELTA_TYPES.some((c) => c === t);
+}
 
 const SORT_OPTIONS: readonly { value: SortField; label: string }[] = [
   { value: "date", label: "Date" },
   { value: "delta", label: "Delta" },
   { value: "value", label: "Value" },
 ];
-
-/** The one sort-direction grammar on this page: a lucide arrow, never a glyph. */
-function SortArrow({
-  field,
-  currentField,
-  direction,
-}: {
-  field: SortField;
-  currentField: SortField;
-  direction: SortDir;
-}) {
-  if (currentField !== field) return null;
-  const Icon = direction === "asc" ? ArrowUp : ArrowDown;
-  return <Icon className="ml-1 inline-block h-3 w-3 align-[-1px]" aria-hidden="true" />;
-}
-
-function ariaSort(field: SortField, currentField: SortField, direction: SortDir) {
-  if (currentField !== field) return "none";
-  return direction === "asc" ? "ascending" : "descending";
-}
 
 /** Sortable column header: the button carries the click, the th carries aria-sort. */
 function SortableTh({
@@ -115,10 +102,11 @@ function SortableTh({
   sortDir: SortDir;
   onSort: (field: SortField) => void;
 }) {
+  const active = sortField === field;
   return (
     <th
       scope="col"
-      aria-sort={ariaSort(field, sortField, sortDir)}
+      aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
       className={`p-0 ${align === "right" ? "text-right" : "text-left"}`}
     >
       <button
@@ -129,7 +117,7 @@ function SortableTh({
         }`}
       >
         {label}
-        <SortArrow field={field} currentField={sortField} direction={sortDir} />
+        <SortArrow active={active} direction={sortDir} />
       </button>
     </th>
   );
@@ -209,20 +197,14 @@ export default function Dashboard() {
   const [fundFilter, setFundFilter] = useState("all");
   const [typeFilters, setTypeFilters] = useState<Set<string>>(() => new Set());
   const [daysBackPick, setDaysBackPick] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<SortField>("date");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const { sortKey: sortField, sortDir, toggleSort } = useSortState<SortField>("date");
+  const [today] = useState(() => new Date());
   const { starred: starredStocks } = useStarred("stock");
   const { starred: starredFunds } = useStarred("fund");
   const [filterStarredStocks, setFilterStarredStocks] = useState(false);
   const [filterStarredFunds, setFilterStarredFunds] = useState(false);
 
-  const { data: filings = [], isLoading } = useQuery({
-    queryKey: ["enrichedNQFilings"],
-    queryFn: () => {
-      clearCache("enriched_nq");
-      return getEnrichedNQFilings();
-    },
-  });
+  const { data: filings = [], isLoading, isError, error } = useEnrichedNQFilings();
 
   const { data: stocks = [] } = useQuery({ queryKey: ["stocks"], queryFn: getStocks });
   const { data: hedgeFunds = [] } = useQuery({
@@ -254,37 +236,21 @@ export default function Dashboard() {
     return names.sort();
   }, [filings]);
 
-  const toggleSort = useCallback(
-    (field: SortField) => {
-      if (sortField === field) {
-        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-      } else {
-        setSortField(field);
-        setSortDir("desc");
-      }
-    },
-    [sortField],
-  );
-
   const autoDaysBack = useMemo(() => {
     if (filings.length === 0) return "30";
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 30);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const cutoffStr = isoDaysBefore(today, 30);
     return filings.some((f) => f.date >= cutoffStr) ? "30" : "9999";
-  }, [filings]);
+  }, [filings, today]);
   const daysBack = daysBackPick ?? autoDaysBack;
 
   // Period + fund scope, shared by the counters and the table so they never
   // disagree. The type toggles, starred filters and search apply after.
   const scoped = useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - parseInt(daysBack));
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const cutoffStr = isoDaysBefore(today, parseInt(daysBack));
     return filings.filter(
       (f) => f.date >= cutoffStr && (fundFilter === "all" || f.fund === fundFilter),
     );
-  }, [filings, daysBack, fundFilter]);
+  }, [filings, daysBack, fundFilter, today]);
 
   const filtered = useMemo(() => {
     let rows = scoped.filter((f) => {
@@ -326,7 +292,7 @@ export default function Dashboard() {
   const counts = useMemo(() => {
     const c = { NEW: 0, INCREASE: 0, DECREASE: 0, CLOSED: 0 };
     for (const f of scoped) {
-      if (f.deltaType in c) c[f.deltaType as keyof typeof c]++;
+      if (isCountedDeltaType(f.deltaType)) c[f.deltaType]++;
     }
     return c;
   }, [scoped]);
@@ -442,7 +408,9 @@ export default function Dashboard() {
         />
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <QueryState isError error={error} title="Could not load filings" />
+      ) : isLoading ? (
         <LoadingState message="Loading and enriching filings…" className="surface" />
       ) : (
         <>
@@ -462,7 +430,7 @@ export default function Dashboard() {
                 label: (
                   <span className="inline-flex items-center">
                     {o.label}
-                    <SortArrow field={o.value} currentField={sortField} direction={sortDir} />
+                    <SortArrow active={sortField === o.value} direction={sortDir} />
                   </span>
                 ),
               }))}

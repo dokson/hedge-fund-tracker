@@ -40,7 +40,7 @@ describe("ModelSelector — provider propagation", () => {
     vi.clearAllMocks();
   });
 
-  it("propagates default model id + provider id to parent on initial render (no manual selection)", async () => {
+  it("propagates the default model and a non-empty provider id on initial render", async () => {
     const onChange = vi.fn<(modelId: string) => void>();
     const onProviderChange = vi.fn<(providerId: string) => void>();
 
@@ -49,30 +49,12 @@ describe("ModelSelector — provider propagation", () => {
     );
 
     // The bug: parent's empty value falls back to availableModels[0] in the
-    // displayed select, but parent state (selectedModel/selectedProviderId)
-    // stays empty → request fires with provider_id: null → backend rejects
-    // with "Unsupported provider None". The fix syncs the fallback up.
+    // displayed select, but parent state stays empty, so the request fires
+    // with provider_id: null and the backend rejects "Unsupported provider None".
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith("gemini-3.1-flash-lite");
       expect(onProviderChange).toHaveBeenCalledWith("google");
     });
-  });
-
-  it("never propagates an empty provider id when a model is displayed", async () => {
-    const onChange = vi.fn<(modelId: string) => void>();
-    const onProviderChange = vi.fn<(providerId: string) => void>();
-
-    renderWithClient(
-      <ModelSelector value="" onChange={onChange} onProviderChange={onProviderChange} />,
-    );
-
-    await waitFor(() => {
-      expect(onProviderChange).toHaveBeenCalled();
-    });
-    // Critical: no call should have passed "" — that's what produced
-    // provider_id: null on the wire.
-    for (const call of onProviderChange.mock.calls) {
-      expect(call[0]).not.toBe("");
-    }
+    expect(onProviderChange).not.toHaveBeenCalledWith("");
   });
 });

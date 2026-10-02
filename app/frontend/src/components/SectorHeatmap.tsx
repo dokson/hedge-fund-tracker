@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getStocks, runQuarterAnalysis } from "@/lib/dataService";
+import { getStocks } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
+import { useQuarterAnalysis } from "@/hooks/useQuarterAnalysis";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 import { PanelTitle } from "@/components/ui/PanelTitle";
+import { QueryState } from "@/components/ui/QueryState";
 import { Loader2, Info } from "lucide-react";
 
 interface SectorGroup {
@@ -26,12 +28,12 @@ export default function SectorHeatmap({
     queryFn: getStocks,
   });
 
-  const { data: quarterData = [], isLoading: quarterLoading } = useQuery({
-    queryKey: ["quarterAnalysis", latestQuarter],
-    queryFn: () => runQuarterAnalysis(latestQuarter!),
-    enabled: !!latestQuarter,
-    staleTime: 10 * 60 * 1000,
-  });
+  const {
+    data: quarterData = [],
+    isLoading: quarterLoading,
+    isError: quarterError,
+    error,
+  } = useQuarterAnalysis(latestQuarter);
 
   // Check if any stock has a sector assigned
   const hasSectorData = useMemo(
@@ -71,6 +73,10 @@ export default function SectorHeatmap({
   }, [hasSectorData, stocks, quarterData]);
 
   const isLoading = stocksLoading || quarterLoading;
+
+  if (quarterError) {
+    return <QueryState isError error={error} title="Could not load the sector heatmap" />;
+  }
 
   if (isLoading) {
     return (

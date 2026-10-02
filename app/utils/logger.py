@@ -1,8 +1,16 @@
+import json
 import logging
+import os
 import sys
-from typing import cast
+from collections.abc import Mapping
+from contextvars import ContextVar
+from datetime import UTC, datetime
+from typing import Any, cast
 
 _CONFIGURED = False
+
+# Bound per HTTP request by app.api.observability; None outside a request.
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 # Custom levels.
 #   PROGRESS / MONEY / SUCCESS sit just above INFO so they're emitted by
@@ -70,31 +78,49 @@ class _StyledLogger(logging.Logger):
     """
 
     def debug(self, msg, *args, emoji: str | None = None, **kwargs):
+        """
+        Log at DEBUG with the optional emoji override.
+        """
         _attach_emoji(kwargs, emoji)
         _bump_stacklevel(kwargs, 1)
         super().debug(msg, *args, **kwargs)
 
     def info(self, msg, *args, emoji: str | None = None, **kwargs):
+        """
+        Log at INFO with the optional emoji override.
+        """
         _attach_emoji(kwargs, emoji)
         _bump_stacklevel(kwargs, 1)
         super().info(msg, *args, **kwargs)
 
     def warning(self, msg, *args, emoji: str | None = None, **kwargs):
+        """
+        Log at WARNING with the optional emoji override.
+        """
         _attach_emoji(kwargs, emoji)
         _bump_stacklevel(kwargs, 1)
         super().warning(msg, *args, **kwargs)
 
     def error(self, msg, *args, emoji: str | None = None, **kwargs):
+        """
+        Log at ERROR with the optional emoji override.
+        """
         _attach_emoji(kwargs, emoji)
         _bump_stacklevel(kwargs, 1)
         super().error(msg, *args, **kwargs)
 
     def critical(self, msg, *args, emoji: str | None = None, **kwargs):
+        """
+        Log at CRITICAL with the optional emoji override.
+        """
         _attach_emoji(kwargs, emoji)
         _bump_stacklevel(kwargs, 1)
         super().critical(msg, *args, **kwargs)
 
     def _custom(self, level: int, msg, args, kwargs, emoji: str | None) -> None:
+        """
+        Emit a record at a project-specific level, keeping the caller's location.
+        """
         _attach_emoji(kwargs, emoji)
         # Skip both _custom and the public wrapper (success/progress/money/
         # deprecated) so findCaller lands on the actual call site.
@@ -103,15 +129,27 @@ class _StyledLogger(logging.Logger):
             self._log(level, msg, args, **kwargs)
 
     def success(self, msg, *args, emoji: str | None = None, **kwargs) -> None:
+        """
+        Log a completed operation at the SUCCESS level.
+        """
         self._custom(SUCCESS, msg, args, kwargs, emoji)
 
     def progress(self, msg, *args, emoji: str | None = None, **kwargs) -> None:
+        """
+        Log an in-flight step at the PROGRESS level.
+        """
         self._custom(PROGRESS, msg, args, kwargs, emoji)
 
     def money(self, msg, *args, emoji: str | None = None, **kwargs) -> None:
+        """
+        Log a price or value at the MONEY level.
+        """
         self._custom(MONEY, msg, args, kwargs, emoji)
 
     def deprecated(self, msg, *args, emoji: str | None = None, **kwargs) -> None:
+        """
+        Log use of an obsolete API at the DEPRECATED level.
+        """
         self._custom(DEPRECATED, msg, args, kwargs, emoji)
 
 
@@ -145,43 +183,121 @@ class _PrefixFormatter(logging.Formatter):
     }
 
     def format(self, record: logging.LogRecord) -> str:
+        """
+        Prefix the formatted record with its level marker or custom emoji.
+        """
         custom = getattr(record, "emoji", None)
         prefix = f"{custom} " if custom else self._PREFIXES.get(record.levelno, "")
         return prefix + super().format(record)
 
 
+class _JsonFormatter(logging.Formatter):
+    """
+    One JSON object per record, for log collectors: timestamp, level, logger,
+    message, plus request_id and exc_info when present.
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        """
+        Serialize the record to a single-line JSON object.
+        """
+        payload = {
+            "timestamp": datetime.fromtimestamp(record.created, UTC)
+            .isoformat(timespec="milliseconds")
+            .replace("+00:00", "Z"),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        request_id = getattr(record, "request_id", None)
+        if request_id:
+            payload["request_id"] = request_id
+        if record.exc_info:
+            payload["exc_info"] = self.formatException(record.exc_info)
+        return json.dumps(payload, ensure_ascii=False)
+
+
+def _make_formatter(env: Mapping[str, str] = os.environ) -> logging.Formatter:
+    """
+    JSON formatter when ``LOG_FORMAT=json``, otherwise the human emoji-prefixed one.
+    """
+    if env.get("LOG_FORMAT", "").strip().lower() == "json":
+        return _JsonFormatter()
+    return _PrefixFormatter("%(message)s")
+
+
+_HUMAN_FORMATTER = _PrefixFormatter("%(message)s")
+
+
+class _RequestIdFilter(logging.Filter):
+    """
+    Stamp the bound HTTP request id, if any, onto every record.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """
+        Attach ``request_id`` and let the record through.
+        """
+        record.request_id = request_id_var.get()
+        return True
+
+
+class _StdoutHandler(logging.StreamHandler):
+    """
+    StreamHandler that resolves sys.stdout lazily on every emit.
+
+    Necessary because app.api.sse swaps sys.stdout with a context-aware
+    wrapper after import; a handler bound to the original stream would
+    bypass the per-request SSE queue.
+    """
+
+    def __init__(self):
+        """
+        Attach the request-id filter so every record carries the bound id.
+        """
+        super().__init__()
+        self.addFilter(_RequestIdFilter())
+
+    @property
+    def stream(self):
+        """
+        Return the current sys.stdout, resolved at emit time.
+        """
+        return sys.stdout
+
+    @stream.setter
+    def stream(self, value):
+        """
+        Ignore assignments so the handler always follows sys.stdout.
+        """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """
+        Write the record; in JSON mode an SSE-captured record is written human
+        to the browser stream and as JSON to the container stream.
+        """
+        out = sys.stdout
+        if not (isinstance(self.formatter, _JsonFormatter) and getattr(out, "capturing", False)):
+            super().emit(record)
+            return
+        try:
+            out.write(_HUMAN_FORMATTER.format(record) + self.terminator)
+            cast(Any, out).fallback.write(self.format(record) + self.terminator)
+            self.flush()
+        except Exception:
+            self.handleError(record)
+
+
 def _configure_root_once() -> None:
     """
-    Attach a single StreamHandler(sys.stdout) to the root logger.
-
-    sys.stdout is intentionally read at handler-emit time (not at handler
-    construction) so the handler stays compatible with app.server's
-    _ContextAwareStdout wrapper, which replaces sys.stdout after import.
+    Attach a single _StdoutHandler to the root logger, formatted per ``LOG_FORMAT``.
     """
     global _CONFIGURED
     if _CONFIGURED:
         return
 
-    class _StdoutHandler(logging.StreamHandler):
-        """
-        StreamHandler that resolves sys.stdout lazily on every emit.
-
-        Necessary because app.server swaps sys.stdout with a context-aware
-        wrapper after import; a handler bound to the original stream would
-        bypass the per-request SSE queue.
-        """
-
-        @property
-        def stream(self):
-            return sys.stdout
-
-        @stream.setter
-        def stream(self, value):
-            # Ignore writes — we always defer to current sys.stdout.
-            pass
-
     handler = _StdoutHandler()
-    handler.setFormatter(_PrefixFormatter("%(message)s"))
+    handler.setFormatter(_make_formatter())
 
     root = logging.getLogger()
     root.handlers = [h for h in root.handlers if not isinstance(h, _StdoutHandler)]

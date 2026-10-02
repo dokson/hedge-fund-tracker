@@ -1,7 +1,9 @@
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 # AGENTS.md
 
-Single source of truth for AI coding agents (Claude Code, Codex, Copilot Coding Agent, etc.). `CLAUDE.md` is a one-line `@AGENTS.md` pointer so Claude Code picks it up automatically.
+Single source of truth for AI coding agents (Claude Code, Codex, Copilot, Cursor, Gemini CLI, etc.). `CLAUDE.md` is a one-line `@AGENTS.md` pointer so Claude Code picks it up automatically.
+
+**Agent configuration is centralized in `.agents/`**: `agents.json` (manifest), `hooks/` (tool-agnostic hook scripts) and `skills/` (shared skills, read natively by Codex). `.claude/settings.json`, `.claude/skills/`, `.codex/`, `.gemini/`, `.cursor/hooks.json` and `.github/skills/` are **generated** by `python scripts/sync_agent_configs.py`; never edit them by hand. CI and pre-commit run `--check` to catch drift.
 
 ## What this project is
 
@@ -19,13 +21,14 @@ SEC EDGAR → app/scraper/ → app/analysis/ → app/ai/ (Promise Scores) → we
 
 **Always run Python tooling through the pipenv venv** — `pipenv run <cmd>` (or `python -m pipenv run <cmd>` if `pipenv` is not on PATH, common on Windows; if a venv is already active in the shell its python lacks pipenv — use `py -3.14 -m pipenv run <cmd>`). The system Python lacks `pandas-stubs` and `fastapi_users` — running tests/pyright outside the venv produces import errors and ~150 false type errors. Sanity-check at session start: `python -m pipenv --venv`.
 
-A `PreToolUse` hook in `.claude/settings.json` (script: `.claude/scripts/enforce_pipenv.py`) blocks bare invocations of `pyright`/`ruff`/`mypy`/`pytest` and `python -m <those>` when not preceded by `pipenv run`.
+A pre-shell hook (script: `.agents/hooks/enforce_pipenv.py`, wired into every agent) blocks bare invocations of `pyright`/`ruff`/`mypy`/`pytest` and `python -m <those>` when not preceded by `pipenv run`.
 
 ## Common tasks
 
 ```bash
 # First-time setup
-# Requires Python 3.14 (see Pipfile)
+# Requires Python 3.14 (see Pipfile) and Node 26 (see .nvmrc, the single Node version source;
+# the Dockerfile's FROM must match it, pinned by tests/test_toolchain_versions.py)
 pipenv install
 cp .env.example .env                        # all keys optional; app degrades gracefully
 cd app/frontend && npm install && cd ../..
@@ -45,12 +48,12 @@ pipenv run test                                                          # all (
 pipenv run cov                                                           # Python tests + coverage report (informational)
 pipenv run python -m unittest tests.stocks.test_price_fetcher            # single file
 pipenv run test-frontend                                                 # frontend (vitest); or: cd app/frontend && npm test
+cd app/frontend && npm run test:coverage                                 # frontend tests + coverage report (informational)
 
 # Lint & format
 pipenv run lint            # ruff check (Python)
 pipenv run format          # ruff format
-pipenv run pyright         # primary type-checker (config: pyrightconfig.json)
-pipenv run typecheck       # mypy (informational, secondary)
+pipenv run pyright         # type-checker (config: pyrightconfig.json)
 cd app/frontend && npm run lint && npm run type-check && npm run format:check
 pre-commit run --all-files # everything at once
 
@@ -80,6 +83,13 @@ Available levels and their auto-prefix:
 The `emoji="..."` kwarg works on every method and **overrides the default prefix** — use it for occasional one-off markers (`logger.info("Rebuilding", emoji="🔄")`).
 
 **Don't use `print()` outside `app/main.py` and `app/utils/console.py`.** Those two are CLI/UI rendering and are intentionally exempt; everything else goes through the logger so the SSE pipeline in `app/api/sse.py` (`_ContextAwareStdout`) can route each log line to the right per-request queue. The logger's stdout handler resolves `sys.stdout` lazily on every emit, which is what keeps SSE working — don't rebind the handler's stream.
+
+## Observability
+
+- **Request correlation**: `app/api/observability.py` assigns every request an `X-Request-ID` (a safe incoming one is reused) and logs one access line (method, path, status, ms); the id is bound to log records via `request_id_var`, including SSE worker threads.
+- **Log format**: `LOG_FORMAT=json` switches the logger to one-line JSON for containers (`compose.yaml` sets it); the default stays the human format with emoji prefixes.
+- **Metrics**: `GET /metrics` (Prometheus, `app/utils/metrics.py`) counts HTTP requests/latency, SEC EDGAR requests by outcome, price-provider failures and rate limits, LLM calls by provider and outcome, and non-quarterly funds carried over after a failed fetch. Labels stay low-cardinality: never add tickers or fund names. The endpoint is unauthenticated; block it at the proxy on a public deployment.
+- **Scheduled fetch summary**: `.github/scripts/fetcher.py` writes a Markdown summary (funds, failures, saved rows, raised alerts) to `$GITHUB_STEP_SUMMARY` via `app/utils/run_summary.py`.
 
 ## Footguns
 
@@ -117,7 +127,7 @@ These are real incidents — read before changing code in these areas.
 
 - **`stocks.csv` is auto-sorted on exit.** A diff that only shows reordering = something else changed. Don't commit "sort cleanup" PRs without inspecting actual content changes.
 
-- **The backtest is a descriptive track record, not a forecast — and its params aren't tuned on return.** `app/backtest/` reads only consolidated (matured) windows; the current sample is tiny and single-regime (no down-quarter yet), so every strategy beating the S&P 500 is largely beta, not skill — even "Decreasing" beat the market because the whole institutional universe rose. `min_holders` is `round(funds/10)` per quarter on a *breadth* principle (~10% of funds), and the five non-Avg-Portfolio screens are top-30 — NOT tuned to maximise the backtest number. The price cache lives in gitignored `__pricecache__/` — historical prices never change, so it makes a fund-list-change regeneration near-instant; don't commit it and don't expect it in CI (CI rebuilds cold).
+- **The backtest is a descriptive track record, not a forecast — and its params aren't tuned on return.** `app/backtest/` reads only consolidated (matured) windows; the current sample is tiny and single-regime (no down-quarter yet), so every strategy beating the S&P 500 is largely beta, not skill — even "Decreasing" beat the market because the whole institutional universe rose. `min_holders` is `ceil(funds/10)` per quarter on a *breadth* principle (~10% of funds), and the five non-Avg-Portfolio screens are top-30 — NOT tuned to maximise the backtest number. The price cache lives in gitignored `__pricecache__/` — historical prices never change, so it makes a fund-list-change regeneration near-instant; don't commit it and don't expect it in CI (CI rebuilds cold).
 
 - **`scripts/regenerate_samples.py` imports after `sys.path.insert`.** The `# noqa: E402` lines are required — moving imports above the path setup breaks resolution of `app.*` modules.
 
@@ -126,6 +136,10 @@ These are real incidents — read before changing code in these areas.
 - **The smart score is institutional-only and computed on the fly, by product decision.** No sell-side analyst inputs (a Yahoo analyst-ratings integration was tried and removed: differentiation beats me-too data) and no precomputed CSV: the Python `score_core` and its TypeScript mirror (`lib/smartScore.ts`, pinned by hand-computed parity tests) derive it from the quarter-analysis frame, so every tab/page/backtest shows the same formula on the same universe. Don't tune score weights on backtest returns — same principle as the strategy screens — and keep the two implementations in lockstep when changing the formula.
 
 - **Yahoo rate-limits bulk yfinance sweeps.** A concurrent fetch over thousands of tickers got the IP temporarily banned (`YFRateLimitError`) and silently degraded to empty responses. If a mass yfinance fetch ever returns, pace requests, keep workers ≤2 and back off on rate limits rather than recording gaps.
+
+- **`.dockerignore` patterns need `**/` to match below the root.** A bare `node_modules` once let the host's Windows `app/frontend/node_modules` into the build context, overwriting the image's `npm ci` output.
+
+- **`package-lock.json` written on Windows can break `npm ci` on Linux.** npm prunes optional platform entries it doesn't need locally. If CI or the Docker build reports a lock out of sync, regenerate it in a Linux container (`docker run --rm -v "$PWD":/w -w /w node:26-slim npm install --package-lock-only`).
 
 - **CRLF on Windows.** Git converts on checkout; pre-commit hooks and `.editorconfig` enforce LF in the repo. Files written by scripts or tools on Windows can come out CRLF and fail the `mixed-line-ending` hook at commit time — the hook fixes them in place, so re-stage and commit again (in Python, write with `newline="\n"` to avoid it).
 
@@ -165,7 +179,7 @@ Static build via `npm run build:gh-pages`:
 
 ### Docker
 
-Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `database/`, `__llmcache__/`, `__reports__/`, `.env`. `entrypoint.sh` seeds DB from `database-seed/` on first run. `scripts/docker_up.py` probes a free host port (loopback bind, never `0.0.0.0`) before `docker compose up`.
+Three-stage Dockerfile (Node frontend build → Python deps venv → slim runtime as UID 1001; base images pinned by digest). `compose.yaml` runs app + Postgres. Volumes: `database/`, `__llmcache__/`, `__reports__/`, `.env`. `entrypoint.sh` seeds DB from `database-seed/` on first run. `scripts/docker_up.py` probes a free host port (loopback bind, never `0.0.0.0`) before `docker compose up`.
 
 ### Modules at a glance
 
@@ -173,7 +187,7 @@ Multi-stage Dockerfile (Node frontend build → Python runtime). Volumes: `datab
 - **`app/analysis/`** — `quarterly_report.py` (delta shares/values, NEW/CLOSE positions), `stocks.py` (multi-fund consensus), `non_quarterly.py` (13D/G + Form 4 integration), `performance_evaluator.py` (HBR), `smart_scores.py` (the smart-score core: composite 1-10 from **institutional signals only** — breadth/momentum percentiles + conviction with a capped +10/high-conviction-entry bonus; deliberately NO sell-side analyst inputs, that's the product stance. Pure compute, NO persistence: the backtest derives it per point-in-time frame and the UI mirrors it in TS (`lib/smartScore.ts`) on the fly, like every other consensus metric).
 - **`app/stocks/`** — CUSIP→Ticker via fallback chain: yfinance → OpenFIGI → TradingView. Reverse ticker→CUSIP (Form 4 path) via FMP (requires `FMP_API_KEY`). Industry classification via `app/stocks/classification.py::resolve_industry`: yfinance → same-Company match in stocks.csv → LLM pick from the `sector_hierarchy.csv` vocabulary (JSON schema; enum-constrained except on Gemini, which 400s on enums over ~100 values, so membership is also checked in code): Gemini `gemini-3.5-flash-lite` first, Groq `GroqClient.DEFAULT_MODEL` fallback when `GOOGLE_API_KEY` is missing or Gemini fails/answers off-vocabulary; a `Shell Companies` answer is only kept for blank-check-looking names, otherwise the same provider is re-asked once without that label. Maintains `stocks.csv`. `PriceFetcher` uses a separate chain: yfinance → TradingView → Nasdaq (Nasdaq covers mutual funds others miss).
 - **`app/ai/`** — Multi-provider LLM. `agent.py` runs **two-phase analysis**: (1) the LLM picks relative metric weights, which code normalizes into a 0-100 Promise Score over rank-transformed metrics; (2) for the top stocks the LLM supplies only industry + risk, while Momentum/Low-Volatility scores are computed from daily price history in `app/analysis/price_scores.py` (12-1 return and annualized volatility, cross-sectional 1-100 percentiles, 50 when history is short). Clients in `clients/`: Google Gemini, Groq, HuggingFace, OpenRouter.
-- **`app/backtest/`** — Strategy backtester. `strategies.py` defines the seven `/quarterly` screens as `StrategySpec`s (Smart Score first, then Avg Portfolio, Consensus Buys, New Consensus, Big Bets, Increasing, Decreasing) — each mirrors its tab's default sort + filters; all but Avg Portfolio take **top 30**. Smart Score ranks by the score core the engine derives lazily on each point-in-time frame (`app/analysis/smart_scores.py::score_core`). `engine.py` reconstructs each screen point-in-time per quarter (reusing `app/analysis/stocks.py` aggregation — NOT the non-quarterly-merged view), weights every screen by `Avg_Portfolio_Pct` normalized to 100% (so strategies differ in *what* they hold, not *how* it's weighted), holds filing-date→next-filing, and computes returns vs the **S&P 500** (`BENCHMARKS`, extensible to more indices; `run_backtest`, long-format rows); `min_holders_for_quarter` = round(funds/10) per quarter. `price_cache.py` persists `(ticker, date)→price` (gitignored `__pricecache__/`) so regeneration after a fund-list change is near-instant. `report.py` writes `database/performance.csv`. Run via `pipenv run gen-strategy` or updater option 11. Compute is offline → the CSV is bundled for GH Pages; the `/performance` page only reads it (no PriceFetcher in TS).
+- **`app/backtest/`** — Strategy backtester. `strategies.py` defines the seven `/quarterly` screens as `StrategySpec`s (Smart Score first, then Avg Portfolio, Consensus Buys, New Consensus, Big Bets, Increasing, Decreasing) — each mirrors its tab's default sort + filters; all but Avg Portfolio take **top 30**. Smart Score ranks by the score core the engine derives lazily on each point-in-time frame (`app/analysis/smart_scores.py::score_core`). `engine.py` reconstructs each screen point-in-time per quarter (reusing `app/analysis/stocks.py` aggregation — NOT the non-quarterly-merged view), weights every screen by `Avg_Portfolio_Pct` normalized to 100% (so strategies differ in *what* they hold, not *how* it's weighted), holds filing-date→next-filing (a holding that stops trading mid-window is valued at its last known price; only names with no entry price are dropped), and computes returns vs the **S&P 500** (`BENCHMARKS`, extensible to more indices; `run_backtest`, long-format rows); `min_holders_for_quarter` = ceil(funds/10) per quarter. `price_cache.py` persists `(ticker, date)→price` (gitignored `__pricecache__/`) so regeneration after a fund-list change is near-instant. `report.py` writes `database/performance.csv`. Run via `pipenv run gen-strategy` or updater option 11. Compute is offline → the CSV is bundled for GH Pages; the `/performance` page only reads it (no PriceFetcher in TS).
 - **`app/api/`** — FastAPI routers, each `include_router`'d by `app/server.py`: `ai.py` (Promise Score / due-diligence, blocking + SSE), `admin.py` (filing fetches, ticker/CUSIP corrections, NASDAQ ticker-change apply, quarter-gap report), plus `me.py`/`api_keys.py`/`starred.py`. Shared infra lives in `common.py` (rate limiter, request validation, JSON-safe serialization) and `sse.py` (the per-request stdout-capture wrapper — imported on the boot path so it installs once). `server.py` keeps only app setup, static-file/SPA serving, and the quarter-listing routes.
 - **`app/database/`** — CSV data-access layer, a package split into `quarters.py` (quarter discovery + 13F loaders), `stocks.py` (stocks.csv CRUD, the stocks lock, ticker cascades), `funds.py` (hedge-fund add/delete/restore). The package `__init__` owns the shared constants (`DB_FOLDER`, `*_FILE`) + path-safety helpers and re-exports everything, so `from app.database import X` is unchanged. Submodules read `DB_FOLDER` as `_db.DB_FOLDER` (call-time) so tests can monkeypatch it.
 
@@ -206,7 +220,7 @@ All in `database/`:
 ## Frontend: Global Search & Company Logos
 
 - **`app/frontend/src/components/GlobalSearch.tsx`** — top-bar search across tickers, companies, fund names and managers. Substring scoring with prefix priority, grouped dropdown, keyboard nav (`⌘K`). Builds its index from `getStocks()` + `getHedgeFunds()` (no extra fetch).
-- **`app/frontend/src/components/CompanyLogo.tsx`** + **`companyLogoUrl.ts`** — renders logos via Cloudinary fetch URL pointing at Financial Modeling Prep's public symbol endpoint. The `cloud_name` is hardcoded in `config.ts` (it's public by design). Logos are cached at the CDN edge after first fetch; `scripts/warm_cloudinary_cache.py` pre-warms the full DB.
+- **`app/frontend/src/components/CompanyLogo.tsx`** + **`companyLogoUrl.ts`** — renders logos via Cloudinary fetch URL pointing at Financial Modeling Prep's public symbol endpoint. The `cloud_name` is hardcoded in `config.ts` (it's public by design). Logos are cached at the CDN edge after first fetch.
 - **Cloudinary security**: Strict transformations ON, with `dokson.github.io` whitelisted in *Allowed strict referral domains*. *Allowed fetch domains* restricted to `images.financialmodelingprep.com`. Source pivoting and arbitrary new transformations are blocked.
 - **`excluded_hedge_funds.csv`** — funds intentionally not tracked, with CIKs (re-add by moving rows back to `hedge_funds.csv`).
 
@@ -220,7 +234,9 @@ Workflows in `.github/workflows/`:
 
 **`.github/workflows/run-tests.yml`** — Python + frontend test suites on push/PR (and manual dispatch).
 
-**`.github/workflows/lint.yml`** — Ruff + format check + mypy + oxlint + Prettier check + tsc on push/PR. Blocks merging if dirty.
+**`.github/workflows/lint.yml`** — Ruff + format check + pyright + oxlint + oxfmt check + tsc on push/PR. Blocks merging if dirty.
+
+**`.github/workflows/docker.yml`** — `docker build --check` (BuildKit's Dockerfile linter) + `compose config` + image build and healthcheck smoke test, on changes to the Docker files or `app/`.
 
 **`.github/workflows/refresh-badges.yml`** — every 4h, purges GitHub's Camo cache for README badges that render as broken.
 
@@ -276,6 +292,14 @@ Not inline `"""description"""`. No exceptions.
 ### Inline comments
 
 Default to no inline comments — clear naming should carry the WHAT. Only add one when the WHY is non-obvious: a hidden constraint, a subtle invariant, a workaround for a specific bug, behavior that would surprise a reader. Never restate what the next line already says, never leave stale/obvious `# TODO`s, and never reference the current task, PR, or issue number (that belongs in the commit message, not the code). Keep the ones you do write to a single short line — no comment blocks.
+
+### Formatting
+
+Two formatters only: `ruff format` for Python, `oxfmt` for everything else (TS/JS, JSON, CSS, YAML, TOML), configured once in the root `.oxfmtrc.json`. Run it repo-wide with `cd app/frontend && npm run format`. Markdown is not auto-formatted: README sections are generated by `app/utils/readme.py`, and reflowing tables would fight the generator.
+
+### Encoding
+
+UTF-8 everywhere. Standard streams are switched once, in `app/utils/encoding.py` (run by `import app`), so no entry point needs `python -X utf8`. Text file I/O passes `encoding="utf-8"` explicitly; ruff `PLW1514` enforces it, because on Windows the default is the locale codepage. pandas already defaults to UTF-8.
 
 ### Language
 

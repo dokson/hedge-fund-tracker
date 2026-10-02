@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Label } from "@/components/ui/label";
 import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { ROUTES } from "@/lib/routes";
 import { matchesQuery } from "@/lib/utils";
@@ -61,8 +62,6 @@ export default function AISettingsPage() {
     canonical: canonicalUrl(ROUTES.aiSettings),
   });
 
-  const [activeTab, setActiveTab] = useState<"keys" | "models">("keys");
-
   return (
     <div className="space-y-6 max-w-screen-2xl">
       <div>
@@ -74,32 +73,18 @@ export default function AISettingsPage() {
         </p>
       </div>
 
-      {/* Underline tabs: active gets the primary rule and the text colour. */}
-      <div role="tablist" className="flex items-stretch gap-1 border-b border-border">
-        {(
-          [
-            ["keys", "API Keys"],
-            ["models", "AI Models"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === id}
-            onClick={() => setActiveTab(id)}
-            className={`h-9 px-3 -mb-px border-b-2 text-[13px] transition-colors duration-[120ms] cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
-              activeTab === id
-                ? "border-primary text-foreground font-medium"
-                : "border-transparent text-muted-foreground font-normal hover:text-foreground"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === "keys" ? <APIKeysTab /> : <ModelsTab />}
+      <Tabs defaultValue="keys">
+        <TabsList>
+          <TabsTrigger value="keys">API Keys</TabsTrigger>
+          <TabsTrigger value="models">AI Models</TabsTrigger>
+        </TabsList>
+        <TabsContent value="keys" className="mt-6">
+          <APIKeysTab />
+        </TabsContent>
+        <TabsContent value="models" className="mt-6">
+          <ModelsTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -164,9 +149,8 @@ function APIKeysTab() {
     });
   };
 
-  const handleSave = async (providerId: string) => {
-    const provider = AI_PROVIDERS.find((p) => p.id === providerId)!;
-    const key = drafts[providerId]?.trim() || "";
+  const handleSave = async (provider: (typeof AI_PROVIDERS)[number]) => {
+    const key = drafts[provider.id]?.trim() || "";
     try {
       await saveToEnv({ [provider.envKey]: key });
       toast.success(key ? `API key saved for ${provider.name}` : "API key removed");
@@ -175,8 +159,7 @@ function APIKeysTab() {
     }
   };
 
-  const handleDeleteRequest = (providerId: string) => {
-    const provider = AI_PROVIDERS.find((p) => p.id === providerId)!;
+  const handleDeleteRequest = (provider: (typeof AI_PROVIDERS)[number]) => {
     setProviderToDelete(provider);
     setDeleteDialogOpen(true);
   };
@@ -306,8 +289,7 @@ function APIKeysTab() {
       <div className="space-y-3">
         <h2 className="section-title">API Keys</h2>
 
-        {AI_PROVIDERS.map((provider) => {
-          const { hasKey } = configuredProviders.find((cp) => cp.provider.id === provider.id)!;
+        {configuredProviders.map(({ provider, hasKey }) => {
           const isVisible = visible[provider.id] || false;
           const draft = drafts[provider.id] || "";
 
@@ -373,7 +355,7 @@ function APIKeysTab() {
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleDeleteRequest(provider.id)}
+                      onClick={() => handleDeleteRequest(provider)}
                       title="Remove key"
                       aria-label={`Remove ${provider.name} key`}
                       className="shrink-0 text-negative hover:text-negative"
@@ -384,7 +366,7 @@ function APIKeysTab() {
                     <Button
                       variant={draft.trim() ? "default" : "outline"}
                       size="icon"
-                      onClick={() => handleSave(provider.id)}
+                      onClick={() => handleSave(provider)}
                       title="Save key"
                       aria-label={`Save ${provider.name} key`}
                       className="shrink-0"

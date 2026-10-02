@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/scripts/enforce_pipenv.py\"",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.agents/hooks/enforce_pipenv.py\" --format claude",
             "timeout": 5
           }
         ]
