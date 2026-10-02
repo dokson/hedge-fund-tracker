@@ -15,7 +15,7 @@ RUN npm run build
 
 # ── Stage 2: Python dependencies ───────────────────────────────────────────
 # Toolchain stays in this stage, out of the runtime image.
-FROM python:3.14.8-slim@sha256:89fb7d3da20043c370643435258bdd7ab755d326d359001d02988ed15ae5219e AS python-deps
+FROM python:3.15.0rc2-slim@sha256:14684656c0069b49e897c63d52bbbe7df8a4bf189911a597403fd3b4ffeaae06 AS python-deps
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIPENV_VENV_IN_PROJECT=1 \
     PIPENV_NOSPIN=1
@@ -32,7 +32,7 @@ RUN --mount=type=bind,source=Pipfile,target=Pipfile \
     pipenv sync
 
 # ── Stage 3: runtime ───────────────────────────────────────────────────────
-FROM python:3.14.8-slim@sha256:89fb7d3da20043c370643435258bdd7ab755d326d359001d02988ed15ae5219e AS runtime
+FROM python:3.15.0rc2-slim@sha256:14684656c0069b49e897c63d52bbbe7df8a4bf189911a597403fd3b4ffeaae06 AS runtime
 
 LABEL org.opencontainers.image.title="Hedge Fund Tracker" \
       org.opencontainers.image.description="SEC 13F, 13D/G and Form 4 tracker with AI-assisted stock analysis" \
