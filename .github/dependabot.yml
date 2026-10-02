@@ -63,6 +63,14 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Runtime versions are declared elsewhere: Python by the Pipfile (3.14), Node by
+    # .nvmrc. Only patches within those lines are proposed; a new line is a deliberate
+    # change made together with its declaration (tests/test_toolchain_versions.py).
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore(docker)"
       include: "scope"
@@ -79,6 +87,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # A Postgres major upgrade needs a data migration (pg_upgrade or dump/restore).
+    ignore:
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore(docker)"
       include: "scope"

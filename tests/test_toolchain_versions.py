@@ -1,9 +1,10 @@
 """
-The Node version is declared once, in .nvmrc; the Dockerfile must spell its image
-out for Dependabot, so this pins the two together.
+Runtime versions are declared once (Node in .nvmrc, Python in the Pipfile); the
+Dockerfile must spell its images out for Dependabot, so this pins them together.
 """
 
 import re
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -39,6 +40,25 @@ class NodeVersionTest(unittest.TestCase):
                 self.assertNotIn("node-version:", text)
                 if "actions/setup-node" in text:
                     self.assertIn("node-version-file: .nvmrc", text)
+
+
+class PythonVersionTest(unittest.TestCase):
+    """
+    The Docker images run the Python version the Pipfile requires.
+    """
+
+    def test_dockerfile_python_images_match_the_pipfile(self):
+        """
+        Every python base image is a final release of the Pipfile's major.minor.
+        """
+        with (ROOT / "Pipfile").open("rb") as pipfile:
+            required = tomllib.load(pipfile)["requires"]["python_version"]
+        dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+        versions = re.findall(r"^FROM python:([^-@\s]+)", dockerfile, flags=re.MULTILINE)
+        self.assertTrue(versions)
+        for version in versions:
+            with self.subTest(version=version):
+                self.assertRegex(version, rf"^{re.escape(required)}\.\d+$")
 
 
 if __name__ == "__main__":
