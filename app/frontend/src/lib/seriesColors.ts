@@ -32,6 +32,7 @@ export function tokenAlpha(
  * Benchmarks are neutral; increasing/decreasing take the delta tokens.
  */
 export const SERIES_COLORS: Record<string, string> = {
+  smart_score: "hsl(var(--chart-8))",
   avg_portfolio: CHART_PALETTE[0],
   consensus: CHART_PALETTE[3],
   new_consensus: CHART_PALETTE[4],

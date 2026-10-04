@@ -22,6 +22,7 @@ from app.scraper.sec_scraper import (
     _get_session,
     _scrape_filing,
     close_session,
+    complete_new_holdings,
     fetch_latest_two_13f_filings,
     fetch_non_quarterly_after_date,
     get_latest_13f_filing_date,
@@ -253,6 +254,37 @@ class TestSecScraper(unittest.TestCase):
         self.assertEqual(result["type"], "13F-HR")
         self.assertEqual(result["reference_date"], "2022-12-31")
         self.assertEqual(result["xml_content"], b"<xml>content</xml>")
+        self.assertEqual(result["amendment_type"], "")
+        self.assertEqual(mock_get_request.call_count, 2)
+
+    @patch("app.scraper.sec_scraper._get_request")
+    def test_scrape_filing_reads_an_amendments_type_from_its_cover_page(self, mock_get_request):
+        """
+        A 13F-HR/A also fetches its raw cover page (not the rendered one) for the amendment kind.
+        """
+        report_html = """
+        <div>Form 13F-HR/A</div>
+        <div>Filing Date</div><div class="info">2025-04-09</div>
+        <div>Period of Report</div><div class="info">2024-12-31</div>
+        <a href="/a/xslForm13F_X02/primary_doc.xml">xml</a>
+        <a href="/a/primary_doc.xml">xml</a>
+        <a href="/a/xslForm13F_X02/table.xml">xml</a>
+        <a href="/a/table.xml">xml</a>
+        """
+        report, table, cover = MagicMock(), MagicMock(), MagicMock()
+        report.text = report_html
+        table.content = b"<informationTable/>"
+        cover.content = (
+            b"<amendmentInfo><amendmentType>NEW HOLDINGS</amendmentType></amendmentInfo>"
+        )
+        mock_get_request.side_effect = [report, table, cover]
+
+        result = _scrape_filing({"href": "/report_page"}, "13F-HR")
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result["amendment_type"], "NEW HOLDINGS")
+        self.assertTrue(mock_get_request.call_args_list[2].args[0].endswith("/a/primary_doc.xml"))
 
     @patch("app.scraper.sec_scraper._get_request")
     def test_fetch_latest_two_13f_filings(self, mock_get_request):
@@ -560,6 +592,59 @@ class TestSecRequestMetrics(unittest.TestCase):
         _get_request("http://test.com")
 
         self.assertEqual(_sec_requests("error"), before + 1 + _RETRY_ATTEMPTS)
+
+
+class TestCompleteNewHoldings(unittest.TestCase):
+    """
+    The updater completes a partial NEW HOLDINGS amendment with its period's report.
+    """
+
+    TABLE = '<ns1:informationTable xmlns:ns1="x">{}</ns1:informationTable>'
+    ROW = "<ns1:infoTable><ns1:cusip>{}</ns1:cusip><ns1:value>{}</ns1:value></ns1:infoTable>"
+
+    def filing(self, ref, published, cusip, value, kind=""):
+        """
+        A scraped filing with one row.
+        """
+        xml = self.TABLE.format(self.ROW.format(cusip, value)).encode()
+        return {
+            "reference_date": ref,
+            "date": published,
+            "xml_content": xml,
+            "amendment_type": kind,
+        }
+
+    def test_an_original_is_returned_untouched_without_any_request(self):
+        """
+        Only NEW HOLDINGS amendments need their report.
+        """
+        original = self.filing("2024-12-31", "2025-02-14", "A", 500)
+        with patch("app.scraper.sec_scraper._get_request") as mock_get:
+            self.assertIs(complete_new_holdings("1", original), original)
+        mock_get.assert_not_called()
+
+    @patch("app.scraper.sec_scraper._scrape_filing")
+    @patch("app.scraper.sec_scraper._get_request")
+    def test_a_partial_amendment_is_merged_with_its_original(self, mock_get, mock_scrape):
+        """
+        The listing is walked back to the period's report, whose rows are kept.
+        """
+        added = self.filing("2024-12-31", "2025-04-09", "B", 20, "NEW HOLDINGS")
+        listing = MagicMock()
+        listing.text = '<a id="documentsbutton" href="/1"></a>' * 4
+        mock_get.return_value = listing
+        mock_scrape.side_effect = [
+            self.filing("2025-03-31", "2025-05-15", "Z", 1),
+            added,
+            self.filing("2024-12-31", "2025-02-14", "A", 500),
+            self.filing("2024-09-30", "2024-11-14", "A", 400),
+        ]
+
+        merged = complete_new_holdings("1", added)
+
+        self.assertIn(b"<ns1:cusip>A</ns1:cusip>", merged["xml_content"])
+        self.assertIn(b"<ns1:cusip>B</ns1:cusip>", merged["xml_content"])
+        self.assertEqual(mock_scrape.call_count, 4)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,63 @@ from app.scraper.xml_processor import (
 )
 
 
+def _info(name: str, cusip: str, value: int, shares: int) -> str:
+    """
+    One 13F infoTable row as XML.
+    """
+    return (
+        f"<infotable><nameofissuer>{name}</nameofissuer><cusip>{cusip}</cusip>"
+        f"<value>{value}</value><shrsorprnamt><sshprnamt>{shares}</sshprnamt>"
+        "</shrsorprnamt></infotable>"
+    )
+
+
+class TestFilingCorrections(unittest.TestCase):
+    """
+    A filer's CUSIP mistakes are fixed from the corrections registry at parse time.
+    """
+
+    XML = (
+        "<informationtable>"
+        + _info("UR-ENERGY INC", "N85083108", 18420409, 13252093)
+        + _info("VISTRA CORP", "91688R108", 161330, 1000)
+        + _info("TERRA INNOVATUM GLOBAL NV", "92840M102", 9039113, 1956518)
+        + "</informationtable>"
+    )
+    CORRECTIONS = {
+        ("N85083108", "UR-ENERGY INC"): "91688R108",
+        ("91688R108", "VISTRA CORP"): "92840M102",
+        ("92840M102", "TERRA INNOVATUM GLOBAL NV"): "N85083108",
+    }
+
+    def test_rotated_cusips_are_put_back_on_their_issuers(self):
+        """
+        Each row takes the CUSIP of the company it names.
+        """
+        df = xml_to_dataframe_13f(self.XML, corrections=self.CORRECTIONS)
+        by_cusip = dict(zip(df["CUSIP"], df["Company"], strict=True))
+        self.assertEqual(by_cusip["91688R108"], "UR-ENERGY INC")
+        self.assertEqual(by_cusip["92840M102"], "VISTRA CORP")
+        self.assertEqual(by_cusip["N85083108"], "TERRA INNOVATUM GLOBAL NV")
+
+    def test_correction_needs_the_filed_name_to_match(self):
+        """
+        A registry entry never touches a different row that shares the CUSIP.
+        """
+        df = xml_to_dataframe_13f(
+            self.XML, corrections={("91688R108", "SOMETHING ELSE"): "92840M102"}
+        )
+        self.assertIn("91688R108", set(df["CUSIP"]))
+
+    def test_without_corrections_the_filing_is_kept_as_filed(self):
+        """
+        No registry, no change: the CSV stays a faithful record of the filing.
+        """
+        df = xml_to_dataframe_13f(self.XML)
+        by_cusip = dict(zip(df["CUSIP"], df["Company"], strict=True))
+        self.assertEqual(by_cusip["91688R108"], "VISTRA CORP")
+
+
 class TestXmlProcessor(unittest.TestCase):
     def test_xml_to_dataframe_13f_empty_filing_does_not_crash(self):
         """

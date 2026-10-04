@@ -108,7 +108,7 @@ export function TickerLink({
       title={title}
       onClick={(e) => e.stopPropagation()}
     >
-      {showLogo && <CompanyLogo ticker={ticker} size={16} />}
+      {showLogo && <CompanyLogo ticker={ticker} size={20} />}
       <span>{ticker}</span>
     </Link>
   );

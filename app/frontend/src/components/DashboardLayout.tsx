@@ -6,13 +6,14 @@ import { useTheme } from "next-themes";
 import { AppSidebar } from "@/components/AppSidebar";
 import { MobileNav } from "@/components/MobileNav";
 import GlobalSearch from "@/components/GlobalSearch";
-import MobileNotice from "@/components/MobileNotice";
 import { GitHubMark } from "@/components/GitHubMark";
 import { CoalesceCIcon } from "@/components/CoalesceCIcon";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
-import { APP_VERSION, BASE_PATH } from "@/lib/config";
+import { useScrollTopOnNavigate } from "@/hooks/useScrollTopOnNavigate";
+import { APP_VERSION } from "@/lib/config";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 /**
  * Restore the desktop rail's expanded/collapsed choice from the cookie that
@@ -34,7 +35,7 @@ function HeaderLogo() {
       aria-label="Open navigation"
       className="shrink-0 grid place-items-center h-9 w-9 rounded-md transition-colors duration-[120ms] hover:bg-muted"
     >
-      <img src={`${BASE_PATH}/logo.png`} alt="" className="h-7 w-7" />
+      <BrandLogo size={28} className="h-7 w-7" />
     </button>
   );
 }
@@ -100,6 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { theme, setTheme } = useTheme();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const location = useLocation();
+  useScrollTopOnNavigate();
 
   return (
     <SidebarProvider defaultOpen={readSidebarOpen()}>
@@ -110,13 +112,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         Skip to content
       </a>
       <MobileNav />
-      <div className="h-screen flex w-full overflow-hidden">
+      {/* Phones scroll the document so the browser chrome can collapse. */}
+      <div className="flex w-full md:h-screen md:overflow-hidden">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Labelled: the sidebar brand plate is the other banner landmark. */}
           <header
             aria-label="Top bar"
-            className="h-12 flex items-center gap-3 border-b border-border px-3 sm:px-4 shrink-0 bg-background z-10"
+            className="sticky top-0 h-12 flex items-center gap-3 border-b border-border px-3 sm:px-4 shrink-0 bg-background z-10"
           >
             <div className="md:hidden">
               <HeaderLogo />
@@ -156,8 +159,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </header>
 
-          <MobileNotice />
-
           <Sheet open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
             <SheetContent side="top" className="p-3 pt-4 gap-0">
               <SheetTitle className="sr-only">Search</SheetTitle>
@@ -171,7 +172,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <main
             id="main"
             key={location.pathname}
-            className="flex-1 overflow-auto p-3 sm:p-4 md:p-6"
+            className="flex-1 min-w-0 p-3 sm:p-4 md:p-6 md:overflow-auto"
           >
             {children}
           </main>

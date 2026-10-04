@@ -5,12 +5,13 @@ import { useLocation } from "react-router";
 
 import GlobalSearch from "@/components/GlobalSearch";
 import { NavLink } from "@/components/NavLink";
-import { APP_VERSION, BASE_PATH } from "@/lib/config";
+import { APP_VERSION } from "@/lib/config";
 import { MENU_SECTIONS } from "@/lib/menuDoors";
 import { ROUTES } from "@/lib/routes";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 function isActiveUrl(pathname: string, url: string): boolean {
   if (url === ROUTES.stocks)
@@ -28,9 +29,8 @@ function isActiveUrl(pathname: string, url: string): boolean {
  * `aria-hidden` on everything outside the portal, and it restores focus to the
  * element that was focused when it opened — the header toggle. What it cannot
  * know is added here: closing on a route change (browser back/forward fires no
- * click), `inert` on the page behind (belt to the aria-hidden braces, and what
- * keeps the MobileNotice row unreachable), and closing when the viewport grows
- * past the phone breakpoint.
+ * click), `inert` on the page behind (belt to the aria-hidden braces), and
+ * closing when the viewport grows past the phone breakpoint.
  */
 export function MobileNav() {
   const { openMobile, setOpenMobile, isMobile } = useSidebar();
@@ -65,7 +65,6 @@ export function MobileNav() {
     const behind = [
       document.getElementById("main"),
       document.querySelector<HTMLElement>("header[aria-label='Top bar']"),
-      document.querySelector<HTMLElement>("[role='status']"),
     ].filter((n): n is HTMLElement => n !== null);
     for (const el of behind) el.inert = true;
     return () => {
@@ -101,7 +100,7 @@ export function MobileNav() {
           <DialogPrimitive.Title className="sr-only">Navigation</DialogPrimitive.Title>
 
           <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
-            <img src={`${BASE_PATH}/logo.png`} alt="" className="h-7 w-7 shrink-0" />
+            <BrandLogo size={28} className="h-7 w-7 shrink-0" />
             <span className="truncate text-sm font-semibold text-foreground">
               Hedge Fund Tracker
             </span>

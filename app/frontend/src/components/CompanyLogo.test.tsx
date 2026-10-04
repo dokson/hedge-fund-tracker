@@ -40,6 +40,17 @@ describe("CompanyLogo", () => {
     expect(img.src).toContain("financialmodelingprep.com/symbol/AAPL.png");
   });
 
+  it("fills its whole box once loaded: no padding or border to shrink a small logo", () => {
+    const { container } = render(<CompanyLogo ticker="AAPL" size={20} />);
+    const img = container.querySelector("img")!;
+    fireEvent.load(img);
+    const classes = img.className.split(/\s+/);
+
+    expect(classes).toContain("bg-white");
+    expect(classes).not.toContain("p-px");
+    expect(classes).not.toContain("border");
+  });
+
   it("names the img when it is not decorative", () => {
     const { getByRole } = render(<CompanyLogo ticker="AAPL" decorative={false} />);
 

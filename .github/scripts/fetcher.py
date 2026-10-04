@@ -3,9 +3,16 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from app.database import clean_stocks, sort_stocks
+from app.analysis.filing_anomalies import render_anomalies_markdown
+from app.database import clean_stocks, get_funds_missing_quarters, sort_stocks
+from app.database.filing_anomalies import check_filings
 from app.utils.github import raised_alerts
-from app.utils.run_summary import FetchRunSummary, render_markdown, write_step_summary
+from app.utils.run_summary import (
+    FetchRunSummary,
+    render_markdown,
+    render_missing_quarters_markdown,
+    write_step_summary,
+)
 from database.updater import run_all_funds_report, run_fetch_nq_filings
 
 if __name__ == "__main__":
@@ -23,6 +30,10 @@ if __name__ == "__main__":
     sort_stocks()
     print("::notice title=Stocks Database Maintenance::✅ Stocks database maintenance completed.")
 
+    print("::group::🔎 Checking filings for CUSIP anomalies")
+    anomalies = check_filings()
+    print("::endgroup::✅ Filing check completed.")
+
     write_step_summary(
         render_markdown(
             FetchRunSummary(
@@ -35,3 +46,5 @@ if __name__ == "__main__":
             )
         )
     )
+    write_step_summary(render_anomalies_markdown(anomalies))
+    write_step_summary(render_missing_quarters_markdown(get_funds_missing_quarters()))

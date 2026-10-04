@@ -24,6 +24,7 @@ import { toInitCap, matchesQuery } from "@/lib/utils";
 import { fundPath, stockPath, ROUTES } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
+import { FUNDS_PAGE } from "@/lib/pageMeta";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { TableFrame } from "@/components/ui/TableFrame";
 import { PanelTitle } from "@/components/ui/PanelTitle";
+import FundPerformancePanel from "@/components/FundPerformancePanel";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 
 import { ArrowLeft, Wallet, Star, X, ArrowUp, ArrowDown, Check } from "lucide-react";
@@ -235,10 +237,9 @@ function FundList({
 
 function FundGrid() {
   usePageMeta({
-    title: pageTitle("Fund Portfolios"),
-    description:
-      "Every tracked hedge fund's portfolio: position count, total institutional value, quarter-over-quarter change and the manager behind it.",
-    canonical: canonicalUrl(ROUTES.funds),
+    title: FUNDS_PAGE.title,
+    description: FUNDS_PAGE.description,
+    canonical: canonicalUrl(FUNDS_PAGE.path),
   });
 
   const [search, setSearch] = useState("");
@@ -1073,6 +1074,8 @@ function FundDetail({ fundName }: { fundName: string }) {
           )}
         </div>
       </div>
+
+      <FundPerformancePanel fund={fundName} />
     </div>
   );
 }

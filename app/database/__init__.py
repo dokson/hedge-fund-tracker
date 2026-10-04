@@ -47,6 +47,8 @@ MODELS_FILE = "models.csv"
 SECTOR_HIERARCHY_FILE = "sector_hierarchy.csv"
 STOCKS_FILE = "stocks.csv"
 PERFORMANCE_FILE = "performance.csv"
+FUND_PERFORMANCE_FILE = "fund_performance.csv"
+FILING_ANOMALIES_FILE = "filing_anomalies.csv"
 SPLITS_FILE = "splits.csv"
 
 

@@ -1,9 +1,11 @@
+import json
 from datetime import date
 
 from curl_cffi import requests
 
 from app.stocks.libraries.base_library import FinanceLibrary
 from app.utils.logger import get_logger, log_safe
+from app.utils.metrics import PRICE_LOOKUP_FAILURES
 
 logger = get_logger(__name__)
 
@@ -53,9 +55,21 @@ class StockAnalysis(FinanceLibrary):
         url = f"{StockAnalysis.BASE_URL}/{ticker}/history?range={api_range}&period={api_period}"
         try:
             response = requests.get(url, headers=StockAnalysis.HEADERS, timeout=10)
-            data = response.json().get("data")
-            return data or []
+            try:
+                payload = response.json()
+            except json.JSONDecodeError:
+                # A non-JSON page is how the API answers a delisted or unknown symbol:
+                # expected, so one line and a metric, not a traceback.
+                PRICE_LOOKUP_FAILURES.labels(provider="StockAnalysis").inc()
+                logger.warning(
+                    "StockAnalysis: no history for %s (HTTP %s, non-JSON response)",
+                    log_safe(ticker),
+                    response.status_code,
+                )
+                return []
+            return payload.get("data") or []
         except Exception:
+            PRICE_LOOKUP_FAILURES.labels(provider="StockAnalysis").inc()
             logger.warning(
                 "StockAnalysis: failed to fetch history for %s", log_safe(ticker), exc_info=True
             )

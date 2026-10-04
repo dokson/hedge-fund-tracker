@@ -1,0 +1,136 @@
+{
+  "quarter": "2025Q2",
+  "fund": "R",
+  "register": [
+    {
+      "Quarter": "2025Q2",
+      "Fund": "R",
+      "Filed_CUSIP": "FXI",
+      "Status": "auto-corrected",
+      "Kind": "value",
+      "Shares": "1000",
+      "Value": "36800",
+      "Delta_Shares": "1000",
+      "Delta_Value": "36800",
+      "Delta": "NEW"
+    },
+    {
+      "Quarter": "2025Q2",
+      "Fund": "R",
+      "Filed_CUSIP": "BKG",
+      "Status": "carried",
+      "Kind": "carried",
+      "Shares": "0",
+      "Value": "0",
+      "Delta_Shares": "-680",
+      "Delta_Value": "-20000",
+      "Delta": "CLOSE"
+    },
+    {
+      "Quarter": "2025Q2",
+      "Fund": "R",
+      "Filed_CUSIP": "AAA",
+      "Status": "open",
+      "Kind": "",
+      "Shares": "",
+      "Value": "",
+      "Delta_Shares": "",
+      "Delta_Value": "",
+      "Delta": ""
+    },
+    {
+      "Quarter": "2025Q2",
+      "Fund": "R",
+      "Filed_CUSIP": "AAA",
+      "Status": "dismissed",
+      "Kind": "value",
+      "Shares": "1",
+      "Value": "1",
+      "Delta_Shares": "1",
+      "Delta_Value": "1",
+      "Delta": "NEW"
+    },
+    {
+      "Quarter": "2025Q2",
+      "Fund": "Other",
+      "Filed_CUSIP": "AAA",
+      "Status": "auto-corrected",
+      "Kind": "value",
+      "Shares": "1",
+      "Value": "1",
+      "Delta_Shares": "1",
+      "Delta_Value": "1",
+      "Delta": "NEW"
+    },
+    {
+      "Quarter": "2025Q1",
+      "Fund": "R",
+      "Filed_CUSIP": "AAA",
+      "Status": "auto-corrected",
+      "Kind": "value",
+      "Shares": "1",
+      "Value": "1",
+      "Delta_Shares": "1",
+      "Delta_Value": "1",
+      "Delta": "NEW"
+    }
+  ],
+  "holdings": [
+    {
+      "CUSIP": "FXI",
+      "Shares": "1000",
+      "Delta_Shares": "1000",
+      "Value": "368K",
+      "Delta_Value": "368K",
+      "Delta": "NEW",
+      "Portfolio%": "85.34%"
+    },
+    {
+      "CUSIP": "AAA",
+      "Shares": "500",
+      "Delta_Shares": "0",
+      "Value": "63.2K",
+      "Delta_Value": "0",
+      "Delta": "NO CHANGE",
+      "Portfolio%": "14.66%"
+    },
+    {
+      "CUSIP": "BKG",
+      "Shares": "0",
+      "Delta_Shares": "-17000",
+      "Value": "0",
+      "Delta_Value": "-20K",
+      "Delta": "CLOSE",
+      "Portfolio%": "0%"
+    }
+  ],
+  "expected": [
+    {
+      "cusip": "FXI",
+      "shares": 1000,
+      "deltaShares": 1000,
+      "value": 36800,
+      "deltaValue": 36800,
+      "delta": "NEW",
+      "portfolioPct": 36.8
+    },
+    {
+      "cusip": "AAA",
+      "shares": 500,
+      "deltaShares": 0,
+      "value": 63200,
+      "deltaValue": 0,
+      "delta": "NO CHANGE",
+      "portfolioPct": 63.2
+    },
+    {
+      "cusip": "BKG",
+      "shares": 0,
+      "deltaShares": -680,
+      "value": 0,
+      "deltaValue": -20000,
+      "delta": "CLOSE",
+      "portfolioPct": 0
+    }
+  ]
+}

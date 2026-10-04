@@ -1,8 +1,10 @@
+import json
 import unittest
 from datetime import date
 from unittest.mock import MagicMock, patch
 
 from app.stocks.libraries.stockanalysis import StockAnalysis
+from app.utils.metrics import PRICE_LOOKUP_FAILURES
 
 
 def _make_api_response(rows):
@@ -52,6 +54,41 @@ class TestStockAnalysisFetchHistory(unittest.TestCase):
         rows = StockAnalysis._fetch_history("ANSS", "5Y", "Daily")
 
         self.assertEqual(rows, [])
+
+    @patch("app.stocks.libraries.stockanalysis.requests.get")
+    def test_non_json_body_is_a_quiet_miss(self, mock_get):
+        """
+        A non-JSON page (a delisted or unknown symbol) is no data: one line, no traceback.
+        """
+        mock_resp = MagicMock()
+        mock_resp.json.side_effect = json.JSONDecodeError("Expecting value", "<html>", 0)
+        mock_get.return_value = mock_resp
+
+        mock_resp.status_code = 404
+        failures = PRICE_LOOKUP_FAILURES.labels(provider="StockAnalysis")
+        before = failures._value.get()
+
+        with self.assertLogs("app.stocks.libraries.stockanalysis", level="WARNING") as logs:
+            rows = StockAnalysis._fetch_history("CADE", "5Y", "Daily")
+
+        self.assertEqual(rows, [])
+        self.assertEqual(len(logs.records), 1)
+        self.assertIsNone(logs.records[0].exc_info)
+        self.assertIn("CADE", logs.records[0].getMessage())
+        self.assertIn("404", logs.records[0].getMessage())
+        self.assertEqual(failures._value.get(), before + 1)
+
+    @patch("app.stocks.libraries.stockanalysis.requests.get")
+    def test_network_failure_keeps_the_traceback(self, mock_get):
+        """
+        A genuine request failure is still logged with its traceback.
+        """
+        mock_get.side_effect = ConnectionError("reset")
+
+        with self.assertLogs("app.stocks.libraries.stockanalysis", level="WARNING") as logs:
+            StockAnalysis._fetch_history("ANSS", "5Y", "Daily")
+
+        self.assertIsNotNone(logs.records[0].exc_info)
 
 
 class TestStockAnalysisGetAvgPrice(unittest.TestCase):

@@ -4,7 +4,12 @@ from unittest.mock import patch
 import pandas as pd
 from prometheus_client import REGISTRY
 
-from database.updater import process_fund, process_fund_nq, run_all_funds_report, run_fetch_nq_filings
+from database.updater import (
+    process_fund,
+    process_fund_nq,
+    run_all_funds_report,
+    run_fetch_nq_filings,
+)
 
 FUND = {"CIK": "0001111111", "CIKs": "", "Fund": "Fund A", "Denomination": "FUND A LLC"}
 

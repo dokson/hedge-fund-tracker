@@ -1,3 +1,4 @@
+import { treemapLabel } from "@/components/treemapLabel";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
@@ -280,19 +281,12 @@ export function HoldingsTreemap({
           const bgColor = getDeltaColor(item.deltaPct, item.delta);
           const showValue = h > 40;
 
-          // Bound font by cell px width (≈0.6em/char) and height; fall back
-          // to the width-% heuristic until the container is measured. Below the
-          // 11px floor the label is dropped rather than shrunk.
-          const cellPx = (w / 100) * containerPx;
-          const fitSize = containerPx
-            ? Math.min(
-                14,
-                (cellPx - 4) / Math.max(item.name.length, 1) / 0.6,
-                showValue ? h * 0.45 : h * 0.7,
-              )
-            : Math.min(14, w * 0.8);
-          const showLabel = fitSize >= 11;
-          const fontSize = Math.max(11, fitSize);
+          // Until the container is measured, size from the width-% heuristic.
+          const label = containerPx
+            ? treemapLabel(item.name, (w / 100) * containerPx, h, showValue)
+            : Math.min(14, w * 0.8) >= 11
+              ? { lines: [item.name], fontSize: Math.min(14, w * 0.8) }
+              : null;
 
           return (
             <button
@@ -322,15 +316,16 @@ export function HoldingsTreemap({
                 setTip(null);
               }}
             >
-              {showLabel && (
+              {label?.lines.map((line) => (
                 <span
+                  key={line}
                   className="max-w-full truncate px-0.5 font-semibold leading-tight"
-                  style={{ fontSize }}
+                  style={{ fontSize: label.fontSize }}
                 >
-                  {item.name}
+                  {line}
                 </span>
-              )}
-              {showLabel && showValue && (
+              ))}
+              {label && showValue && (
                 // Full foreground, not muted and not faded: on the strongest
                 // delta tints the muted tone is 1.9:1 and even foreground at
                 // 80% is 3.6:1. At 100% the worst tile is 4.65:1. Size and

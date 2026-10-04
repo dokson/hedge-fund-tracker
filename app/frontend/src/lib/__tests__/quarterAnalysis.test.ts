@@ -32,6 +32,9 @@ function mockFetch(url: string, _init?: RequestInit): Promise<Response> {
       new Response(MOCK_SECTOR_HIERARCHY_CSV, { headers: { "Content-Type": "text/csv" } }),
     );
   }
+  if (urlStr.includes("filing_anomalies.csv")) {
+    return Promise.resolve(new Response("", { status: 404 }));
+  }
   if (urlStr.includes("/api/database/quarters/")) {
     return Promise.resolve(
       new Response(JSON.stringify(["fund_A.csv", "fund_B.csv"]), {

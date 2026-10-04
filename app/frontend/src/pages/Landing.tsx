@@ -5,14 +5,15 @@ import { ArrowRight, Code2, Layers, Trophy } from "lucide-react";
 import { GitHubMark } from "@/components/GitHubMark";
 import { PanelTitle } from "@/components/ui/PanelTitle";
 import { QueryState } from "@/components/ui/QueryState";
-import { BASE_PATH } from "@/lib/config";
 import { getHedgeFunds, getStocks } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useEnrichedNQFilings } from "@/hooks/useEnrichedNQFilings";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { HOME_PAGE } from "@/lib/pageMeta";
 import { ROUTES, fundPath, learnItem, stockPath } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 // Ordered fastest → slowest. `days` is calendar days and drives a shared-scale
 // bar, so the eye reads "how long until this filing is public": Form 4 a sliver,
@@ -41,8 +42,8 @@ const FEATURES = [
   },
   {
     icon: Code2,
-    title: "Open source, runs anywhere",
-    body: "FastAPI and React, self-hostable, with a static demo in which every analysis feature works without a backend.",
+    title: "Source available, runs in your browser",
+    body: "FastAPI and React, with the code public on GitHub. This site computes every consensus screen in your browser from the published filings, no backend needed.",
   },
 ];
 
@@ -59,7 +60,7 @@ function Wire() {
         <PanelTitle>Latest filings</PanelTitle>
         <Link
           to={ROUTES.latest}
-          className="inline-flex items-center gap-1 text-[13px] font-normal text-primary-text hover:underline"
+          className="tap-target inline-flex items-center gap-1 text-[13px] font-normal text-primary-text hover:underline"
         >
           View all <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
@@ -139,10 +140,9 @@ export default function Landing() {
   const asOf = latestQuarter ? latestQuarter.replace("Q", " Q") : "…";
 
   usePageMeta({
-    title: "Hedge Fund Tracker — SEC Filing Tracker & Hedge Fund Analytics",
-    description:
-      "SEC filings from a roster of hedge funds selected by measured performance, turned into portfolios, deltas and consensus you can read in seconds.",
-    canonical: canonicalUrl(ROUTES.home),
+    title: HOME_PAGE.title,
+    description: HOME_PAGE.description,
+    canonical: canonicalUrl(HOME_PAGE.path),
   });
 
   return (
@@ -150,7 +150,7 @@ export default function Landing() {
       <section className="flex flex-col items-center pt-6 text-center sm:pt-12">
         <Link
           to={ROUTES.latest}
-          className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card py-1 pl-2.5 pr-3 text-xs text-muted-foreground shadow-sm transition-colors duration-[120ms] hover:text-foreground"
+          className="tap-target mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card py-1 pl-2.5 pr-3 text-xs text-muted-foreground shadow-sm transition-colors duration-[120ms] hover:text-foreground"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-positive" aria-hidden="true" />
           <span>
@@ -158,9 +158,10 @@ export default function Landing() {
           </span>
           <ArrowRight className="h-3 w-3" aria-hidden="true" />
         </Link>
-        <img
-          src={`${BASE_PATH}/logo.png`}
+        <BrandLogo
+          size={112}
           alt="Hedge Fund Tracker"
+          priority
           className="mb-4 h-24 w-24 object-contain sm:h-28 sm:w-28"
         />
         <h1 className="max-w-[24ch] text-[clamp(2rem,5vw,3.5rem)] font-semibold leading-[1.05] tracking-[-0.035em] text-foreground">
@@ -174,7 +175,7 @@ export default function Landing() {
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             to={ROUTES.latest}
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm transition-[filter] duration-[120ms] hover:brightness-110"
+            className="inline-flex h-11 md:h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm transition-[filter] duration-[120ms] hover:brightness-110"
           >
             Open the board <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
@@ -182,7 +183,7 @@ export default function Landing() {
             href="https://github.com/dokson/hedge-fund-tracker"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 text-sm font-medium text-foreground shadow-sm transition-colors duration-[120ms] hover:bg-muted"
+            className="inline-flex h-11 md:h-10 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 text-sm font-medium text-foreground shadow-sm transition-colors duration-[120ms] hover:bg-muted"
           >
             <GitHubMark className="h-4 w-4" /> Source
           </a>
@@ -259,7 +260,7 @@ export default function Landing() {
             Most 13F trackers show holdings that are 45 or more days stale. The faster filings are
             stacked on top of the quarterly snapshot, so the picture reflects what funds are doing
             now.{" "}
-            <Link to={learnItem("how-funds-are-selected")} className="ticker-link">
+            <Link to={learnItem("how-funds-are-selected")} className="tap-target ticker-link">
               How funds are selected
             </Link>
           </p>
@@ -274,7 +275,7 @@ export default function Landing() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="COalesCE website"
-            className="text-foreground underline underline-offset-2"
+            className="tap-target text-foreground underline underline-offset-2"
           >
             COalesCE
           </a>

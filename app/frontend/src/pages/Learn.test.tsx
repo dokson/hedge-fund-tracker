@@ -70,6 +70,28 @@ describe("Learn page", () => {
     expect(combined).toContain('"@type":"BreadcrumbList"');
   });
 
+  it("tracks the active section on window scroll when no container scrolls", async () => {
+    const { getAllByRole } = renderLearn();
+    const second = FAQ_SECTIONS[1];
+    const secondHeading = getAllByRole("heading", { level: 2 }).find(
+      (h) => h.textContent === second.title,
+    );
+    const section = secondHeading?.closest("section") ?? secondHeading?.parentElement;
+    expect(section).toBeTruthy();
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: Element,
+    ) {
+      return new DOMRect(0, this === section ? 10 : 2000, 0, 0);
+    });
+
+    window.dispatchEvent(new Event("scroll"));
+
+    await waitFor(() => {
+      const current = document.querySelector('[aria-current="location"]');
+      expect(current?.textContent).toContain(second.title);
+    });
+  });
+
   it("opens the accordion item named by the URL hash", async () => {
     const { getByRole } = renderLearn("/learn#how-funds-are-selected");
     const trigger = getByRole("button", { name: /How are the tracked funds selected/ });

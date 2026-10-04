@@ -1,5 +1,6 @@
 import re
 import warnings
+from collections.abc import Mapping
 
 import pandas as pd
 from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
@@ -50,9 +51,15 @@ def _get_tag_text(element, tag_suffix):
     return None
 
 
-def xml_to_dataframe_13f(xml_content):
+def xml_to_dataframe_13f(
+    xml_content, corrections: Mapping[tuple[str, str], str] | None = None
+) -> pd.DataFrame:
     """
     Parses the XML content of a 13F filing and returns the data as a Pandas DataFrame.
+
+    ``corrections`` maps (filed CUSIP, upper-cased filed name) to the CUSIP the
+    issuer really has (see app.database.filing_anomalies); it is applied before
+    rows are grouped by CUSIP, so a corrected row merges as a correct filing would.
     """
     soup_xml = BeautifulSoup(_sanitize_xml(xml_content), "lxml")
 
@@ -81,6 +88,19 @@ def xml_to_dataframe_13f(xml_content):
 
     df["Company"] = df["Company"].str.strip().str.replace(r"\s+", " ", regex=True)
     df["CUSIP"] = df["CUSIP"].str.upper()
+    if corrections:
+        fixed_cusips: list[str] = []
+        for cusip, company in zip(df["CUSIP"], df["Company"], strict=True):
+            fixed = corrections.get((cusip, company.upper()))
+            if fixed:
+                logger.info(
+                    "Filing correction: %s filed as %s, booked as %s",
+                    log_safe(company),
+                    log_safe(cusip),
+                    log_safe(fixed),
+                )
+            fixed_cusips.append(fixed or cusip)
+        df["CUSIP"] = fixed_cusips
     df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
     df["Shares"] = pd.to_numeric(df["Shares"], errors="coerce")
 

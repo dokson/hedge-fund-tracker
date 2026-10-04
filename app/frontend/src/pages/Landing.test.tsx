@@ -34,3 +34,21 @@ describe("Landing latest-filings wire", () => {
     expect(screen.queryByText("No filings yet.")).toBeNull();
   });
 });
+
+describe("Landing feature claims", () => {
+  // The code is proprietary (All Rights Reserved): source-available, not open source.
+  it("never calls the project open source or self-hostable", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { container } = render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <Landing />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const text = (container.textContent ?? "").toLowerCase();
+    expect(text).not.toContain("open source");
+    expect(text).not.toContain("self-hostable");
+    expect(screen.getByText("Source available, runs in your browser")).toBeTruthy();
+  });
+});

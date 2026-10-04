@@ -3,6 +3,7 @@
  * app/database/quarters.py responsibilities on the client side).
  */
 
+import { applyRestatements, getFilingRegister } from "./filingRegister";
 import { BASE_PATH, IS_GH_PAGES_MODE } from "../config";
 import { parseQuarters, type Quarter } from "../quarters";
 import { cachedFetch, DataFormatError, fetchCSV, HttpError } from "./fetch";
@@ -108,7 +109,7 @@ export async function getFundQuarterlyHoldings(
         "Portfolio%",
       ] satisfies readonly (keyof RawQuarterlyHolding)[],
     );
-    return raw.map((r) => ({
+    const holdings = raw.map((r) => ({
       cusip: r.CUSIP,
       ticker: r.Ticker,
       company: r.Company,
@@ -119,6 +120,7 @@ export async function getFundQuarterlyHoldings(
       delta: r.Delta,
       portfolioPct: parseFloat(r["Portfolio%"]) || 0,
     }));
+    return applyRestatements(holdings, await getFilingRegister(), quarter, fundName);
   });
 }
 

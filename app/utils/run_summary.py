@@ -29,7 +29,7 @@ class FetchRunSummary:
     alerts: tuple[str, ...] = ()
 
 
-def _md(value: str) -> str:
+def markdown_safe(value: str) -> str:
     """
     Sanitize an external string into inert single-line Markdown.
     """
@@ -60,10 +60,22 @@ def render_markdown(summary: FetchRunSummary) -> str:
         ]
     if failed:
         lines += ["", "### Non-quarterly fetch failed (existing rows kept)", ""]
-        lines += [f"- {_md(name)}" for name in failed]
+        lines += [f"- {markdown_safe(name)}" for name in failed]
     if alerts:
         lines += ["", "### Unidentified filers / unresolved identifiers", ""]
-        lines += [f"- {_md(alert)}" for alert in alerts]
+        lines += [f"- {markdown_safe(alert)}" for alert in alerts]
+    return "\n".join(lines)
+
+
+def render_missing_quarters_markdown(missing: Mapping[str, list[str]]) -> str:
+    """
+    The run-summary section listing tracked funds with no 13F saved for some quarter.
+    """
+    lines = ["## Missing quarters", ""]
+    if not missing:
+        return "\n".join([*lines, "Every tracked fund has every quarter."])
+    lines += ["| Fund | Missing |", "|---|---|"]
+    lines += [f"| {markdown_safe(fund)} | {', '.join(missing[fund])} |" for fund in sorted(missing)]
     return "\n".join(lines)
 
 

@@ -47,7 +47,9 @@ export function SegmentedControl<T extends string>({
             onClick={() => onValueChange(opt.value)}
             className={cn(
               "rounded-md font-medium transition-colors duration-[120ms] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
-              size === "sm" ? "px-2 h-6 text-xs" : "px-3 h-8 text-[13px]",
+              size === "sm"
+                ? "px-3 h-9 text-[13px] md:px-2 md:h-6 md:text-xs"
+                : "px-3 h-10 text-sm md:h-8 md:text-[13px]",
               isActive ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}
           >

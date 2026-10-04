@@ -8,7 +8,9 @@ export const ROUTES = {
   latest: "/latest",
   quarterly: "/quarterly",
   strategyPerformance: "/performance",
+  fundRanking: "/ranking",
   learn: "/learn",
+  about: "/about",
   funds: "/funds",
   stocks: "/stocks",
   /** Base segment for a single stock page; use `stockPath()` for a full link. */

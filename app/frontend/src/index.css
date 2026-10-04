@@ -71,6 +71,7 @@
        A chart mark needs 3:1 (SC 1.4.11); both clear it on every ground. */
     --chart-6: 80 95% 26%; /* #578103: muted 4.3, bg 4.62 */
     --chart-7: 140 85% 28%; /* #0b8433: muted 4.4, bg 4.81 */
+    --chart-8: 46 100% 30%; /* #997300, Smart Score yellow: bg 4.6 */
   }
 
   /* Dark is the default look: near-black page, one step lighter panel,
@@ -137,6 +138,7 @@
     --chart-5: 187 100% 42%;
     --chart-6: 80 55% 50%;
     --chart-7: 140 60% 44%;
+    --chart-8: 50 100% 50%; /* #ffd500, Smart Score yellow */
   }
 }
 
@@ -159,6 +161,24 @@
     font-variant-numeric: tabular-nums;
     /* Inter's open digits and single-storey a read cleaner at 13px. */
     font-feature-settings: "cv11", "ss01";
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  @media (max-width: 767.98px) {
+    body {
+      font-size: 14px;
+      line-height: 21px;
+    }
+    /* iOS Safari zooms the page on focus below 16px and leaves it zoomed. */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
   }
 
   ::selection {
@@ -442,6 +462,18 @@
 }
 
 @layer utilities {
+  /* Grows a small inline link's hit area on phones without changing its look. */
+  .tap-target {
+    position: relative;
+  }
+  @media (max-width: 767.98px) {
+    .tap-target::after {
+      content: "";
+      position: absolute;
+      inset: -10px -4px;
+    }
+  }
+
   .text-magenta {
     color: hsl(var(--magenta));
   }

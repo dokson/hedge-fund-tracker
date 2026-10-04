@@ -6,6 +6,20 @@ from pathlib import Path
 from app.backtest.price_cache import PriceCache
 
 
+def RECENT() -> date:
+    """
+    A "today" one day after the 2025-05-15 lookups, so their misses can still resolve.
+    """
+    return date(2025, 5, 16)
+
+
+def LATER() -> date:
+    """
+    A "today" long after every lookup in these tests: their misses are settled.
+    """
+    return date(2026, 1, 1)
+
+
 class TestPriceCache(unittest.TestCase):
     """
     Tests for the persistent (ticker, date) -> price cache.
@@ -62,7 +76,7 @@ class TestPriceCache(unittest.TestCase):
                     calls.append(ticker)
                     return bad
 
-                cache = PriceCache(path=self.path, fetch_fn=fetch)
+                cache = PriceCache(path=self.path, fetch_fn=fetch, today_fn=RECENT)
                 self.assertIsNone(cache.get("BAD", date(2025, 5, 15)))
                 self.assertIsNone(cache.get("BAD", date(2025, 5, 15)))
                 self.assertEqual(len(calls), 2)
@@ -138,18 +152,58 @@ class TestPriceCache(unittest.TestCase):
         A window with no bar is returned as missing and not cached.
         """
         start, end = date(2025, 5, 15), date(2025, 8, 14)
-        cache = PriceCache(path=self.path, fetch_fn=self._fetch, range_fetch_fn=self._fetch_range)
+        cache = PriceCache(
+            path=self.path,
+            fetch_fn=self._fetch,
+            range_fetch_fn=self._fetch_range,
+            today_fn=lambda: date(2025, 8, 15),
+        )
         self.assertIsNone(cache.last_in_range("MISS", start, end))
         self.assertFalse(self.path.exists())
 
     def test_none_result_is_not_persisted(self):
         """
-        A failed lookup (None) is returned but not cached, so it is retried.
+        A failed lookup (None) on a recent date is returned but not cached, so it is retried.
         """
-        cache = PriceCache(path=self.path, fetch_fn=self._fetch)
+        cache = PriceCache(path=self.path, fetch_fn=self._fetch, today_fn=RECENT)
         self.assertIsNone(cache.get("MISS", date(2025, 5, 15)))
         self.assertIsNone(cache.get("MISS", date(2025, 5, 15)))
         self.assertEqual(len(self.calls), 2)
+
+    def test_settled_miss_is_remembered_across_runs(self):
+        """
+        A price still missing weeks later is recorded, so a new run never refetches it.
+        """
+        first = PriceCache(path=self.path, fetch_fn=self._fetch, today_fn=LATER)
+        self.assertIsNone(first.get("MISS", date(2025, 5, 15)))
+        second = PriceCache(path=self.path, fetch_fn=self._fetch, today_fn=LATER)
+        self.assertIsNone(second.get("MISS", date(2025, 5, 15)))
+        self.assertEqual(len(self.calls), 1)
+
+    def test_settled_range_miss_is_remembered(self):
+        """
+        A window with no bar, closed weeks ago, is not asked again.
+        """
+        start, end = date(2025, 5, 15), date(2025, 8, 14)
+        for _ in range(2):
+            cache = PriceCache(
+                path=self.path,
+                fetch_fn=self._fetch,
+                range_fetch_fn=self._fetch_range,
+                today_fn=LATER,
+            )
+            self.assertIsNone(cache.last_in_range("MISS", start, end))
+        self.assertEqual(len(self.range_calls), 1)
+
+    def test_recorded_miss_never_reads_as_a_price(self):
+        """
+        A miss row on disk does not shadow or fake a valid price for another key.
+        """
+        PriceCache(path=self.path, fetch_fn=self._fetch, today_fn=LATER).get(
+            "MISS", date(2025, 5, 15)
+        )
+        cache = PriceCache(path=self.path, fetch_fn=self._fetch, today_fn=LATER)
+        self.assertEqual(cache.get("AAA", date(2025, 5, 15)), 100.0)
 
 
 if __name__ == "__main__":

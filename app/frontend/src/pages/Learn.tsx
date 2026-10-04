@@ -298,11 +298,12 @@ export default function Learn() {
   // own scroll position directly instead of using a viewport-rooted
   // IntersectionObserver (which never fires for a nested scroll container).
   useEffect(() => {
+    // Phones scroll the document itself, so there is no scrolling ancestor there.
     const scrollParent = getScrollParent(rootRef.current);
-    if (!scrollParent) return;
+    const scrollTarget: HTMLElement | Window = scrollParent ?? window;
 
     const updateActiveSection = () => {
-      const containerTop = scrollParent.getBoundingClientRect().top;
+      const containerTop = scrollParent?.getBoundingClientRect().top ?? 0;
       const threshold = containerTop + 96; // roughly the sticky header height
       let current = FAQ_SECTIONS[0]?.id;
       for (const section of sections) {
@@ -323,8 +324,8 @@ export default function Learn() {
       updateActiveSection();
     }
 
-    scrollParent.addEventListener("scroll", updateActiveSection, { passive: true });
-    return () => scrollParent.removeEventListener("scroll", updateActiveSection);
+    scrollTarget.addEventListener("scroll", updateActiveSection, { passive: true });
+    return () => scrollTarget.removeEventListener("scroll", updateActiveSection);
   }, [sections, hash, hashItemId]);
 
   return (

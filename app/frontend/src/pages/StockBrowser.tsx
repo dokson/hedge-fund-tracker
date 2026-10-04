@@ -28,9 +28,10 @@ import { SmartScoreBadge } from "@/components/SmartScoreBadge";
 import { TickerLink } from "@/components/EntityLinks";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { matchesQuery } from "@/lib/utils";
-import { stockPath, ROUTES } from "@/lib/routes";
+import { stockPath } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
-import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
+import { usePageMeta } from "@/hooks/usePageMeta";
+import { STOCKS_PAGE } from "@/lib/pageMeta";
 import { VirtualList } from "@/components/ui/VirtualList";
 
 const ALPHABET = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -143,10 +144,9 @@ function ValueStockCard({
 
 export default function StockBrowser() {
   usePageMeta({
-    title: pageTitle("Stocks"),
-    description:
-      "Every stock held by the tracked hedge funds, browsable by name, sector or Smart Score, with institutional value and holder count.",
-    canonical: canonicalUrl(ROUTES.stocks),
+    title: STOCKS_PAGE.title,
+    description: STOCKS_PAGE.description,
+    canonical: canonicalUrl(STOCKS_PAGE.path),
   });
 
   const navigate = useNavigate();

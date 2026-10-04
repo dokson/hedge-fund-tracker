@@ -169,7 +169,8 @@ def get_all_quarter_files(quarter: str) -> list[str]:
 
 def load_fund_data(fund: str, quarter: str) -> pd.DataFrame:
     """
-    Loads raw 13F data for a specific fund and quarter.
+    Loads 13F data for a specific fund and quarter, with the filing register's
+    restated figures applied on top (see app.database.filing_anomalies).
 
     Args:
         fund (str): The name of the fund.
@@ -182,9 +183,11 @@ def load_fund_data(fund: str, quarter: str) -> pd.DataFrame:
     try:
         filepath = _db._safe_db_join(quarter, fund_filename)
         if filepath.exists():
+            from app.database.filing_anomalies import apply_restatements
+
             df = pd.read_csv(filepath)
             df["Fund"] = fund
-            return df[df["CUSIP"] != "Total"]
+            return apply_restatements(df[df["CUSIP"] != "Total"], quarter)
     except ValueError:
         pass
     return pd.DataFrame()
@@ -290,7 +293,8 @@ def load_non_quarterly_data(filepath: str | None = None, latest_only: bool = Tru
 
 def load_quarterly_data(quarter: str) -> pd.DataFrame:
     """
-    Loads all fund comparison data for a given quarter (e.g., '2025Q1').
+    Loads all fund comparison data for a given quarter (e.g., '2025Q1'), with the
+    filing register's restated figures applied on top.
 
     Args:
         quarter (str): The quarter in 'YYYYQN' format.
@@ -313,7 +317,9 @@ def load_quarterly_data(quarter: str) -> pd.DataFrame:
     if not all_fund_data:
         # No (readable) fund files for this quarter — pd.concat([]) would raise.
         return pd.DataFrame()
-    return pd.concat(all_fund_data, ignore_index=True)
+    from app.database.filing_anomalies import apply_restatements
+
+    return apply_restatements(pd.concat(all_fund_data, ignore_index=True), quarter)
 
 
 def save_comparison(comparison_dataframe: pd.DataFrame, date: str, fund_name: str) -> None:

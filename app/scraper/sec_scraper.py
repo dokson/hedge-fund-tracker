@@ -10,6 +10,7 @@ from curl_cffi import requests
 from curl_cffi.requests import exceptions as curl_exc
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential, wait_random
 
+from app.scraper.amendments import NEW_HOLDINGS, amendment_type, consolidate_period
 from app.scraper.rate_limiter import RateLimiter
 from app.utils.logger import get_logger, log_safe
 from app.utils.metrics import SEC_REQUESTS
@@ -291,6 +292,19 @@ def _get_primary_xml_url(report_page_soup, filing_type):
     return None
 
 
+def _get_cover_page_url(report_page_soup: BeautifulSoup) -> str | None:
+    """
+    The raw (not XSL-rendered) 13F cover page linked from the report page, if any.
+    """
+    for tag in report_page_soup.find_all(
+        "a", attrs={"href": re.compile(r"primary_doc\.xml$", re.I)}
+    ):
+        href = tag.get("href")
+        if isinstance(href, str) and "xsl" not in href.lower():
+            return SEC_URL + href
+    return None
+
+
 def _scrape_filing(document_tag, filing_type, *, raise_on_request_error=False):
     """
     Processes a single filing document tag and extracts the XML content and metadata.
@@ -330,6 +344,14 @@ def _scrape_filing(document_tag, filing_type, *, raise_on_request_error=False):
             raise _FilingRequestError(xml_url)
         return None
 
+    kind = ""
+    if filing_type == "13F-HR" and "13F-HR/A" in report_page_response.text:
+        cover_url = _get_cover_page_url(report_page_soup)
+        cover_response = _get_request(cover_url) if cover_url else None
+        if cover_url and not cover_response and raise_on_request_error:
+            raise _FilingRequestError(cover_url)
+        kind = amendment_type(cover_response.content) if cover_response else ""
+
     if filing_type == "13F-HR":
         logger.info(
             "Successfully scraped %s filing published on %s (refering %s)",
@@ -345,6 +367,7 @@ def _scrape_filing(document_tag, filing_type, *, raise_on_request_error=False):
         "type": filing_type,
         "reference_date": report_date,
         "xml_content": xml_response.content,
+        "amendment_type": kind,
     }
 
 
@@ -380,6 +403,36 @@ def fetch_latest_two_13f_filings(cik, offset=0):
         filings.append(filing_data)
 
     return filings
+
+
+def complete_new_holdings(cik: str, filing: dict[str, Any]) -> dict[str, Any]:
+    """
+    A partial NEW HOLDINGS amendment merged with the report it adds to, found
+    by walking the fund's 13F listing back to the amendment's period; any other
+    filing is returned as is (see app.scraper.amendments).
+    """
+    if filing.get("amendment_type") != NEW_HOLDINGS:
+        return filing
+    response = _get_request(_create_search_url(cik, "13F-HR"))
+    if not response:
+        logger.warning(
+            "Could not list 13F filings for CIK %s; NEW HOLDINGS amendment kept as filed.",
+            log_safe(cik),
+        )
+        return filing
+
+    versions = [filing]
+    soup = BeautifulSoup(response.text, "html.parser")
+    for tag in soup.find_all("a", id="documentsbutton"):
+        scraped = _scrape_filing(tag, "13F-HR")
+        if not scraped or scraped.get("date", "") > filing["date"]:
+            continue
+        same = scraped["xml_content"] == filing["xml_content"]
+        if scraped.get("reference_date") == filing["reference_date"] and not same:
+            versions.append(scraped)
+        if scraped.get("date", "") < filing["reference_date"]:
+            break
+    return consolidate_period(versions)[0]
 
 
 def fetch_non_quarterly_after_date(cik: str, start_date: str | None) -> list[dict] | None:

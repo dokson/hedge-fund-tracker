@@ -15,6 +15,7 @@ import { shouldRetryQuery } from "@/lib/queryRetry";
 // Route-level code splitting: each page ships as its own chunk and loads on navigation.
 const QuarterlyTrends = lazy(() => import("@/pages/QuarterlyTrends"));
 const StrategyPerformance = lazy(() => import("@/pages/StrategyPerformance"));
+const FundRanking = lazy(() => import("@/pages/FundRanking"));
 const FundPortfolio = lazy(() => import("@/pages/FundPortfolio"));
 const StockAnalysis = lazy(() => import("@/pages/StockAnalysis"));
 const StockBrowser = lazy(() => import("@/pages/StockBrowser"));
@@ -22,6 +23,7 @@ const AIRanking = lazy(() => import("@/pages/AIRanking"));
 const AIDueDiligence = lazy(() => import("@/pages/AIDueDiligence"));
 const AISettings = lazy(() => import("@/pages/AISettings"));
 const Learn = lazy(() => import("@/pages/Learn"));
+const About = lazy(() => import("@/pages/About"));
 const FundsConfig = lazy(() => import("@/pages/FundsConfig"));
 const DatabasePage = lazy(() => import("@/pages/DatabasePage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -63,6 +65,7 @@ const App = () => (
                 <Route path={ROUTES.latest} element={<Dashboard />} />
                 <Route path={ROUTES.quarterly} element={<QuarterlyTrends />} />
                 <Route path={ROUTES.strategyPerformance} element={<StrategyPerformance />} />
+                <Route path={ROUTES.fundRanking} element={<FundRanking />} />
                 <Route path={ROUTES.funds} element={<FundPortfolio />} />
                 <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
                 <Route path={ROUTES.stocks} element={<StockBrowser />} />
@@ -70,6 +73,7 @@ const App = () => (
 
                 {/* Educational FAQ — public, available in every mode */}
                 <Route path={ROUTES.learn} element={<Learn />} />
+                <Route path={ROUTES.about} element={<About />} />
 
                 {/* AI routes — available but disabled in GH Pages mode */}
                 <Route path={ROUTES.aiRanking} element={<AIRanking />} />

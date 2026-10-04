@@ -9,9 +9,10 @@ import {
 } from "@/lib/dataService";
 import { isQuarter, type Quarter } from "@/lib/quarters";
 import { STRATEGY_BY_TAB, STRATEGY_DEFS_PERF_ORDER, isStrategyTab } from "@/lib/strategies";
-import { performanceFor, ROUTES } from "@/lib/routes";
+import { performanceFor } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
-import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
+import { usePageMeta } from "@/hooks/usePageMeta";
+import { QUARTERLY_PAGE } from "@/lib/pageMeta";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useSortState } from "@/hooks/useSortState";
 import { useQuarterAnalysis } from "@/hooks/useQuarterAnalysis";
@@ -396,10 +397,9 @@ const DEFAULT_TAB = "smartscore";
 
 export default function QuarterlyTrends() {
   usePageMeta({
-    title: pageTitle("Quarterly Trends"),
-    description:
-      "Consensus screens built from the quarter's 13F holdings: most held, highest conviction, biggest increases and exits across every tracked hedge fund.",
-    canonical: canonicalUrl(ROUTES.quarterly),
+    title: QUARTERLY_PAGE.title,
+    description: QUARTERLY_PAGE.description,
+    canonical: canonicalUrl(QUARTERLY_PAGE.path),
   });
 
   const { quarters, latestQuarter } = useAvailableQuarters();

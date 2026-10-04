@@ -27,8 +27,10 @@ from app.database import (
     update_ticker_for_cusip,
     write_non_quarterly_filings,
 )
+from app.database.filing_anomalies import corrections_for
 from app.database.locks import file_lock
 from app.scraper.sec_scraper import (
+    complete_new_holdings,
     fetch_latest_two_13f_filings,
     fetch_non_quarterly_after_date,
     get_latest_13f_filing_date,
@@ -117,7 +119,11 @@ def process_fund(fund_info, offset=0, skip_old=False) -> bool:
                 continue
             break
 
-        dataframe_latest = xml_to_dataframe_13f(filings[0]["xml_content"])
+        latest_filing = complete_new_holdings(cik, filings[0])
+        dataframe_latest = xml_to_dataframe_13f(
+            latest_filing["xml_content"],
+            corrections=corrections_for(fund_name, get_quarter(latest_date)),
+        )
 
         # Step 2: Find the filing for the immediately preceding quarter.
         # This loop skips amendments and ensures we are comparing against the correct previous period.
@@ -155,12 +161,19 @@ def process_fund(fund_info, offset=0, skip_old=False) -> bool:
             previous_filing = filings[1] if len(filings) == 2 else None
 
         previous_filing = found_previous or fallback_previous
+        if previous_filing:
+            previous_filing = complete_new_holdings(cik, previous_filing)
 
-        dataframe_previous = (
-            xml_to_dataframe_13f(previous_filing["xml_content"]) if previous_filing else None
-        )
         previous_quarter = (
             get_quarter(previous_filing["reference_date"]) if previous_filing else None
+        )
+        dataframe_previous = (
+            xml_to_dataframe_13f(
+                previous_filing["xml_content"],
+                corrections=corrections_for(fund_name, previous_quarter),
+            )
+            if previous_filing and previous_quarter
+            else None
         )
         split_factors = factors_between(
             load_split_factors(), previous_quarter, get_quarter(latest_date)

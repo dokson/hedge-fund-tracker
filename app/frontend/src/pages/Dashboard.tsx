@@ -7,10 +7,10 @@ import {
   formatPct,
   type EnrichedNQFiling,
 } from "@/lib/dataService";
-import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
+import { usePageMeta } from "@/hooks/usePageMeta";
+import { LATEST_PAGE } from "@/lib/pageMeta";
 import { useSortState, type SortDir } from "@/hooks/useSortState";
 import { SortArrow } from "@/components/ui/SortArrow";
-import { ROUTES } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { getSectorStyle, sectorPillStyle, SECTOR_PILL } from "@/lib/sectorStyle";
 import { TickerLink, FundCell, CompanyLink } from "@/components/EntityLinks";
@@ -187,10 +187,9 @@ function FilingCard({
 
 export default function Dashboard() {
   usePageMeta({
-    title: pageTitle("Latest Filings"),
-    description:
-      "The newest SEC filings from every tracked hedge fund — 13F, 13D/G, Form 4 and N-Q — with position deltas, in one board.",
-    canonical: canonicalUrl(ROUTES.latest),
+    title: LATEST_PAGE.title,
+    description: LATEST_PAGE.description,
+    canonical: canonicalUrl(LATEST_PAGE.path),
   });
 
   const [search, setSearch] = useState("");

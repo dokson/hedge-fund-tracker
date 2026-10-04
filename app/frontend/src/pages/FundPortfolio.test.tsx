@@ -31,6 +31,7 @@ vi.mock("@/lib/dataService", async (importOriginal) => {
     getFundAvailableQuarters: vi.fn<() => Promise<string[]>>(async () => ["2026Q2"]),
     getFundQuarterlyHoldings: vi.fn<() => Promise<QuarterlyHolding[]>>(async () => [holding]),
     aggregateHoldingsByTicker: aggregateSpy,
+    getFundPerformance: vi.fn<() => Promise<null>>(async () => null),
   };
 });
 

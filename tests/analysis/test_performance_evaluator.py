@@ -9,10 +9,9 @@ from app.analysis.performance_evaluator import PerformanceEvaluator
 class TestPerformanceEvaluator(unittest.TestCase):
     @patch("app.analysis.performance_evaluator.load_fund_holdings")
     @patch("app.analysis.performance_evaluator.get_previous_quarter")
-    @patch("app.analysis.performance_evaluator.get_quarter_date")
-    @patch("app.analysis.performance_evaluator.PriceFetcher.get_avg_price")
+    @patch("app.analysis.fund_performance.get_quarter_date")
     def test_calculate_quarterly_performance_success(
-        self, mock_get_avg_price, mock_get_quarter_date, mock_get_prev_quarter, mock_load_holdings
+        self, mock_get_quarter_date, mock_get_prev_quarter, mock_load_holdings
     ):
         """
         Tests calculation with all data available and no missing prices.
@@ -59,7 +58,13 @@ class TestPerformanceEvaluator(unittest.TestCase):
 
         mock_load_holdings.side_effect = side_effect
 
-        result = PerformanceEvaluator.calculate_quarterly_performance("Test Fund", "2025Q1")
+        result = PerformanceEvaluator.calculate_quarterly_performance(
+            "Test Fund",
+            "2025Q1",
+            split_factors_fn=lambda _p, _c: {},
+            universe_prices_fn=lambda _q: {},
+            market_return_fn=lambda _t, _s, _e: None,
+        )
 
         # Total Value = 3000
         # W1 = 1/3, R1 = 0.1, WR1 = 0.0333
@@ -85,18 +90,42 @@ class TestPerformanceEvaluator(unittest.TestCase):
             self.assertEqual(top_contributors[0]["Ticker"], "T1")
 
     @patch("app.analysis.performance_evaluator.load_fund_holdings")
+    def test_split_does_not_read_as_a_loss(self, mock_load_holdings):
+        """
+        A 10:1 split between the filings is restated, like the published series.
+        """
+        before = pd.DataFrame(
+            [{"CUSIP": "C1", "Ticker": "T1", "Company": "Co1", "Shares": 10, "Value": 1000}]
+        )
+        after = pd.DataFrame(
+            [{"CUSIP": "C1", "Ticker": "T1", "Company": "Co1", "Shares": 100, "Value": 1100}]
+        )
+        for frame in (before, after):
+            frame["Reported_Price"] = frame["Value"] / frame["Shares"]
+        mock_load_holdings.side_effect = lambda _f, q: before if q == "2024Q4" else after
+
+        result = PerformanceEvaluator.calculate_quarterly_performance(
+            "Test Fund",
+            "2025Q1",
+            split_factors_fn=lambda _p, _c: {"C1": 10.0},
+            universe_prices_fn=lambda _q: {},
+            market_return_fn=lambda _t, _s, _e: None,
+        )
+        self.assertAlmostEqual(float(result["portfolio_return"]), 10.0)
+
+    @patch("app.analysis.performance_evaluator.load_fund_holdings")
     @patch("app.analysis.performance_evaluator.get_previous_quarter")
-    @patch("app.analysis.performance_evaluator.get_quarter_date")
-    @patch("app.analysis.performance_evaluator.PriceFetcher.get_avg_price")
+    @patch("app.analysis.fund_performance.get_quarter_date")
     def test_calculate_quarterly_performance_closed_position(
-        self, mock_get_avg_price, mock_get_quarter_date, mock_get_prev_quarter, mock_load_holdings
+        self, mock_get_quarter_date, mock_get_prev_quarter, mock_load_holdings
     ):
         """
-        Tests calculation where a position is closed (not in current report) and price is fetched.
+        A position closed by quarter end takes its market return over the quarter.
         """
         mock_get_prev_quarter.return_value = "2024Q4"
-        mock_get_quarter_date.return_value = "2025-03-31"
-        mock_get_avg_price.return_value = 12.0  # Fetched price for closed position
+        mock_get_quarter_date.side_effect = lambda q: (
+            "2024-12-31" if q == "2024Q4" else "2025-03-31"
+        )
 
         df_prev = pd.DataFrame(
             [
@@ -125,12 +154,23 @@ class TestPerformanceEvaluator(unittest.TestCase):
 
         mock_load_holdings.side_effect = side_effect
 
-        result = PerformanceEvaluator.calculate_quarterly_performance("Test Fund", "2025Q1")
+        calls: list[tuple[str, str, str]] = []
 
-        # Price start = 10.0, Price end = 12.0 (fetched) -> Return = 0.2
+        def market(ticker, start, end):
+            calls.append((ticker, start.isoformat(), end.isoformat()))
+            return 0.2
+
+        result = PerformanceEvaluator.calculate_quarterly_performance(
+            "Test Fund",
+            "2025Q1",
+            split_factors_fn=lambda _p, _c: {},
+            universe_prices_fn=lambda _q: {},
+            market_return_fn=market,
+        )
+
         self.assertAlmostEqual(float(result["portfolio_return"]), 20.0)
         self.assertAlmostEqual(float(result["end_value"]), 1200.0)
-        mock_get_avg_price.assert_called_once()
+        self.assertEqual(calls, [("T1", "2024-12-31", "2025-03-31")])
 
     @patch("app.analysis.performance_evaluator.load_fund_holdings")
     def test_calculate_quarterly_performance_missing_data(self, mock_load_holdings):

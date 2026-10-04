@@ -10,19 +10,17 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { QueryState } from "@/components/ui/QueryState";
 import { TableFrame } from "@/components/ui/TableFrame";
 import { PanelTitle } from "@/components/ui/PanelTitle";
-import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
-import { ROUTES } from "@/lib/routes";
+import { usePageMeta } from "@/hooks/usePageMeta";
+import { PERFORMANCE_PAGE } from "@/lib/pageMeta";
 import { canonicalUrl } from "@/lib/seo";
 import { seriesColor } from "@/lib/seriesColors";
 import { getPerformance, type PerfSeries } from "@/lib/dataService";
 import { STRATEGY_BY_ID, perfOrderIndex } from "@/lib/strategies";
+import { pctFrac, pp, toneClass } from "@/lib/performanceFormat";
 import { cn } from "@/lib/utils";
 
 const OUTPERFORM = "hsl(var(--positive))";
 const UNDERPERFORM = "hsl(var(--negative))";
-
-const pctFrac = (value: number) => `${value > 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
-const pp = (value: number) => `${value > 0 ? "+" : ""}${value.toFixed(1)} pp`;
 
 /** ISO date → "May 15, 2025"; empty string falls through. */
 const longDate = (iso: string) =>
@@ -33,9 +31,6 @@ const longDate = (iso: string) =>
         year: "numeric",
       })
     : "";
-
-const toneClass = (value: number) =>
-  value > 0 ? "delta-positive" : value < 0 ? "delta-negative" : "text-muted-foreground";
 
 /**
  * One legend row per series. The strategy rows are the series toggle
@@ -140,10 +135,9 @@ function LegendRow({
 
 export default function StrategyPerformance() {
   usePageMeta({
-    title: pageTitle("Strategy Performance"),
-    description:
-      "Backtested returns for every consensus screen, rebalanced each quarter and held to the next, measured against the S&P 500.",
-    canonical: canonicalUrl(ROUTES.strategyPerformance),
+    title: PERFORMANCE_PAGE.title,
+    description: PERFORMANCE_PAGE.description,
+    canonical: canonicalUrl(PERFORMANCE_PAGE.path),
   });
 
   const { data, isLoading, isError, error } = useQuery({

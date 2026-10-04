@@ -119,7 +119,7 @@ export function CompanyLogo({
       height={size}
       onError={() => setFailed(true)}
       onLoad={() => setLoaded(true)}
-      className={`rounded-sm border border-border object-contain ${loaded ? "bg-white p-px" : "bg-card"} ${className}`}
+      className={`rounded-sm object-contain ${loaded ? "bg-white" : "bg-card"} ${className}`}
       style={{ width: size, height: size, flexShrink: 0 }}
       loading="lazy"
     />

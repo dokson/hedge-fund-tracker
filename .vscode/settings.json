@@ -27,7 +27,7 @@
   "python.testing.unittestEnabled": true,
   "python.testing.pytestEnabled": false,
   "python.testing.cwd": "${workspaceFolder}",
-  "python.testing.unittestArgs": ["-v", "-s", "./tests", "-p", "test*.py"],
+  "python.testing.unittestArgs": ["-v", "-s", "./tests", "-t", ".", "-p", "test*.py"],
 
   "[typescript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
   "[typescriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },

@@ -1,12 +1,6 @@
 import { useEffect } from "react";
 
-/** Brand suffix every route title ends with (SC 2.4.2 wants distinct titles). */
-export const SITE_NAME = "Hedge Fund Tracker";
-
-/** `"Latest Filings — Hedge Fund Tracker"`. */
-export function pageTitle(page: string): string {
-  return `${page} — ${SITE_NAME}`;
-}
+export { SITE_NAME, pageTitle } from "@/lib/pageMeta";
 
 interface PageMeta {
   title: string;

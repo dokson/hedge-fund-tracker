@@ -84,6 +84,23 @@ class TestDedupeFilingsByPeriod(unittest.TestCase):
         self.assertEqual(len(deduped), 2)
         self.assertEqual(deduped[0]["label"], "amendment")
 
+    def test_a_partial_new_holdings_amendment_completes_the_original(self):
+        """
+        A NEW HOLDINGS amendment adds its rows to the period's report instead of replacing it.
+        """
+        table = '<ns1:informationTable xmlns:ns1="x">{}</ns1:informationTable>'
+        row = "<ns1:infoTable><ns1:cusip>{}</ns1:cusip><ns1:value>{}</ns1:value></ns1:infoTable>"
+        original = _filing("2024-12-31", "original")
+        original["xml_content"] = table.format(row.format("A", 500)).encode()
+        added = _filing("2024-12-31", "added", published="2025-04-09")
+        added["xml_content"] = table.format(row.format("B", 20)).encode()
+        added["amendment_type"] = "NEW HOLDINGS"
+
+        (kept,) = dedupe_filings_by_period([added, original])
+
+        self.assertIn(b"<ns1:cusip>A</ns1:cusip>", kept["xml_content"])
+        self.assertIn(b"<ns1:cusip>B</ns1:cusip>", kept["xml_content"])
+
     def test_sorted_by_reference_date_descending(self):
         """
         Output is ordered newest reporting period first regardless of the
@@ -145,6 +162,29 @@ class TestBuildComparisonPairs(unittest.TestCase):
         self.assertEqual(len(pairs), 1)
         self.assertEqual(pairs[0][0]["reference_date"], "2025-03-31")
         self.assertEqual(pairs[0][1]["reference_date"], "2024-12-31")
+
+
+class TestRegenerateFundAppliesFilingCorrections(unittest.TestCase):
+    @patch("scripts.regenerate_reports.save_comparison")
+    @patch("scripts.regenerate_reports.generate_comparison")
+    @patch("scripts.regenerate_reports.xml_to_dataframe_13f")
+    @patch("scripts.regenerate_reports.load_split_factors", return_value={})
+    @patch("scripts.regenerate_reports.corrections_for")
+    @patch("scripts.regenerate_reports.fetch_fund_filings")
+    def test_each_filing_is_parsed_with_its_own_corrections(
+        self, mock_fetch, mock_corrections, _mock_registry, mock_xml, _mock_cmp, _mock_save
+    ):
+        """
+        Both the current and the previous filing get the corrections of their quarter.
+        """
+        mock_fetch.return_value = [_filing("2026-03-31"), _filing("2025-12-31")]
+        mock_corrections.side_effect = lambda fund, quarter: {("X", fund): quarter}
+
+        regenerate_fund({"CIK": "0000000001", "Fund": "Tester"})
+
+        passed = [call.kwargs.get("corrections") for call in mock_xml.call_args_list]
+        self.assertIn({("X", "Tester"): "2026Q1"}, passed)
+        self.assertIn({("X", "Tester"): "2025Q4"}, passed)
 
 
 class TestRegenerateFundAppliesSplits(unittest.TestCase):

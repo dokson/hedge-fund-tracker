@@ -95,6 +95,17 @@ export interface Stock {
   industry?: string;
 }
 
+/** One row of database/fund_performance.csv; blank benchmark cells mean unpriced. */
+export interface RawFundPerformanceRow {
+  fund: string;
+  quarter: string;
+  fund_return: string;
+  benchmark_return: string;
+  fund_cum_return: string;
+  benchmark_cum_return: string;
+  unpriced_weight: string;
+}
+
 export interface PerfWindow {
   quarterOut: string;
   windowReturn: number;

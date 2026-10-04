@@ -291,6 +291,7 @@ hedge-fund-tracker/
 ├── ▶️ entrypoint.sh                # Container start-up: seed data, write .env, run migrations
 ├── 🧾 LICENSE                      # Proprietary (code) + bundled MIT (original work)
 ├── 🧾 LICENSE-DOCS                 # CC BY 4.0 (Markdown documentation)
+├── 🧾 LICENSE-DATA                 # CC BY-NC 4.0 (database/ data files)
 ├── 🛠️ Pipfile                      # Project dependencies
 ├── 🔏 Pipfile.lock                 # Locked dependency versions
 └── 📖 README.md                    # Project documentation (this file)
@@ -350,7 +351,6 @@ The quality of the output analysis is directly tied to the quality of the input 
 - _Larry Fink_'s [BlackRock](https://www.blackrock.com/)
 - _Michael Burry_'s [Scion Asset Management](https://www.scionasset.com/)
 - _Ray Dalio_'s [Bridgewater Associates](https://www.bridgewater.com/)
-- _Jim Simons_'s [Renaissance](https://www.rentec.com/)
 - _Steven Cohen_'s [Point72](https://point72.com/)
 - _Paul Marshall & Ian Wace_'s [Marshall Wace](https://www.mwam.com/)
 - _Carl Icahn_'s [Icahn Enterprises](https://www.ielp.com/)
@@ -403,7 +403,8 @@ The quality of the output analysis is directly tied to the quality of the input 
 - _Paul Thwaite_'s [NatWest Group](https://www.natwestgroup.com/)
 - _Robert Atchison & Phillip Gross_'s [Adage Capital Partners](https://www.adagecapital.com/)
 - _Tianqiao Chen_'s [Shanda](https://www.shanda.com/)
-- and many more... (see [`/home/runner/work/hedge-fund-tracker/hedge-fund-tracker/database/excluded_hedge_funds.csv`](//home/runner/work/hedge-fund-tracker/hedge-fund-tracker/database/excluded_hedge_funds.csv) for the full list)
+- _Jorge Paulo Lehman_'s [3G Capital](https://www.3g-capital.com/)
+- and many more... (see [`C:\Users\dokso\Desktop\hedge-fund-tracker\database/excluded_hedge_funds.csv`](/C:\Users\dokso\Desktop\hedge-fund-tracker\database/excluded_hedge_funds.csv) for the full list)
 <!-- EXCLUDED_FUNDS_LIST_END -->
 
 > **💡 Note**: For convenience, key information for these funds, including their CIKs, is maintained in the `database/excluded_hedge_funds.csv` file.
@@ -610,13 +611,14 @@ This project began as a fork of [sec-web-scraper-13f](https://github.com/CodeWri
 
 ## 📄 License
 
-This repository is **dual-licensed**, with documentation carved out separately:
+This repository is licensed in parts, with documentation and data carved out separately:
 
 - **Original work** (Gary Pang's [sec-web-scraper-13f](https://github.com/CodeWritingCow/sec-web-scraper-13f)): MIT License.
 - **All new code** (everything added by Alessandro Colace): Copyright © 2025 Alessandro Colace — All Rights Reserved. Personal and educational use is permitted; redistribution and commercial use require written permission.
 - **Markdown documentation** (`*.md` files): [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) — reuse with attribution to Alessandro Colace ([github.com/dokson/hedge-fund-tracker](https://github.com/dokson/hedge-fund-tracker)). Each `.md` file carries an `SPDX-License-Identifier: CC-BY-4.0` header.
+- **Data** (the files under `database/`, also served by the site under `/database/`): [Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/) — non-commercial reuse with attribution to Hedge Fund Tracker; commercial use requires written permission. The underlying SEC filings remain public records.
 
-See [LICENSE](LICENSE) for the code terms and [LICENSE-DOCS](LICENSE-DOCS) for the documentation terms.
+See [LICENSE](LICENSE) for the code terms, [LICENSE-DOCS](LICENSE-DOCS) for the documentation terms and [LICENSE-DATA](LICENSE-DATA) for the data terms.
 
 ## ⭐ Star History
 

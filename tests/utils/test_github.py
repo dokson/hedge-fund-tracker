@@ -1,4 +1,5 @@
 import io
+import os
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -283,13 +284,33 @@ class TestWorkflowCommands(unittest.TestCase):
         "GITHUB_REPOSITORY": "repo/hedge-fund-tracker",
     }
 
+    def test_fake_getenv_leaves_other_variables_to_the_real_environment(self):
+        """
+        Patching os.getenv patches it process-wide: a test runner reading its own
+        variables mid-test (VS Code's TEST_RUN_PIPE) must still see them.
+        """
+        with patch.dict(os.environ, {"HFT_TEST_PROBE": "real"}):
+            self.assertEqual(self._fake_getenv("HFT_TEST_PROBE"), "real")
+        self.assertEqual(self._fake_getenv("GITHUB_TOKEN"), "test_token")
+        self.assertIsNone(self._fake_getenv("GITHUB_UNSET_FOR_TEST"))
+
+    @classmethod
+    def _fake_getenv(cls, key, default=None):
+        """
+        The GitHub variables from _ENV; anything else from the real environment.
+        """
+        if key.startswith("GITHUB_"):
+            return cls._ENV.get(key, default)
+        return os.environ.get(key, default)
+
     def _run(self, mock_getenv, subject="Subject", body="Body"):
         """
         Run open_issue with stdout captured and return the captured text and log records.
         """
-        mock_getenv.side_effect = self._ENV.get
+        mock_getenv.side_effect = self._fake_getenv
         buf = io.StringIO()
         with patch("sys.stdout", buf), self.assertLogs("app.utils.github", level="INFO") as cm:
+            self.assertIsNotNone(os.getenv("PATH"), "a runner's own variables must stay readable")
             open_issue(subject, body)
         return buf.getvalue(), _log_concat(cm)
 

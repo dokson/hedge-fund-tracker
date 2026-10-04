@@ -68,6 +68,13 @@ export {
 } from "./data/quarterData";
 
 export { getPerformance, parsePerformanceRows } from "./data/performance";
+export {
+  FUND_SERIES_ID,
+  getFundPerformance,
+  getFundPerformanceRows,
+  parseFundPerformance,
+} from "./data/fundPerformance";
+export type { FundPerformance } from "./data/fundPerformance";
 
 export { enrichNQFiling, getEnrichedNQFilings, getNonQuarterlyFilings } from "./data/nonQuarterly";
 

@@ -2,7 +2,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.utils.run_summary import FetchRunSummary, render_markdown, write_step_summary
+from app.utils.run_summary import (
+    FetchRunSummary,
+    render_markdown,
+    render_missing_quarters_markdown,
+    write_step_summary,
+)
 
 
 class TestRenderMarkdown(unittest.TestCase):
@@ -82,6 +87,34 @@ class TestRenderMarkdown(unittest.TestCase):
 
         self.assertIn(r"- A\|B \<img\>\#\# Fake", markdown)
         self.assertNotIn("\n## Fake", markdown)
+
+
+class TestRenderMissingQuarters(unittest.TestCase):
+    """
+    Funds without a 13F for some saved quarter are listed in the run summary.
+    """
+
+    def test_lists_each_fund_with_its_missing_quarters(self):
+        """
+        One row per fund, sorted, quarters comma-separated.
+        """
+        md = render_missing_quarters_markdown({"MGB": ["2026Q1", "2026Q2"], "Amanah": ["2025Q1"]})
+        self.assertIn("## Missing quarters", md)
+        self.assertIn("| Amanah | 2025Q1 |", md)
+        self.assertIn("| MGB | 2026Q1, 2026Q2 |", md)
+        self.assertLess(md.index("Amanah"), md.index("MGB"))
+
+    def test_full_coverage_says_so(self):
+        """
+        No gaps, one line.
+        """
+        self.assertIn("Every tracked fund has every quarter", render_missing_quarters_markdown({}))
+
+    def test_fund_names_are_escaped(self):
+        """
+        A name cannot break the table.
+        """
+        self.assertIn(r"A \| B", render_missing_quarters_markdown({"A | B": ["2025Q1"]}))
 
 
 class TestWriteStepSummary(unittest.TestCase):

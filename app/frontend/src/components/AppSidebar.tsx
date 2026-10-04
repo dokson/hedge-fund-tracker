@@ -1,12 +1,13 @@
 import { Link, useLocation } from "react-router";
 
 import { NavLink } from "@/components/NavLink";
-import { APP_VERSION, BASE_PATH } from "@/lib/config";
+import { APP_VERSION } from "@/lib/config";
 import { MENU_SECTIONS } from "@/lib/menuDoors";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/routes";
 import { Sidebar, SidebarContent, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 function isActiveUrl(pathname: string, url: string): boolean {
   if (url === ROUTES.stocks)
@@ -134,7 +135,7 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
         aria-expanded={!collapsed}
         className="shrink-0 grid place-items-center h-9 w-9 rounded-md transition-colors duration-[120ms] hover:bg-muted"
       >
-        <img src={`${BASE_PATH}/logo.png`} alt="" className="h-7 w-7" />
+        <BrandLogo size={28} className="h-7 w-7" />
       </button>
       {!collapsed && (
         <Link to={ROUTES.home} className="min-w-0 leading-none group/brand" title="Home">
