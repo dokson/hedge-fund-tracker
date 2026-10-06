@@ -28,7 +28,7 @@ setuptools = "~=84.0"
 slowapi = "~=0.1"
 sqlalchemy = "~=2.0"
 tabulate = "~=0.10"
-toon-format = "==0.9.0b1"
+toon-format = "==1.0.0"
 tradingview-datafeed = "~=2.1"
 uvicorn = "~=0.54"
 uvloop = { version = "==0.23.0", markers = "sys_platform != 'win32'" }
