@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "dd8baf6aa59fedb95cf15e03a1c140e81c424c305240d31eef3fb63295d459d8"
+            "sha256": "1855f0e2ae2fbaed50ad9daf229949600c815ab73869bcab792d2d8e1fa2c31d"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -1994,12 +1994,12 @@
         },
         "toon-format": {
             "hashes": [
-                "sha256:8f391dd6ad9677c78366bd8eb6762d064a2183f67b9b7da1f348fdb6ee8738e7",
-                "sha256:efeee919501f91137f017f7bed34789c067f76178111aa872a49bc8653dce3be"
+                "sha256:4bdbf903284ccc57ef0f99ab603e0efa39d848cbdd54bc1bf5d1959adcd73d0b",
+                "sha256:fb0e7340ae5b35c8fa8d03c620f183f5335e896a2e2cfcc226797aa702d62525"
             ],
             "index": "pypi",
-            "markers": "python_version >= '3.8'",
-            "version": "==0.9.0b1"
+            "markers": "python_version >= '3.10'",
+            "version": "==1.0.0"
         },
         "tradingview-datafeed": {
             "hashes": [
