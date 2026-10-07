@@ -81,8 +81,11 @@ describe("renderStaticPage", () => {
     expect(html).toContain("\\u003c/script>");
   });
 
-  it("injects the body into the SPA root", () => {
-    expect(html).toContain('<div id="root"><main><h1>Latest Filings</h1></main></div>');
+  // Visible pre-render text flashed, unstyled, until the bundle mounted; crawlers still read it.
+  it("injects the body into the SPA root, visually hidden so it cannot flash", () => {
+    const root = html.match(/<div id="root">([\s\S]*)<\/div><\/body>/)?.[1] ?? "";
+    expect(root).toContain("<main><h1>Latest Filings</h1></main>");
+    expect(root).toMatch(/^<div style="[^"]*clip[^"]*">/);
   });
 });
 

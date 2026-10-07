@@ -124,6 +124,9 @@ function inlineJson(value: object): string {
   return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
+const VISUALLY_HIDDEN =
+  "position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0";
+
 /**
  * Turns the built index.html into a crawler-facing document for one route:
  * title, description, canonical, Open Graph (replacing the template's generic
@@ -160,7 +163,10 @@ export function renderStaticPage(params: {
       `<meta name="description" content="${escapeAttr(page.description)}" />`,
     )
     .replace(/<\/head>/, `    ${headTags}\n  </head>`)
-    .replace(/<div id="root">\s*<\/div>/, `<div id="root">${bodyHtml}</div>`);
+    .replace(
+      /<div id="root">\s*<\/div>/,
+      `<div id="root"><div style="${VISUALLY_HIDDEN}">${bodyHtml}</div></div>`,
+    );
 }
 
 /**
