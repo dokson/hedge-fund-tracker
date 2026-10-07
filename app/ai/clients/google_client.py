@@ -1,5 +1,5 @@
-import hashlib
 import re
+import secrets
 import time
 from typing import ClassVar
 
@@ -100,7 +100,7 @@ class GoogleAIClient(AIClient):
             self.client = genai.Client(api_key=api_key, http_options=http_options)
         self.model = model
         self._answered_by: str | None = None
-        self._quota_scope = hashlib.sha256((api_key or "env").encode()).hexdigest()[:12]
+        self._quota_scope = secrets.token_hex(6)
 
     def get_model_name(self) -> str:
         """
