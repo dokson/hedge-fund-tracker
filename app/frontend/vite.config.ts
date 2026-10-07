@@ -22,6 +22,7 @@ import {
 import { ABOUT_LAST_UPDATED, renderAboutBody } from "./src/lib/aboutContent.ts";
 import { ROUTES } from "./src/lib/routes.ts";
 import { FAQ_LAST_UPDATED, FAQ_META, FAQ_SECTIONS } from "./src/lib/faqContent.ts";
+import { latestUsableQuarter } from "./src/lib/quarters.ts";
 import {
   ABOUT_PAGE,
   FUNDS_PAGE,
@@ -88,10 +89,14 @@ function loadLatestQuarter(): {
   companies: Record<string, string>;
 } | null {
   if (!existsSync(DATABASE_DIR)) return null;
-  const quarter = readdirSync(DATABASE_DIR)
-    .filter((name) => /^\d{4}Q[1-4]$/.test(name))
-    .sort()
-    .at(-1);
+  const filings: Record<string, number> = {};
+  for (const name of readdirSync(DATABASE_DIR)) {
+    if (!/^\d{4}Q[1-4]$/.test(name)) continue;
+    filings[name] = readdirSync(path.resolve(DATABASE_DIR, name)).filter((f) =>
+      f.endsWith(".csv"),
+    ).length;
+  }
+  const quarter = latestUsableQuarter(filings);
   if (!quarter) return null;
   const quarterDir = path.resolve(DATABASE_DIR, quarter);
   const rows = readdirSync(quarterDir)

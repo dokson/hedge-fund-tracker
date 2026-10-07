@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
-import { ArrowRight, Code2, Layers, Trophy } from "lucide-react";
+import { ArrowRight, Code2, Layers, Trophy, type LucideIcon } from "lucide-react";
 
+import { CompanyLogo } from "@/components/CompanyLogo";
+import GlobalSearch from "@/components/GlobalSearch";
+import { FundLogo } from "@/components/FundLogo";
 import { GitHubMark } from "@/components/GitHubMark";
 import { PanelTitle } from "@/components/ui/PanelTitle";
+import { STRETCHED_CARD, STRETCHED_LINK } from "@/components/ui/stretchedLink";
 import { QueryState } from "@/components/ui/QueryState";
-import { getHedgeFunds, getStocks } from "@/lib/dataService";
+import { getHedgeFunds, getStocks, type HedgeFund } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useEnrichedNQFilings } from "@/hooks/useEnrichedNQFilings";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -29,27 +33,33 @@ const MAX_LAG = 45;
 
 const WIRE_ROWS = 8;
 
-const FEATURES = [
+type FeatureLink = { to: string } | { href: string };
+
+const FEATURES: { icon: LucideIcon; title: string; body: string; link: FeatureLink }[] = [
   {
     icon: Trophy,
     title: "A roster picked by track record",
     body: "Not the household names. Funds enter the list on measured performance, and the method is one click away.",
+    link: { to: learnItem("how-funds-are-selected") },
   },
   {
     icon: Layers,
     title: "Three filing types, one timeline",
     body: "Form 4 and 13D/G land on top of the quarterly 13F, so consensus reflects what funds are doing now.",
+    link: { to: ROUTES.latest },
   },
   {
     icon: Code2,
     title: "Source available, runs in your browser",
     body: "FastAPI and React, with the code public on GitHub. This site computes every consensus screen in your browser from the published filings, no backend needed.",
+    link: { href: "https://github.com/dokson/hedge-fund-tracker" },
   },
 ];
 
 /** The newest filings on the wire, real data. */
-function Wire() {
+function Wire({ funds }: { funds: readonly HedgeFund[] }) {
   const { data: filings = [], isLoading, isError, error } = useEnrichedNQFilings();
+  const urlByFund = new Map(funds.map((f) => [f.fund, f.url]));
   const rows = [...filings]
     .sort((a, b) => (b.filingDate > a.filingDate ? 1 : b.filingDate < a.filingDate ? -1 : 0))
     .slice(0, WIRE_ROWS);
@@ -88,17 +98,21 @@ function Wire() {
         {rows.map((f) => (
           <li
             key={`${f.fund}-${f.ticker}-${f.filingDate}`}
-            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-3 h-10 text-[13px] transition-colors duration-[120ms] hover:bg-muted/60"
+            className="grid grid-cols-[2.75rem_5.5rem_minmax(0,1fr)_auto] items-center gap-x-3 px-3 h-10 text-[13px] transition-colors duration-[120ms] hover:bg-muted/60"
           >
             <span className="text-xs text-muted-foreground tabular-nums">
               {f.filingDate.slice(5)}
             </span>
-            <span className="truncate">
-              <Link to={fundPath(f.fund)} className="fund-link">
-                {f.fund}
-              </Link>{" "}
-              <Link to={stockPath(f.ticker)} className="ticker-link">
+            <span className="flex min-w-0 items-center gap-2">
+              <CompanyLogo ticker={f.ticker} size={20} />
+              <Link to={stockPath(f.ticker)} className="ticker-link truncate">
                 {f.ticker}
+              </Link>
+            </span>
+            <span className="flex min-w-0 items-center gap-2">
+              <FundLogo fundName={f.fund} url={urlByFund.get(f.fund)} size={16} />
+              <Link to={fundPath(f.fund)} className="fund-link truncate">
+                {f.fund}
               </Link>
             </span>
             <span
@@ -172,6 +186,9 @@ export default function Landing() {
           SEC filings from a roster of funds selected by measured performance, turned into
           portfolios, deltas and consensus you can read in seconds.
         </p>
+        <div className="mt-6 w-full max-w-md md:hidden">
+          <GlobalSearch />
+        </div>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             to={ROUTES.latest}
@@ -192,7 +209,7 @@ export default function Landing() {
 
       <section
         aria-label="At a glance"
-        className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border shadow-sm sm:grid-cols-4"
+        className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border shadow-sm sm:grid-cols-3"
       >
         <div className="bg-card">
           <Stat value={funds.length || "…"} label="Funds tracked" />
@@ -200,10 +217,7 @@ export default function Landing() {
         <div className="bg-card">
           <Stat value={tickers ? tickers.toLocaleString("en-US") : "…"} label="Tickers" />
         </div>
-        <div className="bg-card">
-          <Stat value={3} label="Filing types" />
-        </div>
-        <div className="bg-card">
+        <div className="col-span-2 bg-card sm:col-span-1">
           <Stat value={asOf} label="Latest quarter" />
         </div>
       </section>
@@ -212,19 +226,37 @@ export default function Landing() {
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className="rounded-xl border border-border bg-card p-5 shadow-sm transition-[border-color,box-shadow] duration-[120ms] hover:border-input hover:shadow-md"
+            className={cn(
+              STRETCHED_CARD,
+              "rounded-xl border border-border bg-card p-5 shadow-sm transition-[border-color,box-shadow] duration-[120ms] hover:border-input hover:shadow-md",
+            )}
           >
             <div className="mb-4 grid h-9 w-9 place-items-center rounded-lg border border-border bg-muted text-primary-text">
               <f.icon className="h-4 w-4" aria-hidden="true" />
             </div>
-            <h2 className="text-sm font-semibold text-foreground">{f.title}</h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              {"to" in f.link ? (
+                <Link to={f.link.to} className={STRETCHED_LINK}>
+                  {f.title}
+                </Link>
+              ) : (
+                <a
+                  href={f.link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={STRETCHED_LINK}
+                >
+                  {f.title}
+                </a>
+              )}
+            </h2>
             <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">{f.body}</p>
           </div>
         ))}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-6">
-        <Wire />
+        <Wire funds={funds} />
         <div className="flex flex-col gap-4">
           <div className="frame">
             <div className="frame-title">

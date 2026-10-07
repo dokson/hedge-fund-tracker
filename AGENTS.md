@@ -127,9 +127,15 @@ These are real incidents — read before changing code in these areas.
 
 - **A "NEW HOLDINGS" 13F-HR/A lists only the added positions.** Taking it as the period's report shrank one fund's book to two rows and turned its next comparison into +2,800% of NEW positions. `app/scraper/amendments.py::consolidate_period` (regenerate) and `sec_scraper.complete_new_holdings` (updater) merge a partial one into the report it amends; filers also put the label on complete reports, so an amendment worth at least half the report it amends is taken as a restatement. The scraper reads `amendmentType` from the raw cover page (`primary_doc.xml`, not the XSL-rendered copy), only for 13F-HR/A filings.
 
+- **An empty 13F is a real state, an unreadable one is an error.** A fund that hands its mandates to another manager files a 13F-HR whose table holds one zeroed placeholder (CUSIP `000000000`); it parses to an empty frame and the quarter is saved as all CLOSE. `xml_processor.xml_to_dataframe_13f` raises `UnparseableHoldingsError` instead when the table has no entry at all or every real position has an unreadable number, because either would be indistinguishable from "closed everything". A fund-quarter with no position left is dropped from the stock-level consensus (see below), from that quarter on: its earlier quarters are untouched.
+
+- **"Latest quarter" is the newest usable quarter.** A quarter counts once it holds at least `MIN_QUARTER_COVERAGE` (50%) of the filings of the last usable quarter before it (`quarters.last_usable_quarter`, `getLatestQuarter` in `lib/quarters.ts`, built from the per-quarter counts `copy-database.mjs` writes into `metadata.json`), so a quarter with a single early filing does not become the default view. The quarter selector still lists every quarter.
+
 - **EDGAR ordering is by publication date, except same-day batches.** Filings filed the same day can list in ascending period order, and funds publish old periods late. Never assume list position == recency of period; 13F-HR/A amendments win because comparisons match by reference date, latest-published first.
 
 - **Stock-level analysis is duplicated in Python and TS, pinned by a golden fixture.** `app/analysis/stocks.py` (`_calculate_fund_level_flags`→`_aggregate_stock_data`→`_calculate_derived_metrics`) and `dataService.ts::aggregateStockLevel` must produce identical output — the TS copy is required because GH Pages has no backend. Both assert against `tests/fixtures/analysis_golden.json`. After an intentional change to either, regenerate with `pipenv run python scripts/gen_analysis_golden.py` and update both sides, or the equivalence tests fail.
+
+  Both chains first drop every fund with no position in the quarter (`Shares` is 0 on all its rows): it has left the universe and is not a seller of what it held. The fixture carries a `FundGone` case for it.
 
 - **`stocks.csv` is auto-sorted on exit.** A diff that only shows reordering = something else changed. Don't commit "sort cleanup" PRs without inspecting actual content changes.
 
@@ -168,8 +174,10 @@ React 19 + TypeScript + Vite, served by FastAPI (`app/server.py`). `pipenv run a
 ### Shell, routing & branding
 
 - **Layout** (`DashboardLayout.tsx` + `AppSidebar.tsx`): a full-height left sidebar (brand/logo at top, then nav, then footer) beside a content column with its own top-navbar (global search + theme toggle). The **logo is the sidebar toggle** (no hamburger): clicking it collapses the rail to an icon-only strip and back; state persists across reloads via SidebarProvider's `sidebar:state` cookie (read by `readSidebarOpen()`). On phones the sidebar is hidden and `MobileNav.tsx` takes over: a full-screen overlay (not a drawer) with 44px rows, opened by the logo.
+- **Ways home and up**: the sidebar brand links home on desktop; on phones the top bar carries a Home icon and the brand row of the `MobileNav` overlay is a home link too (the header logo only opens the menu). Single-item pages (`/stock/:ticker`, a fund page) lead with a `Breadcrumb` and a back arrow: the arrow uses `useBack(fallback)` (return to where the visitor came from, the list only when the page was the entry point), and the page ends with `PageEnd` (next places to go + back to top). A metric the UI shows must be defined where it appears: the Smart Score panel and the `/stocks` Score tab link to the FAQ entry `what-is-smart-score` (`learnItem`), and `InfoTooltip` is a real button so a tap or the keyboard opens it.
 - **Routes are centralised** in `src/lib/routes.ts` — `ROUTES` constants + builders (`stockPath`, `fundPath`, `stocksByIndustry`, `aiDiligenceFor`). **Never hardcode path strings**; a slug change happens in one place. Home `/` is the marketing **`Landing`** page (rendered inside the shell, so the sidebar persists); Latest Filings lives at **`/latest`**.
 - **Logo assets** live in `public/`: `logo-mark.webp` (cyborg-bull mark, rendered by `BrandLogo` in the header/sidebar/landing for both themes — the transparent background reads on light and dark, so there is no theme swap) and the 512px `logo.png`, kept for social cards and JSON-LD. Plus `favicon-16/32.png` (transparent) and `apple-touch-icon.png` (on a dark navy tile, since iOS has no alpha). Raster assets are regenerated with ImageMagick (`magick`); there is no SVG source.
+- **Colour roles** (`src/index.css`, HSL tokens): in dark the neutrals are tinted to the brand hue (236, 14-30% saturation) so the page reads as ink-indigo rather than grey; the active nav row is a primary wash with a leading bar; panel headers carry a faint primary wash. Status chips (`chip` + `text-positive|warning|negative`) get a 14% wash of their tone **in dark only**: in light that wash fell to 2.13:1, so light keeps the neutral chip. Recheck the text tokens' ratios on `--muted`, the lightest ground, whenever a surface token moves. The fund list's "Filed" pill follows `filingFreshness`: green on the board quarter or past it, yellow up to two quarters behind, red beyond.
 - **Mobile tables → cards**: wide data tables are unusable on phones, so below `md` each becomes a stacked card list. The pattern is a `hidden md:block` table next to a `md:hidden` card list (Dashboard, StockBrowser, FundPortfolio, QuarterlyTrends, StockAnalysis, AIRanking, FundsConfig).
 - **Shared search**: in-page search boxes filter through `matchesQuery()` (`src/lib/utils.ts`) — case-insensitive, null-safe, empty-query-matches-all. The "Consider Starred only" filter row is the shared `StarredFilterToggle` component. (The top-bar `GlobalSearch` is separate — it does ranked scoring, not a boolean filter.)
 
@@ -313,6 +321,12 @@ UTF-8 everywhere. Standard streams are switched once, in `app/utils/encoding.py`
 ### Language
 
 All code, comments, docstrings, commit messages, and user-facing strings: **English only**.
+
+### Tooling choices
+
+- **Python**: `pyright` for types, `ruff format` for formatting, `unittest` for tests (use `subTest` for cases, no pytest fixtures), `pathlib` and `X | None`, `pipenv run` for every tool. Docstrings follow *Docstrings*; an `Args:`/`Returns:` block is welcome.
+- **TypeScript**: `oxlint` + `oxfmt`, `vitest`, `tsc -b` strict; tests sit next to the source as `*.test.ts(x)`.
+- **Coverage**: no percentage target. TDD and the *Done checklist* decide what is tested.
 
 ### Code patterns
 

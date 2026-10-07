@@ -11,6 +11,8 @@ interface TickerAutocompleteProps {
   className?: string;
   id?: string;
   placeholder?: string;
+  disabled?: boolean;
+  title?: string;
 }
 
 export default function TickerAutocomplete({
@@ -21,6 +23,8 @@ export default function TickerAutocomplete({
   className = "",
   id,
   placeholder = "NVDA",
+  disabled = false,
+  title,
 }: TickerAutocompleteProps) {
   const [open, setOpen] = useState(false);
   const [highlightIdx, setHighlightIdx] = useState(-1);
@@ -118,6 +122,8 @@ export default function TickerAutocomplete({
         onFocus={() => value.length >= 1 && setOpen(true)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
+        disabled={disabled}
+        title={title}
         className={`w-24 ${className} font-mono uppercase placeholder:normal-case placeholder:font-sans ${
           showError ? "border-destructive" : ""
         }`}

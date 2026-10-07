@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { smartScoreCore } from "../smartScore";
+import { smartScoreComponents, smartScoreCore } from "../smartScore";
 import { selectSmartScoreScreen } from "../strategyScreen";
 import type { StockQuarterAnalysis } from "../dataService";
 
@@ -70,5 +70,37 @@ describe("selectSmartScoreScreen", () => {
 
     expect(screen.map((h) => h.ticker)).toEqual(["AAA", "BBB"]);
     expect(screen.reduce((s, h) => s + h.weight, 0)).toBeCloseTo(1.0);
+  });
+
+  it("ranks ties on the one-decimal score by the unrounded composite, as the Python engine does", () => {
+    const many = Array.from({ length: 200 }, (_, i) =>
+      mkRow({
+        ticker: `T${String(i).padStart(3, "0")}`,
+        holderCount: (i * 37) % 101,
+        netBuyers: ((i * 53) % 41) - 20,
+        avgPortfolioPct: ((i * 29) % 97) / 10,
+        highConvictionCount: i % 7 === 0 ? 1 : 0,
+      }),
+    );
+    const unrounded = new Map(
+      smartScoreComponents(many).map((c, i) => [
+        many[i].ticker,
+        ((c.breadth ?? 0) + (c.momentum ?? 0) + (c.conviction ?? 0)) / 3,
+      ]),
+    );
+    const shown = new Map(smartScoreComponents(many).map((c, i) => [many[i].ticker, c.smartScore]));
+
+    const order = selectSmartScoreScreen(many, 200).map((h) => h.ticker);
+
+    const tiedPairs = order.filter(
+      (t, i) =>
+        i > 0 &&
+        shown.get(t) === shown.get(order[i - 1]) &&
+        unrounded.get(t) !== unrounded.get(order[i - 1]),
+    );
+    expect(tiedPairs.length).toBeGreaterThan(0);
+    order.slice(1).forEach((t, i) => {
+      expect(unrounded.get(t)!).toBeLessThanOrEqual(unrounded.get(order[i])! + 1e-9);
+    });
   });
 });

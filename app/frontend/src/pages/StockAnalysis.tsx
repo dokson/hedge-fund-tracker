@@ -13,7 +13,7 @@ import {
 import type { SmartScoreView } from "@/lib/smartScore";
 import { SmartScorePanel } from "@/components/SmartScorePanel";
 import { SmartScoreBadge } from "@/components/SmartScoreBadge";
-import { stocksByIndustry, aiDiligenceFor, stockPath } from "@/lib/routes";
+import { stocksByIndustry, aiDiligenceFor, stockPath, ROUTES } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { getSectorStyle, sectorPillStyle, SECTOR_PILL } from "@/lib/sectorStyle";
@@ -33,7 +33,10 @@ import { MeasuredChart } from "@/components/MeasuredChart";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { TableFrame } from "@/components/ui/TableFrame";
-import { Brain, ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowLeft, Brain, ChevronDown } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { PageEnd } from "@/components/PageEnd";
+import { useBack } from "@/hooks/useBack";
 import { SortArrow } from "@/components/ui/SortArrow";
 import { QueryState } from "@/components/ui/QueryState";
 import { useSortState } from "@/hooks/useSortState";
@@ -77,16 +80,23 @@ function deltaClass(n: number) {
 function StatusCell({
   label,
   value,
+  hint,
   className = "",
+  cellClassName = "",
 }: {
   label: string;
   value: React.ReactNode;
+  /** A plain-words reading of the value, under it. */
+  hint?: string;
   className?: string;
+  /** Extra classes for the cell itself (e.g. a column span). */
+  cellClassName?: string;
 }) {
   return (
-    <div className="bg-card p-3">
+    <div className={`bg-card p-3 ${cellClassName}`}>
       <p className="metric-label">{label}</p>
       <p className={`metric-value ${className}`}>{value}</p>
+      {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -152,6 +162,7 @@ function StockHolderCard({ h, rank }: { h: FundTickerHolding; rank: number }) {
 export default function StockAnalysis() {
   const { ticker = "NVDA" } = useParams();
   const navigate = useNavigate();
+  const goBack = useBack(ROUTES.stocks);
   const { isStarred, toggle: toggleStar } = useStarred("stock");
   const { quarters, latestQuarter } = useAvailableQuarters();
   const [selectedQuarter, setSelectedQuarter] = useState<Quarter | undefined>();
@@ -321,8 +332,30 @@ export default function StockAnalysis() {
 
   return (
     <div className="space-y-5 max-w-screen-2xl">
+      <div className="flex items-center justify-between gap-3">
+        <Breadcrumb trail={[{ label: "Stocks", to: ROUTES.stocks }]} current={ticker} />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            document.getElementById("holders-heading")?.scrollIntoView({ block: "start" })
+          }
+        >
+          <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+          Holders
+        </Button>
+      </div>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-start gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            aria-label="Back"
+            onClick={goBack}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <div className="border border-border bg-card p-1.5 shrink-0">
             <CompanyLogo ticker={ticker} size={44} />
           </div>
@@ -433,7 +466,8 @@ export default function StockAnalysis() {
               />
               <StatusCell
                 label="Net Buyers"
-                value={`${signed(kpi.netBuyers)} (${kpi.buyerCount}/${kpi.sellerCount})`}
+                value={signed(kpi.netBuyers)}
+                hint={`${kpi.buyerCount} bought · ${kpi.sellerCount} sold`}
                 className={deltaClass(kpi.netBuyers)}
               />
             </div>
@@ -458,6 +492,7 @@ export default function StockAnalysis() {
                 <StatusCell
                   label="Avg / Max Ptf %"
                   value={`${kpi.avgPtfPct.toFixed(2)}% / ${kpi.maxPtfPct.toFixed(1)}%`}
+                  cellClassName="col-span-2 lg:col-span-1"
                 />
               </div>
             </details>
@@ -705,6 +740,13 @@ export default function StockAnalysis() {
           </section>
         </>
       )}
+      <PageEnd
+        links={[
+          ...(industry ? [{ label: `More in ${industry}`, to: stocksByIndustry(industry) }] : []),
+          { label: "All stocks", to: ROUTES.stocks },
+          { label: "Fund ranking", to: ROUTES.fundRanking },
+        ]}
+      />
     </div>
   );
 }

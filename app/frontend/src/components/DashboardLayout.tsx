@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useLocation } from "react-router";
-import { Sun, Moon, Search } from "lucide-react";
+import { Link, useLocation } from "react-router";
+import { House, Sun, Moon, Search } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { AppSidebar } from "@/components/AppSidebar";
@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useScrollTopOnNavigate } from "@/hooks/useScrollTopOnNavigate";
 import { APP_VERSION } from "@/lib/config";
+import { ROUTES } from "@/lib/routes";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
 /**
@@ -66,16 +67,25 @@ function IconAction({
   title,
   onClick,
   href,
+  to,
   children,
 }: {
   label: string;
   title?: string;
   onClick?: () => void;
   href?: string;
+  to?: string;
   children: React.ReactNode;
 }) {
   const cls =
     "flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors duration-[120ms] hover:text-foreground hover:bg-muted";
+  if (to) {
+    return (
+      <Link to={to} className={cls} aria-label={label} title={title}>
+        {children}
+      </Link>
+    );
+  }
   if (href) {
     return (
       <a
@@ -113,9 +123,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </a>
       <MobileNav />
       {/* Phones scroll the document so the browser chrome can collapse. */}
-      <div className="flex w-full md:h-screen md:overflow-hidden">
+      <div className="flex w-full md:h-screen md:overflow-clip">
         <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 md:min-h-0">
           {/* Labelled: the sidebar brand plate is the other banner landmark. */}
           <header
             aria-label="Top bar"
@@ -129,6 +139,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <StatusLine />
             <div className="flex items-center shrink-0 ml-auto">
+              <span className="md:hidden">
+                <IconAction label="Home" to={ROUTES.home}>
+                  <House className="h-4 w-4" />
+                </IconAction>
+              </span>
               <span className="md:hidden">
                 <IconAction label="Search" onClick={() => setMobileSearchOpen(true)}>
                   <Search className="h-4 w-4" />
@@ -172,7 +187,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <main
             id="main"
             key={location.pathname}
-            className="flex-1 min-w-0 p-3 sm:p-4 md:p-6 md:overflow-auto"
+            className="relative flex-1 min-w-0 p-3 sm:p-4 md:p-6 md:overflow-auto"
           >
             {children}
           </main>

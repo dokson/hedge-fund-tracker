@@ -254,9 +254,8 @@ function renderTrackRecord(track: readonly TrackPoint[]): string {
     last.indexCum === null ? "" : ` against ${signedPct(last.indexCum)} for the S&amp;P 500`;
   const summary =
     `Since ${quarterLabel(first.quarter)} the disclosed positions returned an estimated ${signedPct(last.fundCum)}${versus}. ` +
-    "Estimated return of the fund's disclosed US long positions at the start of each quarter (top 100 by value), price-only. " +
-    "Not the fund's actual return: excludes trading within the quarter, fees, shorts, derivatives and cash. " +
-    "Benchmark: S&amp;P 500 price return over the same quarter-end windows.";
+    "Price-only return of the fund's top 100 US longs at each quarter start, vs the S&amp;P 500 over the same windows. " +
+    "Not the fund's actual return (no trades, fees, shorts, derivatives, cash).";
   const rows = track.map((p) => [
     quarterLabel(p.quarter),
     signedPct(p.fundReturn),

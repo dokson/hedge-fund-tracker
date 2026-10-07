@@ -88,6 +88,34 @@ INPUT = [
         "Fund_Concentration_Ratio": 50.0,
         "Shares_Delta_Pct": 0.0,
     },
+    # FundGone: sold everything (a fund with no positions left). It must not count as a
+    # seller or a closer anywhere: AAA's and CCC's expected values ignore it.
+    {
+        "Fund": "FundGone",
+        "Ticker": "AAA",
+        "Company": "Alpha",
+        "Shares": 0,
+        "Delta_Shares": -300,
+        "Value": 0,
+        "Delta_Value": -3000,
+        "Portfolio_Pct": 0.0,
+        "Portfolio_Pct_Rank": 99,
+        "Fund_Concentration_Ratio": 0.0,
+        "Shares_Delta_Pct": 0.0,
+    },
+    {
+        "Fund": "FundGone",
+        "Ticker": "CCC",
+        "Company": "Charlie",
+        "Shares": 0,
+        "Delta_Shares": -70,
+        "Value": 0,
+        "Delta_Value": -700,
+        "Portfolio_Pct": 0.0,
+        "Portfolio_Pct_Rank": 99,
+        "Fund_Concentration_Ratio": 0.0,
+        "Shares_Delta_Pct": 0.0,
+    },
 ]
 
 # Stock-level output columns compared across implementations, mapped to the
@@ -135,7 +163,9 @@ def main() -> None:
         }
 
     FIXTURE.write_text(
-        json.dumps({"input": INPUT, "expected": expected}, indent=2) + "\n", encoding="utf-8"
+        json.dumps({"input": INPUT, "expected": expected}, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
     )
     print(f"Wrote {FIXTURE} ({len(expected)} tickers)")
 

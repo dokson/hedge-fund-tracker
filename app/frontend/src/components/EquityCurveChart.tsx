@@ -10,7 +10,7 @@ import {
   type TooltipContentProps,
 } from "recharts";
 import { useElementSize } from "@/hooks/useElementSize";
-import { buildChartData } from "@/lib/equityCurve";
+import { buildChartData, PLOT_INSET } from "@/lib/equityCurve";
 import { BENCHMARK, GRID, NEUTRAL, seriesColor } from "@/lib/seriesColors";
 
 const AXIS_TICK = { fill: NEUTRAL, fontSize: 11 };
@@ -75,7 +75,7 @@ export default function EquityCurveChart({ series, quarters, originLabel, band }
           width={size.width}
           height={size.height}
           data={data}
-          margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+          margin={{ top: 8, right: PLOT_INSET.right, left: 0, bottom: 0 }}
         >
           <CartesianGrid stroke={GRID} strokeWidth={1} vertical={false} />
           <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} />
@@ -84,7 +84,7 @@ export default function EquityCurveChart({ series, quarters, originLabel, band }
             tick={AXIS_TICK}
             axisLine={false}
             tickLine={false}
-            width={48}
+            width={PLOT_INSET.left}
           />
           <ReferenceLine y={0} stroke={NEUTRAL} strokeOpacity={0.4} />
           <Tooltip content={renderTooltip} />

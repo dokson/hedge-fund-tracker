@@ -44,7 +44,7 @@ export const FAQ_META = {
  * line and as schema `dateModified` — content freshness is a ranking and
  * AI-citation signal, so bump this whenever the answers are revised.
  */
-export const FAQ_LAST_UPDATED = "2026-09-03";
+export const FAQ_LAST_UPDATED = "2026-10-07";
 
 export const FAQ_SECTIONS: FaqSection[] = [
   {
@@ -134,6 +134,14 @@ export const FAQ_SECTIONS: FaqSection[] = [
         answer: [
           "The Promise Score is a ranking produced by a language model from the institutional filing data on this site: how many tracked funds hold a stock, how large those positions are, and how they changed over recent quarters. It runs in two steps — the model first proposes how much weight to give each of those inputs, then scores every stock using those weights.",
           "It is a way of sorting a long list into a shorter one. It is not a forecast and not investment advice: nothing in it looks at fundamentals, valuation or price, and the weights are the model's judgment rather than a tested result. Do your own research before acting on it.",
+        ],
+      },
+      {
+        id: "what-is-smart-score",
+        question: "What is the Smart Score?",
+        answer: [
+          "The Smart Score is a 1 to 10 rating computed from the institutional filings on this site, with no model and no price data involved. For each stock in the selected quarter it takes three percentiles against every other stock tracked that quarter: Breadth (how many tracked funds hold it), Momentum (net buyers: funds that bought or opened a position minus funds that sold or closed one) and Conviction (how large the position is in a typical holder's portfolio, plus a bonus for each fund that opened a large new position, capped at 100). The three are averaged and rescaled to the 1 to 10 range.",
+          "The score is relative, not absolute: a 10 means the stock ranks at the top of this quarter's universe on all three signals, not that it will rise. It ignores fundamentals, valuation, price and analyst opinion. Use it to sort a long list into a shorter one, not as investment advice.",
         ],
       },
       {

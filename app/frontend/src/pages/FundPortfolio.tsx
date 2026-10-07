@@ -1,6 +1,9 @@
 import { useCallback, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router";
-import { isQuarter } from "@/lib/quarters";
+import { filingFreshness, isQuarter, quartersBehind, type FilingFreshness } from "@/lib/quarters";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { PageEnd } from "@/components/PageEnd";
+import { useBack } from "@/hooks/useBack";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import {
   getHedgeFunds,
@@ -53,22 +56,40 @@ interface FundMeta {
   latestQuarter: string | null;
 }
 
-/** Last filed quarter; a tinted pill marks a fund already current with the board. */
-function LastFiling({ quarter, current }: { quarter: string | null; current: boolean }) {
+const FRESHNESS_TONE: Record<FilingFreshness, string> = {
+  current: "text-positive",
+  late: "text-warning",
+  stale: "text-negative",
+};
+
+/**
+ * Last filed quarter as a pill: green on the board's quarter (or past it), yellow up to two
+ * quarters behind, red beyond that.
+ */
+function LastFiling({
+  quarter,
+  boardQuarter,
+}: {
+  quarter: string | null;
+  boardQuarter: string | null;
+}) {
   if (!quarter) return <span className="text-muted-foreground">—</span>;
   const label = quarter.replace("Q", " Q");
-  if (!current) {
+  const freshness = filingFreshness(quarter, boardQuarter);
+  if (!freshness) {
     return (
       <span className="text-muted-foreground" title="Latest quarter this fund has filed">
         {label}
       </span>
     );
   }
+  const behind = quartersBehind(quarter, boardQuarter) ?? 0;
+  const title =
+    freshness === "current"
+      ? "This fund has filed the most recent quarter"
+      : `${behind} quarter${behind === 1 ? "" : "s"} behind the most recent quarter`;
   return (
-    <span
-      className="chip text-positive"
-      title="This fund has already filed the most recent quarter"
-    >
+    <span className={`chip ${FRESHNESS_TONE[freshness]}`} title={title}>
       Filed {label}
     </span>
   );
@@ -111,8 +132,6 @@ function FundList({
   if (list.length === 0) {
     return <EmptyState padding="sm" className="mt-4" title="No funds match your search." />;
   }
-  const isCurrent = (meta: FundMeta | undefined) =>
-    !!meta?.latestQuarter && meta.latestQuarter === overallLatestQuarter;
 
   return (
     <>
@@ -142,8 +161,10 @@ function FundList({
                     {meta ? formatValue(meta.aum) : "…"}
                   </span>
                   <span>
-                    <span className="text-muted-foreground">Filed </span>
-                    <LastFiling quarter={meta?.latestQuarter ?? null} current={isCurrent(meta)} />
+                    <LastFiling
+                      quarter={meta?.latestQuarter ?? null}
+                      boardQuarter={overallLatestQuarter}
+                    />
                   </span>
                 </p>
               </div>
@@ -222,7 +243,10 @@ function FundList({
                     <td className="px-3 py-1 text-right">{meta ? meta.holdings : "…"}</td>
                     <td className="px-3 py-1 text-right">{meta ? formatValue(meta.aum) : "…"}</td>
                     <td className="px-3 py-1 text-right">
-                      <LastFiling quarter={meta?.latestQuarter ?? null} current={isCurrent(meta)} />
+                      <LastFiling
+                        quarter={meta?.latestQuarter ?? null}
+                        boardQuarter={overallLatestQuarter}
+                      />
                     </td>
                   </tr>
                 );
@@ -355,9 +379,10 @@ function FundGrid() {
           Hedge Fund Portfolios
         </h1>
         <p className="text-sm text-muted-foreground mt-1.5">
-          {funds.length} tracked institutional investors. A green Filed pill marks a fund already
-          current with{" "}
-          {overallLatestQuarter ? overallLatestQuarter.replace("Q", " Q") : "the latest quarter"}.
+          {funds.length} tracked institutional investors. The Filed pill is green for a fund that
+          has filed{" "}
+          {overallLatestQuarter ? overallLatestQuarter.replace("Q", " Q") : "the latest quarter"},
+          yellow up to two quarters behind, red beyond that.
         </p>
       </div>
 
@@ -512,6 +537,7 @@ const NO_HOLDINGS: QuarterlyHolding[] = [];
 
 function FundDetail({ fundName }: { fundName: string }) {
   const navigate = useNavigate();
+  const goBack = useBack(ROUTES.funds);
   const [quarter, setQuarter] = useState<string | null>(null);
   const { sortKey, sortDir, toggleSort, ariaSort } = useSortState<SortKey>("portfolioPct");
   const [showAll, setShowAll] = useState(false);
@@ -730,13 +756,9 @@ function FundDetail({ fundName }: { fundName: string }) {
   if (availableQuarters.length === 0) {
     return (
       <div className="space-y-6 max-w-screen-2xl">
+        <Breadcrumb trail={[{ label: "Funds", to: ROUTES.funds }]} current={fundLabel} />
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Back to funds"
-            onClick={() => navigate(ROUTES.funds)}
-          >
+          <Button variant="ghost" size="icon" aria-label="Back" onClick={goBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-card">
@@ -759,14 +781,10 @@ function FundDetail({ fundName }: { fundName: string }) {
 
   return (
     <div className="space-y-6 max-w-screen-2xl">
+      <Breadcrumb trail={[{ label: "Funds", to: ROUTES.funds }]} current={fundLabel} />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Back to funds"
-            onClick={() => navigate(ROUTES.funds)}
-          >
+          <Button variant="ghost" size="icon" aria-label="Back" onClick={goBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-card">
@@ -1076,6 +1094,13 @@ function FundDetail({ fundName }: { fundName: string }) {
       </div>
 
       <FundPerformancePanel fund={fundName} />
+      <PageEnd
+        links={[
+          { label: "All funds", to: ROUTES.funds },
+          { label: "Fund ranking", to: ROUTES.fundRanking },
+          { label: "Latest filings", to: ROUTES.latest },
+        ]}
+      />
     </div>
   );
 }

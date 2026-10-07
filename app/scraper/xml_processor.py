@@ -24,6 +24,12 @@ _ENTITY_RE = re.compile(rb"<!ENTITY[^>]*>", re.IGNORECASE)
 _DOCTYPE_RE = re.compile(rb"<!DOCTYPE[^>]*>", re.IGNORECASE)
 
 
+class UnparseableHoldingsError(ValueError):
+    """
+    A 13F information table whose entries cannot be told apart from "the fund holds nothing".
+    """
+
+
 def _sanitize_xml(content):
     """
     Remove DOCTYPE/ENTITY declarations from raw filing bytes.
@@ -76,6 +82,9 @@ def xml_to_dataframe_13f(
 
         data.append([company, cusip, value, shares, put_call])
 
+    if not data:
+        raise UnparseableHoldingsError("The 13F information table has no entries")
+
     df = pd.DataFrame(data, columns=columns)
 
     df = df[df["Put/Call"] == ""].drop("Put/Call", axis=1)
@@ -111,6 +120,10 @@ def xml_to_dataframe_13f(
             "Dropped %d row(s) with unparseable Value/Shares from 13F filing",
             int(unparseable_mask.sum()),
         )
+        if unparseable_mask.all():
+            raise UnparseableHoldingsError(
+                f"All {len(df)} position(s) in the 13F information table have unreadable numbers"
+            )
         df = df[~unparseable_mask]
     df["Shares"] = df["Shares"].astype(int)
 

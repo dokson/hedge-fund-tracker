@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import type { EnrichedNQFiling } from "@/lib/dataService";
@@ -50,5 +50,35 @@ describe("Landing feature claims", () => {
     expect(text).not.toContain("open source");
     expect(text).not.toContain("self-hostable");
     expect(screen.getByText("Source available, runs in your browser")).toBeTruthy();
+  });
+});
+
+describe("Landing structure", () => {
+  const renderLanding = () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <Landing />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  };
+
+  it("makes every feature card lead somewhere", () => {
+    renderLanding();
+    const hrefOf = (name: string) => screen.getByRole("link", { name }).getAttribute("href");
+
+    expect(hrefOf("A roster picked by track record")).toBe("/learn#how-funds-are-selected");
+    expect(hrefOf("Three filing types, one timeline")).toBe("/latest");
+    expect(hrefOf("Source available, runs in your browser")).toBe(
+      "https://github.com/dokson/hedge-fund-tracker",
+    );
+  });
+
+  it("lets a phone visitor search a ticker or fund from the hero", () => {
+    renderLanding();
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section")!;
+    expect(within(hero).getByPlaceholderText("ticker, cusip, fund, manager")).toBeTruthy();
   });
 });

@@ -67,11 +67,12 @@ describe("FundPerformancePanel", () => {
     expect(screen.getByText("1 of 2")).toBeTruthy();
   });
 
-  it("states what the number is and is not", async () => {
+  it("flags a quarter where over 5% of the book could not be priced", async () => {
     getFundPerformance.mockResolvedValue(PERF);
     renderPanel();
-    expect(await screen.findByText(/not the fund's actual return/i)).toBeTruthy();
-    expect(screen.getByText(/2026 Q2: over 5% of the book could not be priced/i)).toBeTruthy();
+    expect(
+      await screen.findByText(/2026 Q2: over 5% of the book could not be priced/i),
+    ).toBeTruthy();
   });
 
   it("shows every quarter against the index and marks the ones it lost", async () => {

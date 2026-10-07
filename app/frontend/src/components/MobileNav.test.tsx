@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -109,6 +109,20 @@ describe("MobileNav", () => {
     await screen.findByRole("dialog", { name: "Navigation" });
 
     fireEvent.click(screen.getByRole("button", { name: "Close navigation" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Navigation" })).toBeNull();
+    });
+  });
+
+  it("links the brand to the home page and closes the menu when it is used", async () => {
+    renderNav();
+    openMenu();
+    const dialog = await screen.findByRole("dialog", { name: "Navigation" });
+
+    const brand = within(dialog).getByRole("link", { name: "Hedge Fund Tracker" });
+    expect(brand.getAttribute("href")).toBe("/");
+    fireEvent.click(brand);
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Navigation" })).toBeNull();

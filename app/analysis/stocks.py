@@ -149,13 +149,16 @@ def _calculate_fund_level_flags(df_fund_quarter: pd.DataFrame) -> pd.DataFrame:
     """
     Adds boolean flags to the fund-level DataFrame to categorize fund activity for each stock.
 
+    Funds with no position left are dropped first: a fund that closed everything (or handed its
+    mandates to another manager) has left the universe, it is not a seller of what it held.
+
     Args:
         df_fund_quarter (pd.DataFrame): DataFrame with fund-level holdings data.
 
     Returns:
-        pd.DataFrame: The input DataFrame with added boolean columns for activity type (e.g., 'is_buyer', 'is_seller', 'is_new').
+        pd.DataFrame: The active funds' rows with added boolean columns for activity type (e.g., 'is_buyer', 'is_seller', 'is_new').
     """
-    df = df_fund_quarter.copy()
+    df = df_fund_quarter[df_fund_quarter.groupby("Fund")["Shares"].transform("max") > 0].copy()
     df["is_buyer"] = df["Delta_Value"] > 0
     df["is_seller"] = df["Delta_Value"] < 0
     df["is_holder"] = df["Shares"] > 0

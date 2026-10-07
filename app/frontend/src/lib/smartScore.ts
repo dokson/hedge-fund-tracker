@@ -104,3 +104,25 @@ export function withSmartScores<T extends StockQuarterAnalysis>(rows: T[]): T[] 
     scoreConviction: components[i].conviction,
   }));
 }
+
+/** The fields a stock row needs to be ranked by Smart Score. */
+type SmartScored = Pick<
+  StockQuarterAnalysis,
+  "smartScore" | "scoreBreadth" | "scoreMomentum" | "scoreConviction"
+>;
+
+/**
+ * Descending comparator by Smart Score. The score is shown rounded to one decimal, so rows tied
+ * on it are ordered by the unrounded composite (the mean of their component percentiles).
+ */
+export function compareBySmartScore(a: SmartScored, b: SmartScored): number {
+  return (b.smartScore ?? 0) - (a.smartScore ?? 0) || componentsMean(b) - componentsMean(a);
+}
+
+/** Mean of the percentiles a stock has, the unrounded form of its composite. */
+function componentsMean(r: SmartScored): number {
+  const parts = [r.scoreBreadth, r.scoreMomentum, r.scoreConviction].filter(
+    (v): v is number => v != null,
+  );
+  return parts.length ? parts.reduce((s, v) => s + v, 0) / parts.length : 0;
+}

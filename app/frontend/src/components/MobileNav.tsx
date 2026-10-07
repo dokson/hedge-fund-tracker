@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 
 import GlobalSearch from "@/components/GlobalSearch";
 import { NavLink } from "@/components/NavLink";
@@ -100,10 +100,16 @@ export function MobileNav() {
           <DialogPrimitive.Title className="sr-only">Navigation</DialogPrimitive.Title>
 
           <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
-            <BrandLogo size={28} className="h-7 w-7 shrink-0" />
-            <span className="truncate text-sm font-semibold text-foreground">
-              Hedge Fund Tracker
-            </span>
+            <Link
+              to={ROUTES.home}
+              onClick={close}
+              className="flex min-w-0 items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <BrandLogo size={28} className="h-7 w-7 shrink-0" />
+              <span className="truncate text-sm font-semibold text-foreground">
+                Hedge Fund Tracker
+              </span>
+            </Link>
             <button
               ref={closeRef}
               type="button"

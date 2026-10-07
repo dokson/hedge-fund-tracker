@@ -1,5 +1,6 @@
 import type { StockQuarterAnalysis } from "./dataService";
-import { smartScoreCore } from "./smartScore";
+import { sortAnalysisRows } from "./analysisSort";
+import { withSmartScores } from "./smartScore";
 import type { StrategyDef } from "./strategies";
 
 export interface ScreenHolding {
@@ -34,14 +35,7 @@ export function selectStrategyScreen(
   if (def.deltaSign === "positive") arr = arr.filter((r) => (r[key] ?? NaN) > 0);
   else if (def.deltaSign === "negative") arr = arr.filter((r) => (r[key] ?? NaN) < 0);
 
-  arr = [...arr].sort((a, b) => {
-    const va = a[key] ?? NaN;
-    const vb = b[key] ?? NaN;
-    if (!Number.isFinite(va) && !Number.isFinite(vb)) return 0;
-    if (!Number.isFinite(va)) return def.ascending ? 1 : -1;
-    if (!Number.isFinite(vb)) return def.ascending ? -1 : 1;
-    return def.ascending ? va - vb : vb - va;
-  });
+  arr = sortAnalysisRows(arr, key, def.ascending ? "asc" : "desc");
 
   if (def.capped && def.topN != null) arr = arr.slice(0, def.topN);
 
@@ -54,12 +48,7 @@ export function selectStrategyScreen(
  * take the top N, weighted like every other strategy.
  */
 export function selectSmartScoreScreen(rows: StockQuarterAnalysis[], topN = 30): ScreenHolding[] {
-  const scores = smartScoreCore(rows);
-  const ranked = rows
-    .map((r, i) => ({ row: r, score: scores[i] }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topN)
-    .map((x) => x.row);
+  const ranked = sortAnalysisRows(withSmartScores(rows), "smartScore", "desc").slice(0, topN);
   return toScreenHoldings(ranked);
 }
 

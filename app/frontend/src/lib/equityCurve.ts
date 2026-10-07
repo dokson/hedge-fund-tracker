@@ -6,6 +6,13 @@ export type ChartPoint = { label: string; __band?: [number, number] } & Record<
 >;
 
 /**
+ * Horizontal space the chart keeps around its plot: the Y-axis labels on the left, a small
+ * margin on the right. A table under the chart uses the same insets to line its columns up
+ * with the x-axis points.
+ */
+export const PLOT_INSET = { left: 48, right: 8 } as const;
+
+/**
  * Build the cumulative equity curve rows for a set of series.
  *
  * One row per quarter label (plus a flat 0% origin so every line starts

@@ -74,28 +74,31 @@
     --chart-8: 46 100% 30%; /* #997300, Smart Score yellow: bg 4.6 */
   }
 
-  /* Dark is the default look: near-black page, one step lighter panel,
-     zinc hairlines, indigo for primary and selection. */
+  /* Dark is the default look: an ink-indigo page, one step lighter panel,
+     hairlines tinted to the brand hue, indigo for primary and selection.
+     The neutrals carry 14-30% saturation at hue 236, so the page reads as
+     the product's colour instead of zinc grey; every text token below keeps
+     or beats the ratio it had on zinc. */
   .dark {
-    --background: 240 6% 4%; /* #0a0a0b */
-    --foreground: 240 5% 90%; /* #e4e4e7, 15.7:1 */
+    --background: 236 28% 5%; /* #090a10 */
+    --foreground: 230 30% 94%; /* #ebedf4, 16.9:1 */
 
-    --card: 240 5% 7%; /* #111113 */
-    --card-foreground: 240 5% 90%;
+    --card: 236 24% 8.5%; /* #10111b */
+    --card-foreground: 230 30% 94%;
 
-    --popover: 240 5% 8%;
-    --popover-foreground: 240 5% 90%;
+    --popover: 236 24% 10%;
+    --popover-foreground: 230 30% 94%;
 
     --primary: 239 78% 63%; /* #575aea, 5.19:1 with white */
     --primary-foreground: 0 0% 100%;
-    --primary-text: 234 89% 80%; /* #9fa8f9 link text: muted 7.51, card 8.46, bg 8.89 */
+    --primary-text: 234 89% 80%; /* #9fa8f9 link text: muted 7.44, card 8.41, bg 8.87 */
 
-    --secondary: 240 4% 12%;
-    --secondary-foreground: 240 5% 90%;
+    --secondary: 236 20% 14%;
+    --secondary-foreground: 230 30% 94%;
 
-    --muted: 240 4% 12%; /* #1d1d20, hover / track surface */
-    /* #a1a1aa: labels go down to 11px. muted 6.56, card 7.39, bg 7.77. */
-    --muted-foreground: 240 5% 65%;
+    --muted: 236 20% 14%; /* #1d1e2b, hover / track surface */
+    /* #a2a5b9: labels go down to 11px. muted 6.81, card 7.70, bg 8.12. */
+    --muted-foreground: 232 14% 68%;
 
     --accent: 239 78% 63%;
     --accent-foreground: 0 0% 100%;
@@ -103,33 +106,33 @@
     --destructive: 355 88% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 4% 15%; /* #252528 */
-    --input: 240 4% 20%;
+    --border: 236 18% 19%; /* #282939 */
+    --input: 236 16% 25%;
     --ring: 239 78% 63%;
 
     --radius: 8px;
 
-    --sidebar-background: 240 6% 4%;
-    --sidebar-foreground: 240 5% 65%;
+    --sidebar-background: 236 30% 6%;
+    --sidebar-foreground: 232 14% 68%;
     --sidebar-primary: 239 78% 63%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4% 12%;
-    --sidebar-accent-foreground: 240 5% 90%;
-    --sidebar-border: 240 4% 15%;
+    --sidebar-accent: 238 38% 17%;
+    --sidebar-accent-foreground: 230 30% 94%;
+    --sidebar-border: 236 18% 19%;
     --sidebar-ring: 239 78% 63%;
 
     /* Lifted off the canon greens/reds. Ratios are measured on --muted
-       (#1d1d20), the lightest ground a delta, a chip or a hover row reaches
+       (#1d1e2b), the lightest ground a delta, a chip or a hover row reaches
        in this theme, so they hold on --card and --background too. */
-    --positive: 170 90% 36%; /* #09ae93: muted 6.00, card 6.76, bg 7.10 */
+    --positive: 170 90% 36%; /* #09ae93: muted 5.94, card 6.71, bg 7.08 */
     --positive-foreground: 0 0% 100%;
-    --negative: 355 88% 68%; /* #f56672: muted 5.60, card 6.30, bg 6.63 */
+    --negative: 355 88% 68%; /* #f56672: muted 5.54, card 6.26, bg 6.61 */
     --negative-foreground: 0 0% 100%;
     --closed: 355 88% 68%;
-    --warning: 36 100% 50%; /* #ff9900: muted 7.83, card 8.81, bg 9.26 */
-    --warning-foreground: 240 6% 4%;
+    --warning: 36 100% 50%; /* #ff9900: muted 7.75, card 8.76, bg 9.24 */
+    --warning-foreground: 236 28% 5%;
     --info: 239 78% 63%;
-    --magenta: 288 53% 66%; /* #c47ad6, the AI purple lightened for text: muted 5.68, card 6.40, bg 6.72 */
+    --magenta: 288 53% 66%; /* #c47ad6, the AI purple lightened for text: muted 5.62, card 6.36, bg 6.71 */
 
     --chart-1: 239 78% 63%;
     --chart-2: 170 90% 36%;
@@ -254,6 +257,9 @@
     border-bottom: 1px solid hsl(var(--border));
     margin-bottom: 0;
     white-space: nowrap;
+    background: hsl(var(--primary) / 0.06);
+    border-top-left-radius: calc(var(--radius) - 1px);
+    border-top-right-radius: calc(var(--radius) - 1px);
   }
   /* The few headers that sit above a body with no padding of its own. */
   .frame-title--spaced {
@@ -304,7 +310,8 @@
     color: hsl(var(--foreground));
   }
 
-  /* A nav row: icon and label. Active is a filled, rounded row. */
+  /* A nav row: icon and label. Active is a filled, rounded row in the brand
+     wash, with a bar on its leading edge. */
   .menu-line {
     @apply relative flex items-center gap-2.5 h-9 px-3 rounded-lg;
     font-size: 13px;
@@ -320,7 +327,8 @@
   }
   .menu-line[data-active="true"] {
     color: hsl(var(--foreground));
-    background: hsl(var(--muted));
+    background: hsl(var(--primary) / 0.16);
+    box-shadow: inset 2px 0 0 hsl(var(--primary));
     font-weight: 500;
   }
   .menu-line[data-active="true"] svg {
@@ -402,6 +410,23 @@
   }
   .badge-neutral {
     color: hsl(var(--warning));
+  }
+
+  /* Dark only: the status tone also tints the chip. A 14% wash of the tone
+     over --muted keeps the tone's text at 4.57:1 or better (positive 4.83,
+     warning 6.04, negative 4.57), measured on the resulting grounds. Light
+     keeps the neutral chip: there the wash is what fell to 2.13:1. */
+  .dark :is(.chip.text-positive, .chip[class*="(--positive)"], .badge-new, .badge-bullish) {
+    background: color-mix(in srgb, hsl(var(--positive)) 14%, hsl(var(--muted)));
+    border-color: color-mix(in srgb, hsl(var(--positive)) 35%, hsl(var(--border)));
+  }
+  .dark :is(.chip.text-warning, .chip[class*="(--warning)"], .badge-neutral) {
+    background: color-mix(in srgb, hsl(var(--warning)) 14%, hsl(var(--muted)));
+    border-color: color-mix(in srgb, hsl(var(--warning)) 35%, hsl(var(--border)));
+  }
+  .dark :is(.chip.text-negative, .chip[class*="(--negative)"], .badge-closed, .badge-bearish) {
+    background: color-mix(in srgb, hsl(var(--negative)) 14%, hsl(var(--muted)));
+    border-color: color-mix(in srgb, hsl(var(--negative)) 35%, hsl(var(--border)));
   }
 
   /* The sector tag keeps its hue in the icon only. The icon is aria-hidden

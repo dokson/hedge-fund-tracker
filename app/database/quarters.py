@@ -7,6 +7,7 @@ honoured at call time.
 """
 
 import csv
+from collections.abc import Mapping
 from pathlib import Path
 
 import pandas as pd
@@ -39,6 +40,8 @@ __all__ = [
     "save_comparison",
     "save_non_quarterly_filings",
     "write_non_quarterly_filings",
+    "MIN_QUARTER_COVERAGE",
+    "last_usable_quarter",
 ]
 
 
@@ -60,14 +63,45 @@ def get_all_quarters() -> list[str]:
     )
 
 
-def get_last_quarter() -> str:
+MIN_QUARTER_COVERAGE = 0.5
+
+
+def last_usable_quarter(filings_per_quarter: Mapping[str, int]) -> str | None:
     """
-    Return the last available quarter.
+    Pick the newest quarter with enough filings to be analysed.
+
+    A quarter is usable when it holds at least `MIN_QUARTER_COVERAGE` of the filings of the last
+    usable quarter before it, so a half-filed quarter stays out of the default views while an
+    incomplete one never becomes the baseline. The oldest quarter is always usable.
+
+    Args:
+        filings_per_quarter: Number of fund filings keyed by quarter (e.g., '2025Q1').
 
     Returns:
-        str | None: The most recent quarter string (e.g., '2025Q1').
+        str | None: The newest usable quarter, or None when there are no quarters.
     """
-    return get_all_quarters()[0]
+    usable: str | None = None
+    baseline = 0
+    for quarter, count in sorted(filings_per_quarter.items()):
+        if usable is None or count >= MIN_QUARTER_COVERAGE * baseline:
+            usable, baseline = quarter, count
+    return usable
+
+
+def get_last_quarter() -> str:
+    """
+    Return the newest quarter with enough filings to be analysed (see `last_usable_quarter`).
+
+    Returns:
+        str: The quarter string (e.g., '2025Q1').
+
+    Raises:
+        IndexError: If the database has no quarter folders.
+    """
+    usable = last_usable_quarter({q: count_funds_in_quarter(q) for q in get_all_quarters()})
+    if usable is None:
+        raise IndexError("No quarter folders in the database")
+    return usable
 
 
 def count_funds_in_quarter(quarter: str) -> int:

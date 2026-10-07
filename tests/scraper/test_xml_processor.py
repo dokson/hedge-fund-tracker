@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pandas as pd
 
 from app.scraper.xml_processor import (
+    UnparseableHoldingsError,
     xml_to_dataframe_4,
     xml_to_dataframe_13f,
     xml_to_dataframe_schedule,
@@ -233,6 +234,59 @@ class TestXmlProcessor(unittest.TestCase):
         self.assertEqual(len(df), 1)
         self.assertEqual(df["Company"][0], "Good Co")
         self.assertTrue(any("2" in message for message in captured.output))
+
+    def test_xml_to_dataframe_13f_without_any_entry_is_an_error(self):
+        """
+        A table with no entry at all (a wrong or truncated document) cannot be told apart from
+        a fund that closed everything, so it must not parse to an empty frame. A genuinely empty
+        filing carries a zeroed placeholder entry instead.
+        """
+        with self.assertRaises(UnparseableHoldingsError):
+            xml_to_dataframe_13f("<html><body>Service unavailable</body></html>")
+
+    def test_xml_to_dataframe_13f_with_only_unparseable_positions_is_an_error(self):
+        """
+        When every real position has an unreadable number, the filing declares holdings we
+        failed to read: saving the quarter as all CLOSE would invent a liquidation.
+        """
+        xml_content = """
+        <informationtable>
+            <infotable>
+                <nameofissuer>Bad Value Co</nameofissuer>
+                <cusip>CUSIP2</cusip>
+                <value>12abc</value>
+                <shrsorprnamt><sshprnamt>1000</sshprnamt></shrsorprnamt>
+            </infotable>
+            <infotable>
+                <nameofissuer>Bad Shares Co</nameofissuer>
+                <cusip>CUSIP3</cusip>
+                <value>5000000</value>
+                <shrsorprnamt><sshprnamt>garbage</sshprnamt></shrsorprnamt>
+            </infotable>
+        </informationtable>
+        """
+
+        with self.assertRaises(UnparseableHoldingsError):
+            xml_to_dataframe_13f(xml_content)
+
+    def test_xml_to_dataframe_13f_with_only_option_rows_is_empty_not_an_error(self):
+        """
+        Option rows are dropped at parse time by design: a filing made only of them is a valid
+        empty long book, not a parse failure.
+        """
+        xml_content = """
+        <informationtable>
+            <infotable>
+                <nameofissuer>Option Co</nameofissuer>
+                <cusip>CUSIP9</cusip>
+                <value>5000000</value>
+                <shrsorprnamt><sshprnamt>1000</sshprnamt></shrsorprnamt>
+                <putcall>Put</putcall>
+            </infotable>
+        </informationtable>
+        """
+
+        self.assertTrue(xml_to_dataframe_13f(xml_content).empty)
 
 
 class TestXmlToDataframeSchedule(unittest.TestCase):

@@ -109,18 +109,22 @@ export async function fetchQuarterAnalysis(
  * per-fund upstream); the activity flags are derived here.
  */
 export function aggregateStockLevel(holdings: FundTickerHolding[]): StockQuarterAnalysis[] {
-  const flagged = holdings.map((h) => {
-    const isNew = h.shares > 0 && h.shares === h.deltaShares;
-    return {
-      ...h,
-      isBuyer: h.deltaValue > 0,
-      isSeller: h.deltaValue < 0,
-      isHolder: h.shares > 0,
-      isNew,
-      isClosed: h.shares === 0,
-      isHighConviction: isNew && (h.portfolioPctRank <= 10 || h.portfolioPct > 3.0),
-    };
-  });
+  // A fund with no position left has left the universe: it is not a seller of what it held.
+  const activeFunds = new Set(holdings.filter((h) => h.shares > 0).map((h) => h.fund));
+  const flagged = holdings
+    .filter((h) => activeFunds.has(h.fund))
+    .map((h) => {
+      const isNew = h.shares > 0 && h.shares === h.deltaShares;
+      return {
+        ...h,
+        isBuyer: h.deltaValue > 0,
+        isSeller: h.deltaValue < 0,
+        isHolder: h.shares > 0,
+        isNew,
+        isClosed: h.shares === 0,
+        isHighConviction: isNew && (h.portfolioPctRank <= 10 || h.portfolioPct > 3.0),
+      };
+    });
 
   interface StockQuarterAccumulator extends StockQuarterAnalysis {
     _sumPct: number;

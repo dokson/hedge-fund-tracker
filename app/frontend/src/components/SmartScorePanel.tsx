@@ -1,5 +1,8 @@
+import { Link } from "react-router";
+
 import { SmartScoreBadge } from "@/components/SmartScoreBadge";
 import { PanelTitle } from "@/components/ui/PanelTitle";
+import { learnItem } from "@/lib/routes";
 import { percentileBarClass, type SmartScoreView } from "@/lib/smartScore";
 
 const COMPONENTS: { key: keyof Omit<SmartScoreView, "smartScore">; label: string }[] = [
@@ -54,7 +57,13 @@ export function SmartScorePanel({
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           Percentiles vs the {quarterLabel ? `${quarterLabel.replace("Q", " Q")} ` : "current "}
-          tracked universe (13F + recent 13D/G · Form 4) · institutional signals only
+          tracked universe (13F + recent 13D/G · Form 4) · institutional signals only ·{" "}
+          <Link
+            to={learnItem("what-is-smart-score")}
+            className="inline-flex min-h-6 items-center text-primary-text hover:underline"
+          >
+            How is this calculated?
+          </Link>
         </p>
       </div>
     </div>

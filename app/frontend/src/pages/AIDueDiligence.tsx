@@ -223,7 +223,13 @@ export default function AIDueDiligence() {
             value={inputTicker}
             onChange={setInputTicker}
             onSubmit={runDiligence}
-            placeholder="Enter ticker…"
+            placeholder={isReadOnly ? "Local only" : "Enter ticker…"}
+            disabled={isReadOnly}
+            title={
+              isReadOnly
+                ? "Demo only: Stock Due Diligence is available only when running the repo locally"
+                : undefined
+            }
             className="w-full sm:w-32"
           />
         </div>

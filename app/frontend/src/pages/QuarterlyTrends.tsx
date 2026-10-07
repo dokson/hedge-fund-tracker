@@ -7,6 +7,7 @@ import {
   type NumericStockKey,
   type StockQuarterAnalysis,
 } from "@/lib/dataService";
+import { sortAnalysisRows } from "@/lib/analysisSort";
 import { isQuarter, type Quarter } from "@/lib/quarters";
 import { STRATEGY_BY_TAB, STRATEGY_DEFS_PERF_ORDER, isStrategyTab } from "@/lib/strategies";
 import { performanceFor } from "@/lib/routes";
@@ -152,15 +153,7 @@ function AnalysisTable({
   }, [data, minHolders, filterInfinite, disableFilters, deltaSign, defaultSort]);
 
   const sorted = useMemo(() => {
-    const arr = [...filtered];
-    arr.sort((a, b) => {
-      const va = a[sortKey] ?? NaN;
-      const vb = b[sortKey] ?? NaN;
-      if (!isFinite(va) && !isFinite(vb)) return 0;
-      if (!isFinite(va)) return sortDir === "desc" ? -1 : 1;
-      if (!isFinite(vb)) return sortDir === "desc" ? 1 : -1;
-      return sortDir === "desc" ? vb - va : va - vb;
-    });
+    const arr = sortAnalysisRows(filtered, sortKey, sortDir);
     return disableFilters ? arr : arr.slice(0, limit);
   }, [filtered, sortKey, sortDir, limit, disableFilters]);
 

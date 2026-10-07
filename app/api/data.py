@@ -17,6 +17,7 @@ from app.api.paths import DATABASE_DIR, _safe_db_path
 from app.auth.dependencies import require_local_or_superuser
 from app.database import STOCKS_FILE
 from app.database.locks import file_lock
+from app.database.quarters import last_usable_quarter
 from app.database.stocks import stocks_lock
 from app.patterns import QUARTER_RE
 from app.utils.pd import atomic_write_text
@@ -115,17 +116,20 @@ def list_quarters() -> list[str]:
 @router.get("/api/database/quarters/latest")
 def latest_quarter() -> dict[str, str | None]:
     """
-    Return the most recent quarter present, or ``{"quarter": None}`` if empty.
+    Return the newest quarter with enough filings to be analysed, or ``{"quarter": None}`` if
+    empty.
 
     Centralizes "latest quarter" resolution on the backend so the frontend
-    doesn't have to sort the list itself.
+    doesn't have to sort the list itself or judge whether a quarter is complete.
     """
     if not DATABASE_DIR.exists():
         return {"quarter": None}
-    quarters = sorted(
-        d.name for d in DATABASE_DIR.iterdir() if d.is_dir() and QUARTER_RE.match(d.name)
-    )
-    return {"quarter": quarters[-1] if quarters else None}
+    filings = {
+        d.name: sum(1 for _ in d.glob("*.csv"))
+        for d in DATABASE_DIR.iterdir()
+        if d.is_dir() and QUARTER_RE.match(d.name)
+    }
+    return {"quarter": last_usable_quarter(filings)}
 
 
 @router.get("/api/database/quarters/{quarter}")

@@ -5,7 +5,7 @@
 
 import { applyRestatements, getFilingRegister } from "./filingRegister";
 import { BASE_PATH, IS_GH_PAGES_MODE } from "../config";
-import { parseQuarters, type Quarter } from "../quarters";
+import { latestUsableQuarter, parseQuarters, type Quarter } from "../quarters";
 import { cachedFetch, DataFormatError, fetchCSV, HttpError } from "./fetch";
 import { formatPct, formatValueShort, parseValueString } from "./format";
 import { fundNameToFileName } from "./funds";
@@ -29,14 +29,18 @@ export async function getAvailableQuarters(): Promise<readonly Quarter[]> {
 }
 
 /**
- * Returns the most recent quarter as resolved by the backend, or null if none exist.
- * Backend is the single source of truth; frontend does not sort the quarter list itself.
- * Caching is intentionally delegated to react-query at the call site.
+ * Returns the newest quarter with enough filings to be analysed (a quarter with under half the
+ * previous usable one's filings is still filling in), or null if none exist.
+ * Backend is the single source of truth locally; GH Pages derives it from the per-quarter
+ * filing counts in metadata.json with the same rule. Caching is intentionally delegated to
+ * react-query at the call site.
  */
 export async function getLatestQuarter(): Promise<Quarter | null> {
   if (IS_GH_PAGES_MODE) {
-    const quarters = await getAvailableQuarters();
-    return quarters.at(-1) ?? null;
+    const response = await fetch(`${BASE_PATH}/database/metadata.json`);
+    if (!response.ok) throw new Error("Failed to load metadata.json");
+    const metadata: { filings?: Record<string, number> } = await response.json();
+    return latestUsableQuarter(metadata.filings ?? {});
   }
   const response = await fetch(`${window.location.origin}/api/database/quarters/latest`);
   if (!response.ok) throw new Error("Failed to fetch latest quarter");

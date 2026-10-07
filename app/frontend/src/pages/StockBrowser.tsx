@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getStocks, formatValue, type Stock, type StockQuarterAnalysis } from "@/lib/dataService";
-import { smartScoreToneClass } from "@/lib/smartScore";
+import { compareBySmartScore, smartScoreToneClass } from "@/lib/smartScore";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useSortState } from "@/hooks/useSortState";
 import { SortArrow } from "@/components/ui/SortArrow";
@@ -28,7 +28,7 @@ import { SmartScoreBadge } from "@/components/SmartScoreBadge";
 import { TickerLink } from "@/components/EntityLinks";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { matchesQuery } from "@/lib/utils";
-import { stockPath } from "@/lib/routes";
+import { learnItem, stockPath } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { STOCKS_PAGE } from "@/lib/pageMeta";
@@ -331,6 +331,10 @@ export default function StockBrowser() {
       list = list.filter((s) => tickerSector.get(s.ticker) === sectorFilter);
     }
     list.sort((a, b) => {
+      if (valueSortKey === "smartScore") {
+        const byScore = compareBySmartScore(a, b);
+        return valueSortDir === "desc" ? byScore : -byScore;
+      }
       const va = a[valueSortKey] ?? -1;
       const vb = b[valueSortKey] ?? -1;
       return valueSortDir === "desc" ? vb - va : va - vb;
@@ -381,9 +385,7 @@ export default function StockBrowser() {
         scoreConviction: 0,
       }));
     let list = [...quarterData, ...floor];
-    list.sort(
-      (a, b) => (b.smartScore ?? 0) - (a.smartScore ?? 0) || a.ticker.localeCompare(b.ticker),
-    );
+    list.sort((a, b) => compareBySmartScore(a, b) || a.ticker.localeCompare(b.ticker));
     if (scoreSearch) {
       list = list.filter((s) => matchesQuery(scoreSearch, s.ticker, s.company));
     }
@@ -532,12 +534,16 @@ export default function StockBrowser() {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by first letter">
+          <div
+            className="grid grid-cols-7 gap-1 md:grid-flow-col md:auto-cols-fr md:grid-cols-none"
+            role="group"
+            aria-label="Filter by first letter"
+          >
             <button
               type="button"
               onClick={() => setActiveLetter(null)}
               aria-pressed={activeLetter === null}
-              className={`h-8 rounded-sm px-2 text-xs font-medium transition-colors ${
+              className={`h-10 w-full rounded-sm text-xs font-medium transition-colors md:h-8 ${
                 activeLetter === null
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -551,7 +557,7 @@ export default function StockBrowser() {
                 type="button"
                 onClick={() => setActiveLetter(activeLetter === letter ? null : letter)}
                 aria-pressed={activeLetter === letter}
-                className={`h-8 w-8 rounded-sm text-xs font-medium transition-colors ${
+                className={`h-10 w-full rounded-sm text-xs font-medium transition-colors md:h-8 ${
                   activeLetter === letter
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -636,7 +642,13 @@ export default function StockBrowser() {
                   />
                   <p className="text-xs text-muted-foreground">
                     {scoreRanked.length.toLocaleString()} stocks ·{" "}
-                    {latestQuarter?.replace("Q", " Q") ?? ""} · Institutional signals only
+                    {latestQuarter?.replace("Q", " Q") ?? ""} · Institutional signals only ·{" "}
+                    <Link
+                      to={learnItem("what-is-smart-score")}
+                      className="inline-flex min-h-6 items-center text-primary-text hover:underline"
+                    >
+                      How is the score calculated?
+                    </Link>
                   </p>
                 </div>
 

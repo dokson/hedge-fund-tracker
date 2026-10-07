@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { buildCuratedFaviconUrl, buildFaviconUrl } from "@/components/faviconUrl";
+import { isBlankImage } from "@/lib/imageInk";
 
 interface FundLogoProps {
   /** Short canonical fund name (CSV `Fund` column) — used for the fallback avatar. */
@@ -66,7 +67,7 @@ export function FundLogo({
           width: size,
           height: size,
           flexShrink: 0,
-          fontSize: Math.round(size * 0.4),
+          fontSize: Math.max(9, Math.round(size * 0.4)),
           letterSpacing: "-0.02em",
         }}
       >
@@ -81,8 +82,12 @@ export function FundLogo({
       alt={decorative ? "" : fundName}
       width={size}
       height={size}
+      crossOrigin="anonymous"
       onError={() => setIndex((i) => i + 1)}
-      onLoad={() => setLoaded(true)}
+      onLoad={(e) => {
+        if (isBlankImage(e.currentTarget)) setIndex((i) => i + 1);
+        else setLoaded(true);
+      }}
       className={`rounded-sm border border-border object-contain ${loaded ? "bg-white p-px" : "bg-card"} ${className}`}
       style={{ width: size, height: size, flexShrink: 0 }}
       loading="lazy"

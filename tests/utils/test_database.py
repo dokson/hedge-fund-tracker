@@ -99,6 +99,37 @@ class TestDatabase(unittest.TestCase):
         """
         self.assertEqual(get_last_quarter(), "2025Q1")
 
+    def _add_quarter(self, quarter: str, funds: int) -> None:
+        """
+        Create a quarter folder holding `funds` filing CSVs.
+        """
+        folder = Path(self.test_db_folder) / quarter
+        folder.mkdir(parents=True, exist_ok=True)
+        for i in range(funds):
+            (folder / f"Extra_{i}.csv").write_text("CUSIP,Ticker,Value,Shares\n", encoding="utf-8")
+
+    def test_get_last_quarter_needs_half_the_previous_quarters_filings(self):
+        """
+        A newest quarter with under 50% of the previous one's filings is not usable yet;
+        exactly 50% is enough.
+        """
+        cases = [(1, "2025Q2"), (0, "2025Q1")]
+        for funds, expected in cases:
+            with self.subTest(funds_in_newest=funds):
+                shutil.rmtree(Path(self.test_db_folder) / "2025Q2", ignore_errors=True)
+                self._add_quarter("2025Q2", funds)
+                self.assertEqual(get_last_quarter(), expected)
+
+    def test_get_last_quarter_compares_with_the_last_usable_quarter(self):
+        """
+        An incomplete quarter is no baseline: a later one thin against the last complete quarter
+        stays unusable even if it is not thin against the incomplete one.
+        """
+        self._add_quarter("2025Q2", 10)
+        self._add_quarter("2025Q3", 2)
+        self._add_quarter("2025Q4", 1)
+        self.assertEqual(get_last_quarter(), "2025Q2")
+
     def test_count_funds_in_quarter(self):
         """
         Returns the count of CSV files in a given quarter folder; 0 for non-existent quarters.
