@@ -97,8 +97,9 @@ const API_BASE = window.location.origin;
 const CLIENT_TO_PROVIDER_ID: Record<string, string> = {
   Google: "google",
   Groq: "groq",
-  HuggingFace: "huggingface",
+  Ollama: "ollama",
   OpenRouter: "openrouter",
+  ZAI: "zai",
 };
 
 function APIKeysTab() {

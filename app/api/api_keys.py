@@ -27,8 +27,9 @@ router = APIRouter(prefix="/api/me/api-keys", tags=["me", "byok"])
 SUPPORTED_PROVIDERS: Final = {
     "google",
     "groq",
-    "huggingface",
+    "ollama",
     "openrouter",
+    "zai",
 }
 
 

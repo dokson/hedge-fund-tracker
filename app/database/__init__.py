@@ -25,8 +25,9 @@ import pandas as pd
 from app.ai.clients import (
     GoogleAIClient,
     GroqClient,
-    HuggingFaceClient,
+    OllamaClient,
     OpenRouterClient,
+    ZaiClient,
 )
 from app.utils.logger import get_logger
 
@@ -102,8 +103,9 @@ def load_models(filepath: str | None = None) -> list:
     client_map = {
         "Google": GoogleAIClient,
         "Groq": GroqClient,
-        "HuggingFace": HuggingFaceClient,
+        "Ollama": OllamaClient,
         "OpenRouter": OpenRouterClient,
+        "ZAI": ZaiClient,
     }
     try:
         df = pd.read_csv(filepath, keep_default_na=False)

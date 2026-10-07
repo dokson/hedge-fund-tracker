@@ -5,7 +5,7 @@
 import { cachedFetch, fetchCSV } from "./fetch";
 import type { AIModel, RawModel } from "./types";
 
-export const MODEL_PROVIDERS = ["Groq", "Google", "HuggingFace", "OpenRouter"] as const;
+export const MODEL_PROVIDERS = ["Groq", "Google", "Ollama", "OpenRouter", "ZAI"] as const;
 
 export type ModelProvider = (typeof MODEL_PROVIDERS)[number];
 
@@ -17,8 +17,9 @@ export function isModelProvider(value: string): value is ModelProvider {
 export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   Google: "Google AI Studio",
   Groq: "Groq",
-  HuggingFace: "HuggingFace",
+  Ollama: "Ollama",
   OpenRouter: "OpenRouter",
+  ZAI: "Z.AI",
 };
 
 export async function getModels(): Promise<AIModel[]> {

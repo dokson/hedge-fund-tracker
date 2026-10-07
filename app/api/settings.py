@@ -26,9 +26,10 @@ MANAGED_ENV_KEYS: Final = frozenset(
     {
         "GOOGLE_API_KEY",
         "GROQ_API_KEY",
-        "HF_TOKEN",
+        "OLLAMA_API_KEY",
         "OPENROUTER_API_KEY",
         "OPENFIGI_API_KEY",
+        "ZAI_API_KEY",
         "FMP_API_KEY",
     }
 )

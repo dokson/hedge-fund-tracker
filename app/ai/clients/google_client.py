@@ -1,3 +1,5 @@
+import hashlib
+import re
 import time
 from typing import ClassVar
 
@@ -30,13 +32,35 @@ def _is_transient(exc: BaseException) -> bool:
     return isinstance(exc, ClientError) and exc.code == 429
 
 
-def _warrants_fallback(exc: ServerError | ClientError) -> bool:
+def _warrants_fallback(exc: ServerError | ClientError | httpx.TimeoutException) -> bool:
     """
-    Whether a primary-model failure should switch to FALLBACK_MODEL: a 503 overload or a 429.
+    Whether a primary-model failure should switch to FALLBACK_MODEL: a 503 overload, a 429, or a
+    stall past the request timeout (an overloaded model may hold the stream open without a byte).
     """
+    if isinstance(exc, httpx.TimeoutException):
+        return True
     if isinstance(exc, ClientError):
         return exc.code == 429
     return "unavailable" in str(exc).lower()
+
+
+# A 429 that returns in seconds is the per-minute limit; one that returns in hours is the daily one.
+_DAILY_QUOTA_MIN_RESET_S = 600.0
+_RETRY_IN_RE = re.compile(r"retry in (?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?")
+
+
+def _quota_returns_in(exc: BaseException) -> float | None:
+    """
+    Seconds until a 429's quota comes back, read from its "Please retry in 9h2m2.39s" text,
+    or None when the error is not a 429 or names no delay.
+    """
+    if not isinstance(exc, ClientError) or exc.code != 429:
+        return None
+    match = _RETRY_IN_RE.search(str(exc))
+    if match is None or not any(match.groups()):
+        return None
+    hours, minutes, seconds = (float(part or 0) for part in match.groups())
+    return hours * 3600 + minutes * 60 + seconds
 
 
 class GoogleAIClient(AIClient):
@@ -47,11 +71,14 @@ class GoogleAIClient(AIClient):
     DEFAULT_MODEL = "gemini-3.8-flash"
 
     # Model to switch to, within the same call, when the primary model is
-    # overloaded (503 UNAVAILABLE) or rate-limited (429): the free tier's
-    # per-minute quota and "high demand" spikes both outlast the retry backoff.
+    # overloaded (503 UNAVAILABLE), rate-limited (429) or silent past the timeout:
+    # the free tier's per-minute quota and "high demand" spikes outlast the retry backoff.
     FALLBACK_MODEL: ClassVar[str] = "gemini-3.5-flash-lite"
 
     SUPPORTED_STRUCTURED_MODES: ClassVar[tuple[StructuredMode, ...]] = ("schema", "json", "prompt")
+
+    # (key scope, model) -> monotonic time until which a spent daily quota blocks the model.
+    _quota_exhausted_until: ClassVar[dict[tuple[str, str], float]] = {}
 
     def __init__(self, model: str = DEFAULT_MODEL, api_key: str | None = None):
         """
@@ -73,6 +100,7 @@ class GoogleAIClient(AIClient):
             self.client = genai.Client(api_key=api_key, http_options=http_options)
         self.model = model
         self._answered_by: str | None = None
+        self._quota_scope = hashlib.sha256((api_key or "env").encode()).hexdigest()[:12]
 
     def get_model_name(self) -> str:
         """
@@ -117,22 +145,50 @@ class GoogleAIClient(AIClient):
         """
         self._answered_by = self.model
         try:
+            if self.model != self.FALLBACK_MODEL and self._quota_spent():
+                logger.warning(
+                    "GoogleAIClient: %s has no quota left today, using %s",
+                    self.model,
+                    self.FALLBACK_MODEL,
+                )
+                return self._generate_on_fallback(prompt, reasoning, response_schema)
             try:
                 return self._generate_on(prompt, self.model, reasoning, response_schema)
-            except (ServerError, ClientError) as exc:
+            except (ServerError, ClientError, httpx.TimeoutException) as exc:
                 if self.model == self.FALLBACK_MODEL or not _warrants_fallback(exc):
                     raise
+                reset_in = _quota_returns_in(exc)
+                if reset_in is not None and reset_in >= _DAILY_QUOTA_MIN_RESET_S:
+                    self._quota_exhausted_until[(self._quota_scope, self.model)] = (
+                        time.monotonic() + reset_in
+                    )
                 logger.warning(
-                    "GoogleAIClient: %s is overloaded or rate-limited (%s), falling back to %s",
+                    "GoogleAIClient: %s is overloaded, rate-limited or not answering (%s), "
+                    "falling back to %s",
                     self.model,
                     exc,
                     self.FALLBACK_MODEL,
                 )
-                self._answered_by = self.FALLBACK_MODEL
-                return self._generate_on(prompt, self.FALLBACK_MODEL, reasoning, response_schema)
+                return self._generate_on_fallback(prompt, reasoning, response_schema)
         except Exception:
             logger.error("Google AI API call failed", exc_info=True)
             raise
+
+    def _quota_spent(self) -> bool:
+        """
+        Whether a 429 recently said this model's quota stays spent for hours.
+        """
+        until = self._quota_exhausted_until.get((self._quota_scope, self.model))
+        return until is not None and time.monotonic() < until
+
+    def _generate_on_fallback(
+        self, prompt: str, reasoning: ReasoningLevel | None, schema: dict | None
+    ) -> str:
+        """
+        Answers on FALLBACK_MODEL and records it as the model that answered.
+        """
+        self._answered_by = self.FALLBACK_MODEL
+        return self._generate_on(prompt, self.FALLBACK_MODEL, reasoning, schema)
 
     def _generate_on(
         self,
@@ -182,9 +238,10 @@ class GoogleAIClient(AIClient):
         schema: dict | None = None,
     ) -> str:
         """
-        Streams one request (with a thinking level unless ``level`` is None, and
-        JSON output per ``mode``) and returns the accumulated text, logging
-        time-to-first-token once.
+        Sends one request (with a thinking level unless ``level`` is None, and JSON output per
+        ``mode``) and returns its text. Not streamed: the answer is only used whole, and a
+        non-streamed call returns an overloaded model's 503 at once, where a stream can sit
+        silent until the request timeout.
         """
         # No tools are ever passed, but google-genai >= 2.21 warns on every
         # generate_content call unless AFC is disabled explicitly.
@@ -198,19 +255,5 @@ class GoogleAIClient(AIClient):
         if mode == "schema":
             config.response_json_schema = schema
 
-        model_name = f"google/{model}"
-        start = time.perf_counter()
-        parts: list[str] = []
-        stream = self.client.models.generate_content_stream(
-            model=model, contents=prompt, config=config
-        )
-        for chunk in stream:
-            text = chunk.text
-            if not text:
-                continue
-            if not parts:
-                logger.progress(
-                    "%s: first token after %.1fs", model_name, time.perf_counter() - start
-                )
-            parts.append(text)
-        return "".join(parts)
+        response = self.client.models.generate_content(model=model, contents=prompt, config=config)
+        return response.text or ""

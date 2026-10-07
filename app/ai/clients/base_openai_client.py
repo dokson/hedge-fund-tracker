@@ -67,6 +67,13 @@ def _is_schema_validation_failure(exc: APIStatusError) -> bool:
     return exc.status_code == 400 and "json_validate_failed" in str(exc).lower()
 
 
+def _refuses_the_model(exc: APIStatusError) -> bool:
+    """
+    Whether a provider answered 429 or 5xx, which another model on the same endpoint may avoid.
+    """
+    return exc.status_code == 429 or exc.status_code >= 500
+
+
 @dataclass(frozen=True)
 class OpenAIProviderConfig:
     """
@@ -98,6 +105,8 @@ class OpenAIClient(AIClient):
 
     CONFIG: OpenAIProviderConfig
     SUPPORTED_STRUCTURED_MODES: ClassVar[tuple[StructuredMode, ...]] = ("schema", "json", "prompt")
+    # Model that repeats a request the provider refused with 429 or 5xx (None = no fallback).
+    FALLBACK_MODEL: ClassVar[str | None] = None
 
     def __init__(self, model: str | None = None, api_key: str | None = None):
         """
@@ -132,12 +141,19 @@ class OpenAIClient(AIClient):
             timeout=REQUEST_TIMEOUT_S,
         )
         self.model = model
+        self._answered_by: str | None = None
 
     def get_model_name(self) -> str:
         """
         Get the current model name (after the provider's display transform).
         """
         return self.CONFIG.model_name_transform(self.model)
+
+    def _answering_model_name(self) -> str:
+        """
+        Names the model that actually answered, which is FALLBACK_MODEL after a refusal.
+        """
+        return self.CONFIG.model_name_transform(self._answered_by or self.model)
 
     @retry(
         wait=wait_exponential(multiplier=2, min=1, max=8),
@@ -146,6 +162,37 @@ class OpenAIClient(AIClient):
         before_sleep=llm_retry_hook("Retrying in %.2fs... (Attempt #%d)"),
     )
     def _generate_content_impl(
+        self,
+        prompt: str,
+        reasoning: ReasoningLevel | None = None,
+        response_schema: dict | None = None,
+        **kwargs,
+    ) -> str:
+        """
+        Completes the request on ``self.model``; a 429 or 5xx there is repeated on FALLBACK_MODEL
+        within the same call (the fallback is per call: ``self.model`` is restored afterwards).
+        """
+        self._answered_by = None
+        try:
+            return self._complete(prompt, reasoning, response_schema, **kwargs)
+        except APIStatusError as exc:
+            fallback = self.FALLBACK_MODEL
+            if fallback is None or self.model == fallback or not _refuses_the_model(exc):
+                raise
+            logger.warning(
+                "%s: %s refused the request (%s), falling back to %s",
+                self.__class__.__name__,
+                self.model,
+                exc.status_code,
+                fallback,
+            )
+            primary, self.model, self._answered_by = self.model, fallback, fallback
+            try:
+                return self._complete(prompt, reasoning, response_schema, **kwargs)
+            finally:
+                self.model = primary
+
+    def _complete(
         self,
         prompt: str,
         reasoning: ReasoningLevel | None = None,

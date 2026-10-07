@@ -31,11 +31,11 @@ export const AI_PROVIDERS: AIProvider[] = [
     hint: "gsk_…",
   },
   {
-    id: "huggingface",
-    name: "HuggingFace",
-    envKey: "HF_TOKEN",
-    link: "https://huggingface.co/settings/tokens",
-    hint: "hf_…",
+    id: "ollama",
+    name: "Ollama",
+    envKey: "OLLAMA_API_KEY",
+    link: "https://ollama.com/settings/keys",
+    hint: "id.secret",
   },
   {
     id: "openrouter",
@@ -43,6 +43,13 @@ export const AI_PROVIDERS: AIProvider[] = [
     envKey: "OPENROUTER_API_KEY",
     link: "https://openrouter.ai/settings/keys",
     hint: "sk-or-…",
+  },
+  {
+    id: "zai",
+    name: "Z.AI",
+    envKey: "ZAI_API_KEY",
+    link: "https://z.ai/manage-apikey/apikey-list",
+    hint: "id.secret",
   },
 ];
 

@@ -20,9 +20,10 @@ if [ ! -f /app/.env ]; then
     [ -n "$FMP_API_KEY" ]        && echo "FMP_API_KEY=$FMP_API_KEY" >> "$env_file"
     [ -n "$GOOGLE_API_KEY" ]     && echo "GOOGLE_API_KEY=$GOOGLE_API_KEY" >> "$env_file"
     [ -n "$GROQ_API_KEY" ]       && echo "GROQ_API_KEY=$GROQ_API_KEY" >> "$env_file"
-    [ -n "$HF_TOKEN" ]           && echo "HF_TOKEN=$HF_TOKEN" >> "$env_file"
+    [ -n "$OLLAMA_API_KEY" ]     && echo "OLLAMA_API_KEY=$OLLAMA_API_KEY" >> "$env_file"
     [ -n "$OPENFIGI_API_KEY" ]   && echo "OPENFIGI_API_KEY=$OPENFIGI_API_KEY" >> "$env_file"
     [ -n "$OPENROUTER_API_KEY" ] && echo "OPENROUTER_API_KEY=$OPENROUTER_API_KEY" >> "$env_file"
+    [ -n "$ZAI_API_KEY" ]        && echo "ZAI_API_KEY=$ZAI_API_KEY" >> "$env_file"
     echo "✅ .env file created."
 else
     echo "✅ .env file already exists."

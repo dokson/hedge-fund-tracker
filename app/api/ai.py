@@ -75,15 +75,17 @@ def _build_ai_client(
     from app.ai.clients import (
         GoogleAIClient,
         GroqClient,
-        HuggingFaceClient,
+        OllamaClient,
         OpenRouterClient,
+        ZaiClient,
     )
 
     client_map: dict[str, Callable[..., AIClient]] = {
         "google": GoogleAIClient,
         "groq": GroqClient,
-        "huggingface": HuggingFaceClient,
+        "ollama": OllamaClient,
         "openrouter": OpenRouterClient,
+        "zai": ZaiClient,
     }
     provider_id, model_id = _resolve_provider(provider_id, model_id)
     client_cls = client_map.get(provider_id)

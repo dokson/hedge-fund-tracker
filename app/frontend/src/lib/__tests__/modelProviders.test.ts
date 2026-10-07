@@ -4,7 +4,7 @@ import { isModelProvider } from "../data/models";
 
 describe("isModelProvider", () => {
   it("accepts every known provider", () => {
-    for (const p of ["Groq", "Google", "HuggingFace", "OpenRouter"]) {
+    for (const p of ["Groq", "Google", "Ollama", "OpenRouter", "ZAI"]) {
       expect(isModelProvider(p)).toBe(true);
     }
   });
