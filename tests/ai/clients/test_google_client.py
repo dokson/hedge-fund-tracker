@@ -291,6 +291,28 @@ class TestGoogleAIClient(unittest.TestCase):
             + [GoogleAIClient.FALLBACK_MODEL],
         )
 
+    def test_spent_quota_is_shared_per_key_across_clients(self):
+        """
+        A new client on the same API key knows the daily quota is spent; another key does not.
+        """
+        self.generate.side_effect = [
+            _rate_limited("Quota exceeded. Please retry in 9h2m2.39s."),
+            self.mock_response,
+            self.mock_response,
+            self.mock_response,
+        ]
+        GoogleAIClient(model="gemini-3.5-flash", api_key="key-a").generate_content("first")
+        GoogleAIClient(model="gemini-3.5-flash", api_key="key-a").generate_content("same key")
+        GoogleAIClient(model="gemini-3.5-flash", api_key="key-b").generate_content("other key")
+
+        models = [c.kwargs["model"] for c in self.generate.call_args_list]
+        self.assertEqual(
+            models,
+            ["gemini-3.5-flash", GoogleAIClient.FALLBACK_MODEL]
+            + [GoogleAIClient.FALLBACK_MODEL]
+            + ["gemini-3.5-flash"],
+        )
+
     def test_keeps_trying_a_primary_that_is_only_briefly_rate_limited(self):
         """
         A per-minute 429 (retry in seconds) must not sideline the primary model.

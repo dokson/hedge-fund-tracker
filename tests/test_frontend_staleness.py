@@ -92,5 +92,29 @@ class TestFrontendSourcesChanged(unittest.TestCase):
                 self._touch(self.frontend / name, 1_000)
 
 
+class TestRunServerBuild(unittest.TestCase):
+    """
+    The container ships a prebuilt dist and has no npm, so it must never rebuild.
+    """
+
+    def test_production_with_dist_never_builds(self):
+        """
+        Even when source mtimes look newer than dist, DOCKER_ENV skips the build.
+        """
+        from unittest.mock import patch
+
+        from app.main import run_server
+
+        with (
+            patch.dict(os.environ, {"DOCKER_ENV": "1"}),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("app.main._frontend_sources_changed", return_value=True),
+            patch("subprocess.run") as build,
+            patch("uvicorn.run"),
+        ):
+            run_server()
+        build.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

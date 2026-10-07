@@ -16,8 +16,9 @@ export function LoadingState({
   return (
     <div
       role="status"
+      style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
       className={cn(
-        "flex items-center justify-center gap-2 text-[13px] text-muted-foreground",
+        "flex animate-in fade-in-0 items-center justify-center gap-2 text-[13px] text-muted-foreground",
         size === "sm" ? "py-8" : "py-12",
         className,
       )}

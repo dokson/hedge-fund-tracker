@@ -732,7 +732,9 @@ def run_server(host: str | None = None, port: int | None = None):
 
     frontend_dir = Path(__file__).parent / "frontend"
     frontend_dist = frontend_dir / "dist"
-    if not frontend_dist.exists() or _frontend_sources_changed(frontend_dir, frontend_dist):
+    if not frontend_dist.exists() or (
+        not is_production and _frontend_sources_changed(frontend_dir, frontend_dist)
+    ):
         reason = "missing" if not frontend_dist.exists() else "stale"
         print(f"🔨 Building frontend ({reason})…")
         result = subprocess.run(["npm", "run", "build"], cwd=frontend_dir, shell=(os.name == "nt"))
