@@ -210,11 +210,11 @@ The tool can utilize API keys for enhanced functionality, but all are optional:
 | :--- | :--- | :--- |
 | **[![OpenFIGI](https://github.com/user-attachments/assets/4103d2d0-9317-4c99-a69f-51126e189c96)](https://www.openfigi.com/) [OpenFIGI](https://www.openfigi.com/)** | [CUSIP](https://en.wikipedia.org/wiki/CUSIP) → [stock ticker](https://en.wikipedia.org/wiki/Ticker_symbol) (Bloomberg's free identifier mapping). Works **without a key** at 25 req/min; a key raises the limit to 250 req/min. | [OpenFIGI Keys](https://www.openfigi.com/api/overview) |
 | **[![FMP](https://github.com/user-attachments/assets/603b12b2-c5cf-4669-8e9e-89f4e1d47d2a)](https://site.financialmodelingprep.com/) [Financial Modeling Prep](https://site.financialmodelingprep.com/)** | Reverse ticker → CUSIP lookup for Form 4 filings (free tier 250 req/day). **Key required** — without it the reverse lookup is skipped and unresolved tickers open a GitHub issue. | [FMP Keys](https://site.financialmodelingprep.com/developer/docs) |
+| **[![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3)](https://openrouter.ai/) [OpenRouter](https://openrouter.ai/)** | Access to almost any LLMs | [OpenRouter Keys](https://openrouter.ai/settings/keys) |
 | **[![Google AI Studio](https://github.com/user-attachments/assets/3b351d8e-d7f6-4337-9c2f-d2af77f30711)](https://aistudio.google.com/) [Google AI Studio](https://aistudio.google.com/)** | Access to [Google Gemini](https://gemini.google.com/) models | [AI Studio Keys](https://aistudio.google.com/app/apikey) |
 | **[![Groq AI](https://github.com/user-attachments/assets/c56394b5-79f8-4c25-a24a-2e2a8bde829c)](https://console.groq.com/) [Groq AI](https://console.groq.com/)** | Access to various LLMs (e.g., OpenAI [gpt-oss](https://github.com/openai/gpt-oss), Meta [Llama](https://www.llama.com/), etc...) | [Groq Keys](https://console.groq.com/keys) |
-| **<a href="https://ollama.com/"><img src="https://ollama.com/public/icon-64x64.png" alt="Ollama" height="20"></a> [Ollama Cloud](https://ollama.com/)** | Open-weight models hosted by Ollama (e.g., [Nemotron 3 Super](https://ollama.com/library/nemotron-3-super), [Gemma 4](https://ollama.com/library/gemma4)). The free plan covers six models: `gpt-oss:20b`, `gpt-oss:120b`, `nemotron-3-nano:30b`, `nemotron-3-super`, `nemotron-3-ultra` and `gemma4:31b`; any other answers 402. | [Ollama Keys](https://ollama.com/settings/keys) |
-| **[![OpenRouter](https://github.com/user-attachments/assets/0aae7c70-d6ab-4166-8052-d4b9e06b9bb3)](https://openrouter.ai/) [OpenRouter](https://openrouter.ai/)** | Access to various LLMs (e.g., [Claude 4.5 Opus](https://www.anthropic.com/news/claude-4-5-opus), [GLM 4.5 Air](https://chatglm.cn/), etc...) | [OpenRouter Keys](https://openrouter.ai/settings/keys) |
-| **<a href="https://z.ai/"><img src="https://docs.z.ai/logo/light.svg" alt="Z.AI" height="20"></a> [Z.AI](https://z.ai/)** | GLM models. `GLM-4.7-Flash` and `GLM-4.5-Flash` are free (a request refused with 429 or 5xx is repeated on the latter); every other model is billed and answers 429 without a balance. Only plain JSON mode is documented, so the schema travels in the prompt. | [Z.AI Keys](https://z.ai/manage-apikey/apikey-list) |
+| **[![Ollama Cloud](https://github.com/user-attachments/assets/a21cf3e3-eaac-4ef3-a8f6-3cc75b123a61)](https://ollama.com/) [Ollama Cloud](https://ollama.com/)** | Open-weight models hosted by Ollama (e.g., [Nemotron 3 Super](https://ollama.com/library/nemotron-3-super), [Gemma 4](https://ollama.com/library/gemma4)). | [Ollama Keys](https://ollama.com/settings/keys) |
+| **[![Z.AI](https://github.com/user-attachments/assets/c7ea5d72-7cf1-4424-9f26-41642f6f5dfe)](https://z.ai/) [Z.AI](https://z.ai/)** | GLM models. `GLM-4.7-Flash` and `GLM-4.5-Flash` are free. | [Z.AI Keys](https://z.ai/manage-apikey/apikey-list) |
 
 > **💡 Note — Ticker resolution:**
 >
@@ -226,7 +226,7 @@ The tool can utilize API keys for enhanced functionality, but all are optional:
 >
 > **Reverse path (ticker → CUSIP)** for Form 4 filings goes through [Financial Modeling Prep](https://site.financialmodelingprep.com/). The free `FMP_API_KEY` is **required** (250 req/day); without it, unresolved tickers open a GitHub issue and the CUSIP stays null until the next 13F cycle exposes it.
 >
-> **💡 Note:** You don't need to use all the APIs. For the generative AI models ([Google AI Studio](https://aistudio.google.com/), [Groq AI](https://console.groq.com/), [Ollama Cloud](https://ollama.com/), [OpenRouter](https://openrouter.ai/), and [Z.AI](https://z.ai/)), you only need the API keys for the services you plan to use.
+> **💡 Note:** You don't need to use all the APIs. For the generative AI models ([OpenRouter](https://openrouter.ai/), [Google AI Studio](https://aistudio.google.com/), [Groq AI](https://console.groq.com/), [Ollama Cloud](https://ollama.com/), and [Z.AI](https://z.ai/)), you only need the API keys for the services you plan to use.
 > The default provider is [Google AI Studio](https://aistudio.google.com/), so a single free [AI Studio key](https://aistudio.google.com/app/apikey) is enough to get started. Experimenting with different models is encouraged, as the quality of AI-generated analysis, both for identifying promising stocks and for conducting due diligence, can vary. However, top-performing stocks are typically identified consistently across all tested models. **Every model in the bundled `database/models.csv` runs within its provider's free tier.**
 >
 > **Using other providers' models:** OpenRouter can call a provider with *your* key (BYOK, configured in your [OpenRouter integrations](https://openrouter.ai/integrations)); add the model to `database/models.csv` with `Client` set to `OpenRouter` and no code change is needed. OpenRouter bills 5% of the model's list price on top, from your OpenRouter credits.
@@ -248,7 +248,7 @@ hedge-fund-tracker/
 │       ├── ⚙️ refresh-badges.yml   # GitHub Actions: README badge refresh
 │       └── ⚙️ run-tests.yml        # GitHub Actions: Python + frontend tests
 ├── 📁 app/                          # Main application logic
-│   ├── 📁 ai/                       # LLM clients (Google, Groq, Ollama, OpenRouter, Z.AI) + analyst agent
+│   ├── 📁 ai/                       # LLM clients (OpenRouter, Google, Groq, Ollama, Z.AI) + analyst agent
 │   ├── 📁 analysis/                 # Portfolio, stock and performance analysis
 │   ├── 📁 api/                      # FastAPI routers (data, ai, sse, settings, admin, …)
 │   ├── 📁 auth/                     # Accounts, sessions and BYOK API-key storage
@@ -459,10 +459,11 @@ To add a new model, open `database/models.csv` and add a new row with the follow
 
 Here are the official model lists for each provider:
 
+
+- [OpenRouter Free Models](https://openrouter.ai/models?order=newest&output_modalities=text)
 - [Google Gemini Models](https://ai.google.dev/gemini-api/docs/models)
 - [Groq Models](https://console.groq.com/docs/models)
 - [Ollama Cloud Models](https://ollama.com/search?c=cloud)
-- [OpenRouter Free Models](https://openrouter.ai/models?order=newest&max_price=0)
 - [Z.AI Models](https://docs.z.ai/guides/overview/pricing)
 
 ## ⚠️ Limitations & Considerations
