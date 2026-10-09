@@ -2851,12 +2851,12 @@
         },
         "types-tabulate": {
             "hashes": [
-                "sha256:8e51f159e8b24976849706ae2ed1dc9adba8ebbd080b17e494ebb66a8cc92c74",
-                "sha256:b1e1a2d0456fbd655a71690b09a7aaeffdf2978d32049184ea436492aa51d20a"
+                "sha256:505bb455e337e85f2cf1dfa56c25322ef70059f095673861114444fae3e9e8d7",
+                "sha256:b4c5772065de6f5d104daf31a72ce0e78abe07d3b1c7b23e28566b5c95f4faf1"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==0.10.0.20260508"
+            "version": "==0.10.0.20261006"
         },
         "typing-extensions": {
             "hashes": [
