@@ -12,13 +12,13 @@ asyncpg = "~=0.32"
 beautifulsoup4 = "~=4.15"
 cryptography = "~=50.0"
 curl-cffi = "~=0.16.3"
-fastapi = "~=0.141"
+fastapi = "~=0.143"
 fastapi-users = { extras = ["sqlalchemy"], version = "~=15.0" }
 fastapi-users-db-sqlalchemy = "~=7.0"
-google-genai = "~=2.24"
-httptools = { version = "==0.8.0", markers = "sys_platform != 'win32' or platform_machine == 'AMD64'" }
+google-genai = "~=2.29"
+httptools = { version = "==0.9.0", markers = "sys_platform != 'win32' or platform_machine == 'AMD64'" }
 lxml = "~=6.1"
-openai = "~=3.25"
+openai = "~=3.28"
 pandas = "~=3.0"
 prometheus-client = "==0.26.0"
 psutil = "~=7.2"
@@ -42,7 +42,7 @@ httpx2 = "~=2.13"
 pandas-stubs = "~=3.0"
 pre-commit = "~=4.6"
 pyright = "~=1.1"
-ruff = "~=0.16"
+ruff = "~=0.17"
 types-tabulate = "~=0.10"
 
 [pipenv]
