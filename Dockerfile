@@ -4,7 +4,7 @@
 # references, bumping tag and digest together.
 
 # ── Stage 1: React frontend ────────────────────────────────────────────────
-FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1 AS frontend-build
+FROM node:26.11.1-slim@sha256:193fe51b64e77981119c98c2002c9e32a70e2f006fb4d25068ce0558998917f0 AS frontend-build
 WORKDIR /app/frontend
 RUN --mount=type=bind,source=app/frontend/package.json,target=package.json \
     --mount=type=bind,source=app/frontend/package-lock.json,target=package-lock.json \
