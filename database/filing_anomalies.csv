@@ -55,3 +55,5 @@ Quarter,Fund,Filed_CUSIP,Filed_Company,Filed_Price,Reference_Price,Status,Kind,C
 2026Q2,Persistent,464287655,ISHARES TR,26.0606,300.4525,auto-corrected,value,,462,138809,462,138809,NEW,
 2026Q2,Ratan,46090E103,iShares China Large-Cap ETF,31.5900,736.4032,corrected,cusip,464287184,,,,,,"15,000 shares at 31.59 continue the 15,000-share position closed under 464287184 in 2026Q1"
 2026Q2,Ratan,92840M102,Vistra Corp,297.3665,158.6302,auto-corrected,value,,86728,13757677,-61038,-9682468,-41.3%,
+2026Q3,KRS,172967424,CITIGROUP INC,1.1817,129.4777,auto-corrected,value,,50080,6484245,50080,6484245,NEW,
+2026Q3,KRS,617446448,MORGAN STANLEY,8.8395,188.0434,auto-corrected,value,,10435,1962232,10435,1962232,NEW,
