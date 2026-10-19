@@ -17,10 +17,6 @@ describe("isQuarter", () => {
 });
 
 describe("assertQuarter", () => {
-  it("returns valid quarter", () => {
-    expect(assertQuarter("2025Q2")).toBe("2025Q2");
-  });
-
   it("throws on invalid", () => {
     expect(() => assertQuarter("bogus")).toThrow(/Invalid quarter/);
   });
@@ -33,9 +29,6 @@ describe("parseQuarters", () => {
       "2025Q4",
       "2026Q1",
     ]);
-  });
-
-  it("returns empty array for no valid entries", () => {
     expect(parseQuarters(["x", "y"])).toEqual([]);
   });
 });

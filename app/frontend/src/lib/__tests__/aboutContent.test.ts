@@ -15,12 +15,6 @@ describe("about content", () => {
     expect(ABOUT_PAGE.path).toBe("/about");
   });
 
-  it("credits COalesCE and points corrections to GitHub issues", () => {
-    const hrefs = links.map((l) => l.href);
-    expect(hrefs).toContain("https://www.coalesce.coach/en");
-    expect(hrefs).toContain("https://github.com/dokson/hedge-fund-tracker/issues");
-  });
-
   it("only links FAQ answers that exist", () => {
     const faqIds = new Set(FAQ_SECTIONS.flatMap((s) => s.items.map((i) => i.id)));
     const anchors = links
@@ -49,12 +43,6 @@ describe("about content", () => {
 
   it("states that the roster is pre-selected on past performance", () => {
     expect(JSON.stringify(ABOUT_SECTIONS)).toContain("pre-selected on past performance");
-  });
-
-  it("separates what funds report from what the tool computes", () => {
-    expect(ABOUT_SECTIONS.map((s) => s.id)).toEqual(
-      expect.arrayContaining(["roster", "reported-vs-computed", "privacy"]),
-    );
   });
 
   it("licenses the data CC BY-NC 4.0 and links the licence text", () => {

@@ -46,12 +46,6 @@ describe("AI stream requests", () => {
     vi.unstubAllGlobals();
   });
 
-  it("sends the selected provider id with a promise-score request", async () => {
-    const fetchMock = stubSSEFetch([]);
-    await runPromiseScoreStream("2026Q2", 10, "m1", "groq", () => {});
-    expect(sentBody(fetchMock)).toMatchObject({ model_id: "m1", provider_id: "groq" });
-  });
-
   it("sends an explicit null provider id when none is selected", async () => {
     const fetchMock = stubSSEFetch({ ticker: "XYZ" });
     await runDueDiligenceStream("XYZ", "2026Q2", undefined, "", () => {});

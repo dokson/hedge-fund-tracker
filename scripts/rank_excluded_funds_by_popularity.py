@@ -498,7 +498,9 @@ def main() -> int:
             key=lambda r: r.get("Fund", "").lower(),
         )
         with csv_path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            writer = csv.DictWriter(
+                f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL, lineterminator="\n"
+            )
             writer.writeheader()
             writer.writerows(top_rows + tail_rows)
         print(f"\nApplied: rewrote {csv_path} with new top {args.top}.")

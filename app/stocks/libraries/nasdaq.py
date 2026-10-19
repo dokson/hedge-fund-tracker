@@ -1,8 +1,10 @@
 from datetime import date, timedelta
 
 from curl_cffi import requests
+from curl_cffi.requests.exceptions import RequestException
 
 from app.stocks.libraries.base_library import FinanceLibrary
+from app.stocks.lookup_status import note_provider_failure
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -73,6 +75,9 @@ class Nasdaq(FinanceLibrary):
                     for row in data["tradesTable"]["rows"]:
                         if row.get("date") == expected_date:
                             return row
+            except RequestException:
+                note_provider_failure()
+                continue
             except Exception:
                 continue
         return None

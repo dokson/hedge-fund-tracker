@@ -19,20 +19,9 @@ function renderNotFound(path = "/no-such-route") {
 }
 
 describe("NotFound page", () => {
-  it("renders the 404 heading", () => {
-    const { getByRole } = renderNotFound();
-    expect(getByRole("heading", { level: 1 }).textContent).toContain("404");
-  });
-
   it("echoes the attempted path so the user sees what failed to resolve", () => {
     const { getByText } = renderNotFound("/quarterlyy");
     expect(getByText("/quarterlyy")).toBeDefined();
-  });
-
-  it("links home through the router rather than a raw anchor", () => {
-    const { getByRole } = renderNotFound();
-    const home = getByRole("link", { name: /back to home/i });
-    expect(home.getAttribute("href")).toBe(ROUTES.home);
   });
 
   it("offers router links to the main sections as recovery routes", () => {
@@ -53,6 +42,7 @@ describe("NotFound page", () => {
       .map((a) => a.getAttribute("href") ?? "")
       .filter((href) => href.startsWith("/"));
     expect(inAppHrefs.length).toBeGreaterThan(0);
+    expect(inAppHrefs).toContain(basename);
     for (const href of inAppHrefs) {
       expect(href === basename || href.startsWith(`${basename}/`)).toBe(true);
     }

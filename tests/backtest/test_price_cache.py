@@ -51,16 +51,6 @@ class TestPriceCache(unittest.TestCase):
             return None
         return 100.0
 
-    def test_miss_fetches_and_persists(self):
-        """
-        A cache miss calls the fetcher, returns the value, and writes it to disk.
-        """
-        cache = PriceCache(path=self.path, fetch_fn=self._fetch)
-        price = cache.get("AAA", date(2025, 5, 15))
-        self.assertEqual(price, 100.0)
-        self.assertEqual(len(self.calls), 1)
-        self.assertTrue(self.path.exists())
-
     def test_non_positive_or_non_finite_prices_are_not_persisted(self):
         """
         A zero, negative or NaN quote is a fetch failure: returned as missing, never cached.
@@ -108,7 +98,9 @@ class TestPriceCache(unittest.TestCase):
         """
         A fresh instance over the same file returns cached prices with no fetch.
         """
-        PriceCache(path=self.path, fetch_fn=self._fetch).get("AAA", date(2025, 5, 15))
+        self.assertEqual(
+            PriceCache(path=self.path, fetch_fn=self._fetch).get("AAA", date(2025, 5, 15)), 100.0
+        )
         self.calls.clear()
         reloaded = PriceCache(path=self.path, fetch_fn=self._fetch)
         price = reloaded.get("AAA", date(2025, 5, 15))
@@ -204,6 +196,30 @@ class TestPriceCache(unittest.TestCase):
         )
         cache = PriceCache(path=self.path, fetch_fn=self._fetch, today_fn=LATER)
         self.assertEqual(cache.get("AAA", date(2025, 5, 15)), 100.0)
+
+    def test_a_miss_while_a_provider_failed_is_never_settled(self):
+        """
+        A lookup a provider could not answer (blocked, timed out, rate-limited) says
+        nothing about the price: it is retried next run instead of recorded as missing.
+        """
+        from app.stocks.lookup_status import note_provider_failure
+
+        def failing(*_args):
+            """
+            A fetcher whose provider failed before answering.
+            """
+            self.calls.append(_args[:2])
+            note_provider_failure()
+
+        start, end = date(2025, 5, 15), date(2025, 8, 14)
+        for _ in range(2):
+            cache = PriceCache(
+                path=self.path, fetch_fn=failing, range_fetch_fn=failing, today_fn=LATER
+            )
+            self.assertIsNone(cache.get("OLO", start))
+            self.assertIsNone(cache.last_in_range("OLO", start, end))
+        self.assertEqual(len(self.calls), 4)
+        self.assertFalse(self.path.exists())
 
 
 if __name__ == "__main__":

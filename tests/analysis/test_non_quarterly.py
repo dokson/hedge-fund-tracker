@@ -222,22 +222,6 @@ class TestUpdateQuarterWithNqFilings(unittest.TestCase):
             ]
         )
 
-    def test_existing_position_updated_with_nq_shares(self):
-        """
-        An NQ filing for a held CUSIP updates Shares and recomputes the deltas
-        against the 13F baseline.
-        """
-        nq = self._nq_df([("Fund A", "CUSIP0001", "TICK0001", "Alpha Co", 150, "1.5K")])
-
-        with patch("app.analysis.non_quarterly.load_non_quarterly_data", return_value=nq):
-            result = update_quarter_with_nq_filings(self._quarter_df(), ["Fund A"])
-
-        row = result[(result["Fund"] == "Fund A") & (result["CUSIP"] == "CUSIP0001")].iloc[0]
-        self.assertEqual(row["Shares"], 150)
-        self.assertEqual(row["Delta_Shares"], 50)
-        self.assertEqual(row["Delta_Value_Num"], 500.0)
-        self.assertEqual(row["Delta"], 50.0)
-
     def test_new_and_closed_positions_flagged(self):
         """
         An NQ-only CUSIP is flagged NEW; an NQ filing reporting zero shares on
@@ -271,6 +255,7 @@ class TestUpdateQuarterWithNqFilings(unittest.TestCase):
             result = update_quarter_with_nq_filings(self._quarter_df(), ["Fund A"])
 
         row = result[(result["Fund"] == "Fund A") & (result["CUSIP"] == "CUSIP0001")].iloc[0]
+        self.assertEqual(row["Shares"], 90)
         self.assertEqual(row["Delta_Shares"], -10)
         self.assertAlmostEqual(row["Delta_Value_Num"], -130.0)
         self.assertAlmostEqual(row["Delta"], -10.0)

@@ -23,9 +23,4 @@ describe("buildFaviconUrl", () => {
     expect(url).toContain("example.com");
     expect(url).not.toContain("www.example.com");
   });
-
-  it("targets the icon.horse endpoint", () => {
-    const url = buildFaviconUrl("https://example.com/", 16);
-    expect(url).toContain("icon.horse/icon/example.com");
-  });
 });

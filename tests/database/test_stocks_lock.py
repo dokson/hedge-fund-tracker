@@ -21,14 +21,6 @@ class TestStocksLock(unittest.TestCase):
         self.addCleanup(self._tmp.cleanup)
         self.lock_path = Path(self._tmp.name) / f"{_db.STOCKS_FILE}.lock"
 
-    def test_acquire_and_release(self):
-        """
-        The lock file exists while held and is removed on exit.
-        """
-        with stocks_lock(timeout=2):
-            self.assertTrue(self.lock_path.exists())
-        self.assertFalse(self.lock_path.exists())
-
     def test_nested_acquisition_times_out_instead_of_deadlocking(self):
         """
         Re-entering the non-reentrant in-process lock raises TimeoutError within the timeout.

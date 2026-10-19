@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import type { EnrichedNQFiling } from "@/lib/dataService";
@@ -74,11 +74,5 @@ describe("Landing structure", () => {
     expect(hrefOf("Source available, runs in your browser")).toBe(
       "https://github.com/dokson/hedge-fund-tracker",
     );
-  });
-
-  it("lets a phone visitor search a ticker or fund from the hero", () => {
-    renderLanding();
-    const hero = screen.getByRole("heading", { level: 1 }).closest("section")!;
-    expect(within(hero).getByPlaceholderText("ticker, cusip, fund, manager")).toBeTruthy();
   });
 });

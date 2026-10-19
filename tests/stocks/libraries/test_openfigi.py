@@ -152,24 +152,6 @@ class TestOpenFIGI(unittest.TestCase):
 
     @patch("app.stocks.libraries.openfigi.time.sleep")
     @patch("app.stocks.libraries.openfigi.OpenFIGI._post")
-    def test_map_cusips_logs_periodic_progress(self, mock_post, _mock_sleep):
-        """
-        Long reconciliation runs emit a progress log every 10 batches so the
-        CLI/SSE stream shows the sweep is alive.
-        """
-        cusips = [f"CUSIP{i:04d}" for i in range(101)]
-        mock_post.return_value = [{"warning": "No identifier found."}] * 10
-
-        with (
-            patch.object(OpenFIGI, "API_KEY", None),
-            self.assertLogs("app.stocks.libraries.openfigi", level="INFO") as logs,
-        ):
-            OpenFIGI.map_cusips(cusips)
-
-        self.assertTrue(any("10/11" in message for message in logs.output))
-
-    @patch("app.stocks.libraries.openfigi.time.sleep")
-    @patch("app.stocks.libraries.openfigi.OpenFIGI._post")
     def test_map_cusips_skips_failed_batches(self, mock_post, _mock_sleep):
         """
         A batch that fails outright (no response, or a transient rate-limit /

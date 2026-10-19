@@ -108,6 +108,7 @@ def atomic_to_csv(df: pd.DataFrame, filepath: str | Path, **to_csv_kwargs) -> No
         **to_csv_kwargs: Forwarded to ``DataFrame.to_csv`` (index, quoting, ...).
     """
     encoding = to_csv_kwargs.pop("encoding", "utf-8")
+    to_csv_kwargs.setdefault("lineterminator", "\n")
     _atomic_write(filepath, lambda f: df.to_csv(f, **to_csv_kwargs), encoding)
 
 
@@ -134,9 +135,13 @@ def atomic_write_rows(
         """
         # Pass the csv constant directly: a typed variable widens to int and trips the stub.
         if quote_all:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            writer = csv.DictWriter(
+                f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL, lineterminator="\n"
+            )
         else:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
+            writer = csv.DictWriter(
+                f, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
+            )
         writer.writeheader()
         writer.writerows(rows)
 

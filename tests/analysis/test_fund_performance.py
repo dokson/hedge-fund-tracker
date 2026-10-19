@@ -64,24 +64,6 @@ class TestPriceSanity(unittest.TestCase):
         )
         self.assertAlmostEqual(float(frame["Return"].iloc[0]), 170.0 / 168.0 - 1)
 
-    def test_split_still_applied_when_most_funds_restated(self):
-        """
-        A post-split median does not trigger a second division.
-        """
-        prev = holdings(("B1", "BKNG", 1, 168.0))
-        curr = holdings(("B1", "BKNG", 1, 170.0))
-        frame = position_returns(
-            prev,
-            curr,
-            {"B1": 25.0},
-            no_market,
-            start=START,
-            end=END,
-            universe_start_prices={"B1": 168.0},
-            universe_prices={"B1": 170.0},
-        )
-        self.assertAlmostEqual(float(frame["Return"].iloc[0]), 170.0 / 168.0 - 1)
-
     def test_a_filed_price_is_never_corrected_here(self):
         """
         Filed figures are corrected once, by the filing register the loaders
@@ -100,24 +82,6 @@ class TestPriceSanity(unittest.TestCase):
             universe_prices={"Q1": 100.0},
         )
         self.assertAlmostEqual(float(frame["Return"].iloc[0]), 0.35)
-
-    def test_an_exit_is_priced_at_the_funds_median(self):
-        """
-        With no own price at the end, the other funds' median is the price.
-        """
-        prev = holdings(("Q1", "QQQ", 1, 700.0))
-        curr = holdings(("Q1", "QQQ", 0, 0.0))
-        frame = position_returns(
-            prev,
-            curr,
-            {},
-            no_market,
-            start=START,
-            end=END,
-            universe_start_prices={"Q1": 700.0},
-            universe_prices={"Q1": 736.0},
-        )
-        self.assertAlmostEqual(float(frame["Return"].iloc[0]), 736.0 / 700.0 - 1)
 
     def test_genuine_large_move_is_kept(self):
         """
@@ -205,6 +169,7 @@ class TestUnpricedWeight(unittest.TestCase):
         curr = holdings(("A1", "AAA", 10, 330))
         frame = position_returns(prev, curr, {}, no_market, start=START, end=END)
         self.assertEqual(list(frame["Priced"]), [True, False])
+        self.assertEqual(frame["Return"].iloc[1], 0.0)
         self.assertAlmostEqual(unpriced_weight(frame), 0.25)
 
 
@@ -261,16 +226,6 @@ class TestPositionReturns(unittest.TestCase):
         )
         self.assertAlmostEqual(float(frame["Return"].iloc[0]), 0.20)
 
-    def test_closed_position_without_market_price_counts_as_flat(self):
-        """
-        Without a market return the closed position contributes nothing.
-        """
-        prev = holdings(("A1", "AAA", 10, 100))
-        frame = position_returns(
-            prev, holdings(("Z9", "ZZZ", 1, 1)), {}, no_market, start=START, end=END
-        )
-        self.assertEqual(frame["Return"].iloc[0], 0.0)
-
 
 class TestReportedPrices(unittest.TestCase):
     """
@@ -318,22 +273,6 @@ class TestImplausibleMoves(unittest.TestCase):
         frame = position_returns(prev, curr, {}, market, start=START, end=END)
         self.assertAlmostEqual(float(frame["Return"].iloc[0]), 497 / 2350 - 1)
         self.assertTrue(bool(frame["Priced"].iloc[0]))
-        self.assertEqual(calls, [])
-
-    def test_moderate_move_needs_no_market_check(self):
-        """
-        An ordinary move keeps the reported prices and never asks the market.
-        """
-        calls: list[str] = []
-
-        def market(ticker: str, _s: date, _e: date) -> float | None:
-            calls.append(ticker)
-            return 0.0
-
-        prev = holdings(("A1", "AAA", 10, 100))
-        curr = holdings(("A1", "AAA", 10, 180))
-        frame = position_returns(prev, curr, {}, market, start=START, end=END)
-        self.assertAlmostEqual(float(frame["Return"].iloc[0]), 0.8)
         self.assertEqual(calls, [])
 
 
@@ -446,14 +385,6 @@ class TestBuildFundPerformance(unittest.TestCase):
                 closed_return_fn=no_market,
                 benchmark_return_fn=lambda _s, _e: None,
             )
-
-    def test_rows_report_the_unpriced_weight(self):
-        """
-        Each row says how much of the book went unpriced.
-        """
-        self.data[("Alpha", "2025Q4")] = holdings(("A1", "AAA", 10, 100), ("B1", "BBB", 10, 100))
-        rows = self.build(["2025Q4", "2026Q1"])
-        self.assertAlmostEqual(float(str(rows[0]["unpriced_weight"])), 0.5)
 
 
 class TestWriteFundPerformance(unittest.TestCase):

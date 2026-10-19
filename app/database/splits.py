@@ -6,6 +6,8 @@ holder's share count for a quarter, so a wrong entry is worth catching by eye,
 and a missed one is worth adding by hand.
 """
 
+import csv
+
 import pandas as pd
 
 import app.database as _db
@@ -74,4 +76,4 @@ def save_split_factors(
             fresh = pd.concat([kept, fresh], ignore_index=True)
 
     registry = fresh.sort_values(["Quarter", "CUSIP"], kind="stable")
-    atomic_to_csv(registry, _db._safe_db_join(SPLITS_FILE), index=False)
+    atomic_to_csv(registry, _db._safe_db_join(SPLITS_FILE), index=False, quoting=csv.QUOTE_ALL)

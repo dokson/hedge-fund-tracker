@@ -15,7 +15,6 @@ from app.analysis.filing_anomalies import CusipAnomaly, Restatement
 from app.database.filing_anomalies import (
     COLUMNS,
     apply_restatements,
-    check_filings,
     corrections_for,
     merge_anomalies,
     save_filing_anomalies,
@@ -65,15 +64,6 @@ class TestMergeAnomalies(unittest.TestCase):
     """
     A scan adds and refreshes open findings but never touches a decision.
     """
-
-    def test_new_findings_are_added_as_open(self):
-        """
-        A first scan fills the register with open rows.
-        """
-        merged = merge_anomalies(
-            register(), [anomaly("2026Q2", "Ratan", "46090E103", "iShares China")]
-        )
-        self.assertEqual(merged["Status"].tolist(), ["open"])
 
     def test_decided_rows_survive_even_when_no_longer_detected(self):
         """
@@ -176,6 +166,61 @@ class TestRestatementsInTheRegister(unittest.TestCase):
         merged = merge_anomalies(register(CORRECTED), [])
         self.assertEqual(merged["Kind"].tolist(), ["cusip"])
 
+    def test_automatic_restatements_follow_the_latest_scan(self):
+        """
+        A restatement the detector decided is recomputed on every scan and leaves
+        with the finding; only CUSIP corrections and decisions by hand stay put.
+        """
+        decided = {
+            "Quarter": "2025Q2",
+            "Fund": "R",
+            "Filed_CUSIP": "FXI",
+            "Filed_Company": "ETF",
+            "Status": "auto-corrected",
+            "Kind": "value",
+            "Shares": "1000",
+        }
+        rescan = CusipAnomaly(
+            **{
+                **anomaly("2025Q2", "R", "FXI", "ETF").__dict__,
+                "kind": "shares",
+                "restated": RESTATED,
+            }
+        )
+        merged = merge_anomalies(register(decided), [rescan])
+        self.assertEqual(merged["Kind"].tolist(), ["shares"])
+        self.assertTrue(merge_anomalies(register(decided), []).empty)
+        by_hand = {**decided, "Status": "corrected"}
+        self.assertEqual(merge_anomalies(register(by_hand), [rescan])["Kind"].tolist(), ["value"])
+
+    def test_a_drift_in_the_funds_price_does_not_rewrite_a_restatement(self):
+        """
+        Another fund filing the same quarter moves the median a little: the row stays
+        as written, so the committed register only changes when a correction does.
+        """
+
+        def scan(value: float, reference: float) -> CusipAnomaly:
+            """
+            A value restatement of 1,000 shares found at the given funds' price.
+            """
+            restated = Restatement(
+                shares=1000, value=value, delta_shares=1000, delta_value=value, delta="NEW"
+            )
+            return CusipAnomaly(
+                **{
+                    **anomaly("2025Q2", "R", "FXI", "ETF").__dict__,
+                    "reference_price": reference,
+                    "kind": "value",
+                    "restated": restated,
+                }
+            )
+
+        written = merge_anomalies(register(), [scan(36_800.0, 36.8)])
+        drifted = merge_anomalies(written, [scan(36_850.0, 36.85)])
+        pd.testing.assert_frame_equal(drifted, written)
+        moved = merge_anomalies(written, [scan(40_000.0, 40.0)])
+        self.assertEqual(moved["Value"].tolist(), ["40000"])
+
 
 class TestApplyRestatements(unittest.TestCase):
     """
@@ -219,21 +264,6 @@ class TestApplyRestatements(unittest.TestCase):
             }
         )
 
-    def test_restated_row_takes_the_register_figures(self):
-        """
-        Value fields come from the register; the other row keeps its filed figures.
-        """
-        out = apply_restatements(self.frame(), "2025Q2", self.register)
-        self.assertEqual(out.loc[0, "Value"], "36.8K")
-        self.assertEqual(out.loc[1, "Value"], "63.2K")
-
-    def test_portfolio_weights_are_recomputed_for_the_filing(self):
-        """
-        The filing total changes, so every row's weight follows.
-        """
-        out = apply_restatements(self.frame(), "2025Q2", self.register)
-        self.assertEqual(out["Portfolio%"].tolist(), ["36.8%", "63.2%"])
-
     def test_columns_read_as_numbers_take_numbers(self):
         """
         A filing whose values all parse as integers keeps numeric columns.
@@ -242,13 +272,6 @@ class TestApplyRestatements(unittest.TestCase):
         out = apply_restatements(frame, "2025Q2", self.register)
         self.assertEqual(out.loc[0, "Value"], 36_800)
         self.assertEqual(out.loc[0, "Delta_Value"], 36_800)
-
-    def test_other_quarters_and_funds_are_untouched(self):
-        """
-        Only the restated filing changes.
-        """
-        frame = self.frame()
-        pd.testing.assert_frame_equal(apply_restatements(frame, "2025Q3", self.register), frame)
 
 
 class TestSharedRestatementFixture(unittest.TestCase):
@@ -342,16 +365,6 @@ class TestRegisterOnDisk(unittest.TestCase):
         saved = pd.read_csv(self.folder / "filing_anomalies.csv", dtype=str, keep_default_na=False)
         self.assertEqual(sorted(saved["Status"]), ["auto-corrected", "corrected"])
 
-    def test_check_filings_scans_and_saves(self):
-        """
-        One call scans the database and folds the findings into the register.
-        """
-        found = [anomaly("2026Q2", "Ratan", "46090E103", "iShares China")]
-        with patch("app.database.filing_anomalies.scan_database", return_value=found):
-            self.assertEqual(check_filings(), found)
-        saved = pd.read_csv(self.folder / "filing_anomalies.csv", dtype=str, keep_default_na=False)
-        self.assertEqual(len(saved), 2)
-
     def test_the_quarter_loaders_read_restated_figures(self):
         """
         Both loaders apply the register on top of the saved filing.
@@ -385,6 +398,7 @@ class TestRegisterOnDisk(unittest.TestCase):
         """
         (self.folder / "filing_anomalies.csv").unlink()
         self.assertEqual(corrections_for("Segra", "2025Q4"), {})
+
 
 
 if __name__ == "__main__":

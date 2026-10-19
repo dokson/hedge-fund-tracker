@@ -32,8 +32,10 @@ class TestGetLogger(unittest.TestCase):
         new_buf = io.StringIO()
         sys.stdout = new_buf
         logger.info("post-swap")
+        logger.error("post-swap error")
 
         self.assertIn("post-swap", new_buf.getvalue())
+        self.assertIn("post-swap error", new_buf.getvalue())
 
     def test_exc_info_emits_traceback(self):
         """
@@ -54,44 +56,13 @@ class TestGetLogger(unittest.TestCase):
         self.assertIn("ValueError", out)
         self.assertIn("root cause", out)
 
-    def test_sse_style_stdout_wrapper_receives_log_records(self):
-        """
-        Simulates app.server's _ContextAwareStdout pattern: a wrapper around
-        sys.stdout that captures writes for per-request SSE delivery. Logger
-        records must reach the wrapper's write() so the AI Due Diligence
-        terminal-like UI keeps streaming after the print→logger migration.
-        """
-        captured: list[str] = []
-
-        class _SSEStdoutWrapper:
-            """
-            Stand-in for _ContextAwareStdout — records every write call.
-            """
-
-            def write(self, text):
-                captured.append(text)
-                return len(text)
-
-            def flush(self):
-                pass
-
-        # Mimic the post-import swap in app.server.
-        sys.stdout = _SSEStdoutWrapper()
-
-        logger = get_logger("test.sse")
-        logger.info("ranking ticker AAPL")
-        logger.error("upstream API failed")
-
-        joined = "".join(captured)
-        self.assertIn("ranking ticker AAPL", joined)
-        self.assertIn("upstream API failed", joined)
-
     def test_each_level_gets_its_default_prefix(self):
         """
         Every level method prepends its configured marker via the formatter, so
         call sites never bake the emoji into the message.
         """
         cases = [
+            ("info", "ℹ️  "),
             ("warning", "🚨 WARNING: "),
             ("error", "❌ ERROR - "),
             ("progress", "⏳ "),
@@ -118,37 +89,11 @@ class TestGetLogger(unittest.TestCase):
         sys.stdout = buf
 
         get_logger("test.styled.warn").warning("hot path", emoji="🔥")
+        get_logger("test.styled.info").info("rebuilding", emoji="🔄")
 
         out = buf.getvalue()
         self.assertIn("🔥 hot path", out)
         self.assertNotIn("🚨 WARNING:", out)
-
-    def test_info_records_default_to_info_marker(self):
-        """
-        Plain info logs gain the default ℹ️ marker; ERROR/WARNING markers
-        must not bleed into info output.
-        """
-        buf = io.StringIO()
-        sys.stdout = buf
-
-        get_logger("test.prefix.info").info("ranking complete")
-
-        out = buf.getvalue()
-        self.assertIn("ℹ️  ranking complete", out)
-        self.assertNotIn("❌", out)
-        self.assertNotIn("🚨", out)
-        self.assertNotIn("⚠️ ", out)
-
-    def test_info_with_emoji_kwarg_overrides_info_marker(self):
-        """
-        emoji= on info still wins over the default ℹ️ prefix.
-        """
-        buf = io.StringIO()
-        sys.stdout = buf
-
-        get_logger("test.info.override").info("rebuilding", emoji="🔄")
-
-        out = buf.getvalue()
         self.assertIn("🔄 rebuilding", out)
         self.assertNotIn("ℹ️", out)
 
@@ -253,21 +198,6 @@ class TestGetLogger(unittest.TestCase):
         logger.debug("invisible")
 
         self.assertNotIn("invisible", buf.getvalue())
-
-    def test_debug_records_get_construction_prefix_when_enabled(self):
-        """
-        When root level is lowered to DEBUG, logger.debug() emits with the 🚧 marker.
-        """
-        buf = io.StringIO()
-        sys.stdout = buf
-
-        logger = get_logger("test.debug.prefix")
-        self.addCleanup(logging.getLogger().setLevel, logging.INFO)
-        logging.getLogger().setLevel(logging.DEBUG)
-
-        logger.debug("inspecting state")
-
-        self.assertIn("🚧 inspecting state", buf.getvalue())
 
 
 class _CaptureStdout(io.StringIO):

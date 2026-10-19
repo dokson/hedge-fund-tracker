@@ -22,15 +22,6 @@ describe("ErrorBoundary", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders children when nothing throws", () => {
-    render(
-      <ErrorBoundary resetKey="/a">
-        <div>healthy content</div>
-      </ErrorBoundary>,
-    );
-    expect(screen.getByText("healthy content")).toBeTruthy();
-  });
-
   it("shows the fallback with the error detail when a child throws", () => {
     render(
       <ErrorBoundary resetKey="/a">

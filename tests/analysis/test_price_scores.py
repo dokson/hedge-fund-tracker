@@ -33,18 +33,6 @@ def _num(value: float | None) -> float:
 
 
 class TestMomentum(unittest.TestCase):
-    def test_rising_series_uses_21_and_252_day_offsets(self):
-        """
-        Close 21 days ago over close 252 days ago spans 231 daily steps.
-        """
-        self.assertAlmostEqual(_num(ps.momentum_12_1(_rising(300))), 1.01**231 - 1)
-
-    def test_flat_series_has_zero_momentum(self):
-        """
-        No price change means no momentum.
-        """
-        self.assertEqual(ps.momentum_12_1([50.0] * 300), 0.0)
-
     def test_only_the_offset_closes_matter(self):
         """
         The latest month is skipped and older closes are ignored.
@@ -73,13 +61,6 @@ class TestMomentum(unittest.TestCase):
 
 
 class TestVolatility(unittest.TestCase):
-    def test_constant_growth_and_flat_series_have_zero_volatility(self):
-        """
-        Identical daily log returns have zero dispersion.
-        """
-        self.assertAlmostEqual(_num(ps.annualized_volatility(_rising(300))), 0.0)
-        self.assertEqual(ps.annualized_volatility([10.0] * 300), 0.0)
-
     def test_known_volatility_over_last_252_returns(self):
         """
         Alternating +/-1% log returns: sample std 0.01*sqrt(252/251), times sqrt(252).

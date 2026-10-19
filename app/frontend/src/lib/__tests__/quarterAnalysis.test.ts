@@ -84,6 +84,7 @@ describe("runQuarterAnalysis", () => {
 
     // Fund A MSFT: shares=0 → closed
     expect(msft!.closeCount).toBe(1);
+    expect(msft!.holderCount).toBe(0);
   });
 
   it("should compute total value across all funds for a ticker", async () => {
@@ -96,16 +97,6 @@ describe("runQuarterAnalysis", () => {
     expect(aapl!.totalValue).toBeCloseTo(10_000_000, -3);
   });
 
-  it("should compute net buyers as buyerCount minus sellerCount", async () => {
-    const results = await runQuarterAnalysis("2025Q1");
-
-    const tsla = results.find((r) => r.ticker === "TSLA");
-    expect(tsla).toBeDefined();
-
-    // Both funds have positive delta for TSLA → netBuyers = 2
-    expect(tsla!.netBuyers).toBe(2);
-  });
-
   it("should compute total delta value across all funds", async () => {
     const results = await runQuarterAnalysis("2025Q1");
 
@@ -114,15 +105,6 @@ describe("runQuarterAnalysis", () => {
 
     // Fund A: +$2.5M, Fund B: +$500K → total +$3M
     expect(tsla!.totalDeltaValue).toBeCloseTo(3_000_000, -3);
-  });
-
-  it("should set holderCount to 0 for fully closed positions", async () => {
-    const results = await runQuarterAnalysis("2025Q1");
-
-    const msft = results.find((r) => r.ticker === "MSFT");
-    expect(msft).toBeDefined();
-
-    // Only Fund A held MSFT and closed it → no holders remain
-    expect(msft!.holderCount).toBe(0);
+    expect(tsla!.netBuyers).toBe(2);
   });
 });

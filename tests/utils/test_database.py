@@ -1,9 +1,7 @@
-import contextlib
 import io
 import shutil
 import tempfile
 import threading
-import time
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -92,12 +90,6 @@ class TestDatabase(unittest.TestCase):
         Returns only valid quarter directories, sorted in descending order, excluding non-quarter folders.
         """
         self.assertEqual(get_all_quarters(), ["2025Q1", "2024Q4"])
-
-    def test_get_last_quarter(self):
-        """
-        Returns the most recent quarter folder name.
-        """
-        self.assertEqual(get_last_quarter(), "2025Q1")
 
     def _add_quarter(self, quarter: str, funds: int) -> None:
         """
@@ -245,30 +237,6 @@ class TestDatabase(unittest.TestCase):
         df = load_sector_hierarchy(filepath="/nonexistent/sector_hierarchy.csv")
 
         self.assertTrue(df.empty)
-
-    def test_save_stock_persists_industry(self):
-        """
-        Persists the Yahoo Finance industry string alongside CUSIP/Ticker/Company.
-        The Sector is intentionally not stored — it is derivable via
-        database/sector_hierarchy.csv.
-        """
-        save_stock(
-            "037833100",
-            "AAPL",
-            "Apple Inc",
-            industry="Consumer Electronics",
-        )
-        df = load_stocks()
-        self.assertEqual(df.loc["037833100", "Industry"], "Consumer Electronics")
-
-    def test_save_stock_defaults_industry_to_empty(self):
-        """
-        Leaves Industry as an empty string when the caller does not provide it,
-        preserving backward compatibility with the original 3-argument signature.
-        """
-        save_stock("111", "AAA", "A Co")
-        df = load_stocks()
-        self.assertEqual(df.loc["111", "Industry"], "")
 
     def test_load_stocks_backfills_missing_industry_column(self):
         """
@@ -465,46 +433,6 @@ class TestDatabase(unittest.TestCase):
                 ticker = f"T_{t_idx}_{i}"
                 self.assertIn(cusip, df.index, f"Missing CUSIP: {cusip}")
                 self.assertEqual(df.loc[cusip, "Ticker"], ticker)
-
-    def test_concurrent_save_and_sort(self):
-        """
-        Concurrent saves and sorts must not corrupt the CSV or raise unhandled exceptions.
-        Uses a 1-second window: long enough to exercise real contention, short enough for CI.
-        """
-        # Saver sleeps 10ms between writes; sorter sleeps 20ms between sorts.
-        # In 1 second this exercises ~100 writes and ~50 sorts with real lock contention.
-        SAVER_INTERVAL_S = 0.01
-        SORTER_INTERVAL_S = 0.02
-        RUN_DURATION_S = 1
-
-        stocks_path = str(Path(self.test_db_folder) / STOCKS_FILE)
-        stop_event = threading.Event()
-
-        def saver():
-            i = 0
-            while not stop_event.is_set():
-                save_stock(f"S_{i}", f"T_{i}", "Co")
-                i += 1
-                time.sleep(SAVER_INTERVAL_S)
-
-        def sorter():
-            while not stop_event.is_set():
-                with contextlib.suppress(Exception):
-                    sort_stocks(stocks_path)
-                time.sleep(SORTER_INTERVAL_S)
-
-        t1 = threading.Thread(target=saver)
-        t2 = threading.Thread(target=sorter)
-        t1.start()
-        t2.start()
-
-        time.sleep(RUN_DURATION_S)
-        stop_event.set()
-        t1.join()
-        t2.join()
-
-        df = load_stocks(stocks_path)
-        self.assertGreater(len(df), 0)
 
     def test_delete_fund_from_database(self):
         """

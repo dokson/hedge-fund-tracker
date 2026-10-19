@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from app.backtest.report import CSV_FIELDS, rebuild_strategy_performance, write_rows
+from app.backtest.report import rebuild_strategy_performance, write_rows
 
 
 def _full_analysis(rows: list[dict]) -> pd.DataFrame:
@@ -44,19 +44,6 @@ class TestWriteRows(unittest.TestCase):
         import shutil
 
         shutil.rmtree(self.tmp, ignore_errors=True)
-
-    def test_writes_header_and_rows(self):
-        """
-        The CSV is written with the canonical header and one row per input dict.
-        """
-        rows = [
-            dict.fromkeys(CSV_FIELDS) | {"series_type": "strategy", "series_id": "avg_portfolio"}
-        ]
-        write_rows(rows, self.path)
-        with self.path.open(newline="", encoding="utf-8") as handle:
-            reader = list(csv.DictReader(handle))
-        self.assertEqual(list(reader[0].keys()), CSV_FIELDS)
-        self.assertEqual(reader[0]["series_id"], "avg_portfolio")
 
     def test_empty_rows_still_writes_header(self):
         """

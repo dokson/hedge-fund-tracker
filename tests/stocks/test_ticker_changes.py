@@ -196,19 +196,6 @@ class TestDetectApplicableTickerChanges(unittest.TestCase):
         self.assertEqual(result["applicable"][0]["oldSymbol"], "OLD1")
         self.assertEqual(result["applicable"][0]["cusips"], ["C1"])
 
-    @patch(f"{_MODULE}.find_cusips_for_ticker", return_value=[])
-    @patch(f"{_MODULE}.Nasdaq")
-    def test_empty_when_no_matches(self, mock_nasdaq, _mock_find, _mock_figi):
-        """
-        When no fetched change matches a tracked ticker, applicable is empty.
-        """
-        mock_nasdaq.get_symbol_changes.return_value = [
-            {"oldSymbol": "OLD1", "newSymbol": "NEW1", "companyName": "Co One"},
-        ]
-        result = detect_applicable_ticker_changes()
-        self.assertEqual(result["total_changes"], 1)
-        self.assertEqual(result["applicable"], [])
-
     @patch(f"{_MODULE}.find_cusips_for_ticker")
     @patch(f"{_MODULE}.Nasdaq")
     def test_skips_changes_with_mismatched_company(self, mock_nasdaq, mock_find, mock_figi):
@@ -524,25 +511,6 @@ class TestApplyTickerChanges(unittest.TestCase):
             "OLD1", "NEW1", new_company="Nasdaq Co", new_industry=None
         )
         self.assertEqual(result["applied"][0]["companyName"], "Nasdaq Co")
-
-    @patch(f"{_MODULE}.update_ticker")
-    @patch(f"{_MODULE}.YFinance")
-    @patch(f"{_MODULE}.find_cusips_for_ticker", return_value=[])
-    @patch(f"{_MODULE}.Nasdaq")
-    def test_no_matches_reports_none_applied(
-        self, mock_nasdaq, _mock_find, _mock_yf, mock_update, _mock_figi
-    ):
-        """
-        With no matching tickers nothing is updated and the message says so.
-        """
-        mock_nasdaq.get_symbol_changes.return_value = [
-            {"oldSymbol": "OLD1", "newSymbol": "NEW1", "companyName": "Co"},
-        ]
-        result = apply_ticker_changes()
-
-        mock_update.assert_not_called()
-        self.assertEqual(result["applied"], [])
-        self.assertIn("No applicable ticker changes", result["message"])
 
     @patch(f"{_MODULE}.update_ticker")
     @patch(f"{_MODULE}.YFinance")

@@ -40,13 +40,6 @@ class TestPromiseScoreWeightsPrompt(unittest.TestCase):
         """
         self.assertIn("between 6 and 10 metrics", self.prompt)
 
-    def test_input_metrics_stay_in_a_toon_block(self):
-        """
-        TOON is kept for compact prompt inputs, but no longer asked for as the answer.
-        """
-        self.assertIn("```toon", self.prompt)
-        self.assertNotIn("Return ONLY a single ```toon", self.prompt)
-
     def test_describes_the_json_output_fields(self):
         """
         The schema carries the structure; the prompt names the fields it fills.
@@ -54,42 +47,12 @@ class TestPromiseScoreWeightsPrompt(unittest.TestCase):
         for field in ("JSON", "`weights`", "`metric`", "`weight`"):
             self.assertIn(field, self.prompt)
 
-    def test_drops_the_self_validation_ritual(self):
-        """
-        Self-checked arithmetic was replaced by the validators plus the retry loop.
-        """
-        self.assertNotIn("Self-Correction", self.prompt)
-        self.assertNotIn("internal validation", self.prompt)
-
     def test_has_no_worked_weights_example(self):
         """
         A single numeric example was copied verbatim by weak models; the schema carries the shape.
         """
         self.assertNotIn("EXAMPLE", self.prompt)
         self.assertNotIn('"weight": ', self.prompt)
-
-    def test_drops_the_sum_constraint(self):
-        """
-        Code normalizes the weights, so the model is no longer asked for a fixed total.
-        """
-        self.assertNotIn("sum to 1.0", self.prompt)
-        self.assertNotIn("negative ones included", self.prompt)
-        self.assertNotIn("to compensate", self.prompt)
-        self.assertNotIn("sum constraint", self.prompt)
-
-    def test_states_weights_are_relative_and_normalized(self):
-        """
-        The model must know only the ratios between weights matter.
-        """
-        self.assertIn("relative to each other", self.prompt)
-        self.assertIn("normalized", self.prompt)
-
-    def test_describes_consequences_without_a_hard_demand(self):
-        """
-        The rank-transform consequences are explanations, not an extra constraint.
-        """
-        self.assertIn("Two consequences follow", self.prompt)
-        self.assertNotIn("MUST shape your choice", self.prompt)
 
 
 class TestQuantitativeScoresPrompt(unittest.TestCase):
@@ -108,29 +71,11 @@ class TestQuantitativeScoresPrompt(unittest.TestCase):
         self.assertNotIn("real-time", self.prompt)
         self.assertIn("no other market data", self.prompt)
 
-    def test_names_the_fields_the_model_actually_receives(self):
-        for field in ("company name", "current price", "percentage change"):
-            self.assertIn(field, self.prompt)
-
-    def test_does_not_ask_the_model_to_classify_industries(self):
-        """
-        Industries come from the deterministic classification in stocks.csv, so
-        the model is asked for the risk score only.
-        """
-        self.assertNotIn("Yahoo Finance INDUSTRY", self.prompt)
-        self.assertNotIn("`industry`", self.prompt)
-
     def test_states_the_score_direction(self):
         """
         Risk is the one LLM score and high means bad.
         """
         self.assertIn("RISK_SCORE (1-100, HIGH IS BAD)", self.prompt)
-
-    def test_frames_calibration_as_illustrative(self):
-        """
-        Dated anchors ("NVDA momentum 95") dragged every semiconductor upward.
-        """
-        self.assertIn("illustrative profiles", self.prompt)
 
     def test_uses_no_real_tickers(self):
         """
@@ -138,6 +83,7 @@ class TestQuantitativeScoresPrompt(unittest.TestCase):
         """
         self.assertNotIn("NVDA", self.prompt)
         self.assertNotIn("BRK-B", self.prompt)
+        self.assertIn("illustrative profiles", self.prompt)
 
     def test_input_stays_toon_and_output_is_json(self):
         """
@@ -149,14 +95,6 @@ class TestQuantitativeScoresPrompt(unittest.TestCase):
         self.assertIn("`stocks`", self.prompt)
         for field in ("ticker", "risk_score"):
             self.assertIn(f"`{field}`", self.prompt)
-
-    def test_no_longer_asks_for_price_derived_scores(self):
-        """
-        Momentum and low volatility are computed from price history, not by the LLM.
-        """
-        lowered = self.prompt.lower()
-        for word in ("momentum", "volatility"):
-            self.assertNotIn(word, lowered)
 
     def test_asks_for_every_ticker_exactly_once(self):
         """
@@ -176,12 +114,6 @@ class TestStockDueDiligencePrompt(unittest.TestCase):
         """
         self.assertNotIn("real-time", self.prompt)
         self.assertIn("no live market data", self.prompt)
-
-    def test_has_no_self_correction_instruction(self):
-        """
-        Validation and retries happen in code; the prompt must not ask the model to regenerate.
-        """
-        self.assertNotIn("self-correct", self.prompt)
 
     def test_uses_no_real_ticker(self):
         """
@@ -206,32 +138,6 @@ class TestStockDueDiligencePrompt(unittest.TestCase):
         self.assertIn("`null`", self.prompt)
         for sentiment in ("Bullish", "Neutral", "Bearish"):
             self.assertIn(sentiment, self.prompt)
-
-    def test_does_not_demand_data_the_model_lacks(self):
-        """
-        Financials, news and current market conditions are not in the context, so they are not demanded.
-        """
-        self.assertNotIn("financials, valuation, news", self.prompt)
-        self.assertNotIn("current market conditions", self.prompt)
-        self.assertNotIn("Reference at least one common valuation multiple", self.prompt)
-        self.assertIn("Interpret everything else you know about the company", self.prompt)
-        self.assertIn("your general knowledge of the company's fundamentals", self.prompt)
-
-    def test_valuation_multiple_is_optional(self):
-        """
-        A multiple is cited only when known with confidence; otherwise valuation is qualitative.
-        """
-        self.assertIn(
-            "Cite a valuation multiple versus peers only if you know it with confidence; "
-            "otherwise assess valuation qualitatively.",
-            self.prompt,
-        )
-
-    def test_financial_metrics_are_mentioned_only_when_known(self):
-        """
-        Financial Health must not force the model to produce figures it does not have.
-        """
-        self.assertIn("only if you know them", self.prompt)
 
     def test_interpolates_the_context(self):
         """

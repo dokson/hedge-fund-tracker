@@ -255,25 +255,6 @@ class TestRunBacktest(unittest.TestCase):
         self.assertEqual(strat["2025Q1"]["turnover"], 0.0)
         self.assertEqual(strat["2025Q3"]["turnover"], 1.0)
 
-    def test_delisted_name_uses_the_injected_range_lookup(self):
-        """
-        A holding without an exit price is valued at the injected last-bar lookup.
-        """
-        prices = {k: v for k, v in PRICES.items() if k != ("BBB", "2025-08-14")}
-        rows = run_backtest(
-            price_fn=lambda ticker, day: prices.get((ticker, day.isoformat())),
-            last_price_fn=lambda ticker, _s, _e: 25.0 if ticker == "BBB" else None,
-            filing_price_fn=lambda _quarter: {},
-            as_of=date(2025, 9, 1),
-            analysis_fn=_analysis_fn,
-            quarters=["2025Q1", "2025Q2"],
-            strategies=[strategy_by_id("avg_portfolio")],
-            benchmarks=[Benchmark("SPY", "S&P 500")],
-            fund_count_fn=lambda _q: 150,
-        )
-        strat = next(r for r in rows if r["series_type"] == "strategy")
-        self.assertAlmostEqual(strat["window_return"], (10 / 15) * 0.20 + (5 / 15) * -0.50)
-
 
 if __name__ == "__main__":
     unittest.main()

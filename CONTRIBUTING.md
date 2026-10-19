@@ -20,7 +20,7 @@ pipenv run pre-commit install         # auto-runs lint on commit
 # 3. Branch
 git checkout -b feat/short-imperative-name
 
-# 4. Code (TDD: failing test FIRST, then implementation)
+# 4. Code (a test first, when the change needs a permanent one)
 pipenv run python -m unittest discover                    # Python tests
 cd app/frontend && npm test                                # frontend tests
 
@@ -37,9 +37,11 @@ gh pr create
 
 ## Ground rules
 
-### TDD is mandatory
+### Tests earn their place
 
-No production code without a failing test first. The flow:
+A test belongs in the repo only if it would catch a bug someone could plausibly hit: a behavior, a boundary, an error path, a regression that already happened. Coverage for its own sake slows every later change and proves nothing. Don't add tests that pin wording or incidental details, check that a mock was called, restate the implementation, or only assert "doesn't raise" / "is non-empty". The full rule is in [`AGENTS.md`](./AGENTS.md) § *Tests earn their place*.
+
+When a change does deserve a permanent test, write it first:
 
 1. Write the failing test
 2. Run it; verify it fails for the *expected* reason (not a typo, not an import error)
@@ -47,12 +49,10 @@ No production code without a failing test first. The flow:
 4. Run all tests; nothing else broke
 5. Refactor while green
 
-If you find yourself thinking "I'll just add a quick fix and test later" — stop, delete the code, start with the test. It's faster than re-doing it after review.
-
 **Red flags** (your reviewer will catch these):
-- Code exists before any test exists
-- Test passes the moment you write it (you're testing existing behavior)
+- A new test that passes the moment you write it (it tests existing behavior, not your change)
 - You can't articulate why the test failed initially
+- A test whose only job is to raise coverage
 
 ### English everywhere
 

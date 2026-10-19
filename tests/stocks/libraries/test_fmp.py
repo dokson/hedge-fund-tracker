@@ -63,6 +63,7 @@ class TestFmpGetCusip(unittest.TestCase):
         """
         with patch.object(FMP, "API_KEY", None):
             self.assertIsNone(FMP.get_cusip("AAPL"))
+            self.assertIsNone(FMP.get_profile("AAPL"))
         mock_get.assert_not_called()
 
     @patch("app.stocks.libraries.fmp.requests.get")
@@ -118,15 +119,6 @@ class TestFmpGetProfile(unittest.TestCase):
         mock_get.return_value = _mock_response(200, [])
         with patch.object(FMP, "API_KEY", "test-key"):
             self.assertIsNone(FMP.get_profile("ZZZZ"))
-
-    @patch("app.stocks.libraries.fmp.requests.get")
-    def test_returns_none_without_api_key(self, mock_get):
-        """
-        Returns None without performing an HTTP call when FMP_API_KEY is unset.
-        """
-        with patch.object(FMP, "API_KEY", None):
-            self.assertIsNone(FMP.get_profile("AAPL"))
-        mock_get.assert_not_called()
 
 
 if __name__ == "__main__":

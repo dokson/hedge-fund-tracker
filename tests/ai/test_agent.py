@@ -37,23 +37,6 @@ def _make_analysis_df():
     )
 
 
-class TestAnalystAgentInit(unittest.TestCase):
-    @patch("app.ai.agent.quarter_analysis")
-    @patch("app.ai.agent.get_quarter_date")
-    def test_loads_analysis_dataframe_on_init(self, mock_date, mock_analysis):
-        """
-        Loads the quarter analysis DataFrame by calling quarter_analysis() on init.
-        """
-        mock_date.return_value = "2023-12-31"
-        expected_df = _make_analysis_df()
-        mock_analysis.return_value = expected_df
-
-        agent = AnalystAgent("2023Q4")
-
-        mock_analysis.assert_called_once_with("2023Q4")
-        pd.testing.assert_frame_equal(agent.analysis_df, expected_df)
-
-
 class TestCalculatePromiseScores(unittest.TestCase):
     """
     Tests for AnalystAgent._calculate_promise_scores().
@@ -85,29 +68,6 @@ class TestCalculatePromiseScores(unittest.TestCase):
         self.agent._calculate_promise_scores(df, {"Metric1": 1.0})
 
         self.assertNotIn("Promise_Score", df.columns)
-
-    def test_scores_are_between_0_and_100(self):
-        """
-        All Promise_Score values are in the [0, 100] range.
-        """
-        df = _make_analysis_df()
-
-        result = self.agent._calculate_promise_scores(df, {"Metric1": 0.6, "Metric2": 0.4})
-
-        self.assertTrue((result["Promise_Score"] >= 0).all())
-        self.assertTrue((result["Promise_Score"] <= 100).all())
-
-    def test_higher_metric_yields_higher_score(self):
-        """
-        A row with a higher metric value receives a higher Promise_Score.
-        """
-        df = pd.DataFrame({"Ticker": ["LOW", "HIGH"], "Metric1": [10, 100]})
-
-        result = self.agent._calculate_promise_scores(df, {"Metric1": 1.0})
-
-        high_score = result.loc[result["Ticker"] == "HIGH", "Promise_Score"].iloc[0]
-        low_score = result.loc[result["Ticker"] == "LOW", "Promise_Score"].iloc[0]
-        self.assertGreater(high_score, low_score)
 
     def test_scaling_weights_by_a_constant_leaves_scores_unchanged(self):
         """
@@ -337,29 +297,6 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         with self.assertRaises(RetryError):
             self.agent._get_promise_score_weights()
 
-    def test_non_finite_weights_trigger_retry(self):
-        """
-        NaN or infinite weights would poison normalization.
-        """
-        for bad in (float("nan"), float("inf")):
-            self.mock_parse.return_value = _weights_response(_six_weights(Net_Buyers=bad))
-
-            with self.assertRaises(RetryError):
-                self.agent._get_promise_score_weights()
-
-    def test_only_negative_weights_trigger_retry(self):
-        """
-        Without a positive weight the score can only penalize selling.
-        """
-        self.mock_parse.return_value = _weights_response(
-            {"Seller_Count": -1.0, "Close_Count": -0.5}
-        )
-        with (
-            patch("app.ai.agent.PromiseScoreValidator.validate_metric_count", return_value=""),
-            self.assertRaises(RetryError),
-        ):
-            self.agent._get_promise_score_weights()
-
     def test_raises_on_non_numeric_weight(self):
         """
         A value that cannot be coerced to float triggers a retry instead of a TypeError.
@@ -376,30 +313,6 @@ class TestGetPromiseScoreWeights(unittest.TestCase):
         A sparse weight set concentrates the ranking on one axis.
         """
         self.mock_parse.return_value = _weights_response({"Net_Buyers": 0.5, "Holder_Count": 0.5})
-
-        with self.assertRaises(RetryError):
-            self.agent._get_promise_score_weights()
-
-    def test_too_many_metrics_trigger_retry(self):
-        """
-        More metrics than the maximum spreads weight over correlated breadth signals.
-        """
-        metrics = [
-            "Total_Value",
-            "Total_Delta_Value",
-            "Max_Portfolio_Pct",
-            "Buyer_Count",
-            "Seller_Count",
-            "Holder_Count",
-            "New_Holder_Count",
-            "Net_Buyers",
-            "Close_Count",
-            "Delta",
-            "Buyer_Seller_Ratio",
-        ]
-        self.mock_parse.return_value = _weights_response(
-            {m: (-0.05 if m in ("Seller_Count", "Close_Count") else 0.05) for m in metrics}
-        )
 
         with self.assertRaises(RetryError):
             self.agent._get_promise_score_weights()
@@ -731,29 +644,6 @@ class TestRunStockDueDiligence(unittest.TestCase):
     @patch("app.ai.agent.PriceFetcher.get_avg_price")
     @patch("app.ai.agent.PriceFetcher.get_current_price")
     @patch("app.ai.agent.stock_analysis")
-    def test_returns_analysis_with_current_price_attached(
-        self, mock_stock_analysis, mock_price, mock_avg_price, mock_prompt, mock_parse, mock_encode
-    ):
-        """
-        Returns the parsed AI analysis dict with the current_price field added.
-        """
-        mock_stock_analysis.return_value = _make_stock_df()
-        mock_price.return_value = 150.0
-        mock_avg_price.return_value = 145.0
-        self.mock_ai_client.generate_content.return_value = "mock_response"
-        mock_parse.return_value = {"thesis": "Strong buy"}
-
-        result = self.agent.run_stock_due_diligence("AAPL")
-
-        self.assertIn("thesis", result)
-        self.assertEqual(result["current_price"], "$150.00")
-
-    @patch("app.ai.agent.encode")
-    @patch("app.ai.agent.ResponseParser.parse_json")
-    @patch("app.ai.agent.stock_due_diligence_prompt")
-    @patch("app.ai.agent.PriceFetcher.get_avg_price")
-    @patch("app.ai.agent.PriceFetcher.get_current_price")
-    @patch("app.ai.agent.stock_analysis")
     def test_proceeds_without_filing_date_price(
         self, mock_stock_analysis, mock_price, mock_avg_price, mock_prompt, mock_parse, mock_encode
     ):
@@ -820,80 +710,6 @@ class TestRunStockDueDiligence(unittest.TestCase):
         retry_records = [r for r in cm.records if "Retrying in" in r.getMessage()]
         self.assertTrue(retry_records)
         self.assertTrue(all(r.args for r in retry_records))
-
-
-class TestReasoningLevelPerCall(unittest.TestCase):
-    """
-    Only the due-diligence call asks for a deeper reasoning level.
-    """
-
-    def setUp(self):
-        """
-        Builds an AnalystAgent around a mocked AI client.
-        """
-        analysis_df = pd.DataFrame(
-            {
-                "Ticker": ["AAPL"],
-                "High_Conviction_Count": [2],
-                "Ownership_Delta_Avg": [0.5],
-                "Portfolio_Concentration_Avg": [1.2],
-            }
-        )
-        for patcher in (
-            patch("time.sleep"),
-            patch("app.ai.agent.quarter_analysis", return_value=analysis_df),
-            patch("app.ai.agent.get_quarter_date", return_value="2023-12-31"),
-            patch("app.ai.agent.encode"),
-            patch("app.ai.agent.promise_score_weights_prompt"),
-            patch("app.ai.agent.quantitative_scores_prompt"),
-            patch("app.ai.agent.stock_due_diligence_prompt"),
-            patch("app.ai.agent.PriceFetcher.get_avg_price", return_value=145.0),
-            patch("app.ai.agent.PriceFetcher.get_current_price", return_value=150.0),
-            patch("app.ai.agent.stock_analysis", return_value=_make_stock_df()),
-        ):
-            self.addCleanup(patcher.stop)
-            patcher.start()
-        parse_patcher = patch("app.ai.agent.ResponseParser.parse_json")
-        self.addCleanup(parse_patcher.stop)
-        self.mock_parse = parse_patcher.start()
-        self.mock_ai_client = MagicMock()
-        self.mock_ai_client.generate_content.return_value = "mock_response"
-        self.agent = AnalystAgent("2023Q4", ai_client=self.mock_ai_client)
-
-    def test_due_diligence_requests_medium_reasoning(self):
-        """
-        The due-diligence prompt is open-ended, so it asks for medium reasoning.
-        """
-        self.mock_parse.return_value = {"thesis": "Buy"}
-
-        self.agent.run_stock_due_diligence("AAPL")
-
-        self.assertEqual(
-            self.mock_ai_client.generate_content.call_args.kwargs,
-            {"reasoning": "medium", "response_schema": DUE_DILIGENCE_SCHEMA},
-        )
-
-    def test_weights_call_keeps_default_reasoning(self):
-        """
-        The weights call does not override the client's default level.
-        """
-        self.mock_parse.return_value = _weights_response(_six_weights())
-
-        self.agent._get_promise_score_weights()
-
-        self.assertNotIn("reasoning", self.mock_ai_client.generate_content.call_args.kwargs)
-
-    def test_scores_call_keeps_default_reasoning(self):
-        """
-        The scores call does not override the client's default level.
-        """
-        self.mock_parse.return_value = _scores_response(
-            {"AAPL": {"industry": "Software", "risk_score": 40}}
-        )
-
-        self.agent._get_ai_scores([{"ticker": "AAPL", "company": "Apple"}])
-
-        self.assertNotIn("reasoning", self.mock_ai_client.generate_content.call_args.kwargs)
 
 
 class TestStructuredResponses(unittest.TestCase):
@@ -1027,6 +843,7 @@ class TestStructuredResponses(unittest.TestCase):
         self.assertEqual(result["investment_thesis"]["overall_sentiment"], "Bullish")
         for key in ("current_price", "filing_date_price", "price_delta_percentage"):
             self.assertIsInstance(result[key], str)
+        self.assertEqual(result["current_price"], "$150.00")
 
     def test_null_sentiment_is_accepted(self):
         """

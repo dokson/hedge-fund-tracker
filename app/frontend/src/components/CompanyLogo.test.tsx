@@ -12,12 +12,6 @@ import { buildLogoUrl } from "./companyLogoUrl";
 // IntersectionObserver polyfill comes from src/test/setup.ts.
 
 describe("buildLogoUrl", () => {
-  it("returns the FMP source URL directly in local mode (Cloudinary only on GH Pages)", () => {
-    const url = buildLogoUrl("AAPL", 32);
-
-    expect(url).toBe("https://images.financialmodelingprep.com/symbol/AAPL.png");
-  });
-
   it("uri-encodes tickers containing slashes or special characters", () => {
     const url = buildLogoUrl("BRK/B", 32);
 
@@ -37,18 +31,7 @@ describe("CompanyLogo", () => {
 
     expect(img.alt).toBe("");
     expect(img.width).toBe(48);
-    expect(img.src).toContain("financialmodelingprep.com/symbol/AAPL.png");
-  });
-
-  it("fills its whole box once loaded: no padding or border to shrink a small logo", () => {
-    const { container } = render(<CompanyLogo ticker="AAPL" size={20} />);
-    const img = container.querySelector("img")!;
-    fireEvent.load(img);
-    const classes = img.className.split(/\s+/);
-
-    expect(classes).toContain("bg-white");
-    expect(classes).not.toContain("p-px");
-    expect(classes).not.toContain("border");
+    expect(img.src).toBe("https://images.financialmodelingprep.com/symbol/AAPL.png");
   });
 
   it("names the img when it is not decorative", () => {

@@ -14,12 +14,6 @@ class TestResponseParser(unittest.TestCase):
         """
         self.assertEqual(ResponseParser.parse_json('{"a": 1, "b": [1, 2]}'), {"a": 1, "b": [1, 2]})
 
-    def test_parses_surrounding_whitespace(self):
-        """
-        Leading and trailing whitespace is ignored.
-        """
-        self.assertEqual(ResponseParser.parse_json('\n  {"a": null}  \n'), {"a": None})
-
     def test_parses_a_json_fence(self):
         """
         Prompt-only answers often wrap the object in a json fence.

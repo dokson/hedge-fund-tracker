@@ -5,13 +5,6 @@ import { FAQ_LAST_UPDATED, FAQ_META, FAQ_SECTIONS } from "../faqContent";
 describe("FAQ content", () => {
   const allItems = FAQ_SECTIONS.flatMap((s) => s.items);
 
-  it("has at least one section, each with at least one item", () => {
-    expect(FAQ_SECTIONS.length).toBeGreaterThan(0);
-    for (const section of FAQ_SECTIONS) {
-      expect(section.items.length).toBeGreaterThan(0);
-    }
-  });
-
   it("uses unique ids across sections and items", () => {
     const sectionIds = FAQ_SECTIONS.map((s) => s.id);
     expect(new Set(sectionIds).size).toBe(sectionIds.length);

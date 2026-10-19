@@ -3,6 +3,7 @@ from datetime import date
 from yfinance.exceptions import YFRateLimitError
 
 from app.stocks.libraries import FinanceLibrary, Nasdaq, StockAnalysis, TradingView, YFinance
+from app.stocks.lookup_status import note_provider_failure
 from app.utils.logger import get_logger, log_safe
 from app.utils.metrics import PRICE_LOOKUP_FAILURES, PRICE_RATE_LIMITED
 
@@ -11,8 +12,10 @@ logger = get_logger(__name__)
 
 def _record_failure(library: type[FinanceLibrary], exc: Exception) -> None:
     """
-    Count a provider failure, and separately a rate limit, under the provider's class name.
+    Count a provider failure, and separately a rate limit, under the provider's
+    class name, and mark the tracked lookup as not answered by every provider.
     """
+    note_provider_failure()
     PRICE_LOOKUP_FAILURES.labels(provider=library.__name__).inc()
     if isinstance(exc, YFRateLimitError):
         PRICE_RATE_LIMITED.labels(provider=library.__name__).inc()

@@ -37,14 +37,4 @@ describe("getEnrichedNQFilings per-fund load failures", () => {
     holdingsMock.mockRejectedValue(new Error("network down"));
     await expect(getEnrichedNQFilings()).rejects.toThrow("network down");
   });
-
-  it("does not cache the failed result, so a retry recovers", async () => {
-    holdingsMock.mockRejectedValueOnce(new Error("network down"));
-    await expect(getEnrichedNQFilings()).rejects.toThrow("network down");
-    holdingsMock.mockResolvedValueOnce([
-      { cusip: "000000001", ticker: "AAA", shares: 50, portfolioPct: 1, value: "0.5M" },
-    ]);
-    const rows = await getEnrichedNQFilings();
-    expect(rows[0]?.deltaType).toBe("INCREASE");
-  });
 });

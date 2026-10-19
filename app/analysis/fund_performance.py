@@ -270,7 +270,9 @@ def write_fund_performance(rows: list[dict[str, object]], path: Path | str) -> N
     tmp_path = target.with_suffix(".csv.tmp")
     try:
         with tmp_path.open("w", newline="\n", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=CSV_FIELDS, quoting=csv.QUOTE_ALL)
+            writer = csv.DictWriter(
+                handle, fieldnames=CSV_FIELDS, quoting=csv.QUOTE_ALL, lineterminator="\n"
+            )
             writer.writeheader()
             for row in rows:
                 writer.writerow({field: _cell(row.get(field)) for field in CSV_FIELDS})

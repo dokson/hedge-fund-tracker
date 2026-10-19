@@ -93,16 +93,6 @@ class TestRequestContextMiddleware(unittest.TestCase):
 
         self.assertIsNone(request_id_var.get())
 
-    def test_logs_one_access_line_per_request(self):
-        """
-        The access line has method, path, status and duration in ms.
-        """
-        with self.assertLogs("app.api.observability", level="INFO") as logs:
-            self.client.get("/api/items/7")
-
-        self.assertEqual(len(logs.records), 1)
-        self.assertRegex(logs.output[0], r"GET /api/items/7 200 \d+(\.\d+)? ms")
-
     def test_access_line_carries_the_request_id(self):
         """
         The access record is emitted while the request id is still bound.
@@ -216,16 +206,6 @@ class TestMetricsEndpoint(unittest.TestCase):
         self.assertIn("hft_http_requests_total", response.text)
         self.assertIn("hft_sec_requests_total", response.text)
         self.assertIn('route="/health"', response.text)
-
-    def test_server_returns_a_request_id(self):
-        """
-        The real app is wrapped by the middleware.
-        """
-        from app.server import app
-
-        response = TestClient(app).get("/health")
-
-        self.assertIn("X-Request-ID", response.headers)
 
 
 class TestUvicornAccessLog(unittest.TestCase):

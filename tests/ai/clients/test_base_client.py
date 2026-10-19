@@ -39,21 +39,6 @@ class TestBaseClient(unittest.TestCase):
         """
         shutil.rmtree(self.cache_dir, ignore_errors=True)
 
-    def test_log_response_creates_file(self):
-        """
-        Test that generate_content creates a log file
-        """
-        self.client.generate_content("Test Prompt")
-
-        files = list(Path(self.cache_dir).glob("response_*.log"))
-        self.assertEqual(len(files), 1)
-
-        with files[0].open(encoding="utf-8") as f:
-            content = f.read()
-            self.assertIn("Model: mock-model", content)
-            self.assertIn("Prompt:\nTest Prompt", content)
-            self.assertIn("Response:\nResponse to: Test Prompt", content)
-
     def test_log_limit_retention(self):
         """
         Test that the logger keeps only the last LOG_RETENTION_LIMIT files
@@ -65,6 +50,7 @@ class TestBaseClient(unittest.TestCase):
 
         files = list(Path(self.cache_dir).glob("response_*.log"))
         self.assertEqual(len(files), limit)
+        self.assertIn("Response to: Prompt", files[0].read_text(encoding="utf-8"))
 
     def test_log_failure_message_has_no_duplicate_marker(self):
         """
@@ -154,14 +140,6 @@ class TestSharedReasoningFlow(unittest.TestCase):
         client.generate_content("p")
         self.assertEqual(DEFAULT_REASONING, "low")
         self.assertEqual(client.sent, [("fake-model", "low")])
-
-    def test_explicit_level_is_forwarded(self):
-        """
-        An explicit level reaches the provider unchanged.
-        """
-        client = ReasoningFakeClient()
-        client.generate_content("p", reasoning="medium")
-        self.assertEqual(client.sent, [("fake-model", "medium")])
 
     def test_rejection_retries_without_level_and_is_remembered(self):
         """

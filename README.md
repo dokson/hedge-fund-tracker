@@ -588,7 +588,7 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 ## 🤝🏼 Contributing & Support
 
-Read **[CONTRIBUTING.md](./CONTRIBUTING.md)** before opening a PR — it covers TDD discipline, lint policy, branch hygiene, and what makes a good PR. For deep architectural context (modules, footguns, data flow) see **[AGENTS.md](./AGENTS.md)**.
+Read **[CONTRIBUTING.md](./CONTRIBUTING.md)** before opening a PR — it covers the test policy, lint policy, branch hygiene, and what makes a good PR. For deep architectural context (modules, footguns, data flow) see **[AGENTS.md](./AGENTS.md)**.
 
 ### 💬 Loved it? Help it grow
 

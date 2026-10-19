@@ -105,11 +105,18 @@ class CusipAnomalyDetector:
     under its CUSIP is never moved to a closed one: a filing that closes
     hundreds of positions always has one priced alike by chance.
 
-    Any other flagged row is restated at the funds' price: its value, unless the
-    price gap equals a split factor registered for the CUSIP (``split_factors``,
-    within ``split_tolerance``), which puts the share count on the other basis.
-    A share restatement also corrects the delta of the fund's next filing,
-    compared against the wrong count across ``split_factors_fn(previous, current)``.
+    Any other flagged row is restated at the funds' price. Its share count is
+    put on the value-implied basis when the gap equals a split factor registered
+    for the CUSIP (``split_factors``, within ``split_tolerance``), or when that
+    count continues one of the fund's adjacent filings (``continuity_tolerance``)
+    while the filed count continues neither; otherwise its value is restated.
+    Any share restatement corrects the delta of the fund's next filing, compared
+    against the wrong count across ``split_factors_fn(previous, current)``, also
+    when that filing is restated itself.
+
+    A filing valued at another date than the quarter end shows as most of its
+    book off the funds' prices (see ``_stale_filings``): every row of it more than
+    ``stale_gap`` off, even within ``price_tolerance``, has its value restated.
     """
 
     price_tolerance: float = 0.4
@@ -117,8 +124,12 @@ class CusipAnomalyDetector:
     match_tolerance: float = 0.05
     match_shares_tolerance: float = 0.5
     split_tolerance: float = 0.02
+    continuity_tolerance: float = 0.05
     split_factors: Mapping[str, Iterable[float]] = field(default_factory=dict)
     split_factors_fn: Callable[[str, str], Mapping[str, float]] | None = None
+    stale_gap: float = 0.05
+    stale_share: float = 0.4
+    stale_min_rows: int = 10
 
     def detect(
         self,
@@ -140,37 +151,91 @@ class CusipAnomalyDetector:
             if len(prices) >= self.min_reporters
         }
 
+        stale = self._stale_filings(priced, medians)
         by_filing: dict[tuple[str, str], list[tuple[CusipAnomaly, FiledRow]]] = defaultdict(list)
+        stale_rows: list[tuple[CusipAnomaly, FiledRow]] = []
         for r in priced:
             median = medians.get((r.quarter, r.cusip))
-            if median and abs(r.price / median - 1) > self.price_tolerance:
+            if not median:
+                continue
+            gap = abs(r.price / median - 1)
+            if gap > self.price_tolerance:
                 by_filing[(r.fund, r.quarter)].append((self._anomaly(r, median), r))
+            elif gap > self.stale_gap and (r.fund, r.quarter) in stale:
+                note = "the filing is priced at another date than the funds' quarter end"
+                stale_rows.append((replace(self._anomaly(r, median), note=note), r))
 
         filed = {(r.fund, r.quarter, r.cusip): r for r in priced}
-        anomalies: list[CusipAnomaly] = []
+        fund_quarters: dict[str, set[str]] = defaultdict(set)
+        for fund, quarter in [(r.fund, r.quarter) for r in priced] + list(closed or {}):
+            fund_quarters[fund].add(quarter)
+        anomalies: list[CusipAnomaly] = [self._value_restatement(a, r) for a, r in stale_rows]
         for (fund, quarter), flagged in by_filing.items():
             closing = (closed or {}).get((fund, quarter), {})
             for a in self._match(flagged, closing, lambda c, q=quarter: medians.get((q, c))):
                 if a.correct_cusip:
                     anomalies.append(replace(a, kind="cusip"))
                 else:
-                    anomalies.append(self._restate(a, filed[(a.fund, a.quarter, a.cusip)]))
-
-        fund_quarters: dict[str, set[str]] = defaultdict(set)
-        for fund, quarter in [(r.fund, r.quarter) for r in priced] + list(closed or {}):
-            fund_quarters[fund].add(quarter)
-        anomalies += [
-            carried
-            for a in anomalies
-            if a.kind == "shares"
-            and (carried := self._carry(a, filed, closed or {}, fund_quarters[a.fund]))
-        ]
+                    row = filed[(a.fund, a.quarter, a.cusip)]
+                    neighbours = self._neighbours(row, filed, fund_quarters[fund])
+                    anomalies.append(self._restate(a, row, neighbours))
+        anomalies = self._follow_share_restatements(anomalies, filed, closed or {}, fund_quarters)
         return sorted(anomalies, key=lambda a: (a.quarter, a.fund, a.cusip))
 
-    def _restate(self, anomaly: CusipAnomaly, row: FiledRow) -> CusipAnomaly:
+    def _factor(self, cusip: str, previous: str, current: str) -> float:
+        """
+        The split factor of ``cusip`` between two of a fund's filings, 1 without one.
+        """
+        factors = self.split_factors_fn(previous, current) if self.split_factors_fn else {}
+        return factors.get(cusip, 1.0)
+
+    def _neighbours(
+        self, row: FiledRow, filed: Mapping[tuple[str, str, str], FiledRow], quarters: set[str]
+    ) -> list[tuple[str, float]]:
+        """
+        The share counts of the row's position in the fund's previous and next
+        filings, on the row's basis: (quarter, shares) for each one that holds it.
+        The previous count comes from the row's own delta, so it is known even
+        when that filing predates the database.
+        """
+        earlier = sorted(q for q in quarters if q < row.quarter)
+        later = sorted(q for q in quarters if q > row.quarter)
+        neighbours: list[tuple[str, float]] = []
+        previous = row.shares - row.delta_shares
+        if row.delta != "NEW" and previous > 0:
+            neighbours.append((earlier[-1] if earlier else "previous", previous))
+        nxt = filed.get((row.fund, later[0], row.cusip)) if later else None
+        if later and nxt is not None:
+            neighbours.append(
+                (later[0], nxt.shares / self._factor(row.cusip, row.quarter, later[0]))
+            )
+        return neighbours
+
+    def _continued(
+        self, filed_shares: float, implied_shares: float, neighbours: list[tuple[str, float]]
+    ) -> tuple[str, float] | None:
+        """
+        The adjacent filing the value-implied share count continues, when the filed
+        count continues none: the share count is then the wrong figure.
+        """
+
+        def close(count: float, other: float) -> bool:
+            """
+            Whether two share counts are the same holding.
+            """
+            return abs(count / other - 1) <= self.continuity_tolerance
+
+        if any(close(filed_shares, n) for _, n in neighbours):
+            return None
+        return next(((q, n) for q, n in neighbours if close(implied_shares, n)), None)
+
+    def _restate(
+        self, anomaly: CusipAnomaly, row: FiledRow, neighbours: list[tuple[str, float]]
+    ) -> CusipAnomaly:
         """
         Restate a row at the funds' price: its share count when the gap is a
-        registered split factor of the CUSIP, its value otherwise.
+        registered split factor of the CUSIP or the value continues an adjacent
+        filing (see ``_continued``), its value otherwise.
         """
         price = anomaly.reference_price
         ratio = row.price / price
@@ -178,7 +243,10 @@ class CusipAnomalyDetector:
             abs(ratio * f - 1) <= self.split_tolerance or abs(ratio / f - 1) <= self.split_tolerance
             for f in self.split_factors.get(row.cusip, ())
         )
-        if on_split_basis:
+        continued = (
+            None if on_split_basis else self._continued(row.shares, row.value / price, neighbours)
+        )
+        if on_split_basis or continued:
             shares = round(row.value / price)
             delta_shares = round(row.delta_shares + shares - row.shares)
             restated = Restatement(
@@ -188,7 +256,21 @@ class CusipAnomalyDetector:
                 delta_value=delta_shares * price,
                 delta=delta_label(shares, delta_shares),
             )
-            return replace(anomaly, kind="shares", restated=restated)
+            note = (
+                f"value is {shares:,} shares at the funds' price, like the {continued[0]} "
+                f"filing's {continued[1]:,.0f}"
+                if continued
+                else ""
+            )
+            return replace(anomaly, kind="shares", restated=restated, note=note)
+        return self._value_restatement(anomaly, row)
+
+    @staticmethod
+    def _value_restatement(anomaly: CusipAnomaly, row: FiledRow) -> CusipAnomaly:
+        """
+        The row at the funds' price with its filed share count.
+        """
+        price = anomaly.reference_price
         restated = Restatement(
             shares=round(row.shares),
             value=row.shares * price,
@@ -198,25 +280,93 @@ class CusipAnomalyDetector:
         )
         return replace(anomaly, kind="value", restated=restated)
 
-    def _carry(
+    def _stale_filings(
+        self, priced: list[FiledRow], medians: Mapping[tuple[str, str], float]
+    ) -> set[tuple[str, str]]:
+        """
+        The (fund, quarter) filings valued at another date: at least
+        ``stale_min_rows`` rows the funds price, and ``stale_share`` of their
+        filed value more than ``stale_gap`` away from the funds' price.
+        """
+        judged: dict[tuple[str, str], list[float]] = defaultdict(lambda: [0, 0.0, 0.0])
+        for r in priced:
+            median = medians.get((r.quarter, r.cusip))
+            if not median:
+                continue
+            tally = judged[(r.fund, r.quarter)]
+            tally[0] += 1
+            tally[1] += r.value
+            if abs(r.price / median - 1) > self.stale_gap:
+                tally[2] += r.value
+        return {
+            filing
+            for filing, (count, total, off) in judged.items()
+            if count >= self.stale_min_rows and total > 0 and off / total >= self.stale_share
+        }
+
+    def _follow_share_restatements(
         self,
-        anomaly: CusipAnomaly,
+        anomalies: list[CusipAnomaly],
         filed: Mapping[tuple[str, str, str], FiledRow],
         closed: Mapping[tuple[str, str], Mapping[str, float]],
-        quarters: set[str],
+        fund_quarters: Mapping[str, set[str]],
+    ) -> list[CusipAnomaly]:
+        """
+        Correct the delta of the fund's next filing after every share restatement:
+        shifted in place when that filing is restated itself, a carried row otherwise.
+        """
+        index = {(a.fund, a.quarter, a.cusip): i for i, a in enumerate(anomalies)}
+        result = list(anomalies)
+        carried: list[CusipAnomaly] = []
+        for a in anomalies:
+            later = sorted(q for q in fund_quarters[a.fund] if q > a.quarter)
+            if a.kind != "shares" or a.restated is None or not later:
+                continue
+            quarter = later[0]
+            factor = self._factor(a.cusip, a.quarter, quarter)
+            shift = round((a.restated.shares - filed[(a.fund, a.quarter, a.cusip)].shares) * factor)
+            i = index.get((a.fund, quarter, a.cusip))
+            if i is not None:
+                result[i] = self._shifted(result[i], shift, a.quarter)
+            elif carry := self._carry(a, quarter, factor, shift, filed, closed):
+                carried.append(carry)
+        return result + carried
+
+    @staticmethod
+    def _shifted(anomaly: CusipAnomaly, shift: int, previous: str) -> CusipAnomaly:
+        """
+        A restated row whose delta was measured against a count the ``previous``
+        filing's share restatement moved by ``shift``.
+        """
+        if anomaly.restated is None or shift == 0:
+            return anomaly
+        delta_shares = anomaly.restated.delta_shares - shift
+        restated = replace(
+            anomaly.restated,
+            delta_shares=delta_shares,
+            delta_value=delta_shares * anomaly.reference_price,
+            delta=delta_label(anomaly.restated.shares, delta_shares),
+        )
+        note = "; ".join(
+            filter(None, [anomaly.note, f"delta follows the {previous} share restatement"])
+        )
+        return replace(anomaly, restated=restated, note=note)
+
+    @staticmethod
+    def _carry(
+        anomaly: CusipAnomaly,
+        quarter: str,
+        factor: float,
+        shift: int,
+        filed: Mapping[tuple[str, str, str], FiledRow],
+        closed: Mapping[tuple[str, str], Mapping[str, float]],
     ) -> CusipAnomaly | None:
         """
-        The fund's next filing of a share-restated CUSIP, its delta recomputed
-        against the restated count; None when the fund filed nothing after it.
+        The fund's next filing (``quarter``) of a share-restated CUSIP that is not
+        flagged itself, its delta recomputed against the restated count; None when
+        that filing neither holds nor closes the position.
         """
-        later = sorted(q for q in quarters if q > anomaly.quarter)
-        if not later or anomaly.restated is None:
-            return None
-        quarter = later[0]
-        factors = self.split_factors_fn(anomaly.quarter, quarter) if self.split_factors_fn else {}
-        factor = factors.get(anomaly.cusip, 1.0)
-        filed_row = filed[(anomaly.fund, anomaly.quarter, anomaly.cusip)]
-        shift = round((anomaly.restated.shares - filed_row.shares) * factor)
+        assert anomaly.restated is not None
         nxt = filed.get((anomaly.fund, quarter, anomaly.cusip))
         if nxt is not None:
             shares, delta_shares = round(nxt.shares), round(nxt.delta_shares) - shift

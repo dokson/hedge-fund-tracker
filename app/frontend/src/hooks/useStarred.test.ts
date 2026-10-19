@@ -8,12 +8,6 @@ describe("useStarred localStorage hydration", () => {
     localStorage.clear();
   });
 
-  it("reads back a valid stored list", () => {
-    localStorage.setItem("starred_stock", JSON.stringify(["AAA", "BBB"]));
-    const { result } = renderHook(() => useStarred("stock"));
-    expect([...result.current.starred].sort()).toEqual(["AAA", "BBB"]);
-  });
-
   it("drops non-string entries from corrupted storage", () => {
     localStorage.setItem("starred_stock", JSON.stringify(["AAA", 5, null, "BBB"]));
     const { result } = renderHook(() => useStarred("stock"));

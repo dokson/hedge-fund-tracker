@@ -42,12 +42,6 @@ function renderPage() {
 describe("FundsConfig", () => {
   afterEach(() => saveMock.mockReset());
 
-  it("links each tab to the panel it controls", () => {
-    renderPage();
-    const tab = screen.getByRole("tab", { name: /Active Funds/ });
-    expect(tab.getAttribute("aria-controls")).toBe(screen.getByRole("tabpanel").id);
-  });
-
   it("switches to the excluded list", async () => {
     renderPage();
     fireEvent.mouseDown(screen.getByRole("tab", { name: /Excluded/ }));

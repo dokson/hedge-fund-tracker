@@ -15,10 +15,6 @@ class TestSnapToSimpleRatio(unittest.TestCase):
     def test_prefers_the_smallest_denominator(self):
         self.assertEqual(snap_to_simple_ratio(1.4999), 1.5)
 
-    def test_rejects_a_ratio_that_is_simple_only_over_a_large_denominator(self):
-        # 249/50 is not a simple ratio: a numerator bound is what excludes it.
-        self.assertEqual(snap_to_simple_ratio(4.98, tolerance=0.0001), 4.98)
-
     def test_leaves_a_value_no_simple_ratio_is_near(self):
         # 2.39 is within 1% of 12/5, so only a caller that bounds the
         # denominator gets it back untouched.

@@ -29,6 +29,7 @@ describe("SmartScorePanel", () => {
   it("renders the composite, the three components and the quarter label", () => {
     const { container } = renderPanel({ score, quarterLabel: "2026Q2" });
     expect(container.textContent).toContain("8.6");
+    expect(container.textContent).toContain("/10");
     expect(container.textContent).toContain("Breadth");
     expect(container.textContent).toContain("Momentum");
     expect(container.textContent).toContain("Conviction");

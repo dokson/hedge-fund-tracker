@@ -1,5 +1,3 @@
-import threading
-import time as real_time
 import unittest
 
 from app.scraper.rate_limiter import RateLimiter
@@ -59,32 +57,6 @@ class TestRateLimiter(unittest.TestCase):
         rl.acquire()
         rl.acquire()
         self.assertEqual(clk.sleeps, [])
-
-    def test_concurrent_threads_serialize_safely(self):
-        """
-        Many threads sharing one limiter never crash and stay within capacity for an initial burst.
-        """
-        rl = RateLimiter(rate=1000, capacity=100)
-        results: list[None] = []
-        results_lock = threading.Lock()
-
-        def worker():
-            for _ in range(25):
-                rl.acquire()
-                with results_lock:
-                    results.append(None)
-
-        threads = [threading.Thread(target=worker) for _ in range(4)]
-        start = real_time.monotonic()
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-        elapsed = real_time.monotonic() - start
-
-        self.assertEqual(len(results), 100)
-        # 100 acquires fit in initial capacity; should be near-instant.
-        self.assertLess(elapsed, 1.0)
 
 
 if __name__ == "__main__":

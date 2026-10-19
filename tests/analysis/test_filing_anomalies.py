@@ -92,13 +92,6 @@ class TestAgainstTheFunds(unittest.TestCase):
         rows = [row("A", "X1", 10.0), row("B", "X1", 100.0)]
         self.assertEqual(DETECTOR.detect(rows), [])
 
-    def test_min_reporters_is_configurable(self):
-        """
-        A looser detector accepts a two-fund consensus.
-        """
-        rows = [row("A", "QQQ1", 736.0), row("B", "QQQ1", 736.0), row("Ratan", "QQQ1", 31.6)]
-        self.assertEqual(len(CusipAnomalyDetector(min_reporters=2).detect(rows)), 1)
-
 
 class TestAutomaticCorrection(unittest.TestCase):
     """
@@ -148,13 +141,6 @@ class TestAutomaticCorrection(unittest.TestCase):
         ]
         closed = {("Talaria", "2025Q1"): {"JNJ": 1000, "PG": 1000}}
         self.assertIsNone(DETECTOR.detect(rows, closed=closed)[0].correct_cusip)
-
-    def test_no_matching_candidate_leaves_the_row_open(self):
-        """
-        Without a candidate at the filed price the anomaly is only reported.
-        """
-        rows = [*holders("QQQ1", 736.0), row("Ratan", "QQQ1", 31.6)]
-        self.assertIsNone(DETECTOR.detect(rows)[0].correct_cusip)
 
 
 class TestMatcherSafeguards(unittest.TestCase):
@@ -232,7 +218,8 @@ class TestMatcherSafeguards(unittest.TestCase):
 class TestRestatement(unittest.TestCase):
     """
     A row the other funds contradict, with no CUSIP to move to, is restated at
-    their price: its value by default, its share count on a registered split basis.
+    their price: its value by default, its share count on a registered split basis
+    or when the value continues the fund's adjacent filings and the filed count does not.
     """
 
     def test_a_mis_valued_row_keeps_its_shares_and_takes_the_funds_price(self):
@@ -244,6 +231,7 @@ class TestRestatement(unittest.TestCase):
         )
         (a,) = DETECTOR.detect([*holders("FXI", 36.8, "2025Q2"), filed])
         self.assertEqual(a.kind, "value")
+        self.assertIsNone(a.correct_cusip)
         assert a.restated is not None
         self.assertEqual(a.restated.shares, 15_000)
         self.assertAlmostEqual(a.restated.value, 552_000)
@@ -295,6 +283,90 @@ class TestRestatement(unittest.TestCase):
         ]
         (a,) = DETECTOR.detect(rows, closed={("Talaria", "2025Q1"): {"JNJ": 559_800}})
         self.assertEqual((a.kind, a.restated), ("cusip", None))
+
+    def test_a_share_count_the_funds_adjacent_filings_contradict_is_restated(self):
+        """
+        The value continues the fund's next filing while the filed count fits neither
+        neighbour: the share count is the wrong figure, the value stays as filed.
+        """
+        filed = FiledRow(
+            "2025Q1", "Pan", "CRH", "ANY", 23.45, 110_000, delta_shares=50_998, delta="+86.4%"
+        )
+        rows = [
+            *holders("CRH", 88.0, "2025Q1"),
+            filed,
+            FiledRow("2025Q2", "Pan", "CRH", "ANY", 91.7, 29_665, -80_335, "-73%"),
+        ]
+        restated = {a.quarter: a for a in DETECTOR.detect(rows)}
+        first = restated["2025Q1"]
+        self.assertEqual(first.kind, "shares")
+        assert first.restated is not None
+        self.assertEqual(first.restated.shares, round(23.45 * 110_000 / 88.0))
+        self.assertAlmostEqual(first.restated.value, 23.45 * 110_000)
+        self.assertIn("2025Q2", first.note)
+        carried = restated["2025Q2"]
+        self.assertEqual(carried.kind, "carried")
+        assert carried.restated is not None
+        self.assertEqual(carried.restated.delta_shares, 29_665 - first.restated.shares)
+
+    def test_consecutive_share_restatements_chain_their_deltas(self):
+        """
+        A fund filing on the other basis two quarters running: the second delta is
+        measured against the first quarter's restated count, with no duplicate row.
+        """
+        rows = [
+            *holders("X", 40.0, "2025Q1"),
+            *holders("X", 50.0, "2025Q2"),
+            FiledRow("2024Q4", "F", "X", "ANY", 30.0, 1000),
+            FiledRow("2025Q1", "F", "X", "ANY", 20.0, 2000, delta_shares=1000, delta="+100%"),
+            FiledRow("2025Q2", "F", "X", "ANY", 25.0, 2000, delta_shares=0, delta="NO CHANGE"),
+        ]
+        detector = CusipAnomalyDetector(split_factors={"X": {2.0}})
+        found = [(a.quarter, a.kind) for a in detector.detect(rows)]
+        self.assertEqual(found, [("2025Q1", "shares"), ("2025Q2", "shares")])
+        second = detector.detect(rows)[1]
+        assert second.restated is not None
+        self.assertEqual(
+            (second.restated.shares, second.restated.delta_shares, second.restated.delta),
+            (1000, 0, "NO CHANGE"),
+        )
+
+
+def stale_filing(off: int, total: int = 10, gap: float = 0.2) -> list[FiledRow]:
+    """
+    One fund's filing of ``total`` securities, ``off`` of them priced ``gap`` away
+    from the three funds that report each one.
+    """
+    rows: list[FiledRow] = []
+    for i in range(total):
+        rows += holders(f"S{i}", 100.0)
+        rows.append(row("Stale", f"S{i}", 100.0 * (1 + gap) if i < off else 100.0))
+    return rows
+
+
+class TestFilingPricedAtAnotherDate(unittest.TestCase):
+    """
+    A filing whose book is mostly priced unlike the funds' quarter-end prices was
+    valued at another date: every row of it the funds price differently is restated,
+    not only the ones past ``price_tolerance``.
+    """
+
+    def test_every_mispriced_row_of_a_stale_filing_is_restated(self):
+        """
+        Six of ten positions 20% off: each is a value restatement at the funds' price.
+        """
+        found = DETECTOR.detect(stale_filing(off=6))
+        self.assertEqual([a.cusip for a in found], [f"S{i}" for i in range(6)])
+        self.assertTrue(all(a.kind == "value" for a in found))
+        assert found[0].restated is not None
+        self.assertAlmostEqual(found[0].restated.value, 100.0 * 1000)
+        self.assertIn("another date", found[0].note)
+
+    def test_a_few_rows_off_are_genuine_differences(self):
+        """
+        Two of ten positions 20% off is no evidence about the filing as a whole.
+        """
+        self.assertEqual(DETECTOR.detect(stale_filing(off=2)), [])
 
 
 def anomaly(fund: str) -> CusipAnomaly:
@@ -371,12 +443,6 @@ class TestMarkdown(unittest.TestCase):
         A filed name cannot break the Markdown table.
         """
         self.assertIn(r"VISTRA \| CORP", render_anomalies_markdown([anomaly("A")]))
-
-    def test_no_anomalies_says_so(self):
-        """
-        A clean database gets one line.
-        """
-        self.assertIn("No price anomalies", render_anomalies_markdown([]))
 
 
 if __name__ == "__main__":

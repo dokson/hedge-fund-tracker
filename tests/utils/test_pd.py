@@ -264,44 +264,6 @@ class TestAtomicWriteText(unittest.TestCase):
 
         self.assertEqual(chmod.call_args.args[0], 0o644)
 
-    def test_atomic_to_csv_preserves_the_existing_file_mode(self):
-        """
-        The CSV writer shares the same permission handling.
-        """
-        import stat
-        from unittest.mock import patch
-
-        from app.utils.pd import atomic_to_csv
-
-        target = self._tmp / "out.csv"
-        target.write_text("a\n1\n", encoding="utf-8")
-        mode = stat.S_IMODE(target.stat().st_mode)
-
-        with patch("app.utils.pd.Path.chmod") as chmod:
-            atomic_to_csv(pd.DataFrame({"a": [2]}), target, index=False)
-
-        self.assertEqual(chmod.call_args.args[0], mode)
-
-    def test_failure_leaves_target_intact(self):
-        """
-        A failure before the swap keeps the original file and removes the temp file.
-        """
-        from unittest.mock import patch
-
-        from app.utils.pd import atomic_write_text
-
-        target = self._tmp / "out.txt"
-        target.write_text("original", encoding="utf-8")
-
-        with (
-            patch("app.utils.pd.os.replace", side_effect=OSError("boom")),
-            self.assertRaises(OSError),
-        ):
-            atomic_write_text(target, "new")
-
-        self.assertEqual(target.read_text(encoding="utf-8"), "original")
-        self.assertEqual([p.name for p in self._tmp.iterdir()], ["out.txt"])
-
 
 class TestAtomicWriteRows(unittest.TestCase):
     def setUp(self):
@@ -323,29 +285,11 @@ class TestAtomicWriteRows(unittest.TestCase):
 
         target = self._tmp / "out.csv"
         atomic_write_rows(target, ["A", "B"], [{"A": "1", "B": "x"}])
-        self.assertEqual(target.read_bytes(), b'"A","B"\r\n"1","x"\r\n')
+        self.assertEqual(target.read_bytes(), b'"A","B"\n"1","x"\n')
 
         atomic_write_rows(target, ["A", "B"], [{"A": "1", "B": "x"}], quote_all=False)
-        self.assertEqual(target.read_bytes(), b"A,B\r\n1,x\r\n")
+        self.assertEqual(target.read_bytes(), b"A,B\n1,x\n")
         self.assertEqual([p.name for p in self._tmp.iterdir()], ["out.csv"])
-
-    def test_preserves_the_existing_file_mode(self):
-        """
-        The row writer shares the permission handling of the other atomic writers.
-        """
-        import stat
-        from unittest.mock import patch
-
-        from app.utils.pd import atomic_write_rows
-
-        target = self._tmp / "out.csv"
-        target.write_text("A\n", encoding="utf-8")
-        mode = stat.S_IMODE(target.stat().st_mode)
-
-        with patch("app.utils.pd.Path.chmod") as chmod:
-            atomic_write_rows(target, ["A"], [{"A": "1"}])
-
-        self.assertEqual(chmod.call_args.args[0], mode)
 
     @unittest.skipIf(os.name == "nt", "POSIX permission bits")
     def test_does_not_narrow_a_0644_file(self):

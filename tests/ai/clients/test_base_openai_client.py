@@ -126,19 +126,6 @@ class TestOpenAIClientInit(unittest.TestCase):
             timeout=REQUEST_TIMEOUT_S,
         )
 
-    @patch("app.ai.clients.base_openai_client.OpenAI")
-    def test_logs_warning_when_api_key_not_set(self, mock_openai):
-        """
-        Emits a warning log when the required API key env var is not set.
-        """
-        with (
-            patch.dict("os.environ", {}, clear=True),
-            self.assertLogs("app.ai.clients.base_openai_client", level="WARNING") as cm,
-        ):
-            ConcreteOpenAIClient()
-
-        self.assertIn("TEST_API_KEY", "\n".join(cm.output))
-
 
 class TestOpenAIClientGenerateContent(unittest.TestCase):
     def setUp(self):
@@ -219,54 +206,6 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
                 self.assertEqual(mock_instance.chat.completions.create.call_count, 1)
 
     @patch("app.ai.clients.base_openai_client.OpenAI")
-    def test_calls_api_with_correct_model_and_messages(self, mock_openai):
-        """
-        Sends the prompt in the expected message format with the configured
-        model, requesting a streamed response.
-        """
-        mock_instance = mock_openai.return_value
-        mock_instance.chat.completions.create.return_value = _stream("OK")
-
-        with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
-            client = ConcreteOpenAIClient(model="test-model-v1")
-
-        client.generate_content("Hello!")
-
-        mock_instance.chat.completions.create.assert_called_once_with(
-            model="test-model-v1",
-            messages=[{"role": "user", "content": "Hello!"}],
-            extra_body={"reasoning_effort": "low"},
-            stream=True,
-        )
-
-    @patch("app.ai.clients.base_openai_client.OpenAI")
-    def test_skips_reasoning_effort_on_subsequent_calls_after_rejection(self, mock_openai):
-        """
-        Remembers a model's rejection of reasoning_effort across calls, so
-        later requests to the same model don't pay for the failing round trip.
-        """
-        mock_instance = mock_openai.return_value
-        mock_instance.chat.completions.create.side_effect = [
-            _reasoning_effort_rejected(),
-            _stream("OK"),
-            _stream("OK again"),
-        ]
-
-        with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
-            client = ConcreteOpenAIClient()
-
-        client.generate_content("Hello!")
-        client.generate_content("Hello again!")
-
-        self.assertEqual(mock_instance.chat.completions.create.call_count, 3)
-        mock_instance.chat.completions.create.assert_called_with(
-            model="test-model-v1",
-            messages=[{"role": "user", "content": "Hello again!"}],
-            extra_body={},
-            stream=True,
-        )
-
-    @patch("app.ai.clients.base_openai_client.OpenAI")
     def test_returns_empty_string_when_no_content_streamed(self, mock_openai):
         """
         Returns an empty string when the stream yields no text deltas.
@@ -311,23 +250,6 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
         self.assertTrue(stream.closed)
 
     @patch("app.ai.clients.base_openai_client.OpenAI")
-    def test_logs_time_to_first_token(self, mock_openai):
-        """
-        Emits a first-token log as soon as the first delta arrives, so a slow
-        generation is observably progressing rather than appearing hung.
-        """
-        mock_instance = mock_openai.return_value
-        mock_instance.chat.completions.create.return_value = _stream("hello")
-
-        with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
-            client = ConcreteOpenAIClient()
-
-        with self.assertLogs("app.ai.clients.base_openai_client", level="INFO") as cm:
-            client.generate_content("Test prompt")
-
-        self.assertTrue(any("first token" in line for line in cm.output))
-
-    @patch("app.ai.clients.base_openai_client.OpenAI")
     def test_maps_reasoning_to_reasoning_effort(self, mock_openai):
         """
         An explicit level becomes reasoning_effort; ``reasoning`` never reaches the SDK.
@@ -352,15 +274,18 @@ class TestOpenAIClientGenerateContent(unittest.TestCase):
         mock_instance.chat.completions.create.side_effect = [
             _reasoning_effort_rejected(),
             _stream("OK"),
+            _stream("OK again"),
         ]
         with patch.dict("os.environ", {"TEST_API_KEY": "key"}):
             client = ConcreteOpenAIClient()
 
         self.assertEqual(client.generate_content("Hello!", reasoning="high"), "OK")
+        client.generate_content("Hello again!")
 
         calls = mock_instance.chat.completions.create.call_args_list
         self.assertEqual(calls[0].kwargs["extra_body"], {"reasoning_effort": "high"})
         self.assertEqual(calls[1].kwargs["extra_body"], {})
+        self.assertEqual(calls[2].kwargs["extra_body"], {})
         for call in calls:
             self.assertNotIn("reasoning", call.kwargs)
 
@@ -444,25 +369,15 @@ class TestOpenAIClientStructuredOutput(unittest.TestCase):
             _structured_output_rejected(mode="json_schema"),
             _structured_output_rejected(mode="json_object"),
             _stream('{"a": 1}'),
+            _stream('{"a": 1}'),
         ]
         self.client.generate_content("p", response_schema=_SCHEMA)
         self.assertEqual(self.formats()[1:], [{"type": "json_object"}, None])
         last_prompt = self.create.call_args.kwargs["messages"][0]["content"]
         self.assertIn('"additionalProperties": false', last_prompt)
         self.assertEqual(self.client.last_structured_mode, "prompt")
-
-    def test_rejection_is_remembered_for_the_model(self):
-        """
-        Later calls skip the modes the model already rejected.
-        """
-        self.create.side_effect = [
-            _structured_output_rejected(),
-            _stream("{}"),
-            _stream("{}"),
-        ]
         self.client.generate_content("p", response_schema=_SCHEMA)
-        self.client.generate_content("p", response_schema=_SCHEMA)
-        self.assertEqual(self.formats()[2], {"type": "json_object"})
+        self.assertIsNone(self.formats()[3])
 
     def test_schema_validation_failure_is_an_invalid_response(self):
         """

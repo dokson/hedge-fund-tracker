@@ -25,6 +25,8 @@ class YFinance(FinanceLibrary):
     """
 
     FALLBACK_SUFFIXES = [".TO", ".V"]
+    # A preferred share written without separators (QXOPB): base, "P", series letter.
+    PREFERRED_TICKER = re.compile(r"^([A-Z]{3,4})P([A-Z])$")
     # Days to look back so a non-trading requested date falls onto the prior trading day.
     AVG_PRICE_LOOKBACK_DAYS = 7
 
@@ -36,6 +38,21 @@ class YFinance(FinanceLibrary):
         if "." in ticker and not any(ticker.endswith(s) for s in YFinance.FALLBACK_SUFFIXES):
             return ticker.replace(".", "-")
         return ticker
+
+    @staticmethod
+    def _fallback_tickers(ticker: str) -> list[str]:
+        """
+        Symbols to try when a ticker has no data on yfinance: its Toronto listings
+        (AAPL.TO, AAPL.V) and, for a preferred share stored without separators
+        (QXOPB), yfinance's own form (QXO-PB). Tickers that already carry a
+        separator are taken as written.
+        """
+        if "." in ticker or "-" in ticker:
+            return []
+        fallbacks = [ticker + suffix for suffix in YFinance.FALLBACK_SUFFIXES]
+        if preferred := YFinance.PREFERRED_TICKER.match(ticker):
+            fallbacks.append(f"{preferred[1]}-P{preferred[2]}")
+        return fallbacks
 
     @staticmethod
     def get_company(cusip: str, **kwargs) -> str | None:
@@ -186,22 +203,18 @@ class YFinance(FinanceLibrary):
             if price is not None:
                 return price
 
-            # Fallback for international tickers (e.g., TSX, TSXV)
-            # Only attempt fallback if the ticker doesn't already have a separator
-            if "." not in ticker and "-" not in ticker:
-                for suffix in YFinance.FALLBACK_SUFFIXES:
-                    try:
-                        fallback_ticker = ticker + suffix
-                        logger.progress(
-                            "YFinance: Trying fallback %s for %s...",
-                            log_safe(fallback_ticker),
-                            log_safe(ticker),
-                        )
-                        price = _get_single_avg_price(fallback_ticker)
-                        if price is not None:
-                            return price
-                    except Exception:
-                        continue
+            for fallback_ticker in YFinance._fallback_tickers(ticker):
+                try:
+                    logger.progress(
+                        "YFinance: Trying fallback %s for %s...",
+                        log_safe(fallback_ticker),
+                        log_safe(ticker),
+                    )
+                    price = _get_single_avg_price(fallback_ticker)
+                    if price is not None:
+                        return price
+                except Exception:
+                    continue
 
             logger.warning("YFinance: No price for %s at or before %s.", log_safe(ticker), date_obj)
             return None
@@ -242,14 +255,13 @@ class YFinance(FinanceLibrary):
         price = _get_single_last_price(ticker)
         if price is not None:
             return price
-        if "." not in ticker and "-" not in ticker:
-            for suffix in YFinance.FALLBACK_SUFFIXES:
-                try:
-                    price = _get_single_last_price(ticker + suffix)
-                except Exception:
-                    continue
-                if price is not None:
-                    return price
+        for fallback_ticker in YFinance._fallback_tickers(ticker):
+            try:
+                price = _get_single_last_price(fallback_ticker)
+            except Exception:
+                continue
+            if price is not None:
+                return price
         return None
 
     @staticmethod
@@ -276,11 +288,9 @@ class YFinance(FinanceLibrary):
             stock = yf.Ticker(search_ticker)
             price = stock.info.get("currentPrice")
 
-            # Fallback for international tickers (e.g., TSX, TSXV)
-            if price is None and "." not in ticker and "-" not in ticker:
-                for suffix in YFinance.FALLBACK_SUFFIXES:
+            if price is None:
+                for fallback_ticker in YFinance._fallback_tickers(ticker):
                     try:
-                        fallback_ticker = ticker + suffix
                         logger.progress(
                             f"YFinance: Trying current price fallback {fallback_ticker} for {ticker}..."
                         )
@@ -520,50 +530,3 @@ class YFinance(FinanceLibrary):
                 exc_info=True,
             )
             return None
-
-    @staticmethod
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=8),
-        before_sleep=lambda retry_state: logger.progress(
-            f"Retrying get_sector_tickers for {retry_state.args[0]} (attempt #{retry_state.attempt_number})..."
-        ),
-    )
-    def get_sector_tickers(sector_key: str, limit: int | None = None) -> list[dict]:
-        """
-        Gets a list of tickers for companies in a specific sector.
-
-        Args:
-            sector_key (str): The sector key (e.g., 'technology', 'healthcare', 'financial-services').
-            limit (int, optional): Maximum number of tickers to return. If None, returns all available.
-
-        Returns:
-            list[dict]: A list of dictionaries with ticker info.
-                       Example: [{'symbol': 'AAPL', 'name': 'Apple Inc.', 'weight': 0.15}, ...]
-        """
-        try:
-            sector = yf.Sector(sector_key)
-            top_companies = sector.top_companies
-
-            if top_companies is None or top_companies.empty:
-                # Raise error to trigger @retry
-                raise ValueError(f"🚨 No companies found for sector '{sector_key}'")
-
-            companies = []
-            for _, row in top_companies.iterrows():
-                company_info = {
-                    "symbol": row.get("symbol", ""),
-                    "name": row.get("name", ""),
-                    "weight": row.get("weight", 0.0) if "weight" in row else None,
-                }
-                companies.append(company_info)
-
-                if limit and len(companies) >= limit:
-                    break
-
-            return companies
-        except Exception as e:
-            logger.error(
-                "Failed to get tickers for sector '%s'", log_safe(sector_key), exc_info=True
-            )
-            raise e

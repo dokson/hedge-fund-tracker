@@ -90,6 +90,55 @@ class TestStockAnalysisFetchHistory(unittest.TestCase):
 
         self.assertIsNotNone(logs.records[0].exc_info)
 
+    @patch("app.stocks.libraries.stockanalysis.requests.get")
+    def test_an_unknown_us_symbol_is_looked_up_on_the_otc_listing(self, mock_get):
+        """
+        Names moved to OTC (a bankruptcy, a foreign issuer's ADR) live under another
+        path: a US listing with no data falls back to it.
+        """
+        unknown = MagicMock(status_code=400)
+        unknown.json.return_value = {"status": 400, "message": "Unknown error"}
+        otc = MagicMock(status_code=200)
+        otc.json.return_value = _make_api_response([{"t": "2026-05-26", "h": 0.014, "l": 0.012}])
+        mock_get.side_effect = [unknown, otc]
+
+        rows = StockAnalysis._fetch_history("TSEOF", "5Y", "Daily")
+
+        self.assertEqual(rows, [{"t": "2026-05-26", "h": 0.014, "l": 0.012}])
+        urls = [call.args[0] for call in mock_get.call_args_list]
+        self.assertIn("/s/TSEOF/history", urls[0])
+        self.assertIn("/a/otc-TSEOF/history", urls[1])
+
+    @patch("app.stocks.libraries.stockanalysis.requests.get")
+    def test_every_unanswered_lookup_marks_a_provider_failure(self, mock_get):
+        """
+        Blocked, unreadable or failed requests leave the lookup unanswered; an
+        unknown symbol answered with no data does not.
+        """
+        from curl_cffi.requests.exceptions import Timeout
+
+        from app.stocks.lookup_status import tracking
+
+        self.addCleanup(setattr, StockAnalysis, "_blocked", False)
+        blocked = MagicMock(status_code=403)
+        unreadable = MagicMock(status_code=502)
+        unreadable.json.side_effect = json.JSONDecodeError("Expecting value", "<html>", 0)
+        unknown = MagicMock(status_code=400)
+        unknown.json.return_value = {"status": 400, "message": "Unknown error"}
+        cases = (
+            ("timeout", [Timeout("t")] * 3, True),
+            ("unreadable", [unreadable], True),
+            ("unknown on both listings", [unknown, unknown], False),
+            ("403", [blocked], True),
+            ("skipped after 403", [], True),
+        )
+        for name, responses, failed in cases:
+            with self.subTest(name), patch("tenacity.nap.time.sleep"):
+                mock_get.side_effect = responses
+                with tracking() as status, patch("app.stocks.libraries.stockanalysis.logger"):
+                    StockAnalysis.get_avg_price("OLO", date(2025, 9, 30))
+                self.assertEqual(status.failed, failed)
+
 
 class TestStockAnalysisGetAvgPrice(unittest.TestCase):
     @patch("app.stocks.libraries.stockanalysis.StockAnalysis._fetch_history")
@@ -132,17 +181,8 @@ class TestStockAnalysisGetAvgPrice(unittest.TestCase):
         price = StockAnalysis.get_avg_price("ANSS", date(2025, 1, 1))
 
         self.assertIsNone(price)
-
-    @patch("app.stocks.libraries.stockanalysis.StockAnalysis._fetch_history")
-    def test_returns_none_when_no_rows(self, mock_fetch):
-        """
-        Returns None when the API has no history at all for the ticker.
-        """
         mock_fetch.return_value = []
-
-        price = StockAnalysis.get_avg_price("UNKNOWN", date(2025, 5, 15))
-
-        self.assertIsNone(price)
+        self.assertIsNone(StockAnalysis.get_avg_price("UNKNOWN", date(2025, 5, 15)))
 
 
 class TestStockAnalysisGetCurrentPrice(unittest.TestCase):
@@ -201,26 +241,6 @@ class TestStockAnalysisGetHistory(unittest.TestCase):
         points = StockAnalysis.get_history("UNKNOWN")
 
         self.assertIsNone(points)
-
-    @patch("app.stocks.libraries.stockanalysis.StockAnalysis._fetch_history")
-    def test_uses_range_and_period_mapped_from_requested_period(self, mock_fetch):
-        """
-        Maps the yfinance-style period string to the API's range/period query params.
-        """
-        mock_fetch.return_value = [{"t": "2020-01-01", "o": 1, "h": 1, "l": 1, "c": 1}]
-
-        StockAnalysis.get_history("AAPL", period="10y")
-
-        mock_fetch.assert_called_once_with("AAPL", "10Y", "Monthly")
-
-
-class TestStockAnalysisUnsupported(unittest.TestCase):
-    def test_identifier_lookups_return_none(self):
-        """
-        CUSIP-to-ticker and CUSIP-to-company resolution are not supported by this source.
-        """
-        self.assertIsNone(StockAnalysis.get_ticker("123456789"))
-        self.assertIsNone(StockAnalysis.get_company("123456789"))
 
 
 if __name__ == "__main__":

@@ -50,24 +50,6 @@ describe("sortAnalysisRows", () => {
     expect(tickers(sortAnalysisRows(input, "delta", "asc"))).toEqual(["A", "B", "N"]);
   });
 
-  it("breaks a tie on the shown Smart Score by the unrounded composite, descending", () => {
-    const perfect = row({
-      ticker: "P",
-      smartScore: 10,
-      scoreBreadth: 100,
-      scoreMomentum: 100,
-      scoreConviction: 100,
-    });
-    const almost = row({
-      ticker: "Q",
-      smartScore: 10,
-      scoreBreadth: 99.6,
-      scoreMomentum: 99.6,
-      scoreConviction: 100,
-    });
-    expect(tickers(sortAnalysisRows([almost, perfect], "smartScore", "desc"))).toEqual(["P", "Q"]);
-  });
-
   it("reverses the whole Smart Score order, tie-break included, ascending", () => {
     const perfect = row({
       ticker: "P",
@@ -94,6 +76,11 @@ describe("sortAnalysisRows", () => {
       "L",
       "Q",
       "P",
+    ]);
+    expect(tickers(sortAnalysisRows([almost, low, perfect], "smartScore", "desc"))).toEqual([
+      "P",
+      "Q",
+      "L",
     ]);
   });
 });

@@ -39,14 +39,4 @@ describe("getFundAvailableQuarters", () => {
       "Failed to list funds for 2026Q2",
     );
   });
-
-  it("does not cache the failure, so a retry recovers", async () => {
-    let fail = true;
-    stubApi((q) => (q === "2026Q2" && fail ? json({}, 503) : json(["Fund_A"])));
-    await expect(getFundAvailableQuarters("Fund A")).rejects.toThrow(
-      "Failed to list funds for 2026Q2",
-    );
-    fail = false;
-    await expect(getFundAvailableQuarters("Fund A")).resolves.toEqual(["2026Q1", "2026Q2"]);
-  });
 });

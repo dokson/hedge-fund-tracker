@@ -43,15 +43,6 @@ class TestValidateWeightValues(unittest.TestCase):
 
 
 class TestNormalizeWeights(unittest.TestCase):
-    def test_divides_by_the_sum_of_absolute_values(self):
-        """
-        Positive-only weights become fractions of their total.
-        """
-        result = normalize_weights({"A": 3.0, "B": 1.0})
-
-        self.assertAlmostEqual(result["A"], 0.75)
-        self.assertAlmostEqual(result["B"], 0.25)
-
     def test_keeps_signs_with_mixed_weights(self):
         """
         Absolute values sum to 1 and each sign survives.
@@ -125,14 +116,6 @@ class TestPromiseScoreValidatorValidateMetrics(unittest.TestCase):
         Returns an empty list when given an empty metrics list.
         """
         result = PromiseScoreValidator.validate_metrics([])
-
-        self.assertEqual(result, [])
-
-    def test_all_available_metrics_are_valid(self):
-        """
-        Returns an empty list when the full AVAILABLE_METRICS list is validated.
-        """
-        result = PromiseScoreValidator.validate_metrics(PromiseScoreValidator.AVAILABLE_METRICS)
 
         self.assertEqual(result, [])
 

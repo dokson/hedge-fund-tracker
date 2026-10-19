@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generateHedgeFundsCSV, generateExcludedFundsCSV, generateModelsCSV } from "../dataService";
-import type { HedgeFund, ExcludedHedgeFund, AIModel } from "../dataService";
+import type { HedgeFund, AIModel } from "../dataService";
 
 describe("generateHedgeFundsCSV", () => {
   it("should generate CSV with header and one fund row", () => {
@@ -21,33 +21,7 @@ describe("generateHedgeFundsCSV", () => {
       '"CIK","Fund","Manager","Denomination","CIKs","URL"\n' +
         '"0001234567","Test Fund","John Doe","Test Fund LP","","https://test-fund.example.com/"\n',
     );
-  });
-
-  it("should handle empty funds array with trailing newline", () => {
-    const csv = generateHedgeFundsCSV([]);
-
-    expect(csv).toBe('"CIK","Fund","Manager","Denomination","CIKs","URL"\n\n');
-  });
-});
-
-describe("generateExcludedFundsCSV", () => {
-  it("should generate CSV with correct columns", () => {
-    const funds: ExcludedHedgeFund[] = [
-      {
-        cik: "0001067983",
-        fund: "Berkshire Hathaway",
-        manager: "Warren Buffett",
-        denomination: "Berkshire Hathaway Inc",
-        ciks: "",
-        url: "https://www.berkshirehathaway.com/",
-      },
-    ];
-
-    const csv = generateExcludedFundsCSV(funds);
-
-    expect(csv).toContain('"CIK","Fund","Manager","Denomination","CIKs","URL"');
-    expect(csv).toContain("Warren Buffett");
-    expect(csv).toContain("berkshirehathaway");
+    expect(generateExcludedFundsCSV(funds)).toBe(csv);
   });
 });
 

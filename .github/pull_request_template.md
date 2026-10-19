@@ -50,7 +50,7 @@ Keep this title concise (<70 chars). Conventional Commits prefix encouraged:
 <details>
 <summary>Self-review checklist (click to expand)</summary>
 
-- [ ] Followed TDD (failing test first, then minimal code) — see `AGENTS.md` § TDD
+- [ ] New tests guard a plausible bug and were seen failing first; no coverage-only tests — see `AGENTS.md` § Tests earn their place
 - [ ] No `print()` debug left behind, no commented-out code
 - [ ] Docstrings on every new function/method (multi-line, AGENTS.md § Docstrings)
 - [ ] No secrets/keys in diff (CI runs `detect-private-key` but double-check)

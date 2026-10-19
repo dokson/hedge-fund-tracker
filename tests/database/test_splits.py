@@ -65,8 +65,9 @@ class TestSplitsRegistry(unittest.TestCase):
         self.assertLess(saved.index("NFLX"), saved.index("CVNA"))
         # The ex-date travels with the factor, and is what tells a provider row
         # from one inferred by holder agreement, which carries none.
-        self.assertIn("Quarter,Date,CUSIP,Ticker,Factor", saved)
+        self.assertIn('"Quarter","Date","CUSIP","Ticker","Factor"', saved)
         self.assertIn("2025-11-17", saved)
+
 
 
 class TestIncrementalSave(unittest.TestCase):

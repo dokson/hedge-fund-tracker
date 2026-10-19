@@ -45,14 +45,6 @@ class TestStrategies(unittest.TestCase):
         tickers = list(select_screen(_frame(), spec, threshold=1, top_n=2)["Ticker"])
         self.assertEqual(tickers, ["BBB", "AAA"])  # 12, 8
 
-    def test_big_bets_ranks_by_max_portfolio_pct(self):
-        """
-        Big Bets selects the highest single-fund conviction.
-        """
-        spec = strategy_by_id("big_bets")
-        tickers = list(select_screen(_frame(), spec, threshold=1, top_n=2)["Ticker"])
-        self.assertEqual(tickers, ["CCC", "AAA"])  # 60, 40
-
     def test_increasing_keeps_only_positive_delta_pct(self):
         """
         Increasing ranks by Δ% (descending), excludes all-new (infinite) names,

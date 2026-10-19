@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import TypeIs
 
+from app.stocks.lookup_status import tracking
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -33,8 +34,9 @@ class PriceCache:
     but reuses every cached price, fetching only genuinely new (ticker, date)
     pairs. Misses fall through to the injected fetcher. A failed lookup for a
     date older than MISS_SETTLE_DAYS is recorded too (blank price), because a
-    historical price that no provider has will not appear later; a recent miss
-    is retried on the next run.
+    historical price that no provider has will not appear later; a recent miss,
+    or one where a provider could not answer (``app.stocks.lookup_status``), is
+    retried on the next run.
     """
 
     def __init__(
@@ -103,7 +105,9 @@ class PriceCache:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         write_header = not self._path.exists()
         with self._path.open("a", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=_FIELDNAMES, quoting=csv.QUOTE_ALL)
+            writer = csv.DictWriter(
+                handle, fieldnames=_FIELDNAMES, quoting=csv.QUOTE_ALL, lineterminator="\n"
+            )
             if write_header:
                 writer.writeheader()
             writer.writerow(
@@ -129,9 +133,11 @@ class PriceCache:
             return self._cache[key]
         if key in self._misses:
             return None
-        price = self._fetch_fn(ticker, day)
+        with tracking() as status:
+            price = self._fetch_fn(ticker, day)
         if not _is_valid_price(price):
-            self._record_miss(ticker, day_iso, day)
+            if not status.failed:
+                self._record_miss(ticker, day_iso, day)
             return None
         self._cache[key] = price
         self._append(ticker, day_iso, price)
@@ -148,9 +154,11 @@ class PriceCache:
             return self._cache[key]
         if key in self._misses:
             return None
-        price = self._range_fetch_fn(ticker, start, end)
+        with tracking() as status:
+            price = self._range_fetch_fn(ticker, start, end)
         if not _is_valid_price(price):
-            self._record_miss(ticker, key_day, end)
+            if not status.failed:
+                self._record_miss(ticker, key_day, end)
             return None
         self._cache[key] = price
         self._append(ticker, key_day, price)

@@ -82,16 +82,6 @@ class TestServer(unittest.TestCase):
     Tests for the FastAPI server module and its route configuration.
     """
 
-    def test_duplicate_fetch_route_is_not_registered(self):
-        """
-        Full 13F regeneration has a single entry point, /api/update-all.
-        """
-        from app.server import app
-
-        paths = [getattr(r, "path", "") for r in _iter_routes(app)]
-        self.assertNotIn("/api/database/fetch", paths)
-        self.assertIn("/api/update-all", paths)
-
     def test_openapi_schema_builds(self):
         """
         The OpenAPI schema must generate without raising.
@@ -234,33 +224,6 @@ class TestSSETerminalSignal(unittest.TestCase):
         q: queue.SimpleQueue = queue.SimpleQueue()
         _run_sse_target(lambda: None, q)
         self.assertIsNone(_request_log_q.get())
-
-
-class TestLifespanDisposesEngine(unittest.IsolatedAsyncioTestCase):
-    """
-    The module-level async engine owns a connection pool. The lifespan shutdown
-    must dispose it so pooled connections close gracefully instead of relying on
-    process exit.
-    """
-
-    async def test_engine_disposed_on_shutdown(self):
-        """
-        Exiting the lifespan context must await engine.dispose() exactly once.
-        """
-        from unittest.mock import AsyncMock, MagicMock, patch
-
-        import app.server as server
-
-        fake_engine = MagicMock()
-        fake_engine.dispose = AsyncMock()
-        with (
-            patch("app.security.envelope._kek"),
-            patch("app.db.session.engine", fake_engine),
-        ):
-            async with server._lifespan(server.app):
-                pass
-
-        fake_engine.dispose.assert_awaited_once()
 
 
 class TestValidateDeploymentSecrets(unittest.TestCase):

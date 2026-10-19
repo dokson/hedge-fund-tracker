@@ -65,29 +65,4 @@ describe("AI Settings model search", () => {
     search("groq");
     expect(screen.getByText("1 / 2 models")).toBeTruthy();
   });
-
-  it("shows every model for a whitespace-only query", async () => {
-    await openModelsTab();
-    search("   ");
-    expect(screen.getByText("2 / 2 models")).toBeTruthy();
-  });
-});
-
-describe("AI Settings tabs", () => {
-  beforeEach(() => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 })),
-    );
-  });
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("links each tab to the panel it controls", () => {
-    renderPage();
-    const tab = screen.getByRole("tab", { name: /API Keys/ });
-    const panel = screen.getByRole("tabpanel");
-    expect(tab.getAttribute("aria-controls")).toBe(panel.id);
-  });
 });

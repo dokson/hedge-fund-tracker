@@ -37,7 +37,6 @@ vi.mock("@/lib/dataService", async (importOriginal) => ({
 }));
 
 import FundRanking from "./FundRanking";
-import { RANKING_PAGE } from "@/lib/pageMeta";
 import { fundPath } from "@/lib/routes";
 
 function renderPage() {
@@ -94,11 +93,5 @@ describe("FundRanking page", () => {
     if (!row) return;
     expect(await within(row).findByText("Jane Doe")).toBeTruthy();
     expect(within(row).getByText("S")).toBeTruthy();
-  });
-
-  it("sets the page title", async () => {
-    renderPage();
-    await screen.findByRole("table", { name: /fund ranking/i });
-    expect(document.title).toBe(RANKING_PAGE.title);
   });
 });

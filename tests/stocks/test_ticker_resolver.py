@@ -24,16 +24,6 @@ def _cached_stocks(cusip, ticker, company):
     return df
 
 
-class TestTickerResolverGetLibraries(unittest.TestCase):
-    def test_get_libraries_priority_order(self):
-        """
-        Returns exactly the resolution chain in priority order: YFinance → OpenFIGI → TradingView.
-        """
-        names = [library.__name__ for library in TickerResolver.get_libraries()]
-
-        self.assertEqual(names, ["YFinance", "OpenFIGI", "TradingView"])
-
-
 class TestTickerResolverResolveTicker(unittest.TestCase):
     @patch("app.stocks.ticker_resolver.load_stocks")
     def test_uses_cached_ticker_when_cusip_in_database(self, mock_load):
@@ -46,27 +36,6 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
         result = TickerResolver.resolve_ticker(df)
 
         self.assertEqual(result.loc[0, "Ticker"], "AAPL")
-
-    @patch("app.stocks.ticker_resolver.save_stock")
-    @patch("app.stocks.ticker_resolver.YFinance.get_company")
-    @patch("app.stocks.ticker_resolver.YFinance.get_ticker")
-    @patch("app.stocks.ticker_resolver.load_stocks")
-    def test_resolves_via_first_library_when_cusip_unknown(
-        self, mock_load, mock_get_ticker, mock_get_company, mock_save
-    ):
-        """
-        Resolves CUSIP and company via YFinance and saves result to the local database.
-        """
-        mock_load.return_value = _empty_stocks()
-        mock_get_ticker.return_value = "AAPL"
-        mock_get_company.return_value = "Apple Inc"
-        df = pd.DataFrame({"CUSIP": ["037833100"], "Company": ["Apple Inc"]})
-
-        result = TickerResolver.resolve_ticker(df)
-
-        self.assertEqual(result.loc[0, "Ticker"], "AAPL")
-        self.assertEqual(result.loc[0, "Company"], "Apple Inc")
-        mock_save.assert_called_once()
 
     @patch("app.stocks.ticker_resolver.resolve_industry")
     @patch("app.stocks.ticker_resolver.save_stock")

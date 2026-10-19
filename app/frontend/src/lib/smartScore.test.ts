@@ -16,12 +16,6 @@ describe("compareBySmartScore", () => {
     expect([almost, perfect].sort(compareBySmartScore)).toEqual([perfect, almost]);
   });
 
-  it("puts 100-99-100 before 99-100-99 at the same rounded score", () => {
-    const stronger = row(10, 100, 99, 100);
-    const weaker = row(10, 99, 100, 99);
-    expect([weaker, stronger].sort(compareBySmartScore)).toEqual([stronger, weaker]);
-  });
-
   it("ranks by the displayed score first, whatever the components", () => {
     const higher = row(9.9, 90, 100, 100);
     const lower = row(9.8, 100, 100, 100);

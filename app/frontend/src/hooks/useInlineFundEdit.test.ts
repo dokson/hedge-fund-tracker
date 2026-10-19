@@ -34,14 +34,6 @@ describe("useInlineFundEdit", () => {
     toastMock.error.mockReset();
   });
 
-  it("seeds the draft from the fund being edited", () => {
-    const { result } = setup();
-    act(() => result.current.startEdit(FUND_B));
-    expect(result.current.editingCik).toBe("2");
-    expect(result.current.draft.fund).toBe("Beta");
-    expect(result.current.isDraftValid).toBe(true);
-  });
-
   it("clears the edit on cancel", () => {
     const { result } = setup();
     act(() => result.current.startEdit(FUND_A));

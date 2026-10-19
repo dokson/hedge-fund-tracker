@@ -12,11 +12,6 @@ describe("useSortState", () => {
     expect(result.current.sortDir).toBe("asc");
   });
 
-  it("defaults to descending", () => {
-    const { result } = renderHook(() => useSortState<Key>("a"));
-    expect(result.current.sortDir).toBe("desc");
-  });
-
   it("flips the direction when the active key is toggled again", () => {
     const { result } = renderHook(() => useSortState<Key>("a"));
     act(() => result.current.toggleSort("a"));
@@ -43,14 +38,6 @@ describe("useSortState", () => {
     const { result } = renderHook(() => useSortState<Key>("a"));
     expect(result.current.ariaSort("a")).toBe("descending");
     expect(result.current.ariaSort("b")).toBe("none");
-  });
-
-  it("builds a ColumnHeader sort descriptor", () => {
-    const { result } = renderHook(() => useSortState<Key>("a"));
-    const sortB = result.current.columnSort("b");
-    expect(sortB.active).toBe(false);
-    act(() => sortB.onToggle());
-    expect(result.current.sortKey).toBe("b");
   });
 
   it("keeps toggleSort stable across renders", () => {

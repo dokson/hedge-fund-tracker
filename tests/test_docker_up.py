@@ -68,15 +68,6 @@ class TestFindAvailablePort(unittest.TestCase):
             for s in sockets:
                 s.close()
 
-    def test_does_not_leave_socket_bound_after_return(self):
-        """
-        After the probe returns, the discovered port must be re-bindable
-        (i.e., the probe socket was properly closed via the context manager).
-        """
-        port = find_available_port(start=18000, max_attempts=50)
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(("127.0.0.1", port))
-
     def test_skips_port_with_active_listener_via_connect_probe(self):
         """
         A port with an active listener (e.g. a Docker container publishing

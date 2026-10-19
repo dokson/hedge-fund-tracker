@@ -7,10 +7,6 @@ const pixels = (count: number, rgba: [number, number, number, number]) =>
   new Uint8ClampedArray(Array.from({ length: count }, () => rgba).flat());
 
 describe("hasVisibleInk", () => {
-  it("is false for a fully transparent image (a favicon that draws nothing)", () => {
-    expect(hasVisibleInk(pixels(256, [0, 0, 0, 0]))).toBe(false);
-  });
-
   it("is false for an all-white image, which vanishes on the white logo tile", () => {
     expect(hasVisibleInk(pixels(256, [255, 255, 255, 255]))).toBe(false);
   });

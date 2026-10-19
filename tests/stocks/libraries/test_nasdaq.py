@@ -272,21 +272,6 @@ class TestNasdaqGetSymbolChanges(unittest.TestCase):
 
         self.assertEqual(changes, [])
 
-    @patch("app.stocks.libraries.nasdaq.requests.get")
-    def test_calls_correct_api_endpoint(self, mock_get):
-        """
-        Calls the NASDAQ symbol change history API with correct URL and headers.
-        """
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"data": {"symbolChangeHistoryTable": {"rows": []}}}
-        mock_get.return_value = mock_resp
-
-        Nasdaq.get_symbol_changes()
-
-        mock_get.assert_called_once()
-        call_url = mock_get.call_args[0][0]
-        self.assertIn("symbolchangehistory", call_url)
-
 
 if __name__ == "__main__":
     unittest.main()

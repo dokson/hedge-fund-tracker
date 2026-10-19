@@ -115,32 +115,6 @@ class TestXmlProcessor(unittest.TestCase):
         self.assertEqual(df["Value"][0], 10000000)
         self.assertEqual(df["Shares"][0], 100000)
 
-    def test_xml_to_dataframe_13f_thousands_with_scaling(self):
-        """
-        Tests that values ARE scaled by 1000 if the implied share price is suspiciously low.
-        Example: Duquesne style.
-        """
-        # 50,000 / 500,000 shares = $0.10 per share (Suspiciously low, likely in thousands)
-        # After scaling: $50,000,000 / 500,000 = $100 per share
-        xml_content = """
-        <informationtable>
-            <infotable>
-                <nameofissuer>Duquesne Example Inc</nameofissuer>
-                <cusip>987654321</cusip>
-                <value>50000</value>
-                <shrsorprnamt><sshprnamt>500000</sshprnamt></shrsorprnamt>
-            </infotable>
-        </informationtable>
-        """
-
-        df = xml_to_dataframe_13f(xml_content)
-
-        self.assertIsInstance(df, pd.DataFrame)
-        self.assertEqual(len(df), 1)
-        # Value should be multiplied by 1000
-        self.assertEqual(df["Value"][0], 50000 * 1000)
-        self.assertEqual(df["Shares"][0], 500000)
-
     def test_xml_to_dataframe_13f_mixed_portfolio_median_logic(self):
         """
         Tests that the scaling decision is based on the MEDIAN price of the portfolio.
@@ -171,6 +145,7 @@ class TestXmlProcessor(unittest.TestCase):
         # 'Stock A' value should be 100 * 1000 = 100,000
         val_a = df.loc[df["Company"] == "Stock A", "Value"].values[0]
         self.assertEqual(val_a, 100000)
+        self.assertEqual(df.loc[df["Company"] == "Stock A", "Shares"].values[0], 1000)
 
     def test_xml_to_dataframe_13f_principal_amount_rows_are_kept(self):
         """

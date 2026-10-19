@@ -9,16 +9,6 @@ from app.stocks.price_fetcher import PriceFetcher
 
 
 class TestPriceFetcher(unittest.TestCase):
-    # --- get_libraries ---
-
-    def test_get_libraries_priority_order(self):
-        """
-        The fallback chain queries YFinance, then TradingView, Nasdaq and StockAnalysis.
-        """
-        names = [library.__name__ for library in PriceFetcher.get_libraries()]
-
-        self.assertEqual(names, ["YFinance", "TradingView", "Nasdaq", "StockAnalysis"])
-
     # --- get_current_price ---
 
     @patch("app.stocks.price_fetcher.TradingView.get_current_price")

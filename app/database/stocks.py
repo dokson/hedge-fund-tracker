@@ -181,7 +181,7 @@ def save_stock(
             # subsequent read, poisoning the whole file.
             write_header = not stocks_path.exists() or stocks_path.stat().st_size == 0
             with stocks_path.open("a", newline="", encoding="utf-8") as stocks_file:
-                writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL)
+                writer = csv.writer(stocks_file, quoting=csv.QUOTE_ALL, lineterminator="\n")
                 if write_header:
                     writer.writerow(["CUSIP", "Ticker", "Company", "Industry"])
                 writer.writerow(

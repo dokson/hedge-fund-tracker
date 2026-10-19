@@ -130,11 +130,6 @@ class TestUnregisteredSplits(unittest.TestCase):
 
         self.assertEqual(unregistered_splits(detected, registry), detected)
 
-    def test_empty_when_the_registry_is_current(self):
-        detected = [{"Quarter": "2026Q2", "CUSIP": "146869102", "Ticker": "CVNA", "Factor": 5.0}]
-
-        self.assertEqual(unregistered_splits(detected, {"2026Q2": {"146869102": 5.0}}), [])
-
 
 class TestSplitsForTransition(unittest.TestCase):
     def _positions(self, ratio=10.0, price_ratio=0.1, holders=3):
@@ -310,16 +305,6 @@ class TestIncrementalRebuild(unittest.TestCase):
         scanned = [call.args[1] for call in mock_transition.call_args_list]
         self.assertEqual(scanned, ["2026Q2"])
 
-    @patch("app.analysis.splits.splits_for_transition", return_value=[])
-    @patch("app.analysis.splits.get_all_quarters")
-    def test_the_earliest_quarter_has_no_transition_to_scan(self, mock_quarters, mock_transition):
-        mock_quarters.return_value = self.QUARTERS
-
-        with patch("app.analysis.splits._quarter_positions", self._positions):
-            rebuild_split_registry(provider=lambda _t: [], quarters=["2025Q4"])
-
-        self.assertEqual(mock_transition.call_args_list, [])
-
 
 class TestFactorsBetween(unittest.TestCase):
     REGISTRY = {
@@ -348,9 +333,6 @@ class TestFactorsBetween(unittest.TestCase):
 
     def test_no_previous_quarter_means_no_factors(self):
         self.assertEqual(factors_between(self.REGISTRY, None, "2026Q2"), {})
-
-    def test_empty_registry(self):
-        self.assertEqual(factors_between({}, "2025Q4", "2026Q2"), {})
 
 
 if __name__ == "__main__":

@@ -55,15 +55,6 @@ class TestEnvEndpoints(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {})
 
-    def test_put_env_writes_pairs(self):
-        """PUT serialises the JSON object back to KEY=value lines."""
-        with patch("app.api.settings.ENV_FILE", self.env):
-            resp = client.put("/api/settings/env", json={"GROQ_API_KEY": "1", "FMP_API_KEY": "2"})
-        self.assertEqual(resp.status_code, 200)
-        written = self.env.read_text(encoding="utf-8")
-        self.assertIn("GROQ_API_KEY=1", written)
-        self.assertIn("FMP_API_KEY=2", written)
-
     def test_put_env_preserves_unmanaged_keys_and_comments(self):
         """
         PUT merges into the existing file. A client that only knows about
@@ -157,11 +148,11 @@ class TestEnvWriteAtomicity(unittest.TestCase):
             patch("app.api.settings.ENV_FILE", self.env),
             patch("app.api.settings.atomic_write_text", side_effect=_fake_write) as mock_write,
         ):
-            resp = client.put("/api/settings/env", json={"GROQ_API_KEY": "k"})
+            resp = client.put("/api/settings/env", json={"GROQ_API_KEY": "k", "FMP_API_KEY": "2"})
         self.assertEqual(resp.status_code, 200)
         mock_write.assert_called_once()
         self.assertEqual(held, [True])
-        self.assertEqual(self.env.read_text(encoding="utf-8"), "GROQ_API_KEY=k\n")
+        self.assertEqual(self.env.read_text(encoding="utf-8"), "GROQ_API_KEY=k\nFMP_API_KEY=2\n")
 
 
 if __name__ == "__main__":

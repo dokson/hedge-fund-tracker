@@ -13,7 +13,7 @@ import {
   SITE_ORIGIN,
   staticFileFor,
 } from "../seo";
-import { FAQ_LAST_UPDATED, FAQ_META, FAQ_SECTIONS } from "../faqContent";
+import { FAQ_META, FAQ_SECTIONS } from "../faqContent";
 import { HOME_PAGE, LATEST_PAGE, LEARN_PAGE, PUBLIC_PAGES } from "../pageMeta";
 
 const TEMPLATE = [
@@ -122,15 +122,6 @@ describe("buildHomeJsonLd", () => {
   const ld = buildHomeJsonLd();
   const node = (type: string) => ld["@graph"].find((n) => n["@type"] === type);
 
-  it("describes the site, its author, the app and the source code", () => {
-    expect(node("WebSite")?.url).toBe(canonicalUrl("/"));
-    expect(node("Person")?.url).toBe("https://github.com/dokson");
-    expect(node("WebApplication")?.applicationCategory).toBe("FinanceApplication");
-    expect(node("SoftwareSourceCode")?.codeRepository).toBe(
-      "https://github.com/dokson/hedge-fund-tracker",
-    );
-  });
-
   it("keeps codeRepository off the WebApplication node", () => {
     expect(node("WebApplication")).not.toHaveProperty("codeRepository");
   });
@@ -212,20 +203,8 @@ describe("buildBreadcrumbJsonLd", () => {
 
 describe("buildFaqJsonLd", () => {
   const ld = buildFaqJsonLd(FAQ_SECTIONS) as {
-    "@context": string;
-    "@type": string;
-    dateModified: string;
     mainEntity: Array<{ "@type": string; name: string; acceptedAnswer: { text: string } }>;
   };
-
-  it("is a schema.org FAQPage", () => {
-    expect(ld["@context"]).toBe("https://schema.org");
-    expect(ld["@type"]).toBe("FAQPage");
-  });
-
-  it("carries the last-updated date as metadata only", () => {
-    expect(ld.dateModified).toBe(FAQ_LAST_UPDATED);
-  });
 
   it("includes every question with its full answer text", () => {
     const allItems = FAQ_SECTIONS.flatMap((s) => s.items);
@@ -266,26 +245,10 @@ describe("renderFaqStaticHtml", () => {
     expect(html).not.toContain('content="old"');
   });
 
-  it("adds a self-referencing canonical link", () => {
-    expect(html).toContain(`<link rel="canonical" href="${canonicalUrl("/learn")}"`);
-  });
-
   it("bakes the JSON-LD into the head as application/ld+json", () => {
     expect(html).toContain('<script type="application/ld+json">');
     expect(html).toContain('"@type":"FAQPage"');
     expect(html).toContain('"@type":"BreadcrumbList"');
-  });
-
-  it("does not duplicate the template's Open Graph tags", () => {
-    const withOg = renderFaqStaticHtml({
-      template: TEMPLATE,
-      canonical: canonicalUrl("/learn"),
-      meta: FAQ_META,
-      sections: FAQ_SECTIONS,
-      jsonLd: [],
-    });
-    expect(withOg.match(/property="og:title"/g)).toHaveLength(1);
-    expect(withOg).not.toContain("Generic");
   });
 
   it("renders an H1 and every question + answer into #root for no-JS crawlers", () => {

@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 
 import { buildChartData } from "@/lib/equityCurve";
-import { seriesColor, SERIES_COLORS } from "@/lib/seriesColors";
 import type { PerfSeries } from "@/lib/dataService";
 
 const mkSeries = (id: string, cums: number[]): PerfSeries => ({
@@ -34,15 +33,5 @@ describe("buildChartData", () => {
     expect(data[0]).toMatchObject({ avg_portfolio: 0, SPY: 0 });
     expect(data[1].avg_portfolio).toBeCloseTo(20, 6);
     expect(data[2].SPY).toBeCloseTo(15.5, 6);
-  });
-});
-
-describe("seriesColor", () => {
-  it("returns the fixed color for known series", () => {
-    expect(seriesColor("avg_portfolio")).toBe(SERIES_COLORS.avg_portfolio);
-  });
-
-  it("falls back to a deterministic hue for unknown ids", () => {
-    expect(seriesColor("zzz")).toMatch(/^hsl\(/);
   });
 });

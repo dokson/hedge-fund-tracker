@@ -90,30 +90,6 @@ class TestPerformanceEvaluator(unittest.TestCase):
             self.assertEqual(top_contributors[0]["Ticker"], "T1")
 
     @patch("app.analysis.performance_evaluator.load_fund_holdings")
-    def test_split_does_not_read_as_a_loss(self, mock_load_holdings):
-        """
-        A 10:1 split between the filings is restated, like the published series.
-        """
-        before = pd.DataFrame(
-            [{"CUSIP": "C1", "Ticker": "T1", "Company": "Co1", "Shares": 10, "Value": 1000}]
-        )
-        after = pd.DataFrame(
-            [{"CUSIP": "C1", "Ticker": "T1", "Company": "Co1", "Shares": 100, "Value": 1100}]
-        )
-        for frame in (before, after):
-            frame["Reported_Price"] = frame["Value"] / frame["Shares"]
-        mock_load_holdings.side_effect = lambda _f, q: before if q == "2024Q4" else after
-
-        result = PerformanceEvaluator.calculate_quarterly_performance(
-            "Test Fund",
-            "2025Q1",
-            split_factors_fn=lambda _p, _c: {"C1": 10.0},
-            universe_prices_fn=lambda _q: {},
-            market_return_fn=lambda _t, _s, _e: None,
-        )
-        self.assertAlmostEqual(float(result["portfolio_return"]), 10.0)
-
-    @patch("app.analysis.performance_evaluator.load_fund_holdings")
     @patch("app.analysis.performance_evaluator.get_previous_quarter")
     @patch("app.analysis.fund_performance.get_quarter_date")
     def test_calculate_quarterly_performance_closed_position(

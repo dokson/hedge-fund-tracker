@@ -61,10 +61,6 @@ describe("getNonQuarterlyFilings company resolution", () => {
     const filings = await getNonQuarterlyFilings();
     const untracked = filings.find((f) => f.ticker === "ZZZ");
     expect(untracked?.company).toBe("Untracked Holdings, Inc. Common Stock");
-  });
-
-  it("keeps every filing row", async () => {
-    const filings = await getNonQuarterlyFilings();
     expect(filings).toHaveLength(2);
   });
 });

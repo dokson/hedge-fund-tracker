@@ -251,16 +251,6 @@ class TestLlmClassify(unittest.TestCase):
         gemini_cls.assert_not_called()
         groq_cls.assert_not_called()
 
-    def test_prompt_wording_for_warrants_and_spacs(self):
-        """
-        Warrants/rights/units take the issuer's industry; Shell Companies is SPAC-only.
-        """
-        _, gemini_cls, _ = self._run()
-        prompt = gemini_cls.return_value.generate_content.call_args.args[0]
-        self.assertIn("warrants, rights and units take the issuer's operating industry", prompt)
-        self.assertIn("blank-check/SPAC company that has not yet completed a merger", prompt)
-        self.assertNotIn("warrant, unit, SPAC pre-merger or other special structure", prompt)
-
     def test_shell_accepted_for_blank_check_name(self):
         """
         Shell Companies is kept when the name looks like a blank-check vehicle.

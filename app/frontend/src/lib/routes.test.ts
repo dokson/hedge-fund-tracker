@@ -5,17 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { ROUTES, stockPath, fundPath, stocksByIndustry, aiDiligenceFor } from "./routes";
-
-describe("ROUTES", () => {
-  it("exposes the canonical static paths", () => {
-    expect(ROUTES.home).toBe("/");
-    expect(ROUTES.latest).toBe("/latest");
-    expect(ROUTES.stocks).toBe("/stocks");
-    expect(ROUTES.funds).toBe("/funds");
-    expect(ROUTES.stock).toBe("/stock");
-  });
-});
+import { stockPath, fundPath, stocksByIndustry, aiDiligenceFor } from "./routes";
 
 describe("path builders", () => {
   it("builds a stock path, encoding unsafe characters", () => {

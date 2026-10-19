@@ -47,15 +47,6 @@ class TestProcessFundNq(unittest.TestCase):
 
         self.assertEqual(process_fund_nq(FUND), ("Fund A", None))
 
-    def test_missing_13f_baseline_marks_the_fund_as_failed(self, mock_date, mock_fetch, _mock_df):
-        """
-        Without the latest 13F date nothing can be fetched, so the fund failed.
-        """
-        mock_date.return_value = None
-        mock_fetch.return_value = None
-
-        self.assertEqual(process_fund_nq(FUND), ("Fund A", None))
-
     def test_no_new_filings_is_not_a_failure(self, _mock_date, mock_fetch, _mock_df):
         """
         A successful fetch with no filings yields an empty result list.
@@ -187,9 +178,10 @@ class TestRunFetchNqFilings(unittest.TestCase):
         mock_read.side_effect = OSError("unreadable")
 
         with self.assertLogs("database.updater", level="ERROR"):
-            run_fetch_nq_filings()
+            outcome = run_fetch_nq_filings()
 
         mock_write.assert_not_called()
+        self.assertFalse(outcome.saved)
 
     def test_no_carry_over_when_every_fund_succeeds(
         self, mock_funds, mock_process, mock_read, mock_write, _mock_path, _mock_print
@@ -231,21 +223,6 @@ class TestRunFetchNqFilings(unittest.TestCase):
         self.assertEqual(outcome.rows_saved, 2)
         self.assertEqual(outcome.failed_funds, ("Fund B",))
         self.assertTrue(outcome.saved)
-
-    def test_unsaved_file_is_reported(
-        self, mock_funds, mock_process, mock_read, mock_write, _mock_path, _mock_print
-    ):
-        """
-        When the carry-over read fails the outcome says the file was not saved.
-        """
-        mock_funds.return_value = [{"Fund": "Fund B"}]
-        mock_process.return_value = ("Fund B", None)
-        mock_read.side_effect = OSError("unreadable")
-
-        with self.assertLogs("database.updater", level="ERROR"):
-            outcome = run_fetch_nq_filings()
-
-        self.assertFalse(outcome.saved)
 
     def test_carried_over_funds_are_counted(
         self, mock_funds, mock_process, mock_read, mock_write, _mock_path, _mock_print
@@ -299,23 +276,6 @@ class TestProcessFund(unittest.TestCase):
 
         with patch("builtins.print"):
             self.assertFalse(process_fund({"CIK": "1", "Fund": "Fund A"}))
-
-    def test_saved_comparison_reports_true(self, mock_fetch):
-        """
-        A comparison written to the database reports True.
-        """
-        mock_fetch.return_value = [
-            {"reference_date": "2026-06-30", "date": "2026-08-10", "xml_content": "<x/>"}
-        ]
-        with (
-            patch("database.updater.xml_to_dataframe_13f", return_value=pd.DataFrame()),
-            patch("database.updater.load_split_factors", return_value={}),
-            patch("database.updater.factors_between", return_value={}),
-            patch("database.updater.generate_comparison", return_value=pd.DataFrame()),
-            patch("database.updater.save_comparison") as mock_save,
-        ):
-            self.assertTrue(process_fund({"CIK": "1", "Fund": "Fund A"}))
-        mock_save.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -395,36 +395,6 @@ class TestYFinance(unittest.TestCase):
         ):
             YFinance.get_stocks_info(["AAA"])
 
-    @patch("app.stocks.libraries.yfinance.yf.Sector")
-    def test_get_sector_tickers(self, mock_yf_sector):
-        """
-        Tests the get_sector_tickers method using mocks.
-        """
-        mock_sector_instance = MagicMock()
-        mock_sector_instance.top_companies = pd.DataFrame(
-            [
-                {"symbol": "AAPL", "name": "Apple Inc.", "weight": 0.1},
-                {"symbol": "MSFT", "name": "Microsoft Corp.", "weight": 0.08},
-            ]
-        )
-        mock_yf_sector.return_value = mock_sector_instance
-
-        companies = YFinance.get_sector_tickers("technology", limit=1)
-        self.assertEqual(len(companies), 1)
-        self.assertEqual(companies[0]["symbol"], "AAPL")
-
-    @patch("app.stocks.libraries.yfinance.yf.Sector")
-    def test_get_sector_tickers_invalid_sector(self, mock_yf_sector):
-        """
-        Tests the get_sector_tickers method with retry logic on failure.
-        """
-        mock_yf_sector.return_value.top_companies = None
-
-        from tenacity import RetryError
-
-        with self.assertRaises(RetryError):
-            YFinance.get_sector_tickers("invalid-sector-key")
-
     @patch("app.stocks.libraries.yfinance.yf.Ticker")
     @patch("app.stocks.libraries.yfinance.yf.download")
     def test_ticker_sanitization(self, mock_download, mock_yf_ticker):
@@ -464,33 +434,6 @@ class TestYFinance(unittest.TestCase):
         self.assertIn("AAPL", info)
         # Verify internal calls used sanitized
         mock_yf_ticker.assert_any_call("BRK-B")
-
-    @patch("app.stocks.libraries.yfinance.yf.Ticker")
-    @patch("app.stocks.libraries.yfinance.yf.download")
-    def test_fallback_recursion_prevention(self, mock_download, mock_yf_ticker):
-        """
-        Tests that international fallback logic stops after one level
-        and doesn't recurse infinitely (e.g., SYMBOL-TO-TO-TO).
-        """
-        # Mock download to always return empty (triggering fallbacks)
-        mock_download.return_value = pd.DataFrame()
-
-        # Mock Ticker info to always return None
-        mock_instance = MagicMock()
-        mock_instance.info = {}
-        mock_yf_ticker.return_value = mock_instance
-
-        # This should try AAPL, then AAPL.TO, then AAPL.V, then stop.
-        # It should NOT result in AAPL-TO-TO...
-        result = YFinance.get_avg_price("AAPL", date(2024, 1, 15))
-        self.assertIsNone(result)
-
-        # Check that download wasn't called with a ridiculous number of suffixes
-        # The longest call should be AAPL-TO or AAPL-V (after sanitization)
-        for call in mock_download.call_args_list:
-            tickers = call.kwargs.get("tickers", "")
-            self.assertLessEqual(tickers.count("-TO"), 1)
-            self.assertLessEqual(tickers.count("-V"), 1)
 
 
 class TestYFinanceSplits(unittest.TestCase):

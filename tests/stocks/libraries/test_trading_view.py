@@ -86,19 +86,6 @@ class TestTradingViewGetCurrentPrice(unittest.TestCase):
 
                 self.assertIsNone(TradingView.get_current_price("AAPL"))
 
-    @patch("app.stocks.libraries.trading_view.TvDatafeed")
-    def test_uses_injected_tv_session_instead_of_creating_new(self, mock_tv_class):
-        """
-        Uses a tv_session passed via kwargs instead of instantiating a new TvDatafeed.
-        """
-        mock_session = MagicMock()
-        mock_session.get_hist.return_value = _make_hist_df(close=150.0)
-
-        TradingView.get_current_price("AAPL", tv_session=mock_session)
-
-        mock_tv_class.assert_not_called()
-        mock_session.get_hist.assert_called()
-
 
 class TestTradingViewGetAvgPrice(unittest.TestCase):
     @patch("app.stocks.libraries.trading_view.TvDatafeed")
@@ -172,31 +159,6 @@ class TestTradingViewGetAvgPrice(unittest.TestCase):
         price = TradingView.get_avg_price("AAPL", date(2023, 12, 25))
 
         self.assertEqual(price, 150.0)
-
-    @patch("app.stocks.libraries.trading_view.TvDatafeed")
-    def test_rounds_result_to_two_decimal_places(self, mock_tv_class):
-        """
-        Returns the average price rounded to 2 decimal places.
-        """
-        hist_df = _make_hist_df(high=100.1, low=100.0, date_str="2023-12-25")
-        mock_tv_class.return_value.get_hist.return_value = hist_df
-
-        price = TradingView.get_avg_price("AAPL", date(2023, 12, 25))
-
-        self.assertEqual(price, round((100.1 + 100.0) / 2, 2))
-
-    @patch("app.stocks.libraries.trading_view.TvDatafeed")
-    def test_uses_injected_tv_session_instead_of_creating_new(self, mock_tv_class):
-        """
-        Uses a tv_session passed via kwargs instead of instantiating a new TvDatafeed.
-        """
-        mock_session = MagicMock()
-        hist_df = _make_hist_df(date_str="2023-12-25")
-        mock_session.get_hist.return_value = hist_df
-
-        TradingView.get_avg_price("AAPL", date(2023, 12, 25), tv_session=mock_session)
-
-        mock_tv_class.assert_not_called()
 
 
 def _symbol_search_response(symbols):

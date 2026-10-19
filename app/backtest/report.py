@@ -49,7 +49,9 @@ def write_rows(rows: list[dict], path: Path | str) -> None:
     tmp_path = Path(tmp)
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=CSV_FIELDS, quoting=csv.QUOTE_ALL)
+            writer = csv.DictWriter(
+                handle, fieldnames=CSV_FIELDS, quoting=csv.QUOTE_ALL, lineterminator="\n"
+            )
             writer.writeheader()
             for row in rows:
                 writer.writerow({field: _round(row.get(field)) for field in CSV_FIELDS})

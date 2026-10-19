@@ -5,7 +5,8 @@ the saved 13F filings and what was done about each, in one committed file.
 Status values:
 
 - ``open``: detected, no safe correction found;
-- ``auto-corrected``: corrected by the detector, see ``Kind``;
+- ``auto-corrected``: corrected by the detector, see ``Kind``; a ``value`` or
+  ``shares`` restatement is recomputed on every scan;
 - ``corrected``: the same, decided by hand;
 - ``carried``: the next filing's delta after a share restatement, rebuilt on
   every scan;
@@ -20,11 +21,15 @@ analysis loaders read the row with the register's ``Shares``, ``Value``,
 register is the only place these figures are computed; the TypeScript loader
 applies the same columns.
 
-A scan merges into the register and never rewrites a decided row: once a
+A scan merges into the register and never rewrites a decided row: once a CUSIP
 correction is applied the row stops looking anomalous, and dropping it would
-undo the correction on the next regeneration. The file carries no timestamps
+undo the correction on the next regeneration. Automatic restatements are not
+decided: the saved CSV keeps the filed figures, so every scan finds them again
+and recomputes them with the current detector. The file carries no timestamps
 and is written in a fixed order, so it only changes when its content does.
 """
+
+import csv
 
 import pandas as pd
 
@@ -68,6 +73,7 @@ _CORRECTED = frozenset({"auto-corrected", "corrected"})
 _DECIDED = _CORRECTED | {"dismissed"}
 _APPLIED = _CORRECTED | {"carried"}
 _RESTATED_KINDS = frozenset({"value", "shares", "carried"})
+_DRIFT_TOLERANCE = 0.01
 
 
 def _load_register() -> pd.DataFrame:
@@ -100,11 +106,7 @@ def _row(anomaly: CusipAnomaly) -> dict[str, str]:
     A register row for a fresh finding.
     """
     status = (
-        "carried"
-        if anomaly.kind == "carried"
-        else "auto-corrected"
-        if anomaly.kind
-        else "open"
+        "carried" if anomaly.kind == "carried" else "auto-corrected" if anomaly.kind else "open"
     )
     figures = anomaly.restated
     return {
@@ -132,7 +134,10 @@ def merge_anomalies(
     """
     Fold a scan into the register: decided rows are kept untouched (detected or
     not), findings are added or refreshed as open or auto-corrected, and open
-    rows the scan no longer finds are dropped. With a non-empty ``tracked`` set,
+    rows, automatic restatements and carried rows the scan no longer finds are
+    dropped. A refreshed restatement whose figures moved less than
+    ``_DRIFT_TOLERANCE`` keeps its written row, so a late filing that nudges the
+    funds' median does not rewrite the file. With a non-empty ``tracked`` set,
     rows of funds outside it go too, decided ones included; an empty set (an
     unreadable fund list) drops nothing.
     """
@@ -140,12 +145,45 @@ def merge_anomalies(
     if tracked:
         register = register[register["Fund"].isin(tracked)]
         anomalies = [a for a in anomalies if a.fund in tracked]
-    decided = register[register["Status"].isin(_DECIDED)]
+    automatic = (register["Status"] == "auto-corrected") & register["Kind"].isin(
+        {"value", "shares"}
+    )
+    decided = register[register["Status"].isin(_DECIDED) & ~automatic]
     decided_keys = set(map(tuple, decided[_KEY].to_numpy()))
-    fresh = [row for row in map(_row, anomalies) if tuple(row[k] for k in _KEY) not in decided_keys]
+    written = {
+        tuple(row[k] for k in _KEY): row
+        for row in register[automatic | (register["Status"] == "carried")].to_dict("records")
+    }
+    fresh = []
+    for row in map(_row, anomalies):
+        key = tuple(row[k] for k in _KEY)
+        if key in decided_keys:
+            continue
+        previous = written.get(key)
+        fresh.append(previous if previous and _drifted_only(previous, row) else row)
     merged = pd.concat([decided, pd.DataFrame(fresh, columns=COLUMNS)], ignore_index=True)
     merged = merged.drop_duplicates(subset=_KEY, keep="first")
     return merged.sort_values(_KEY, kind="stable").reset_index(drop=True)
+
+
+def _drifted_only(previous: dict, fresh: dict) -> bool:
+    """
+    Whether a rescan restates a row the same way, its figures within
+    ``_DRIFT_TOLERANCE`` of the written ones.
+    """
+    if any(previous[c] != fresh[c] for c in ("Status", "Kind", "CUSIP")):
+        return False
+    for column in ("Shares", "Value", "Delta_Shares", "Delta_Value"):
+        old, new = previous[column], fresh[column]
+        if old == new:
+            continue
+        try:
+            a, b = float(old), float(new)
+        except ValueError:
+            return False
+        if abs(a - b) > _DRIFT_TOLERANCE * max(abs(a), abs(b)):
+            return False
+    return True
 
 
 def save_filing_anomalies(anomalies: list[CusipAnomaly]) -> pd.DataFrame:
@@ -157,7 +195,9 @@ def save_filing_anomalies(anomalies: list[CusipAnomaly]) -> pd.DataFrame:
 
     tracked = {str(fund["Fund"]) for fund in load_hedge_funds()}
     merged = merge_anomalies(_load_register(), anomalies, tracked)
-    atomic_to_csv(merged, _db._safe_db_join(FILING_ANOMALIES_FILE), index=False)
+    atomic_to_csv(
+        merged, _db._safe_db_join(FILING_ANOMALIES_FILE), index=False, quoting=csv.QUOTE_ALL
+    )
     return merged
 
 

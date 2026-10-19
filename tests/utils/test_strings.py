@@ -9,7 +9,6 @@ from app.utils.strings import (
     format_percentage,
     format_string,
     format_value,
-    get_next_yyyymmdd_day,
     get_numeric,
     get_percentage_formatter,
     get_percentage_number,
@@ -244,13 +243,7 @@ class TestStrings(unittest.TestCase):
         self.assertEqual(add_days_to_yyyymmdd("20240228", 1), "20240229")  # Leap year
         self.assertEqual(add_days_to_yyyymmdd("20230228", 1), "20230301")  # Non leap year
         self.assertEqual(add_days_to_yyyymmdd("20240301", -2), "20240228")
-
-    def test_get_next_yyyymmdd_day(self):
-        """
-        Tests get_next_yyyymmdd_day function.
-        """
-        self.assertEqual(get_next_yyyymmdd_day("20241231"), "20250101")
-        self.assertEqual(get_next_yyyymmdd_day("20240228"), "20240229")
+        self.assertEqual(add_days_to_yyyymmdd("20241231", 1), "20250101")  # Year rollover
 
     def test_eastern_today_uses_eastern_not_utc(self):
         """

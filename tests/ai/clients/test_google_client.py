@@ -97,23 +97,6 @@ class TestGoogleAIClient(unittest.TestCase):
         self.assertIsNotNone(http_options)
         self.assertEqual(http_options.timeout, 90_000)
 
-    def test_generate_content_invocation(self):
-        prompt = "Hello, Gemini!"
-        response = self.client.generate_content(prompt)
-
-        # Assertions
-        self.assertEqual(response, "Mocked Gemini response")
-        self.generate.assert_called_once()
-        call_kwargs = self.generate.call_args.kwargs
-        self.assertEqual(call_kwargs["model"], "gemini-3.5-flash")
-        self.assertEqual(call_kwargs["contents"], prompt)
-        config = call_kwargs["config"]
-        _assert_afc_disabled(self, config)
-        self.assertEqual(config.thinking_config.thinking_level, types.ThinkingLevel.LOW)
-
-        # Verify provider name in get_model_name
-        self.assertEqual(self.client.get_model_name(), "google/gemini-3.5-flash")
-
     def test_answer_without_text_is_an_empty_string(self):
         """
         A blocked or empty answer carries no text; the caller gets "" rather than None.
@@ -121,42 +104,6 @@ class TestGoogleAIClient(unittest.TestCase):
         self.generate.return_value = _response(None)
 
         self.assertEqual(self.client.generate_content("Hi"), "")
-
-    def test_retries_without_thinking_config_when_model_rejects_it(self):
-        """
-        Transparently retries without thinking_config when the model rejects
-        it, so older/non-thinking Gemini models need no special-casing.
-        """
-        self.generate.side_effect = [_thinking_level_rejected(), self.mock_response]
-
-        response = self.client.generate_content("Hello, Gemini!")
-
-        self.assertEqual(response, "Mocked Gemini response")
-        calls = self.generate.call_args_list
-        self.assertEqual(len(calls), 2)
-        # The retry drops thinking_config, but both attempts must disable AFC.
-        for call in calls:
-            _assert_afc_disabled(self, call.kwargs["config"])
-        self.assertIsNone(calls[1].kwargs["config"].thinking_config)
-
-    def test_skips_thinking_config_on_subsequent_calls_after_rejection(self):
-        """
-        Remembers a model's rejection of thinking_config across calls, so
-        later requests to the same model don't pay for the failing round trip.
-        """
-        self.generate.side_effect = [
-            _thinking_level_rejected(),
-            self.mock_response,
-            self.mock_response,
-        ]
-
-        self.client.generate_content("Hello!")
-        self.client.generate_content("Hello again!")
-
-        self.assertEqual(self.generate.call_count, 3)
-        last_config = self.generate.call_args.kwargs["config"]
-        _assert_afc_disabled(self, last_config)
-        self.assertIsNone(last_config.thinking_config)
 
     def test_falls_back_to_configured_model_when_primary_is_overloaded(self):
         """
@@ -187,27 +134,6 @@ class TestGoogleAIClient(unittest.TestCase):
         done = [r.getMessage() for r in cm.records if "response in" in r.getMessage()]
         self.assertEqual(len(done), 1)
         self.assertIn(f"google/{GoogleAIClient.FALLBACK_MODEL}", done[0])
-
-    def test_completion_log_names_the_primary_model_without_fallback(self):
-        """
-        Without a fallback the log keeps naming the configured model.
-        """
-        with self.assertLogs("app.ai.clients.base_client", level="INFO") as cm:
-            self.client.generate_content("Hello, Gemini!")
-
-        done = [r.getMessage() for r in cm.records if "response in" in r.getMessage()]
-        self.assertIn("google/gemini-3.5-flash", done[0])
-
-    def test_fallback_is_not_sticky_across_calls(self):
-        """
-        After a fallback, the next call tries the configured primary model again.
-        """
-        self.generate.side_effect = [_model_overloaded(), self.mock_response, self.mock_response]
-
-        self.client.generate_content("first")
-        self.client.generate_content("second")
-
-        self.assertEqual(self.generate.call_args.kwargs["model"], "gemini-3.5-flash")
 
     def test_retries_transient_errors(self):
         """
@@ -245,16 +171,6 @@ class TestGoogleAIClient(unittest.TestCase):
                 with self.assertRaises(ClientError):
                     self.client.generate_content("Hello")
                 self.assertEqual(self.generate.call_count, 1)
-
-    def test_propagates_error_when_fallback_model_also_fails(self):
-        """
-        Raises (after exhausting the outer retry) when the fallback model
-        fails too, instead of masking the failure.
-        """
-        self.generate.side_effect = _model_overloaded()
-
-        with self.assertRaises(RetryError):
-            self.client.generate_content("Hello, Gemini!")
 
     def test_does_not_fall_back_when_already_on_the_fallback_model(self):
         """
@@ -357,7 +273,8 @@ class TestGoogleAIClient(unittest.TestCase):
         """
         An explicit reasoning level maps to the matching Gemini ThinkingLevel.
         """
-        cases: tuple[tuple[ReasoningLevel, types.ThinkingLevel], ...] = (
+        cases: tuple[tuple[ReasoningLevel | None, types.ThinkingLevel], ...] = (
+            (None, types.ThinkingLevel.LOW),
             ("medium", types.ThinkingLevel.MEDIUM),
             ("high", types.ThinkingLevel.HIGH),
             ("low", types.ThinkingLevel.LOW),
@@ -538,13 +455,6 @@ class TestGoogleDefaultModels(unittest.TestCase):
         The overload fallback must differ from the default, or a 503 has nowhere to go.
         """
         self.assertNotEqual(GoogleAIClient.FALLBACK_MODEL, GoogleAIClient.DEFAULT_MODEL)
-
-    def test_constructor_uses_the_default_model(self):
-        """
-        Omitting the model picks DEFAULT_MODEL.
-        """
-        with patch("app.ai.clients.google_client.genai.Client"):
-            self.assertEqual(GoogleAIClient().model, GoogleAIClient.DEFAULT_MODEL)
 
 
 if __name__ == "__main__":

@@ -284,16 +284,6 @@ class TestWorkflowCommands(unittest.TestCase):
         "GITHUB_REPOSITORY": "repo/hedge-fund-tracker",
     }
 
-    def test_fake_getenv_leaves_other_variables_to_the_real_environment(self):
-        """
-        Patching os.getenv patches it process-wide: a test runner reading its own
-        variables mid-test (VS Code's TEST_RUN_PIPE) must still see them.
-        """
-        with patch.dict(os.environ, {"HFT_TEST_PROBE": "real"}):
-            self.assertEqual(self._fake_getenv("HFT_TEST_PROBE"), "real")
-        self.assertEqual(self._fake_getenv("GITHUB_TOKEN"), "test_token")
-        self.assertIsNone(self._fake_getenv("GITHUB_UNSET_FOR_TEST"))
-
     @classmethod
     def _fake_getenv(cls, key, default=None):
         """

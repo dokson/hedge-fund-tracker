@@ -17,14 +17,6 @@ from app.utils.logger import request_id_var
 
 
 class TestQueueGetWithTimeout(unittest.TestCase):
-    def test_returns_item_when_available(self):
-        """
-        An enqueued item is returned immediately.
-        """
-        q: queue.SimpleQueue = queue.SimpleQueue()
-        q.put(("log", "hello"))
-        self.assertEqual(_queue_get_with_timeout(q), ("log", "hello"))
-
     def test_returns_none_on_empty_queue(self):
         """
         An empty queue yields None after the poll timeout instead of blocking

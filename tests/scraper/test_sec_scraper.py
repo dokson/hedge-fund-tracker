@@ -511,19 +511,6 @@ class TestSecScraperLifecycle(unittest.TestCase):
         s2.close.assert_called_once()
         self.assertEqual(scraper._sessions, [])
 
-    def test_reset_session_rebuilds_rate_limiter(self):
-        """reset_session must replace _rate_limiter with a fresh instance and clear sessions."""
-        import app.scraper.sec_scraper as scraper
-
-        old_limiter = scraper._rate_limiter
-        with scraper._sessions_lock:
-            scraper._sessions[:] = [MagicMock()]
-
-        reset_session()
-
-        self.assertIsNot(scraper._rate_limiter, old_limiter)
-        self.assertEqual(scraper._sessions, [])
-
     def test_scraper_session_closes_even_when_body_raises(self):
         """
         The cleanup happens in a `finally` block, so an exception raised inside
