@@ -3,7 +3,7 @@ CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
 514051013,CRGO,Freightos Ltd,0,-500000,0,-735K,CLOSE,N/A
 50155Q100,KD,Kyndryl Holdings Inc,0,-80000,0,-904.8K,CLOSE,N/A
 05366Y201,AVNW,Aviat Networks Inc,0,-53000,0,-1.18M,CLOSE,N/A
-162825103,CHECK,Check Point Software Technologies Ltd,0,-9200,0,-1.21M,CLOSE,N/A
+162825103,CHKP,Check Point Software Technologies Ltd,0,-9200,0,-1.21M,CLOSE,N/A
 882508104,TXN,Texas Instruments Inc,0,-4100,0,-1.22M,CLOSE,N/A
 45817G201,IDN,Intellicheck Inc,0,-300000,0,-1.23M,CLOSE,N/A
 077347201,BELFA,Bel Fuse Inc,0,-5000,0,-1.45M,CLOSE,N/A
