@@ -18,7 +18,7 @@ fastapi-users-db-sqlalchemy = "~=7.0"
 google-genai = "~=2.31"
 httptools = { version = "==0.9.0", markers = "sys_platform != 'win32' or platform_machine == 'AMD64'" }
 lxml = "~=6.1"
-openai = "~=3.32"
+openai = "~=3.34"
 pandas = "~=3.0"
 prometheus-client = "==0.26.0"
 psutil = "~=7.2"
