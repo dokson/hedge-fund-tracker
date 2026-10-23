@@ -12,7 +12,7 @@ asyncpg = "~=0.32"
 beautifulsoup4 = "~=4.15"
 cryptography = "~=50.0"
 curl-cffi = "~=0.16.3"
-fastapi = "~=0.149"
+fastapi = "~=0.155"
 fastapi-users = { extras = ["sqlalchemy"], version = "~=15.0" }
 fastapi-users-db-sqlalchemy = "~=7.0"
 google-genai = "~=2.31"
@@ -33,7 +33,7 @@ tradingview-datafeed = "~=2.1"
 uvicorn = "~=0.54"
 uvloop = { version = "==0.23.0", markers = "sys_platform != 'win32'" }
 watchfiles = "~=1.2"
-websockets = "~=16.1"
+websockets = "~=17.3"
 yfinance = "~=1.7"
 
 [dev-packages]
