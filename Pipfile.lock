@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "97dcb50987944d425623a58df6976bdc88a966a69fc46a7b95a946701056b096"
+            "sha256": "c43a03ba4043e910c1981868484e600bce7a2fd7fed579f07d8154df584d84db"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -273,12 +273,11 @@
         },
         "certifi": {
             "hashes": [
-                "sha256:035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae",
-                "sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b"
+                "sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd",
+                "sha256:e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1"
             ],
-            "index": "pypi",
             "markers": "python_version >= '3.7'",
-            "version": "==2026.10.19"
+            "version": "==2026.10.23"
         },
         "cffi": {
             "hashes": [
@@ -741,12 +740,12 @@
         },
         "google-genai": {
             "hashes": [
-                "sha256:71518537de2ba967a61960cba844691dca3dd4ff07726c01a6917d132213541e",
-                "sha256:c87b9d495a24b09dedb29b852a201bea69ecd0b3f6c2561dc68f4055451b1b90"
+                "sha256:f3f8ab696b35caf95c222e05268740c1ccd6934257890506be73b126150d3b14",
+                "sha256:fced7f746da45264b34bcf6044a6fcdb91ebad1825e95c324ee48addb6e557ae"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==2.31.0"
+            "version": "==2.33.0"
         },
         "greenlet": {
             "hashes": [
@@ -1760,11 +1759,11 @@
         },
         "pycparser": {
             "hashes": [
-                "sha256:51d5a8ba2be0bbe440b99d2112604c95bbbc3c2748a64260186c541e1729cd80",
-                "sha256:d875f09c3507d00e1aba0eecc6dcadc1352f30fff09dc6bff2f1c2935e97c2bc"
+                "sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e",
+                "sha256:f03387877eab82ce01bbdfd0ba7252ee55a90b1c708d5129e2ce915475cf1db6"
             ],
-            "markers": "python_version >= '3.10'",
-            "version": "==3.11"
+            "markers": "python_version >= '3.11'",
+            "version": "==3.12"
         },
         "pydantic": {
             "hashes": [
