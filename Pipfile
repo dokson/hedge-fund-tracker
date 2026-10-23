@@ -44,6 +44,7 @@ pre-commit = "~=4.7"
 pyright = "~=1.1"
 ruff = "~=0.17"
 types-tabulate = "~=0.10"
+virtualenv = "~=21.14.9"
 
 [pipenv]
 allow_prereleases = false
