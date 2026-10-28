@@ -4,7 +4,7 @@
 # references, bumping tag and digest together.
 
 # ── Stage 1: React frontend ────────────────────────────────────────────────
-FROM node:26.11.1-slim@sha256:193fe51b64e77981119c98c2002c9e32a70e2f006fb4d25068ce0558998917f0 AS frontend-build
+FROM node:26.12.0-slim@sha256:e556a144463cc8dc53afe8de6d2fa0db5c132fd39ffa232c17641bd40df2bf11 AS frontend-build
 WORKDIR /app/frontend
 RUN --mount=type=bind,source=app/frontend/package.json,target=package.json \
     --mount=type=bind,source=app/frontend/package-lock.json,target=package-lock.json \
@@ -15,7 +15,7 @@ RUN npm run build
 
 # ── Stage 2: Python dependencies ───────────────────────────────────────────
 # Toolchain stays in this stage, out of the runtime image.
-FROM python:3.14.8-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 AS python-deps
+FROM python:3.14.9-slim@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8 AS python-deps
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIPENV_VENV_IN_PROJECT=1 \
     PIPENV_NOSPIN=1
@@ -32,7 +32,7 @@ RUN --mount=type=bind,source=Pipfile,target=Pipfile \
     pipenv sync
 
 # ── Stage 3: runtime ───────────────────────────────────────────────────────
-FROM python:3.14.8-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 AS runtime
+FROM python:3.14.9-slim@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8 AS runtime
 
 LABEL org.opencontainers.image.title="Hedge Fund Tracker" \
       org.opencontainers.image.description="SEC 13F, 13D/G and Form 4 tracker with AI-assisted stock analysis" \
