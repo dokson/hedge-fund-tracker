@@ -9,6 +9,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/Panel";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -49,7 +50,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
     return (
       <div className="flex justify-center px-4 py-16">
-        <div className="frame w-full max-w-xl p-8 text-center">
+        <Panel className="w-full max-w-xl p-8 text-center">
           <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive opacity-60" />
           <h2 className="text-base font-semibold">Something went wrong</h2>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -68,7 +69,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               Reload app
             </Button>
           </div>
-        </div>
+        </Panel>
       </div>
     );
   }

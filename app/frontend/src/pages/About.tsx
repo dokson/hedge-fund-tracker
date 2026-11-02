@@ -1,4 +1,6 @@
-import { Link } from "react-router";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { TextLink } from "@/components/ui/TextLink";
 
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { ABOUT_HEADING, ABOUT_INTRO, ABOUT_SECTIONS, type Segment } from "@/lib/aboutContent";
@@ -10,17 +12,9 @@ import { cn } from "@/lib/utils";
 function SegmentText({ segment }: { segment: Segment }) {
   if (typeof segment === "string") return <>{segment}</>;
   if (segment.href.startsWith("/")) {
-    return (
-      <Link to={segment.href} className="ticker-link">
-        {segment.text}
-      </Link>
-    );
+    return <TextLink to={segment.href}>{segment.text}</TextLink>;
   }
-  return (
-    <a href={segment.href} target="_blank" rel="noopener noreferrer" className="ticker-link">
-      {segment.text}
-    </a>
-  );
+  return <TextLink href={segment.href}>{segment.text}</TextLink>;
 }
 
 /**
@@ -42,10 +36,7 @@ export default function About() {
 
   return (
     <div className="max-w-screen-2xl space-y-6">
-      <div className="space-y-2">
-        <h1 className="page-title">{ABOUT_HEADING}</h1>
-        <p className="max-w-[72ch] text-sm text-muted-foreground">{ABOUT_INTRO}</p>
-      </div>
+      <PageHeader title={ABOUT_HEADING} description={ABOUT_INTRO} />
       {/* Panels in two columns fill a wide screen while each line stays readable. */}
       <div className="grid gap-4 lg:grid-cols-2">
         {ABOUT_SECTIONS.map((section, index) => (
@@ -53,21 +44,24 @@ export default function About() {
             key={section.id}
             id={section.id}
             className={cn(
-              "frame scroll-mt-20 space-y-3 p-4",
+              "scroll-mt-20",
               // An odd last panel spans both columns so the grid never ends half empty.
               index === ABOUT_SECTIONS.length - 1 &&
                 ABOUT_SECTIONS.length % 2 === 1 &&
                 "lg:col-span-2",
             )}
           >
-            <h2 className="section-title">{section.title}</h2>
-            {section.paragraphs.map((segments, i) => (
-              <p key={i} className="max-w-[72ch] text-sm leading-6 text-foreground/90">
-                {segments.map((segment, j) => (
-                  <SegmentText key={j} segment={segment} />
+            <Panel title={section.title} className="h-full">
+              <div className="space-y-3 p-4">
+                {section.paragraphs.map((segments, i) => (
+                  <p key={i} className="max-w-[72ch] text-sm leading-6 text-foreground/90">
+                    {segments.map((segment, j) => (
+                      <SegmentText key={j} segment={segment} />
+                    ))}
+                  </p>
                 ))}
-              </p>
-            ))}
+              </div>
+            </Panel>
           </section>
         ))}
       </div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { buildCuratedFaviconUrl, buildFaviconUrl } from "@/components/faviconUrl";
-import { LOGO_PLATE_BACKGROUND } from "@/components/logoPresentation";
+import { LOGO_PLATE_BACKGROUND, type LogoPlate } from "@/components/logoPresentation";
 import { imageNeedsDarkPlate, isBlankImage } from "@/lib/imageInk";
 
 interface FundLogoProps {
@@ -54,7 +54,7 @@ export function FundLogo({
   }, [url, size]);
 
   const [index, setIndex] = useState(0);
-  const [darkPlate, setDarkPlate] = useState(false);
+  const [plate, setPlate] = useState<LogoPlate>("pending");
   const src = candidates[index];
 
   if (!src) {
@@ -85,23 +85,23 @@ export function FundLogo({
       height={size}
       crossOrigin="anonymous"
       onError={() => {
-        setDarkPlate(false);
+        setPlate("pending");
         setIndex((i) => i + 1);
       }}
       onLoad={(e) => {
         if (isBlankImage(e.currentTarget)) {
-          setDarkPlate(false);
+          setPlate("pending");
           setIndex((i) => i + 1);
         } else {
-          setDarkPlate(imageNeedsDarkPlate(e.currentTarget));
+          setPlate(imageNeedsDarkPlate(e.currentTarget) ? "dark" : "light");
         }
       }}
-      className={`rounded-sm border border-border object-contain p-px ${className}`}
+      className={`rounded-sm border border-border object-contain p-px transition-opacity duration-150 ${plate === "pending" ? "opacity-0" : "opacity-100"} ${className}`}
       style={{
         width: size,
         height: size,
         flexShrink: 0,
-        backgroundColor: darkPlate ? LOGO_PLATE_BACKGROUND.dark : LOGO_PLATE_BACKGROUND.light,
+        backgroundColor: LOGO_PLATE_BACKGROUND[plate],
       }}
       loading="lazy"
     />

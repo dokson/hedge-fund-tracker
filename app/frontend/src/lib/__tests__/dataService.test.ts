@@ -45,7 +45,8 @@ describe("formatValue", () => {
     [2_500_000, "$2.50M"],
     [1_500_000_000, "$1.50B"],
     [2_000_000_000_000, "$2.00T"],
-    [-1_500_000, "$-1.50M"],
+    [-1_500_000, "−$1.50M"],
+    [-750, "−$750"],
   ])("formats %d as %s", (input, expected) => {
     expect(formatValue(input)).toBe(expected);
   });

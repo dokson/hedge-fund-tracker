@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart as LineChartIcon, Check } from "lucide-react";
 import EquityCurveChart from "@/components/EquityCurveChart";
@@ -9,15 +9,17 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { QueryState } from "@/components/ui/QueryState";
 import { TableFrame } from "@/components/ui/TableFrame";
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Panel } from "@/components/ui/Panel";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { FaqLink } from "@/components/ui/TextLink";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { PERFORMANCE_PAGE } from "@/lib/pageMeta";
 import { canonicalUrl } from "@/lib/seo";
-import { learnItem } from "@/lib/routes";
 import { seriesColor } from "@/lib/seriesColors";
 import { getPerformance, type PerfSeries } from "@/lib/dataService";
 import { STRATEGY_BY_ID, perfOrderIndex } from "@/lib/strategies";
-import { pctFrac, pp, toneClass } from "@/lib/performanceFormat";
+import { pctFrac, pp } from "@/lib/performanceFormat";
+import { toneClass } from "@/lib/tone";
 import { cn } from "@/lib/utils";
 
 const OUTPERFORM = "hsl(var(--positive))";
@@ -182,16 +184,11 @@ export default function StrategyPerformance() {
 
   return (
     <div className="space-y-6 max-w-screen-2xl">
-      <div>
-        <h1 className="page-title">
-          <LineChartIcon aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
-          Strategy Performance
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">
-          A descriptive backtest of each consensus screen, rebalanced quarterly and held to the next
-          window, against the S&amp;P 500.
-        </p>
-      </div>
+      <PageHeader
+        title="Strategy Performance"
+        icon={LineChartIcon}
+        description="A descriptive backtest of each consensus screen, rebalanced quarterly and held to the next window, against the S&P 500."
+      />
 
       {isError ? (
         <QueryState isError error={error} title="Could not load performance data" />
@@ -212,20 +209,14 @@ export default function StrategyPerformance() {
             <p className="max-w-3xl">
               A tiny, single-regime sample, using a fund roster preselected on past performance.
               These results describe this window; they do not establish an investing edge.{" "}
-              <Link
-                to={learnItem("how-strategy-performance-is-backtested")}
-                className="text-primary-text hover:underline underline-offset-4"
-              >
+              <FaqLink item="how-strategy-performance-is-backtested">
                 Backtest method &amp; limits
-              </Link>
+              </FaqLink>
             </p>
           </div>
           {/* Mobile keeps the plot and its compact controls together, before the detail table. */}
           <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-            <div className="frame order-2 flex h-full flex-col overflow-hidden md:order-1">
-              <div className="frame-title frame-title--spaced">
-                <PanelTitle>Series</PanelTitle>
-              </div>
+            <Panel title="Series" spaced className="order-2 flex h-full flex-col md:order-1">
               <TableFrame label="Strategy legend and series toggle">
                 <table className="w-full text-sm" aria-label="Strategy legend and series toggle">
                   <thead>
@@ -288,21 +279,21 @@ export default function StrategyPerformance() {
                   "Select a strategy to isolate it against the S&P 500 and see its holdings."
                 )}
               </p>
-            </div>
+            </Panel>
 
-            <div className="frame order-1 flex h-full flex-col overflow-hidden md:order-2">
-              <div className="frame-title frame-title--spaced">
-                <PanelTitle>Cumulative return</PanelTitle>
-                <span className="hidden text-xs font-normal text-muted-foreground md:block">
-                  Hover to compare
-                </span>
-              </div>
+            <Panel
+              title="Cumulative return"
+              spaced
+              className="order-1 flex h-full flex-col md:order-2"
+              aside={<span className="hidden md:block">Hover to compare</span>}
+            >
               <div className="flex-1 min-h-0 p-3 pt-0">
                 <EquityCurveChart
                   series={visible}
                   quarters={data?.quarters ?? []}
                   originLabel={data?.startQuarter}
                   band={band}
+                  endLabels
                   className="h-[260px] min-h-[260px] md:h-full md:min-h-[340px]"
                 />
               </div>
@@ -342,7 +333,7 @@ export default function StrategyPerformance() {
                   </span>
                 )}
               </div>
-            </div>
+            </Panel>
           </div>
 
           {/* The isolated strategy's comparison follows the chart; sample limits stay above it. */}

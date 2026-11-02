@@ -4,9 +4,9 @@ import { getStocks } from "@/lib/dataService";
 import { parseSSEEvent } from "@/lib/aiClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Field } from "@/components/ui/Field";
+import { Panel } from "@/components/ui/Panel";
+import { StatusChip } from "@/components/ui/StatusChip";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -98,24 +98,16 @@ const operations: Operation[] = [
 ];
 
 function StatusBadge({ status }: { status: JobStatus }) {
-  switch (status) {
-    case "running":
-      return (
-        <Badge variant="secondary" className="gap-1">
-          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Running
-        </Badge>
-      );
-    case "success":
-      return (
-        <Badge variant="outline" className="text-positive">
-          Done
-        </Badge>
-      );
-    case "error":
-      return <Badge variant="destructive">Error</Badge>;
-    default:
-      return null;
-  }
+  if (status === "idle") return null;
+  return (
+    <StatusChip
+      role="status"
+      tone={status === "running" ? "warning" : status === "success" ? "positive" : "negative"}
+    >
+      {status === "running" && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+      {status === "running" ? "Running" : status === "success" ? "Done" : "Error"}
+    </StatusChip>
+  );
 }
 
 export default function DatabaseOperations() {
@@ -230,7 +222,7 @@ export default function DatabaseOperations() {
             ? data.message
             : "Completed successfully";
         setStates((prev) => ({ ...prev, [op.id]: { status: "success", message } }));
-        addLog(`✅ ${message}`);
+        addLog(message);
         toast.success(`${op.title} completed`);
       }
     } catch (err: unknown) {
@@ -239,7 +231,7 @@ export default function DatabaseOperations() {
         ? "Cannot connect to server. Make sure it's running."
         : errMsg;
       setStates((prev) => ({ ...prev, [op.id]: { status: "error", message: msg } }));
-      addLog(`❌ ${msg}`);
+      addLog(msg);
       toast.error(`${op.title} failed`, { description: msg });
     }
   }, []);
@@ -303,85 +295,69 @@ export default function DatabaseOperations() {
   const renderFields = (op: Operation, isRunning: boolean) => {
     if (op.id === "update-ticker") {
       return (
-        <div className="space-y-2">
-          <div className="space-y-1">
-            <Label htmlFor={`${op.id}-old-ticker`} className="text-xs text-muted-foreground">
-              Old Ticker
-            </Label>
-            <div className="flex items-center gap-2">
-              <div className="shrink-0">
-                <TickerAutocomplete
-                  id={`${op.id}-old-ticker`}
-                  value={fieldValues[op.id]?.old_ticker || ""}
-                  onChange={(v) => setField(op.id, "old_ticker", v)}
-                  onValidChange={(v) => setFieldValid((prev) => ({ ...prev, old_ticker: v }))}
-                  placeholder="e.g. FB"
-                  className="text-xs placeholder:normal-case placeholder:font-sans"
-                />
-              </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Old Ticker" htmlFor={`${op.id}-old-ticker`}>
+            <div className="min-w-0 space-y-2">
+              <TickerAutocomplete
+                id={`${op.id}-old-ticker`}
+                value={fieldValues[op.id]?.old_ticker || ""}
+                onChange={(v) => setField(op.id, "old_ticker", v)}
+                onValidChange={(v) => setFieldValid((prev) => ({ ...prev, old_ticker: v }))}
+                placeholder="e.g. FB"
+                className="min-h-10 !w-full text-xs placeholder:normal-case placeholder:font-sans md:min-h-0"
+              />
               {oldTickerInfo && fieldValid["old_ticker"] && (
-                <span className="text-xs text-muted-foreground truncate">
+                <span className="block truncate text-xs text-muted-foreground">
                   {oldTickerInfo.company}
                 </span>
               )}
             </div>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor={`${op.id}-new-ticker`} className="text-xs text-muted-foreground">
-              New Ticker
-            </Label>
+          </Field>
+          <Field label="New Ticker" htmlFor={`${op.id}-new-ticker`}>
             <Input
               id={`${op.id}-new-ticker`}
               placeholder="e.g. META"
               value={fieldValues[op.id]?.new_ticker || ""}
               onChange={(e) => setField(op.id, "new_ticker", e.target.value.toUpperCase())}
-              className="text-xs font-mono uppercase placeholder:normal-case placeholder:font-sans w-24"
+              className="min-h-10 text-xs font-mono uppercase placeholder:normal-case placeholder:font-sans w-full md:min-h-0"
               disabled={isRunning}
             />
-          </div>
+          </Field>
         </div>
       );
     }
 
     if (op.id === "update-cusip-ticker") {
       return (
-        <div className="space-y-2">
-          <div className="space-y-1">
-            <Label htmlFor={`${op.id}-cusip`} className="text-xs text-muted-foreground">
-              CUSIP
-            </Label>
-            <div className="flex items-center gap-2">
-              <div className="w-32 shrink-0">
-                <CusipAutocomplete
-                  id={`${op.id}-cusip`}
-                  value={fieldValues[op.id]?.cusip || ""}
-                  onChange={(v) => setField(op.id, "cusip", v)}
-                  onValidChange={(v) => setFieldValid((prev) => ({ ...prev, cusip: v }))}
-                  placeholder="e.g. 594918104"
-                  className="text-xs placeholder:normal-case placeholder:font-sans"
-                />
-              </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="CUSIP" htmlFor={`${op.id}-cusip`}>
+            <div className="min-w-0 space-y-2">
+              <CusipAutocomplete
+                id={`${op.id}-cusip`}
+                value={fieldValues[op.id]?.cusip || ""}
+                onChange={(v) => setField(op.id, "cusip", v)}
+                onValidChange={(v) => setFieldValid((prev) => ({ ...prev, cusip: v }))}
+                placeholder="e.g. 594918104"
+                className="min-h-10 w-full text-xs placeholder:normal-case placeholder:font-sans md:min-h-0"
+              />
               {cusipInfo && fieldValid["cusip"] && (
-                <span className="text-xs text-muted-foreground truncate">
+                <span className="block truncate text-xs text-muted-foreground">
                   <span className="font-mono font-medium text-foreground">{cusipInfo.ticker}</span>{" "}
                   · {cusipInfo.company}
                 </span>
               )}
             </div>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor={`${op.id}-new-ticker`} className="text-xs text-muted-foreground">
-              New Ticker
-            </Label>
+          </Field>
+          <Field label="New Ticker" htmlFor={`${op.id}-new-ticker`}>
             <Input
               id={`${op.id}-new-ticker`}
               placeholder="e.g. MSFT"
               value={fieldValues[op.id]?.new_ticker || ""}
               onChange={(e) => setField(op.id, "new_ticker", e.target.value.toUpperCase())}
-              className="text-xs font-mono uppercase placeholder:normal-case placeholder:font-sans w-24"
+              className="min-h-10 text-xs font-mono uppercase placeholder:normal-case placeholder:font-sans w-full md:min-h-0"
               disabled={isRunning}
             />
-          </div>
+          </Field>
         </div>
       );
     }
@@ -390,62 +366,72 @@ export default function DatabaseOperations() {
   };
 
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Each operation invokes a function of{" "}
-        <code className="font-mono bg-muted px-1 py-0.5">database/updater.py</code> through a local
-        bridge.
-      </p>
+    <div className="min-w-0 space-y-4 [&_button]:min-h-10 [&_[role=option]]:min-h-10 md:[&_button]:min-h-0 md:[&_[role=option]]:min-h-0">
+      <Panel title="Database operations" className="overflow-visible">
+        <ol className="divide-y divide-border" aria-label="Operations">
+          {operations.map((op, i) => {
+            const state = states[op.id] || { status: "idle" };
+            const isRunning = state.status === "running";
 
-      <ol className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Operations">
-        {operations.map((op, i) => {
-          const state = states[op.id] || { status: "idle" };
-          const isRunning = state.status === "running";
-
-          return (
-            <li key={op.id} className="frame flex flex-col h-full">
-              <div className="frame-title">
-                <PanelTitle className="truncate">
-                  <span className="text-muted-foreground font-normal tabular-nums mr-1.5">
-                    {i + 1}.
+            return (
+              <li
+                key={op.id}
+                className="grid min-w-0 gap-4 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:p-4"
+              >
+                <div className="min-w-0 space-y-3">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <h3 className="text-sm font-medium">
+                      <span className="mr-2 text-muted-foreground tabular-nums">{i + 1}.</span>
+                      {op.title}
+                    </h3>
+                    <StatusBadge status={state.status} />
+                  </div>
+                  <p className="text-sm text-muted-foreground">{op.description}</p>
+                  {renderFields(op, isRunning)}
+                </div>
+                <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-start">
+                  <span className="metric-label">
+                    {op.readonly ? "Read only" : "Writes local data"}
                   </span>
-                  {op.title}
-                </PanelTitle>
-                <StatusBadge status={state.status} />
-              </div>
-              <div className="flex flex-col gap-3 p-3 flex-1">
-                <p className="text-xs text-muted-foreground leading-5">{op.description}</p>
-                <div className="flex-1">{renderFields(op, isRunning)}</div>
-
-                <Button
-                  size="sm"
-                  className="w-full mt-auto"
-                  disabled={isRunDisabled(op, isRunning) || IS_GH_PAGES_MODE}
-                  onClick={() => handleRun(op)}
-                >
-                  {isRunning && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-                  {IS_GH_PAGES_MODE ? "Disabled in Demo" : isRunning ? "Running…" : "Run"}
-                </Button>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={`min-h-10 min-w-24 md:min-h-0 ${op.id.includes("ticker") ? "text-negative hover:text-negative" : ""}`}
+                    aria-label={`Run ${op.title}`}
+                    disabled={isRunDisabled(op, isRunning) || IS_GH_PAGES_MODE}
+                    onClick={() => handleRun(op)}
+                  >
+                    {isRunning && (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                    )}
+                    {IS_GH_PAGES_MODE ? "Disabled in Demo" : isRunning ? "Running…" : "Run"}
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </Panel>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={!!confirmOp} onOpenChange={(open) => !open && setConfirmOp(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto [&_button]:min-h-10">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm: {confirmOp?.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              ⚠️ This will start a process that modifies actual data on disk. Once started, the
+              This will start a process that modifies actual data on disk. Once started, the
               operation window cannot be closed until it completes. Are you sure you want to
               proceed?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm}>Confirm</AlertDialogAction>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleConfirm}
+            >
+              Confirm
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -458,7 +444,7 @@ export default function DatabaseOperations() {
         }}
       >
         <DialogContent
-          className={`sm:max-w-3xl ${activeIsRunning ? "[&>button]:hidden" : ""}`}
+          className={`max-h-[90dvh] w-[calc(100%_-_2rem)] min-w-0 overflow-y-auto sm:max-w-3xl [&_button]:min-h-10 ${activeIsRunning ? "[&>button]:hidden" : ""}`}
           onPointerDownOutside={(e) => {
             if (activeIsRunning) e.preventDefault();
           }}
@@ -488,7 +474,7 @@ export default function DatabaseOperations() {
             </DialogTitle>
             <DialogDescription>
               {activeIsRunning
-                ? "⚠️ Operation in progress — closing is disabled until it completes."
+                ? "Operation in progress — closing is disabled until it completes."
                 : "Operation completed. You can close this dialog."}
             </DialogDescription>
           </DialogHeader>
@@ -496,23 +482,20 @@ export default function DatabaseOperations() {
           {activeOp?.streamable ? (
             <TerminalOutput lines={activeLogs} running={activeIsRunning} />
           ) : (
-            <div className="frame bg-background overflow-hidden">
-              <div className="frame-title">
-                <PanelTitle>Output</PanelTitle>
-              </div>
+            <Panel title="Output" className="bg-background">
               <div className="p-3 max-h-64 overflow-y-auto font-mono text-xs">
                 {activeLogs.map((log, i) => (
                   <p
                     // append-only log buffer; index is a stable identity
                     key={i}
-                    className="text-muted-foreground leading-5 whitespace-pre-wrap"
+                    className="break-words text-muted-foreground leading-5 whitespace-pre-wrap"
                   >
                     {log}
                   </p>
                 ))}
                 <div ref={logEndRef} />
               </div>
-            </div>
+            </Panel>
           )}
 
           {!activeIsRunning && (

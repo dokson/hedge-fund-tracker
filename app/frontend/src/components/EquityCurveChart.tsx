@@ -7,15 +7,19 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  usePlotArea,
+  useYAxisScale,
   type TooltipContentProps,
 } from "recharts";
 import { useElementSize } from "@/hooks/useElementSize";
-import { buildChartData, PLOT_INSET } from "@/lib/equityCurve";
+import { buildChartData, END_LABEL_INSET, PLOT_INSET, spreadLabels } from "@/lib/equityCurve";
 import { BENCHMARK, GRID, NEUTRAL, seriesColor } from "@/lib/seriesColors";
 import { cn } from "@/lib/utils";
+import type { PerfSeries } from "@/lib/dataService";
 
 const AXIS_TICK = { fill: NEUTRAL, fontSize: 11 };
-import type { PerfSeries } from "@/lib/dataService";
+/** Below this chart width the labels would squeeze the plot; the legend carries the names. */
+const END_LABEL_MIN_WIDTH = 560;
 
 const fmtPct = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`;
 const fmtTooltipPct = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
@@ -51,6 +55,47 @@ function renderTooltip({ active, label, payload }: TooltipContentProps) {
   );
 }
 
+/**
+ * Names each line at its last point, so the curve reads without looking back at the
+ * legend. Labels are spread vertically so converging lines never overlap.
+ */
+function EndLabels({ series, last }: { series: PerfSeries[]; last: Map<string, number> }) {
+  const yScale = useYAxisScale();
+  const plot = usePlotArea();
+  if (!yScale || !plot) return null;
+  const items = series.flatMap((s) => {
+    const value = last.get(s.id);
+    const y = value === undefined ? undefined : yScale(value);
+    return value === undefined || y === undefined ? [] : [{ s, value, y }];
+  });
+  const ys = spreadLabels(
+    items.map((it) => it.y),
+    14,
+    plot.y + 6,
+    plot.y + plot.height - 2,
+  );
+  const x = plot.x + plot.width + 8;
+  return (
+    <g aria-hidden="true">
+      {items.map((it, i) => (
+        <text
+          key={it.s.id}
+          x={x}
+          y={ys[i]}
+          dominantBaseline="middle"
+          fontSize={11}
+          fill={it.s.type === "benchmark" ? NEUTRAL : seriesColor(it.s.id)}
+        >
+          <tspan fontWeight={600}>{fmtTooltipPct(it.value)}</tspan>
+          <tspan dx={5} fill="hsl(var(--foreground))">
+            {it.s.label}
+          </tspan>
+        </text>
+      ))}
+    </g>
+  );
+}
+
 interface Props {
   series: PerfSeries[];
   quarters: string[];
@@ -59,6 +104,8 @@ interface Props {
   className?: string;
   /** When set, shades the area between two series (e.g. a focused strategy vs its benchmark). */
   band?: { baseId: string; topId: string; color: string };
+  /** Name each line at its last point when the chart is wide enough (keeps the right inset otherwise). */
+  endLabels?: boolean;
 }
 
 /**
@@ -72,6 +119,7 @@ export default function EquityCurveChart({
   originLabel,
   band,
   className,
+  endLabels = false,
 }: Props) {
   const [containerRef, size] = useElementSize();
   const data = buildChartData(
@@ -80,6 +128,14 @@ export default function EquityCurveChart({
     originLabel,
     band ? { baseId: band.baseId, topId: band.topId } : undefined,
   );
+  const showEndLabels = endLabels && !!size && size.width >= END_LABEL_MIN_WIDTH;
+  const lastValues = new Map<string, number>();
+  for (const point of data) {
+    for (const s of series) {
+      const value = point[s.id];
+      if (typeof value === "number") lastValues.set(s.id, value);
+    }
+  }
 
   return (
     /* Fills a flex parent with a definite height; the min-h is the floor when
@@ -90,7 +146,12 @@ export default function EquityCurveChart({
           width={size.width}
           height={size.height}
           data={data}
-          margin={{ top: 8, right: PLOT_INSET.right, left: 0, bottom: 0 }}
+          margin={{
+            top: 8,
+            right: showEndLabels ? END_LABEL_INSET : PLOT_INSET.right,
+            left: 0,
+            bottom: 0,
+          }}
         >
           <CartesianGrid stroke={GRID} strokeWidth={1} vertical={false} />
           <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} />
@@ -127,6 +188,7 @@ export default function EquityCurveChart({
               isAnimationActive={false}
             />
           ))}
+          {showEndLabels && <EndLabels series={series} last={lastValues} />}
         </ComposedChart>
       )}
     </div>

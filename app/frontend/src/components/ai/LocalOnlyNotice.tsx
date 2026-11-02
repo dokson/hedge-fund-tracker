@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 
 import { TableFrame } from "@/components/ui/TableFrame";
+import { Panel } from "@/components/ui/Panel";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { TextLink } from "@/components/ui/TextLink";
 
 export const REPO_URL = "https://github.com/dokson/hedge-fund-tracker";
 
@@ -21,33 +24,29 @@ interface LocalOnlyNoticeProps {
   sample?: SampleStatus | false;
 }
 
-/**
- * The AI features are local-only: this panel says so and sells the three-line
- * install instead of apologising for the gap.
- */
+/** Explain local-only analysis while keeping saved samples clearly labelled. */
 export default function LocalOnlyNotice({ description, sample }: LocalOnlyNoticeProps) {
   return (
-    <section className="frame" aria-labelledby="local-door-title">
-      {/* The status pill is one long nowrap line: on a phone it overflowed the
-          fixed-height title row, so below `sm` the row wraps and the pill wraps
-          with it. */}
-      <div className="frame-title h-auto min-h-9 flex-wrap justify-start gap-y-1 py-1.5 sm:flex-nowrap sm:justify-between sm:py-0">
-        <h2 id="local-door-title" className="text-magenta">
-          Runs locally
-        </h2>
-        {sample && (
-          <span
-            className="chip max-w-full whitespace-normal text-warning sm:whitespace-nowrap"
+    <Panel
+      title="Runs locally"
+      titleId="local-door-title"
+      headerClassName="grid h-auto min-h-9 grid-cols-1 items-start gap-y-1 py-1.5 sm:flex sm:flex-nowrap sm:items-center sm:justify-between sm:py-0"
+      aside={
+        sample && (
+          <StatusChip
             role="status"
+            tone="warning"
+            className="max-w-full whitespace-normal sm:whitespace-nowrap"
           >
             {sample.label}
             {sample.subject && <> · {sample.subject}</>}
             {sample.generatedAt && <> · generated {sample.generatedAt}</>} · not live
-          </span>
-        )}
-      </div>
+          </StatusChip>
+        )
+      }
+    >
       <div className="space-y-3 p-3">
-        <p className="max-w-[64ch] text-[13px] text-muted-foreground">{description}</p>
+        <p className="max-w-[70ch] text-[13px] leading-6 text-muted-foreground">{description}</p>
         {/* Install steps are a desktop instruction: nobody clones a repo from a
             phone, and the commands only cost scroll there. The reason the
             feature is unavailable, and the sample pill above it, stay. */}
@@ -63,16 +62,9 @@ export default function LocalOnlyNotice({ description, sample }: LocalOnlyNotice
         </TableFrame>
         <p className="hidden text-xs text-muted-foreground md:block">
           Bring your own API key; the README lists the supported providers.{" "}
-          <a
-            href={REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary-text hover:underline"
-          >
-            View on GitHub
-          </a>
+          <TextLink href={REPO_URL}>View on GitHub</TextLink>
         </p>
       </div>
-    </section>
+    </Panel>
   );
 }

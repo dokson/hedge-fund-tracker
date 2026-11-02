@@ -9,6 +9,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { MetaLine, MetaSep } from "@/components/ui/TextLink";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { matchesQuery } from "@/lib/utils";
 import {
@@ -118,7 +121,7 @@ function FaqSectionBlock({
         <span className="text-xs text-muted-foreground tabular-nums">{section.items.length}</span>
         <span className="h-px flex-1 bg-border" aria-hidden="true" />
       </div>
-      <div className="frame px-3">
+      <Panel className="px-3">
         <Accordion
           type="multiple"
           value={open}
@@ -161,7 +164,7 @@ function FaqSectionBlock({
             );
           })}
         </Accordion>
-      </div>
+      </Panel>
     </section>
   );
 }
@@ -334,14 +337,12 @@ export default function Learn() {
     // section, the browser clamps the scroll offset before it gets there, so
     // the last entries could never become "active" via anchor nav or the rail.
     <div ref={rootRef} className="space-y-8 max-w-screen-2xl pb-[70vh]">
-      <div className="space-y-2">
-        <h1 className="page-title">{FAQ_META.heading}</h1>
-        <p className="text-sm text-muted-foreground max-w-[64ch]">{FAQ_META.intro}</p>
-        <p className="status-line text-muted-foreground">
-          Board info <span aria-hidden="true">·</span> Reviewed {LAST_UPDATED_LABEL}{" "}
-          <span aria-hidden="true">·</span> Questions {totalQuestions}
-        </p>
-      </div>
+      <PageHeader title={FAQ_META.heading} description={FAQ_META.intro}>
+        <MetaLine>
+          Board info <MetaSep /> Reviewed {LAST_UPDATED_LABEL}
+          <MetaSep /> Questions {totalQuestions}
+        </MetaLine>
+      </PageHeader>
 
       <div className="relative max-w-md">
         <Search

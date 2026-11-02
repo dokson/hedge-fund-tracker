@@ -12,24 +12,16 @@ import {
   type AIModel,
   type ModelProvider,
 } from "@/lib/dataService";
-import {
-  Cpu,
-  CheckCircle2,
-  XCircle,
-  Eye,
-  EyeOff,
-  Trash2,
-  ExternalLink,
-  Shield,
-  Save,
-  Plus,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Cpu, Eye, EyeOff, Trash2, Save, Plus } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/SearchInput";
-import { Label } from "@/components/ui/label";
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Field } from "@/components/ui/Field";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { TextLink } from "@/components/ui/TextLink";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { ROUTES } from "@/lib/routes";
@@ -63,15 +55,12 @@ export default function AISettingsPage() {
   });
 
   return (
-    <div className="space-y-6 max-w-screen-2xl">
-      <div>
-        <h1 className="page-title">
-          <Cpu className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> AI Settings
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1.5">
-          Manage API keys and AI models configuration.
-        </p>
-      </div>
+    <div className="min-w-0 space-y-6 max-w-screen-2xl [&_button]:min-h-10 md:[&_button]:min-h-0 [&_input]:min-h-10 md:[&_input]:min-h-0">
+      <PageHeader
+        title="AI Settings"
+        icon={Cpu}
+        description="Configure provider access and the models available for ranking and due diligence."
+      />
 
       <Tabs defaultValue="keys">
         <TabsList>
@@ -182,60 +171,43 @@ function APIKeysTab() {
 
   return (
     <div className="space-y-5">
-      <div className="text-xs text-muted-foreground space-y-1">
-        <p>
-          Source: <code className="font-mono bg-muted px-1 py-0.5">.env</code>. Keys are read from
-          and written directly to the configuration file on disk.{" "}
-          <span className="text-foreground">This file is not tracked by Git.</span>
-        </p>
-        <p>
-          <Shield className="inline h-3.5 w-3.5 mr-1 text-muted-foreground" aria-hidden="true" />
-          Keys are stored locally and never sent to any server except the AI provider's API.
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Keys are saved to your local <code className="font-mono text-xs">.env</code> file, which is
+        not tracked by Git.
+      </p>
 
       {IS_GH_PAGES_MODE && (
-        <div className="frame text-sm" role="note">
-          <div className="frame-title">
-            <PanelTitle>Read-only mode</PanelTitle>
-          </div>
-          <p className="p-3 text-muted-foreground">
+        <Panel title="Read-only mode" className="text-sm">
+          <p className="p-3 text-muted-foreground" role="note">
             Configuration is disabled in this web demo. To manage API keys and models, run the
             application in your local environment.
           </p>
-        </div>
+        </Panel>
       )}
 
       {/* Provider status overview */}
-      <div className="frame">
-        <div className="frame-title">
-          <h2>Configured providers</h2>
-        </div>
+      <Panel title="Provider access">
         <div className="p-3 space-y-4">
-          <div className="status-line">
-            <span className="k">Available:</span> {configuredCount} / {AI_PROVIDERS.length}
-          </div>
-
-          <div className="space-y-1.5">
+          <p className="text-sm tabular-nums">
+            <span className="metric-label mr-2">Configured</span>
+            {configuredCount} / {AI_PROVIDERS.length}
+          </p>
+          <div className="divide-y divide-border">
             {configuredProviders.map(({ provider, hasKey }) => {
               const models = allModels.filter(
                 (m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id,
               );
               return (
-                <div key={provider.id} className="flex items-center gap-2 text-sm">
-                  {hasKey ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-positive shrink-0" />
-                  ) : (
-                    <XCircle className="h-3.5 w-3.5 icon-faint shrink-0" />
-                  )}
-                  <span className={hasKey ? "text-foreground" : "text-muted-foreground"}>
-                    {provider.name}
-                  </span>
+                <div key={provider.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+                  <span className="min-w-0 flex-1">{provider.name}</span>
                   {hasKey && models.length > 0 && (
-                    <span className="text-xs text-muted-foreground ml-auto">
+                    <span className="text-xs text-muted-foreground tabular-nums">
                       {models.length} model{models.length > 1 ? "s" : ""}
                     </span>
                   )}
+                  <StatusChip tone={hasKey ? "positive" : "warning"}>
+                    {hasKey ? "Configured" : "Missing key"}
+                  </StatusChip>
                 </div>
               );
             })}
@@ -251,11 +223,11 @@ function APIKeysTab() {
             Each AI page lets you select which model to use from the available providers.
           </p>
         </div>
-      </div>
+      </Panel>
 
       {/* Delete API Key Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto break-words sm:max-w-md [&_button]:min-h-10">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <Trash2 className="h-5 w-5" aria-hidden="true" /> Remove API Key
@@ -295,103 +267,107 @@ function APIKeysTab() {
           const draft = drafts[provider.id] || "";
 
           return (
-            <div key={provider.id} className="frame">
-              <div className="frame-title">
-                <PanelTitle level={3} className="flex items-center gap-2">
-                  {hasKey ? (
-                    <CheckCircle2 className="h-4 w-4 text-positive" aria-hidden="true" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  )}
-                  {provider.name}
-                </PanelTitle>
-                <a
-                  href={provider.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-normal text-primary-text hover:underline flex items-center gap-1"
-                >
-                  Get key <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                </a>
-              </div>
+            <Panel
+              key={provider.id}
+              title={provider.name}
+              level={3}
+              headerClassName="h-auto min-h-11 flex-wrap py-2"
+              aside={
+                <>
+                  <StatusChip tone={hasKey ? "positive" : "warning"}>
+                    {hasKey ? "Configured" : "Missing key"}
+                  </StatusChip>
+                  <TextLink
+                    href={provider.link}
+                    arrow
+                    className="min-h-10 text-xs font-normal md:min-h-0"
+                  >
+                    Get key
+                  </TextLink>
+                </>
+              }
+            >
               <div className="p-3 space-y-3">
-                <code className="inline-block text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5">
-                  {provider.envKey}
-                </code>
+                <Field label={`${provider.name} API key`} htmlFor={`api-key-${provider.id}`}>
+                  <code className="break-all text-xs font-mono text-muted-foreground">
+                    {provider.envKey}
+                  </code>
+                  <div className="flex gap-2">
+                    <div className="relative min-w-0 flex-1">
+                      <Input
+                        id={`api-key-${provider.id}`}
+                        type={isVisible ? "text" : "password"}
+                        value={
+                          hasKey
+                            ? isVisible
+                              ? envKeys[provider.envKey] || ""
+                              : "••••••••••••"
+                            : draft
+                        }
+                        onChange={
+                          hasKey
+                            ? undefined
+                            : (e) =>
+                                setDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))
+                        }
+                        placeholder={hasKey ? "" : provider.hint}
+                        aria-label={`${provider.name} API key`}
+                        className="h-10 pr-11 font-mono text-xs"
+                        autoComplete="off"
+                        spellCheck={false}
+                        readOnly={hasKey}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleVisibility(provider.id)}
+                        aria-label={isVisible ? "Hide API key" : "Show API key"}
+                        className="absolute right-0 top-0 h-10 w-10 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
 
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      type={isVisible ? "text" : "password"}
-                      value={
-                        hasKey
-                          ? isVisible
-                            ? envKeys[provider.envKey] || ""
-                            : "••••••••••••"
-                          : draft
-                      }
-                      onChange={
-                        hasKey
-                          ? undefined
-                          : (e) => setDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))
-                      }
-                      placeholder={hasKey ? "" : provider.hint}
-                      aria-label={`${provider.name} API key`}
-                      className="pr-10 font-mono text-xs"
-                      autoComplete="off"
-                      spellCheck={false}
-                      readOnly={hasKey}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => toggleVisibility(provider.id)}
-                      aria-label={isVisible ? "Hide API key" : "Show API key"}
-                      className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                    {hasKey ? (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleDeleteRequest(provider)}
+                        title="Remove key"
+                        aria-label={`Remove ${provider.name} key`}
+                        className="h-10 w-10 shrink-0 text-negative hover:text-negative"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant={draft.trim() ? "default" : "outline"}
+                        size="icon"
+                        onClick={() => handleSave(provider)}
+                        title="Save key"
+                        aria-label={`Save ${provider.name} key`}
+                        className="h-10 w-10 shrink-0"
+                        disabled={!draft.trim()}
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-
-                  {hasKey ? (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDeleteRequest(provider)}
-                      title="Remove key"
-                      aria-label={`Remove ${provider.name} key`}
-                      className="shrink-0 text-negative hover:text-negative"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button
-                      variant={draft.trim() ? "default" : "outline"}
-                      size="icon"
-                      onClick={() => handleSave(provider)}
-                      title="Save key"
-                      aria-label={`Save ${provider.name} key`}
-                      className="shrink-0"
-                      disabled={!draft.trim()}
-                    >
-                      <Save className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                </Field>
 
                 {hasKey && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    <span className="text-xs text-muted-foreground mr-1">Models:</span>
+                  <div className="space-y-1 pt-1">
+                    <p className="metric-label">Available models</p>
                     {allModels
                       .filter((m) => CLIENT_TO_PROVIDER_ID[m.client] === provider.id)
                       .map((m) => (
-                        <Badge key={m.id} variant="secondary">
+                        <p key={m.id} className="break-words text-xs text-muted-foreground">
                           {m.description}
-                        </Badge>
+                        </p>
                       ))}
                   </div>
                 )}
               </div>
-            </div>
+            </Panel>
           );
         })}
       </div>
@@ -481,15 +457,15 @@ function ModelsTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <SearchInput
           label="Search model, provider"
           size="sm"
           value={modelSearch}
           onChange={(e) => setModelSearch(e.target.value)}
-          wrapperClassName="flex-1 max-w-sm"
+          wrapperClassName="min-w-0 flex-1 basis-full sm:basis-auto sm:max-w-sm"
         />
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground tabular-nums">
           {filteredModels.length} / {models.length} models
         </span>
         <Button
@@ -514,30 +490,32 @@ function ModelsTab() {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading models…
         </div>
       ) : models.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground text-sm">
-          No models configured. Add one to get started.
-        </div>
+        <EmptyState padding="sm" title="No models configured. Add one to get started." />
+      ) : filteredModels.length === 0 ? (
+        <EmptyState padding="sm" title="No models match your search." />
       ) : (
         <div className="space-y-4">
           {[...modelsByClient.entries()].map(([client, clientModels]) => (
-            <div key={client} className="frame">
-              <div className="frame-title">
-                <h2>{displayName(client)}</h2>
-                <span className="text-xs font-normal text-muted-foreground">
+            <Panel
+              key={client}
+              title={displayName(client)}
+              aside={
+                <span className="tabular-nums">
                   {clientModels.length} model{clientModels.length !== 1 ? "s" : ""}
                 </span>
-              </div>
-              <div className="divide-y divide-border/60">
+              }
+            >
+              <div className="divide-y divide-border">
                 {clientModels.map((m) => (
-                  <div key={m.id} className="px-4 py-2 flex items-center justify-between group">
-                    <div className="min-w-0">
-                      <span className="text-sm font-medium">{m.description}</span>
-                      <span className="text-xs text-muted-foreground font-mono ml-2">{m.id}</span>
+                  <div key={m.id} className="flex items-start justify-between gap-3 px-3 py-3">
+                    <div className="min-w-0 space-y-1">
+                      <p className="break-words text-sm font-medium">{m.description}</p>
+                      <p className="break-all text-xs text-muted-foreground font-mono">{m.id}</p>
                     </div>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity text-negative hover:text-negative hover:bg-negative/10 shrink-0"
+                      className="h-10 w-10 shrink-0 text-negative hover:text-negative md:h-8 md:w-8"
                       onClick={() => {
                         setModelToDelete(m);
                         setDeleteDialogOpen(true);
@@ -550,14 +528,14 @@ function ModelsTab() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Panel>
           ))}
         </div>
       )}
 
       {/* Add Model Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto sm:max-w-md [&_button]:min-h-10 [&_input]:min-h-10">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" aria-hidden="true" /> Add AI Model
@@ -565,15 +543,14 @@ function ModelsTab() {
             <DialogDescription>Add a new model to the configuration.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="model-provider">Provider</Label>
+            <Field label="Provider" htmlFor="model-provider">
               <Select
                 value={newModelProvider}
                 onValueChange={(v) => {
                   if (isModelProvider(v)) setNewModelProvider(v);
                 }}
               >
-                <SelectTrigger id="model-provider" className="bg-card">
+                <SelectTrigger id="model-provider" className="min-h-10 bg-card">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -584,9 +561,8 @@ function ModelsTab() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="model-id">Model ID</Label>
+            </Field>
+            <Field label="Model ID" htmlFor="model-id">
               <Input
                 id="model-id"
                 placeholder="e.g. xai/grok-3-mini"
@@ -594,16 +570,15 @@ function ModelsTab() {
                 onChange={(e) => setNewModelId(e.target.value)}
                 className="font-mono text-sm"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="model-desc">Description</Label>
+            </Field>
+            <Field label="Description" htmlFor="model-desc">
               <Input
                 id="model-desc"
                 placeholder="e.g. Grok-3 Mini (best)"
                 value={newModelDesc}
                 onChange={(e) => setNewModelDesc(e.target.value)}
               />
-            </div>
+            </Field>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
@@ -618,7 +593,7 @@ function ModelsTab() {
 
       {/* Delete Model Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto break-words sm:max-w-md [&_button]:min-h-10">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <Trash2 className="h-5 w-5" aria-hidden="true" /> Remove AI Model
@@ -635,7 +610,7 @@ function ModelsTab() {
               </div>
               <div>
                 <span className="text-muted-foreground">ID:</span>{" "}
-                <span className="font-mono text-xs">{modelToDelete?.id}</span>
+                <span className="break-all font-mono text-xs">{modelToDelete?.id}</span>
               </div>
               <div>
                 <span className="text-muted-foreground">Provider:</span>{" "}

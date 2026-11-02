@@ -29,8 +29,14 @@ import { StarButton } from "@/components/StarButton";
 import { SmartScoreBadge } from "@/components/SmartScoreBadge";
 import { TickerLink } from "@/components/EntityLinks";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { LogoPlate } from "@/components/LogoPlate";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { FaqLink } from "@/components/ui/TextLink";
+import { ResponsiveTable } from "@/components/ui/ResponsiveTable";
 import { matchesQuery } from "@/lib/utils";
-import { learnItem, stockPath } from "@/lib/routes";
+import { stockPath } from "@/lib/routes";
+import { toneClass } from "@/lib/tone";
 import { canonicalUrl } from "@/lib/seo";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { STOCKS_PAGE } from "@/lib/pageMeta";
@@ -64,10 +70,7 @@ function AnalysisRowsSkeleton({
   desktop?: boolean;
 }) {
   return (
-    <div
-      aria-hidden="true"
-      className={`h-[70vh] overflow-hidden ${desktop ? "hidden md:block" : "md:hidden pr-1"}`}
-    >
+    <div aria-hidden="true" className={`h-[70vh] overflow-hidden ${desktop ? "" : "pr-1"}`}>
       {Array.from({ length: 16 }, (_, row) =>
         desktop ? (
           <div
@@ -172,7 +175,7 @@ function ValueStockCard({
           <span className="k">Value:</span> {formatValue(stock.totalValue)}
         </span>
         <span aria-hidden="true">·</span>
-        <span className={isPositiveDelta ? "delta-positive" : "delta-negative"}>
+        <span className={toneClass(stock.totalDeltaValue)}>
           <span className="k">Position Δ $:</span> {isPositiveDelta ? "+" : "−"}
           {formatValue(Math.abs(stock.totalDeltaValue))}
         </span>
@@ -514,12 +517,10 @@ export default function StockBrowser() {
 
   return (
     <div className="w-full min-w-0 space-y-6 max-w-screen-2xl">
-      <div>
-        <h1 className="page-title">Stocks</h1>
-        <p className="text-sm text-muted-foreground mt-1.5">
-          Browse {uniqueStocks.length.toLocaleString()} tracked securities
-        </p>
-      </div>
+      <PageHeader
+        title="Stocks"
+        description={`Browse ${uniqueStocks.length.toLocaleString()} tracked securities`}
+      />
 
       <Tabs value={selectedTab} onValueChange={switchToTab} className="min-w-0 space-y-4">
         <div className="w-full min-w-0 overflow-x-auto">
@@ -564,7 +565,9 @@ export default function StockBrowser() {
                   className={`${STRETCHED_CARD} bg-card py-2.5 px-3 hover:bg-muted/60`}
                 >
                   <div className="flex items-center gap-3">
-                    <CompanyLogo ticker={stock.ticker} size={28} />
+                    <LogoPlate>
+                      <CompanyLogo ticker={stock.ticker} size={24} />
+                    </LogoPlate>
                     <div className="flex flex-col min-w-0 leading-tight flex-1">
                       <Link
                         to={stockPath(stock.ticker)}
@@ -684,7 +687,9 @@ export default function StockBrowser() {
                         className={`${STRETCHED_CARD} bg-card py-2.5 px-3 hover:bg-muted/60`}
                       >
                         <div className="flex items-center gap-3">
-                          <CompanyLogo ticker={stock.ticker} size={28} />
+                          <LogoPlate>
+                            <CompanyLogo ticker={stock.ticker} size={24} />
+                          </LogoPlate>
                           <div className="flex flex-col min-w-0 leading-tight flex-1">
                             <Link
                               to={stockPath(stock.ticker)}
@@ -733,12 +738,9 @@ export default function StockBrowser() {
                       ? "Loading stocks"
                       : `${scoreRanked.length.toLocaleString()} stocks`}{" "}
                     · {latestQuarter?.replace("Q", " Q") ?? ""} ·{" "}
-                    <Link
-                      to={learnItem("what-is-smart-score")}
-                      className="inline-flex min-h-6 items-center text-primary-text hover:underline"
-                    >
+                    <FaqLink item="what-is-smart-score" className="min-h-6">
                       How is the score calculated?
-                    </Link>
+                    </FaqLink>
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -751,140 +753,148 @@ export default function StockBrowser() {
                     Loading Smart Score…
                   </span>
                 )}
-                {scoreLoading ? (
-                  <AnalysisRowsSkeleton kind="score" />
-                ) : !analysisReady ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    No quarter data available.
-                  </p>
-                ) : (
-                  <VirtualList
-                    scrollKey="score-mobile"
-                    className="md:hidden max-h-[70vh] pr-1"
-                    items={scoreRanked}
-                    estimateSize={92}
-                    getKey={(s) => s.ticker}
-                    renderItem={(s, i) => (
-                      <div className="pb-3">
-                        <div
-                          className={`${STRETCHED_CARD} border-b border-border py-2 hover:bg-muted/60`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <RankBadge rank={i + 1} />
-                              <TickerLink
-                                ticker={s.ticker}
-                                className={STRETCHED_LINK}
-                                title={s.company}
-                              />
+                <ResponsiveTable
+                  label="Stocks ranked by Smart Score"
+                  tableClassName="surface"
+                  cards={
+                    <>
+                      {scoreLoading ? (
+                        <AnalysisRowsSkeleton kind="score" />
+                      ) : !analysisReady ? (
+                        <p className="text-center text-muted-foreground py-8">
+                          No quarter data available.
+                        </p>
+                      ) : (
+                        <VirtualList
+                          scrollKey="score-mobile"
+                          className="max-h-[70vh] pr-1"
+                          items={scoreRanked}
+                          estimateSize={92}
+                          getKey={(s) => s.ticker}
+                          renderItem={(s, i) => (
+                            <div className="pb-3">
+                              <div
+                                className={`${STRETCHED_CARD} border-b border-border py-2 hover:bg-muted/60`}
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <RankBadge rank={i + 1} />
+                                    <TickerLink
+                                      ticker={s.ticker}
+                                      className={STRETCHED_LINK}
+                                      title={s.company}
+                                    />
+                                  </div>
+                                  <span className={ABOVE_STRETCHED_LINK}>
+                                    <SmartScoreBadge score={s.smartScore ?? 1} size="sm" />
+                                  </span>
+                                </div>
+                                <div className="company-link cursor-default mt-1 text-sm">
+                                  {s.company}
+                                </div>
+                                <div className="mt-2 space-y-1">
+                                  <PercentileBar label="Breadth" value={s.scoreBreadth ?? null} />
+                                  <PercentileBar label="Momentum" value={s.scoreMomentum ?? null} />
+                                  <PercentileBar
+                                    label="Conviction"
+                                    value={s.scoreConviction ?? null}
+                                  />
+                                </div>
+                              </div>
                             </div>
-                            <span className={ABOVE_STRETCHED_LINK}>
-                              <SmartScoreBadge score={s.smartScore ?? 1} size="sm" />
-                            </span>
-                          </div>
-                          <div className="company-link cursor-default mt-1 text-sm">
-                            {s.company}
-                          </div>
-                          <div className="mt-2 space-y-1">
-                            <PercentileBar label="Breadth" value={s.scoreBreadth ?? null} />
-                            <PercentileBar label="Momentum" value={s.scoreMomentum ?? null} />
-                            <PercentileBar label="Conviction" value={s.scoreConviction ?? null} />
-                          </div>
-                        </div>
+                          )}
+                        />
+                      )}
+                    </>
+                  }
+                  table={
+                    <div>
+                      <div className={`${SCORE_GRID_COLS} ${GRID_HEADER_CLASS}`}>
+                        <span className="text-left p-3">#</span>
+                        <span className="text-left p-3">Ticker</span>
+                        <span className="text-left p-3">Company</span>
+                        <span className="text-right p-3 pr-4">
+                          <span className="inline-flex items-center justify-end gap-1 whitespace-nowrap">
+                            Smart Score
+                            <InfoTooltip text="Equal-weight blend of Breadth, Momentum and Conviction, rescaled to 1–10. Latest-quarter source data may include saved non-quarterly disclosures; coverage depends on the analysis source. Not a forecast." />
+                          </span>
+                        </span>
+                        <span className="text-left p-3 pl-4">
+                          <span className="inline-flex items-center gap-1">
+                            Breadth
+                            <InfoTooltip text="Percentile rank of how many tracked funds hold the stock (Holder Count) — 0 to 100." />
+                          </span>
+                        </span>
+                        <span className="text-left p-3 pl-4">
+                          <span className="inline-flex items-center gap-1">
+                            Momentum
+                            <InfoTooltip text="Percentile rank of net fund buyers (increasing funds minus reducing funds) — 0 to 100. This is fund activity, not price momentum." />
+                          </span>
+                        </span>
+                        <span className="text-left p-3 pl-4">
+                          <span className="inline-flex items-center gap-1">
+                            Conviction
+                            <InfoTooltip text="Percentile rank of average portfolio allocation across holders (Avg Portfolio %), plus a capped bonus per high-conviction new entry — 0 to 100." />
+                          </span>
+                        </span>
                       </div>
-                    )}
-                  />
-                )}
-
-                <div
-                  className="surface hidden md:block"
-                  role="region"
-                  aria-label="Stocks ranked by Smart Score"
-                >
-                  <div className={`${SCORE_GRID_COLS} ${GRID_HEADER_CLASS}`}>
-                    <span className="text-left p-3">#</span>
-                    <span className="text-left p-3">Ticker</span>
-                    <span className="text-left p-3">Company</span>
-                    <span className="text-right p-3 pr-4">
-                      <span className="inline-flex items-center justify-end gap-1 whitespace-nowrap">
-                        Smart Score
-                        <InfoTooltip text="Equal-weight blend of Breadth, Momentum and Conviction, rescaled to 1–10. Latest-quarter source data may include saved non-quarterly disclosures; coverage depends on the analysis source. Not a forecast." />
-                      </span>
-                    </span>
-                    <span className="text-left p-3 pl-4">
-                      <span className="inline-flex items-center gap-1">
-                        Breadth
-                        <InfoTooltip text="Percentile rank of how many tracked funds hold the stock (Holder Count) — 0 to 100." />
-                      </span>
-                    </span>
-                    <span className="text-left p-3 pl-4">
-                      <span className="inline-flex items-center gap-1">
-                        Momentum
-                        <InfoTooltip text="Percentile rank of net fund buyers (increasing funds minus reducing funds) — 0 to 100. This is fund activity, not price momentum." />
-                      </span>
-                    </span>
-                    <span className="text-left p-3 pl-4">
-                      <span className="inline-flex items-center gap-1">
-                        Conviction
-                        <InfoTooltip text="Percentile rank of average portfolio allocation across holders (Avg Portfolio %), plus a capped bonus per high-conviction new entry — 0 to 100." />
-                      </span>
-                    </span>
-                  </div>
-                  {scoreLoading ? (
-                    <AnalysisRowsSkeleton kind="score" desktop />
-                  ) : (
-                    analysisReady && (
-                      <VirtualList
-                        scrollKey="score-desktop"
-                        className="max-h-[70vh]"
-                        items={scoreRanked}
-                        estimateSize={45}
-                        getKey={(s) => s.ticker}
-                        renderItem={(s, i) => (
-                          <div
-                            className={`${STRETCHED_CARD} data-table-row text-sm ${SCORE_GRID_COLS} items-center`}
-                          >
-                            <span className="p-3 flex items-center">
-                              <RankBadge rank={i + 1} />
-                            </span>
-                            <span className="p-3">
-                              <TickerLink
-                                ticker={s.ticker}
-                                className={STRETCHED_LINK}
-                                title={s.company}
-                              />
-                            </span>
-                            <span className="p-3 inline-flex items-center gap-2 min-w-0">
-                              <StarButton
-                                active={isStarred(s.ticker)}
-                                onClick={() => toggleStar(s.ticker)}
-                                size={24}
-                                className={ABOVE_STRETCHED_LINK}
-                              />
-                              <span className="company-link cursor-default truncate">
-                                {s.company}
-                              </span>
-                            </span>
-                            <span className="p-3 text-right">
-                              <span className={ABOVE_STRETCHED_LINK}>
-                                <SmartScoreBadge score={s.smartScore ?? 1} size="sm" />
-                              </span>
-                            </span>
-                            <span className="p-3">
-                              <PercentileBar value={s.scoreBreadth ?? null} />
-                            </span>
-                            <span className="p-3">
-                              <PercentileBar value={s.scoreMomentum ?? null} />
-                            </span>
-                            <span className="p-3">
-                              <PercentileBar value={s.scoreConviction ?? null} />
-                            </span>
-                          </div>
-                        )}
-                      />
-                    )
-                  )}
-                </div>
+                      {scoreLoading ? (
+                        <AnalysisRowsSkeleton kind="score" desktop />
+                      ) : (
+                        analysisReady && (
+                          <VirtualList
+                            scrollKey="score-desktop"
+                            className="max-h-[70vh]"
+                            items={scoreRanked}
+                            estimateSize={45}
+                            getKey={(s) => s.ticker}
+                            renderItem={(s, i) => (
+                              <div
+                                className={`${STRETCHED_CARD} data-table-row text-sm ${SCORE_GRID_COLS} items-center`}
+                              >
+                                <span className="p-3 flex items-center">
+                                  <RankBadge rank={i + 1} />
+                                </span>
+                                <span className="p-3">
+                                  <TickerLink
+                                    ticker={s.ticker}
+                                    className={STRETCHED_LINK}
+                                    title={s.company}
+                                  />
+                                </span>
+                                <span className="p-3 inline-flex items-center gap-2 min-w-0">
+                                  <StarButton
+                                    active={isStarred(s.ticker)}
+                                    onClick={() => toggleStar(s.ticker)}
+                                    size={24}
+                                    className={ABOVE_STRETCHED_LINK}
+                                  />
+                                  <span className="company-link cursor-default truncate">
+                                    {s.company}
+                                  </span>
+                                </span>
+                                <span className="p-3 text-right">
+                                  <span className={ABOVE_STRETCHED_LINK}>
+                                    <SmartScoreBadge score={s.smartScore ?? 1} size="sm" />
+                                  </span>
+                                </span>
+                                <span className="p-3">
+                                  <PercentileBar value={s.scoreBreadth ?? null} />
+                                </span>
+                                <span className="p-3">
+                                  <PercentileBar value={s.scoreMomentum ?? null} />
+                                </span>
+                                <span className="p-3">
+                                  <PercentileBar value={s.scoreConviction ?? null} />
+                                </span>
+                              </div>
+                            )}
+                          />
+                        )
+                      )}
+                    </div>
+                  }
+                />
               </>
             )
           )}
@@ -918,8 +928,7 @@ export default function StockBrowser() {
                 </div>
               )}
               {analysisReady && heatmapData.length > 0 && !industryFilter && !sectorFilter && (
-                <div className="frame">
-                  <h2 className="frame-title">Top 20 by Institutional Value</h2>
+                <Panel title="Top 20 by Institutional Value">
                   <div className="p-3">
                     <HoldingsTreemap
                       data={heatmapData}
@@ -927,7 +936,7 @@ export default function StockBrowser() {
                       height={300}
                     />
                   </div>
-                </div>
+                </Panel>
               )}
               <div className="flex flex-col sm:flex-row gap-4 items-start justify-between">
                 <SearchInput
@@ -946,177 +955,179 @@ export default function StockBrowser() {
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
                 Position changes at reporting prices, not trading cash or investment returns.{" "}
-                <Link
-                  to={learnItem("what-is-smart-score")}
-                  className="inline-flex min-h-6 items-center text-primary-text hover:underline"
-                >
+                <FaqLink item="what-is-smart-score" className="min-h-6">
                   Score methodology
-                </Link>
+                </FaqLink>
               </p>
 
               {quarterIsError ? (
                 <QueryState isError error={quarterError} title="Could not load quarter data" />
               ) : analysisLoading ? (
-                <>
+                <div>
                   <span role="status" className="sr-only">
                     Loading institutional values…
                   </span>
-                  <AnalysisRowsSkeleton kind="value" />
-                  <div className="surface hidden md:block">
-                    <div
-                      aria-hidden="true"
-                      className={`${VALUE_GRID_COLS} ${GRID_HEADER_CLASS} h-[57px]`}
-                    >
-                      {[
-                        "#",
-                        "Ticker",
-                        "Company",
-                        "Total Value",
-                        "Position Δ $",
-                        "Funds",
-                        "Smart Score",
-                        "Relative Size",
-                      ].map((label) => (
-                        <span key={label} className="p-3">
-                          {label}
-                        </span>
-                      ))}
-                    </div>
-                    <AnalysisRowsSkeleton kind="value" desktop />
-                  </div>
-                </>
+                  <ResponsiveTable
+                    label="Loading stocks ranked by institutional value"
+                    tableClassName="surface"
+                    cards={<AnalysisRowsSkeleton kind="value" />}
+                    table={
+                      <div>
+                        <div
+                          aria-hidden="true"
+                          className={`${VALUE_GRID_COLS} ${GRID_HEADER_CLASS} h-[57px]`}
+                        >
+                          {[
+                            "#",
+                            "Ticker",
+                            "Company",
+                            "Total Value",
+                            "Position Δ $",
+                            "Funds",
+                            "Smart Score",
+                            "Relative Size",
+                          ].map((label) => (
+                            <span key={label} className="p-3">
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                        <AnalysisRowsSkeleton kind="value" desktop />
+                      </div>
+                    }
+                  />
+                </div>
               ) : !analysisReady || valueRanked.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">No data available.</p>
               ) : (
-                <>
-                  {/* Mobile: windowed card list */}
-                  <VirtualList
-                    scrollKey="value-mobile"
-                    className="md:hidden max-h-[70vh] pr-1"
-                    items={valueRanked}
-                    estimateSize={92}
-                    getKey={(stock) => stock.ticker}
-                    renderItem={(stock, i) => (
-                      <div className="pb-3">
-                        <ValueStockCard
-                          stock={stock}
-                          rank={i + 1}
-                          smartScore={stock.smartScore}
-                          maxValue={maxValue}
-                          starred={isStarred(stock.ticker)}
-                          onToggleStar={() => toggleStar(stock.ticker)}
-                        />
-                      </div>
-                    )}
-                  />
-
-                  {/* Header stays outside the scroll area. */}
-                  <div
-                    className="surface hidden md:block"
-                    role="region"
-                    aria-label="Stocks ranked by institutional value"
-                  >
-                    <div className={`${VALUE_GRID_COLS} ${GRID_HEADER_CLASS}`}>
-                      <span className="text-left p-3">#</span>
-                      <span className="text-left p-3">Ticker</span>
-                      <span className="text-left p-3">Company</span>
-                      {(
-                        [
-                          ["totalValue", "Total Value", undefined],
-                          ["totalDeltaValue", "Position Δ $", undefined],
-                          ["holderCount", "Funds", undefined],
-                          [
-                            "smartScore",
-                            "Smart Score",
-                            "Relative institutional screen (1–10), not a return forecast. One-decimal ties are ordered by the unrounded component mean.",
-                          ],
-                        ] as const
-                      ).map(([key, label, title]) => (
-                        <span
-                          key={key}
-
-                          className="text-right p-0"
-                        >
-                          <button
-                            type="button"
-                            className="w-full p-3 text-right whitespace-nowrap hover:text-foreground hover:bg-muted/60"
-                            onClick={() => toggleValueSort(key)}
-                            title={title}
-                          >
-                            {label}
-                            <SortArrow active={valueSortKey === key} direction={valueSortDir} />
-                          </button>
-                        </span>
-                      ))}
-                      <span className="p-3">Relative Size</span>
-                    </div>
+                <ResponsiveTable
+                  label="Stocks ranked by institutional value"
+                  tableClassName="surface"
+                  cards={
                     <VirtualList
-                      scrollKey="value-desktop"
-                      className="max-h-[70vh]"
+                      scrollKey="value-mobile"
+                      className="max-h-[70vh] pr-1"
                       items={valueRanked}
-                      estimateSize={45}
+                      estimateSize={92}
                       getKey={(stock) => stock.ticker}
-                      renderItem={(stock, i) => {
-                        const barPct = (stock.totalValue / maxValue) * 100;
-                        const isPositiveDelta = stock.totalDeltaValue >= 0;
-                        return (
-                          <div
-                            className={`${STRETCHED_CARD} data-table-row text-sm ${VALUE_GRID_COLS} items-center`}
+                      renderItem={(stock, i) => (
+                        <div className="pb-3">
+                          <ValueStockCard
+                            stock={stock}
+                            rank={i + 1}
+                            smartScore={stock.smartScore}
+                            maxValue={maxValue}
+                            starred={isStarred(stock.ticker)}
+                            onToggleStar={() => toggleStar(stock.ticker)}
+                          />
+                        </div>
+                      )}
+                    />
+                  }
+                  table={
+                    <div>
+                      <div className={`${VALUE_GRID_COLS} ${GRID_HEADER_CLASS}`}>
+                        <span className="text-left p-3">#</span>
+                        <span className="text-left p-3">Ticker</span>
+                        <span className="text-left p-3">Company</span>
+                        {(
+                          [
+                            ["totalValue", "Total Value", undefined],
+                            ["totalDeltaValue", "Position Δ $", undefined],
+                            ["holderCount", "Funds", undefined],
+                            [
+                              "smartScore",
+                              "Smart Score",
+                              "Relative institutional screen (1–10), not a return forecast. One-decimal ties are ordered by the unrounded component mean.",
+                            ],
+                          ] as const
+                        ).map(([key, label, title]) => (
+                          <span
+                            key={key}
+
+                            className="text-right p-0"
                           >
-                            <span className="p-3 text-xs tabular-nums text-muted-foreground">
-                              {i + 1}
-                            </span>
-                            <span className="p-3">
-                              <TickerLink
-                                ticker={stock.ticker}
-                                className={STRETCHED_LINK}
-                                title={stock.company}
-                              />
-                            </span>
-                            <span className="p-3 inline-flex items-center gap-2 min-w-0">
-                              <StarButton
-                                active={isStarred(stock.ticker)}
-                                onClick={() => toggleStar(stock.ticker)}
-                                size={24}
-                                className={ABOVE_STRETCHED_LINK}
-                              />
-                              <span className="company-link cursor-default truncate">
-                                {stock.company}
-                              </span>
-                            </span>
-                            <span className="p-3 text-right font-mono">
-                              {formatValue(stock.totalValue)}
-                            </span>
-                            <span
-                              className={`p-3 text-right font-mono text-xs ${isPositiveDelta ? "delta-positive" : "delta-negative"}`}
+                            <button
+                              type="button"
+                              className="w-full p-3 text-right whitespace-nowrap hover:text-foreground hover:bg-muted/60"
+                              onClick={() => toggleValueSort(key)}
+                              title={title}
                             >
-                              {isPositiveDelta ? "+" : "−"}
-                              {formatValue(Math.abs(stock.totalDeltaValue))}
-                            </span>
-                            <span className="p-3 text-right font-mono text-xs text-muted-foreground">
-                              {stock.holderCount}
-                            </span>
-                            <span className="p-3 text-right font-mono text-xs">
-                              {stock.smartScore !== undefined ? (
-                                <SmartScoreBadge score={stock.smartScore} />
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </span>
-                            <span className="p-3" aria-hidden="true">
-                              <span className="block h-1 rounded-sm bg-muted overflow-hidden">
-                                <span
-                                  className="block h-full bg-primary"
-                                  style={{ width: `${barPct}%` }}
+                              {label}
+                              <SortArrow active={valueSortKey === key} direction={valueSortDir} />
+                            </button>
+                          </span>
+                        ))}
+                        <span className="p-3">Relative Size</span>
+                      </div>
+                      <VirtualList
+                        scrollKey="value-desktop"
+                        className="max-h-[70vh]"
+                        items={valueRanked}
+                        estimateSize={45}
+                        getKey={(stock) => stock.ticker}
+                        renderItem={(stock, i) => {
+                          const barPct = (stock.totalValue / maxValue) * 100;
+                          const isPositiveDelta = stock.totalDeltaValue >= 0;
+                          return (
+                            <div
+                              className={`${STRETCHED_CARD} data-table-row text-sm ${VALUE_GRID_COLS} items-center`}
+                            >
+                              <span className="p-3 text-xs tabular-nums text-muted-foreground">
+                                {i + 1}
+                              </span>
+                              <span className="p-3">
+                                <TickerLink
+                                  ticker={stock.ticker}
+                                  className={STRETCHED_LINK}
+                                  title={stock.company}
                                 />
                               </span>
-                            </span>
-                          </div>
-                        );
-                      }}
-                    />
-                  </div>
-                </>
+                              <span className="p-3 inline-flex items-center gap-2 min-w-0">
+                                <StarButton
+                                  active={isStarred(stock.ticker)}
+                                  onClick={() => toggleStar(stock.ticker)}
+                                  size={24}
+                                  className={ABOVE_STRETCHED_LINK}
+                                />
+                                <span className="company-link cursor-default truncate">
+                                  {stock.company}
+                                </span>
+                              </span>
+                              <span className="p-3 text-right font-mono">
+                                {formatValue(stock.totalValue)}
+                              </span>
+                              <span
+                                className={`p-3 text-right font-mono text-xs ${toneClass(stock.totalDeltaValue)}`}
+                              >
+                                {isPositiveDelta ? "+" : "−"}
+                                {formatValue(Math.abs(stock.totalDeltaValue))}
+                              </span>
+                              <span className="p-3 text-right font-mono text-xs text-muted-foreground">
+                                {stock.holderCount}
+                              </span>
+                              <span className="p-3 text-right font-mono text-xs">
+                                {stock.smartScore !== undefined ? (
+                                  <SmartScoreBadge score={stock.smartScore} />
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </span>
+                              <span className="p-3" aria-hidden="true">
+                                <span className="block h-1 rounded-sm bg-muted overflow-hidden">
+                                  <span
+                                    className="block h-full bg-primary"
+                                    style={{ width: `${barPct}%` }}
+                                  />
+                                </span>
+                              </span>
+                            </div>
+                          );
+                        }}
+                      />
+                    </div>
+                  }
+                />
               )}
             </>
           )}

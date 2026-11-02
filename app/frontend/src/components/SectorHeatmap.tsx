@@ -4,7 +4,7 @@ import { getStocks } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useQuarterAnalysis } from "@/hooks/useQuarterAnalysis";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Panel } from "@/components/ui/Panel";
 import { QueryState } from "@/components/ui/QueryState";
 import { Loader2, Info } from "lucide-react";
 
@@ -100,10 +100,7 @@ export default function SectorHeatmap({
   }
 
   return (
-    <div className="frame">
-      <div className="frame-title">
-        <PanelTitle>Institutional value by sector</PanelTitle>
-      </div>
+    <Panel title="Institutional value by sector">
       <div className="p-3">
         <HoldingsTreemap
           data={sectorHeatmapData}
@@ -111,6 +108,6 @@ export default function SectorHeatmap({
           height={350}
         />
       </div>
-    </div>
+    </Panel>
   );
 }

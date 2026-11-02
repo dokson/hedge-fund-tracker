@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight, Loader2, Search } from "lucide-react";
 import { getSectorHierarchy } from "@/lib/dataService";
 import { matchesQuery } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Panel } from "@/components/ui/Panel";
 import { getSectorStyle } from "@/lib/sectorStyle";
 import { getIndustryIcon } from "@/lib/industryIcon";
 
@@ -58,9 +58,9 @@ export default function YFinanceClassificationTreeVisual({ onSelectIndustry }: P
   const isExpanded = (sector: string) => expanded.has(sector) || query.trim().length > 0;
 
   return (
-    <div className="frame">
-      <div className="frame-title">
-        <PanelTitle>Yahoo Finance Classification</PanelTitle>
+    <Panel
+      title="Yahoo Finance Classification"
+      aside={
         <div className="relative w-56">
           <Search
             className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground"
@@ -74,8 +74,9 @@ export default function YFinanceClassificationTreeVisual({ onSelectIndustry }: P
             className="pl-8 h-7 text-xs font-normal"
           />
         </div>
-      </div>
-
+      }
+      className="overflow-visible"
+    >
       <ul className="p-3 space-y-1">
         {grouped.length === 0 && <li className="text-xs text-muted-foreground">No matches.</li>}
         {grouped.map(({ sector, industries }) => {
@@ -147,6 +148,6 @@ export default function YFinanceClassificationTreeVisual({ onSelectIndustry }: P
           );
         })}
       </ul>
-    </div>
+    </Panel>
   );
 }

@@ -6,7 +6,11 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import GlobalSearch from "@/components/GlobalSearch";
 import { FundLogo } from "@/components/FundLogo";
 import { GitHubMark } from "@/components/GitHubMark";
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Panel } from "@/components/ui/Panel";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Stat, StatGrid } from "@/components/ui/Stat";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { FaqLink, TextLink } from "@/components/ui/TextLink";
 import { QueryState } from "@/components/ui/QueryState";
 import { getHedgeFunds, getStocks, type HedgeFund } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
@@ -15,7 +19,6 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { HOME_PAGE } from "@/lib/pageMeta";
 import { ROUTES, fundPath, learnItem, stockPath } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
-import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
 const WIRE_ROWS = 8;
@@ -47,16 +50,15 @@ function Wire({ funds }: { funds: readonly HedgeFund[] }) {
     .slice(0, WIRE_ROWS);
 
   return (
-    <div className="frame flex flex-col overflow-hidden">
-      <div className="frame-title">
-        <PanelTitle>Latest filings</PanelTitle>
-        <Link
-          to={ROUTES.latest}
-          className="tap-target inline-flex items-center gap-1 text-[13px] font-normal text-primary-text hover:underline"
-        >
+    <Panel
+      title="Latest filings"
+      className="flex flex-col"
+      aside={
+        <TextLink to={ROUTES.latest} className="tap-target text-[13px]">
           View all <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-        </Link>
-      </div>
+        </TextLink>
+      }
+    >
       <p className="border-b border-border px-3 py-2 text-xs leading-5 text-muted-foreground">
         Sorted by filing date. Reported positions may be dated earlier.
       </p>
@@ -104,22 +106,21 @@ function Wire({ funds }: { funds: readonly HedgeFund[] }) {
                 {f.fund}
               </Link>
             </span>
-            <span
-              className={cn(
-                "chip",
+            <StatusChip
+              tone={
                 f.deltaType === "NEW" || f.deltaType === "INCREASE"
-                  ? "text-positive"
+                  ? "positive"
                   : f.deltaType === "CLOSED" || f.deltaType === "DECREASE"
-                    ? "text-negative"
-                    : "text-muted-foreground",
-              )}
+                    ? "negative"
+                    : "neutral"
+              }
             >
               {f.deltaType}
-            </span>
+            </StatusChip>
           </li>
         ))}
       </ol>
-    </div>
+    </Panel>
   );
 }
 
@@ -146,14 +147,18 @@ export default function Landing() {
             priority
             className="mb-5 h-16 w-16 object-contain sm:h-20 sm:w-20"
           />
-          <h1 className="max-w-[24ch] text-[clamp(2rem,4.5vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.035em] text-foreground">
-            No Buffett. No Burry.{" "}
-            <span className="block text-muted-foreground">Selected by measured performance.</span>
-          </h1>
-          <p className="mt-5 max-w-[58ch] text-[15px] leading-6 text-muted-foreground">
-            Research the stocks tracked funds report owning. Compare quarterly conviction across
-            funds, then examine the recent disclosures behind the changes.
-          </p>
+          <PageHeader
+            title={
+              <span className="block max-w-[24ch] text-[clamp(2rem,4.5vw,3.25rem)] leading-[1.08] tracking-[-0.035em]">
+                No Buffett. No Burry.{" "}
+                <span className="block text-muted-foreground">
+                  Selected by measured performance.
+                </span>
+              </span>
+            }
+            description="Research the stocks tracked funds report owning. Compare quarterly conviction across funds, then examine the recent disclosures behind the changes."
+            className="space-y-5"
+          />
           <div className="mt-6 w-full max-w-md md:hidden">
             <GlobalSearch />
           </div>
@@ -177,35 +182,22 @@ export default function Landing() {
           <h2 className="text-base font-semibold text-foreground">
             Start with the quarterly snapshot
           </h2>
-          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
-            <div className="col-span-2 flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-3">
-              <dt className="text-muted-foreground">13F baseline</dt>
-              <dd className="text-lg font-semibold text-foreground tabular-nums">{asOf}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Funds tracked</dt>
-              <dd className="mt-1 font-medium text-foreground tabular-nums">
-                {funds.length || "…"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Tickers in saved data</dt>
-              <dd className="mt-1 font-medium text-foreground tabular-nums">
-                {tickers ? tickers.toLocaleString("en-US") : "…"}
-              </dd>
-            </div>
-          </dl>
+          <StatGrid className="mt-4 grid-cols-2">
+            <Stat label="13F baseline" value={asOf} className="col-span-2" />
+            <Stat label="Funds tracked" value={funds.length || "…"} />
+            <Stat
+              label="Tickers in saved data"
+              value={tickers ? tickers.toLocaleString("en-US") : "…"}
+            />
+          </StatGrid>
           <p className="mt-4 text-[13px] leading-5 text-muted-foreground">
             The baseline is a quarter-end holdings snapshot, not a date for every price or filing.
             13Fs are due up to 45 days after quarter end; other disclosures have different
             deadlines.
           </p>
-          <Link
-            to={learnItem("when-are-13f-due")}
-            className="tap-target mt-2 inline-flex items-center gap-1 text-[13px] text-primary-text hover:underline"
-          >
+          <FaqLink item="when-are-13f-due" className="tap-target mt-2 text-[13px]">
             Understand reporting delays <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </Link>
+          </FaqLink>
         </div>
       </section>
 
@@ -217,13 +209,13 @@ export default function Landing() {
             {RESEARCH_CONTEXT.map((item) => (
               <li key={item.to} className="py-4">
                 <h3 className="text-sm font-medium text-foreground">
-                  <Link to={item.to} className="inline-flex items-start gap-2 hover:underline">
+                  <TextLink to={item.to} className="items-start gap-2 text-foreground">
                     {item.title}
                     <ArrowRight
                       className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary-text"
                       aria-hidden="true"
                     />
-                  </Link>
+                  </TextLink>
                 </h3>
                 <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">{item.body}</p>
               </li>
@@ -247,14 +239,13 @@ export default function Landing() {
         </span>
         <span>Saved SEC EDGAR data</span>
         <span>Not investment advice</span>
-        <a
+        <TextLink
           href="https://github.com/dokson/hedge-fund-tracker"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="tap-target inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground hover:underline sm:ml-auto"
+          className="tap-target gap-1.5 text-muted-foreground hover:text-foreground sm:ml-auto"
+          icon={<GitHubMark className="h-3.5 w-3.5" />}
         >
-          <GitHubMark className="h-3.5 w-3.5" /> Source repository
-        </a>
+          Source repository
+        </TextLink>
       </footer>
     </div>
   );

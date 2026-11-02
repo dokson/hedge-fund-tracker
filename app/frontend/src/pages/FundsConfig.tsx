@@ -35,6 +35,12 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { Field } from "@/components/ui/Field";
+import { ResponsiveTable } from "@/components/ui/ResponsiveTable";
+import { TextLink } from "@/components/ui/TextLink";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +49,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddFundDialog } from "@/components/AddFundDialog";
 import { useInlineFundEdit, type FundDraft } from "@/hooks/useInlineFundEdit";
@@ -88,20 +93,15 @@ function InlineInput({
         if (field === "ciks") val = val.replace(/[^0-9,]/g, "");
         setDraft((prev) => ({ ...prev, [field]: val }));
       }}
-      className={`h-7 text-xs ${className}`}
+      className={`h-10 text-xs md:h-7 ${className}`}
     />
   );
 }
 
 const CikLink = ({ cik }: { cik: string }) => (
-  <a
-    href={SEC_CIK_URL(cik)}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="font-mono text-xs text-primary-text hover:underline inline-flex items-center gap-1"
-  >
+  <TextLink href={SEC_CIK_URL(cik)} className="min-h-10 font-mono text-xs tabular-nums md:min-h-0">
     {cik} <ExternalLink className="h-2.5 w-2.5" aria-hidden="true" />
-  </a>
+  </TextLink>
 );
 
 type FundRow = {
@@ -149,12 +149,9 @@ function FundConfigCard({
 }) {
   if (isEditing) {
     return (
-      <div className="border-b border-border py-3 space-y-2.5">
+      <div className="border-b border-border py-3 space-y-2.5 last:border-b-0">
         {EDIT_FIELDS.map(([field, label]) => (
-          <div key={field} className="space-y-1">
-            <Label htmlFor={`edit-${f.cik}-${field}`} className="control-label !text-[11px]">
-              {label}
-            </Label>
+          <Field key={field} label={label} htmlFor={`edit-${f.cik}-${field}`}>
             <InlineInput
               id={`edit-${f.cik}-${field}`}
               value={f[field]}
@@ -163,7 +160,7 @@ function FundConfigCard({
               setDraft={setDraft}
               className={field === "cik" || field === "ciks" ? "font-mono w-full" : "w-full"}
             />
-          </div>
+          </Field>
         ))}
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="outline" size="sm" onClick={onCancel}>
@@ -178,39 +175,34 @@ function FundConfigCard({
   }
 
   return (
-    <div className="border-b border-border py-2">
+    <div className="border-b border-border py-3 last:border-b-0">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           {onOpen ? (
             <button
               type="button"
               onClick={onOpen}
-              className="font-medium fund-link text-left truncate max-w-full block"
+              className="block max-w-full break-words text-left font-medium fund-link"
             >
               {f.fund}
             </button>
           ) : (
-            <p className="font-medium truncate">{f.fund}</p>
+            <p className="break-words font-medium">{f.fund}</p>
           )}
-          <p className="text-xs text-muted-foreground truncate">{f.manager}</p>
+          <p className="break-words text-xs text-muted-foreground">{f.manager}</p>
         </div>
-        <span className="font-mono text-xs text-muted-foreground shrink-0">#{rank}</span>
+        <span className="text-xs text-muted-foreground tabular-nums shrink-0">#{rank}</span>
       </div>
       {f.denomination && (
-        <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{f.denomination}</p>
+        <p className="mt-2 break-words text-xs text-muted-foreground">{f.denomination}</p>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <CikLink cik={f.cik} />
         {f.url && (
-          <a
-            href={f.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary-text hover:underline inline-flex items-center gap-1 min-w-0 max-w-[200px] truncate"
-          >
-            {f.url.replace(/^https?:\/\/(www\.)?/, "")}
+          <TextLink href={f.url} className="min-h-10 max-w-full text-xs">
+            <span className="min-w-0 truncate">{f.url.replace(/^https?:\/\/(www\.)?/, "")}</span>
             <ExternalLink className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
-          </a>
+          </TextLink>
         )}
       </div>
       {!readOnly && (
@@ -351,18 +343,16 @@ export default function FundsConfig() {
     persist([[generateAddFundCSV(funds, newFund), "hedge_funds.csv"]], `"${newFund.fund}" added`);
 
   return (
-    <div className="space-y-6 max-w-screen-2xl">
-      <div>
-        <h1 className="page-title">
-          <Settings2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Hedge Funds
-          Configuration
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1.5">
-          {IS_GH_PAGES_MODE
+    <div className="min-w-0 space-y-6 max-w-screen-2xl [&_button]:min-h-10 md:[&_button]:min-h-0 [&_input]:min-h-10 md:[&_input]:min-h-0">
+      <PageHeader
+        title="Hedge Funds Configuration"
+        icon={Settings2}
+        description={
+          IS_GH_PAGES_MODE
             ? "View the monitored hedge funds. This is a read-only view of the bundled data."
-            : "Manage the monitored hedge funds. Click the edit icon to modify a fund inline."}
-        </p>
-      </div>
+            : "Manage the funds monitored for quarterly and ownership filings."
+        }
+      />
 
       {IS_GH_PAGES_MODE && (
         <p className="text-sm text-muted-foreground" role="note">
@@ -389,9 +379,9 @@ export default function FundsConfig() {
               size="sm"
               value={fundSearch}
               onChange={(e) => setFundSearch(e.target.value)}
-              wrapperClassName="flex-1 min-w-0 sm:max-w-sm"
+              wrapperClassName="flex-1 basis-full min-w-0 sm:basis-auto sm:max-w-sm"
             />
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground tabular-nums">
               {filteredFunds.length} / {funds.length} funds
             </span>
             {!IS_GH_PAGES_MODE && (
@@ -400,42 +390,48 @@ export default function FundsConfig() {
               </Button>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="break-all text-xs text-muted-foreground">
             Source: <code className="font-mono bg-muted px-1 py-0.5">database/hedge_funds.csv</code>
           </p>
 
           {fundsLoading ? (
             <LoadingState message="Loading…" size="sm" />
+          ) : filteredFunds.length === 0 ? (
+            <EmptyState padding="sm" title="No active funds match your search." />
           ) : (
-            <>
-              {/* Mobile: card list */}
-              <div className="md:hidden border-t border-border">
-                {filteredFunds.map((f, idx) => (
-                  <FundConfigCard
-                    key={f.cik}
-                    f={f}
-                    rank={idx + 1}
-                    mode="active"
-                    readOnly={IS_GH_PAGES_MODE}
-                    isEditing={activeEdit.editingCik === f.cik}
-                    draft={activeEdit.draft}
-                    setDraft={activeEdit.setDraft}
-                    isDraftValid={activeEdit.isDraftValid}
-                    onStartEdit={() => activeEdit.startEdit(f)}
-                    onSave={activeEdit.saveEdit}
-                    onCancel={activeEdit.cancelEdit}
-                    onSecondary={() => {
-                      setFundToDelete(f);
-                      setDeleteDialogOpen(true);
-                    }}
-                    onOpen={() => navigate(fundPath(f.fund))}
-                  />
-                ))}
-              </div>
-
-              {/* Desktop: full table */}
-              <div className="frame hidden md:block">
-                <div className="overflow-auto max-h-[60vh]">
+            <Panel
+              title="Active funds"
+              aside={<span className="tabular-nums">{filteredFunds.length} funds</span>}
+            >
+              <ResponsiveTable
+                label="Active funds"
+                tableClassName="max-h-[60vh] overflow-auto"
+                cards={
+                  <div className="px-3">
+                    {filteredFunds.map((f, idx) => (
+                      <FundConfigCard
+                        key={f.cik}
+                        f={f}
+                        rank={idx + 1}
+                        mode="active"
+                        readOnly={IS_GH_PAGES_MODE}
+                        isEditing={activeEdit.editingCik === f.cik}
+                        draft={activeEdit.draft}
+                        setDraft={activeEdit.setDraft}
+                        isDraftValid={activeEdit.isDraftValid}
+                        onStartEdit={() => activeEdit.startEdit(f)}
+                        onSave={activeEdit.saveEdit}
+                        onCancel={activeEdit.cancelEdit}
+                        onSecondary={() => {
+                          setFundToDelete(f);
+                          setDeleteDialogOpen(true);
+                        }}
+                        onOpen={() => navigate(fundPath(f.fund))}
+                      />
+                    ))}
+                  </div>
+                }
+                table={
                   <table className="w-full text-sm" aria-label="Active funds">
                     <thead className="sticky top-0 bg-card z-10">
                       <tr className="text-xs">
@@ -473,7 +469,7 @@ export default function FundsConfig() {
                         )}
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="tabular-nums">
                       {filteredFunds.map((f, idx) => {
                         const isEditing = activeEdit.editingCik === f.cik;
                         return (
@@ -569,13 +565,13 @@ export default function FundsConfig() {
                                   </button>
                                 </td>
                                 <td
-                                  className="p-3 text-muted-foreground fund-link cursor-pointer"
+                                  className="p-3 text-muted-foreground cursor-pointer"
                                   onClick={() => navigate(fundPath(f.fund))}
                                 >
                                   {f.manager}
                                 </td>
                                 <td
-                                  className="p-3 text-muted-foreground text-xs max-w-[250px] truncate fund-link cursor-pointer"
+                                  className="p-3 text-muted-foreground text-xs max-w-[250px] truncate cursor-pointer"
                                   onClick={() => navigate(fundPath(f.fund))}
                                 >
                                   {f.denomination}
@@ -588,18 +584,16 @@ export default function FundsConfig() {
                                 </td>
                                 <td className="p-3">
                                   {f.url ? (
-                                    <a
+                                    <TextLink
                                       href={f.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-xs text-primary-text hover:underline inline-flex items-center gap-1 max-w-[180px] truncate"
+                                      className="text-xs max-w-[180px] truncate"
                                     >
                                       {f.url.replace(/^https?:\/\/(www\.)?/, "")}{" "}
                                       <ExternalLink
                                         className="h-2.5 w-2.5 shrink-0"
                                         aria-hidden="true"
                                       />
-                                    </a>
+                                    </TextLink>
                                   ) : (
                                     <span className="text-xs text-muted-foreground">—</span>
                                   )}
@@ -638,9 +632,9 @@ export default function FundsConfig() {
                       })}
                     </tbody>
                   </table>
-                </div>
-              </div>
-            </>
+                }
+              />
+            </Panel>
           )}
         </TabsContent>
 
@@ -651,14 +645,14 @@ export default function FundsConfig() {
               size="sm"
               value={excludedSearch}
               onChange={(e) => setExcludedSearch(e.target.value)}
-              wrapperClassName="flex-1 min-w-0 sm:max-w-sm"
+              wrapperClassName="flex-1 basis-full min-w-0 sm:basis-auto sm:max-w-sm"
             />
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground tabular-nums">
               {filteredExcluded.length} / {excludedFunds.length} excluded
             </span>
           </div>
 
-          <p className="text-xs text-muted-foreground">
+          <p className="break-all text-xs text-muted-foreground">
             Source:{" "}
             <code className="font-mono bg-muted px-1 py-0.5">
               database/excluded_hedge_funds.csv
@@ -668,38 +662,40 @@ export default function FundsConfig() {
           {excludedLoading ? (
             <LoadingState message="Loading…" size="sm" />
           ) : filteredExcluded.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              No excluded funds found.
-            </div>
+            <EmptyState padding="sm" title="No excluded funds found." />
           ) : (
-            <>
-              {/* Mobile: card list */}
-              <div className="md:hidden border-t border-border">
-                {filteredExcluded.map((f, idx) => (
-                  <FundConfigCard
-                    key={f.cik}
-                    f={f}
-                    rank={idx + 1}
-                    mode="excluded"
-                    readOnly={IS_GH_PAGES_MODE}
-                    isEditing={excludedEdit.editingCik === f.cik}
-                    draft={excludedEdit.draft}
-                    setDraft={excludedEdit.setDraft}
-                    isDraftValid={excludedEdit.isDraftValid}
-                    onStartEdit={() => excludedEdit.startEdit(f)}
-                    onSave={excludedEdit.saveEdit}
-                    onCancel={excludedEdit.cancelEdit}
-                    onSecondary={() => {
-                      setFundToRestore(f);
-                      setRestoreDialogOpen(true);
-                    }}
-                  />
-                ))}
-              </div>
-
-              {/* Desktop: full table */}
-              <div className="frame hidden md:block">
-                <div className="overflow-auto max-h-[60vh]">
+            <Panel
+              title="Excluded funds"
+              aside={<span className="tabular-nums">{filteredExcluded.length} funds</span>}
+            >
+              <ResponsiveTable
+                label="Excluded funds"
+                tableClassName="max-h-[60vh] overflow-auto"
+                cards={
+                  <div className="px-3">
+                    {filteredExcluded.map((f, idx) => (
+                      <FundConfigCard
+                        key={f.cik}
+                        f={f}
+                        rank={idx + 1}
+                        mode="excluded"
+                        readOnly={IS_GH_PAGES_MODE}
+                        isEditing={excludedEdit.editingCik === f.cik}
+                        draft={excludedEdit.draft}
+                        setDraft={excludedEdit.setDraft}
+                        isDraftValid={excludedEdit.isDraftValid}
+                        onStartEdit={() => excludedEdit.startEdit(f)}
+                        onSave={excludedEdit.saveEdit}
+                        onCancel={excludedEdit.cancelEdit}
+                        onSecondary={() => {
+                          setFundToRestore(f);
+                          setRestoreDialogOpen(true);
+                        }}
+                      />
+                    ))}
+                  </div>
+                }
+                table={
                   <table className="w-full text-sm" aria-label="Excluded funds">
                     <thead className="sticky top-0 bg-card z-10">
                       <tr className="text-xs">
@@ -737,7 +733,7 @@ export default function FundsConfig() {
                         )}
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="tabular-nums">
                       {filteredExcluded.map((f, idx) => {
                         const isEditing = excludedEdit.editingCik === f.cik;
                         return (
@@ -836,18 +832,16 @@ export default function FundsConfig() {
                                 </td>
                                 <td className="p-3">
                                   {f.url ? (
-                                    <a
+                                    <TextLink
                                       href={f.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-xs text-primary-text hover:underline inline-flex items-center gap-1 max-w-[180px] truncate"
+                                      className="text-xs max-w-[180px] truncate"
                                     >
                                       {f.url.replace(/^https?:\/\/(www\.)?/, "")}{" "}
                                       <ExternalLink
                                         className="h-2.5 w-2.5 shrink-0"
                                         aria-hidden="true"
                                       />
-                                    </a>
+                                    </TextLink>
                                   ) : (
                                     <span className="text-xs text-muted-foreground">—</span>
                                   )}
@@ -886,9 +880,9 @@ export default function FundsConfig() {
                       })}
                     </tbody>
                   </table>
-                </div>
-              </div>
-            </>
+                }
+              />
+            </Panel>
           )}
         </TabsContent>
       </Tabs>
@@ -897,7 +891,7 @@ export default function FundsConfig() {
         <>
           {/* ── Delete Dialog ── */}
           <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto break-words sm:max-w-md [&_button]:min-h-10">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-destructive">
                   <AlertTriangle className="h-5 w-5" aria-hidden="true" /> Delete Hedge Fund
@@ -916,12 +910,12 @@ export default function FundsConfig() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">CIK:</span>{" "}
-                    <span className="font-mono text-xs">{fundToDelete?.cik}</span>
+                    <span className="font-mono text-xs tabular-nums">{fundToDelete?.cik}</span>
                   </div>
                   {fundToDelete?.url && (
                     <div>
                       <span className="text-muted-foreground">Website:</span>{" "}
-                      <span className="text-xs">{fundToDelete.url}</span>
+                      <span className="break-all text-xs">{fundToDelete.url}</span>
                     </div>
                   )}
                 </div>
@@ -939,7 +933,7 @@ export default function FundsConfig() {
 
           {/* ── Restore Dialog ── */}
           <Dialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto break-words sm:max-w-md [&_button]:min-h-10">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Undo2 className="h-5 w-5" aria-hidden="true" /> Restore Hedge Fund
@@ -958,12 +952,12 @@ export default function FundsConfig() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">CIK:</span>{" "}
-                    <span className="font-mono text-xs">{fundToRestore?.cik}</span>
+                    <span className="font-mono text-xs tabular-nums">{fundToRestore?.cik}</span>
                   </div>
                   {fundToRestore?.url && (
                     <div>
                       <span className="text-muted-foreground">Website:</span>{" "}
-                      <span className="text-xs">{fundToRestore.url}</span>
+                      <span className="break-all text-xs">{fundToRestore.url}</span>
                     </div>
                   )}
                 </div>

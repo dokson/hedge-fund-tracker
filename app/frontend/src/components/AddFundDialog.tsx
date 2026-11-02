@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/Field";
 import { isValidFundUrl } from "@/hooks/useInlineFundEdit";
 import type { HedgeFund } from "@/lib/dataService";
 
@@ -41,7 +41,7 @@ export function AddFundDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto sm:max-w-md [&_button]:min-h-10 [&_input]:min-h-10">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" aria-hidden="true" /> Add Hedge Fund
@@ -92,11 +92,7 @@ function AddFundForm({
   return (
     <>
       <div className="space-y-4 py-2">
-        <FormField
-          id="new-cik"
-          label="CIK"
-          hint="Central Index Key: the unique SEC identifier for filing entities."
-        >
+        <Field htmlFor="new-cik" label="CIK">
           <Input
             id="new-cik"
             placeholder="e.g. 0001067983"
@@ -104,48 +100,45 @@ function AddFundForm({
             onChange={(e) => update("cik", e.target.value.replace(/[^0-9]/g, ""))}
             className="font-mono text-sm"
           />
-        </FormField>
-        <FormField
-          id="new-fund"
-          label="Fund Name"
-          hint="Short name used to generate quarterly file names."
-        >
+          <p className="text-xs text-muted-foreground">
+            Central Index Key: the unique SEC identifier for filing entities.
+          </p>
+        </Field>
+        <Field htmlFor="new-fund" label="Fund Name">
           <Input
             id="new-fund"
             placeholder="e.g. Berkshire Hathaway"
             value={form.fund}
             onChange={(e) => update("fund", e.target.value)}
           />
-        </FormField>
-        <FormField
-          id="new-manager"
-          label="Manager"
-          hint="Portfolio manager as listed in official fund filings."
-        >
+          <p className="text-xs text-muted-foreground">
+            Short name used to generate quarterly file names.
+          </p>
+        </Field>
+        <Field htmlFor="new-manager" label="Manager">
           <Input
             id="new-manager"
             placeholder="e.g. Warren Buffett"
             value={form.manager}
             onChange={(e) => update("manager", e.target.value)}
           />
-        </FormField>
-        <FormField
-          id="new-denomination"
-          label="Denomination"
-          hint="Full legal name from SEC filings. Used to identify positions in non-quarterly filings containing multiple institutional entities."
-        >
+          <p className="text-xs text-muted-foreground">
+            Portfolio manager as listed in official fund filings.
+          </p>
+        </Field>
+        <Field htmlFor="new-denomination" label="Denomination">
           <Input
             id="new-denomination"
             placeholder="e.g. Berkshire Hathaway Inc."
             value={form.denomination}
             onChange={(e) => update("denomination", e.target.value)}
           />
-        </FormField>
-        <FormField
-          id="new-ciks"
-          label="CIKs (optional)"
-          hint="Comma-separated list of related CIKs, if different from primary."
-        >
+          <p className="text-xs text-muted-foreground">
+            Full legal name from SEC filings. Used to identify positions in non-quarterly filings
+            containing multiple institutional entities.
+          </p>
+        </Field>
+        <Field htmlFor="new-ciks" label="CIKs (optional)">
           <Input
             id="new-ciks"
             placeholder="Defaults to CIK if empty"
@@ -153,23 +146,21 @@ function AddFundForm({
             onChange={(e) => update("ciks", e.target.value.replace(/[^0-9,]/g, ""))}
             className="font-mono text-sm"
           />
-        </FormField>
-        <FormField
-          id="new-url"
-          label="Website (optional)"
-          hint={
-            <>
-              Official fund website. Must start with <code>https://</code> if provided.
-            </>
-          }
-        >
+          <p className="text-xs text-muted-foreground">
+            Comma-separated list of related CIKs, if different from primary.
+          </p>
+        </Field>
+        <Field htmlFor="new-url" label="Website (optional)">
           <Input
             id="new-url"
             placeholder="https://www.example.com"
             value={form.url}
             onChange={(e) => update("url", e.target.value)}
           />
-        </FormField>
+          <p className="text-xs text-muted-foreground">
+            Official fund website. Must start with <code>https://</code> if provided.
+          </p>
+        </Field>
       </div>
       <DialogFooter className="gap-2 sm:gap-0">
         <Button variant="outline" onClick={onCancel}>
@@ -180,25 +171,5 @@ function AddFundForm({
         </Button>
       </DialogFooter>
     </>
-  );
-}
-
-function FormField({
-  id,
-  label,
-  hint,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      <p className="text-xs text-muted-foreground">{hint}</p>
-    </div>
   );
 }

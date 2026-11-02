@@ -71,7 +71,9 @@ describe("FundPortfolio fund detail", () => {
       </QueryClientProvider>,
     );
     const header = async () =>
-      (await screen.findAllByRole("columnheader")).find((th) => th.textContent?.includes("Port %"));
+      (await screen.findAllByText(/Port %/, undefined, { timeout: 4000 }))
+        .map((el) => el.closest("th"))
+        .find((th) => th !== null);
     const before = await header();
     expect(before?.getAttribute("aria-sort")).toBe("descending");
     const sortButton = before?.querySelector("button");
@@ -133,6 +135,6 @@ describe("FundPortfolio holdings aggregation", () => {
     fireEvent.mouseDown(holdings, { button: 0, ctrlKey: false });
     fireEvent.click(holdings);
     expect(await screen.findByRole("button", { name: "AAA" })).toBeTruthy();
-    expect(screen.getByText("Holdings map").textContent).toContain("Unclassified");
+    expect(screen.getByText("Sector · Unclassified")).toBeTruthy();
   });
 });

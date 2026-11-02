@@ -13,10 +13,17 @@ import AIEmptyState from "@/components/ai/AIEmptyState";
 
 import { Button } from "@/components/ui/button";
 import ModelSelector from "@/components/ModelSelector";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
-import { TableFrame } from "@/components/ui/TableFrame";
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { ControlBand, Field } from "@/components/ui/Field";
+import { StatGrid, Stat } from "@/components/ui/Stat";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { ResponsiveTable } from "@/components/ui/ResponsiveTable";
+import { signTone, toneClass } from "@/lib/tone";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { smartScoreToneClass } from "@/lib/smartScore";
 
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -65,19 +72,16 @@ interface RankedStock {
 }
 
 function ScoreBadge({ score, invert = false }: { score: number; invert?: boolean }) {
-  // Risk is the one metric where higher = worse, so `invert` mirrors the
-  // thresholds: low score → green, high score → red.
-  const good = invert ? score <= 20 : score >= 80;
-  const mid = invert ? score <= 40 : score >= 60;
-  const tone = good ? "text-positive" : mid ? "text-warning" : "text-negative";
-  return <span className={`chip tabular-nums ${tone}`}>{score}</span>;
+  // Normalize the display tone to the shared 1–10 buckets; risk runs in reverse.
+  const toneScore = (invert ? 100 - score : score) / 10;
+  return (
+    <StatusChip className={`tabular-nums ${smartScoreToneClass(toneScore)}`}>{score}</StatusChip>
+  );
 }
 
 function SignedCount({ value, className = "" }: { value: number; className?: string }) {
   return (
-    <span
-      className={`tabular-nums ${value >= 0 ? "delta-positive" : "delta-negative"} ${className}`}
-    >
+    <span className={`tabular-nums ${toneClass(value)} ${className}`}>
       {value >= 0 ? "+" : ""}
       {value}
     </span>
@@ -92,7 +96,7 @@ function SignedCount({ value, className = "" }: { value: number; className?: str
  */
 function RankRow({ s, onNavigate }: { s: RankedStock; onNavigate: (path: string) => void }) {
   return (
-    <li className="border-b border-border/60 py-3 last:border-0">
+    <li className="min-w-0 border-b border-border py-4 last:border-0">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs text-muted-foreground shrink-0 tabular-nums">#{s.rank}</span>
@@ -103,7 +107,7 @@ function RankRow({ s, onNavigate }: { s: RankedStock; onNavigate: (path: string)
           <ScoreBadge score={s.promiseScore} />
         </div>
       </div>
-      <div className="mt-1">
+      <div className="mt-1 min-w-0">
         <CompanyLink ticker={s.ticker} company={s.company} showStar />
       </div>
       <dl className="mt-3 grid grid-cols-3 gap-x-2 gap-y-3 text-center">
@@ -148,13 +152,18 @@ function RankRow({ s, onNavigate }: { s: RankedStock; onNavigate: (path: string)
           <div className="text-[13px] tabular-nums">{formatValue(s.totalValue)}</div>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button variant="secondary" size="sm" onClick={() => onNavigate(stockPath(s.ticker))}>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="min-h-10"
+            onClick={() => onNavigate(stockPath(s.ticker))}
+          >
             Analysis
           </Button>
           <Button
             variant="secondary"
             size="sm"
-            className="text-magenta"
+            className="min-h-10"
             onClick={() => onNavigate(aiDiligenceFor(s.ticker))}
           >
             Diligence
@@ -247,17 +256,16 @@ export default function AIRanking() {
   const isSample = isReadOnly && (results?.length ?? 0) === 0;
 
   return (
-    <div className="space-y-6 max-w-screen-2xl">
-      <div className="space-y-1.5">
-        <h1 className="page-title text-magenta">Most Promising Stocks</h1>
-        <p className="text-sm text-muted-foreground">
-          AI-powered discovery of the most promising stocks based on latest institutional data
-        </p>
-      </div>
+    <div className="min-w-0 space-y-6 max-w-screen-2xl">
+      <PageHeader
+        title="Most Promising Stocks"
+        icon={Sparkles}
+        description="AI-generated rankings from institutional holdings and price signals, not investment advice."
+      />
 
       {isReadOnly && (
         <LocalOnlyNotice
-          description="AI-powered discovery requires a local Python backend and API keys. This live demo shows the interface only. To use this feature, run the app locally with your own API keys."
+          description="Live AI rankings need a local backend and your API keys. The sample below is a saved report, not a live analysis."
           sample={
             isSample && {
               label: "Sample ranking",
@@ -268,65 +276,91 @@ export default function AIRanking() {
         />
       )}
 
-      {/* Controls */}
-      <div className="flex gap-3 items-end flex-wrap">
-        <div className="space-y-1 w-full sm:w-auto">
-          <span className="metric-label block">Model</span>
+      <ControlBand label="Analysis scope" className="grid min-w-0 gap-3 sm:flex sm:gap-x-6">
+        <Field label="Quarter">
+          <p className="flex min-h-10 items-center text-sm tabular-nums">
+            {quarter?.replace("Q", " Q") ?? "Not available"}
+          </p>
+        </Field>
+        <Field label="AI model">
           <ModelSelector
             value={selectedModel}
             onChange={setSelectedModel}
             onProviderChange={setSelectedProviderId}
-            className="w-full sm:w-56"
+            className="min-h-10 w-full min-w-0 sm:w-64"
             disabled={isReadOnly}
           />
-        </div>
-        <Button className="w-full sm:w-auto" onClick={runAnalysis} disabled={loading || isReadOnly}>
+        </Field>
+        <Button
+          className="min-h-10 w-full sm:w-auto"
+          onClick={runAnalysis}
+          disabled={loading || isReadOnly}
+        >
           {hasResults ? "Re-run" : "Run"}
         </Button>
-      </div>
+      </ControlBand>
 
       {(loading || terminalLines.length > 0) && !hasResults && (
         <TerminalOutput lines={terminalLines} running={loading} />
       )}
 
       {weights && !loading && (
-        <div className="frame">
-          <div className="frame-title">
-            <PanelTitle className="text-magenta">AI-selected Promise Score weights</PanelTitle>
-            {modelUsed && (
+        <Panel
+          title="AI-selected Promise Score weights"
+          aside={
+            modelUsed && (
               <span className="status-line font-normal">
                 <span className="k">Model</span> {modelUsed}
               </span>
-            )}
-          </div>
+            )
+          }
+        >
           <ul className="flex flex-wrap gap-2 p-3">
             {Object.entries(weights)
               .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a))
               .map(([key, val]) => (
-                <li
-                  key={key}
-                  className={`chip tabular-nums ${val >= 0 ? "text-positive" : "text-negative"}`}
-                >
-                  {key}: {val >= 0 ? "+" : ""}
-                  {(val * 100).toFixed(0)}%
+                <li key={key}>
+                  <StatusChip tone={signTone(val)} className="tabular-nums">
+                    {key}: {val >= 0 ? "+" : ""}
+                    {(val * 100).toFixed(0)}%
+                  </StatusChip>
                 </li>
               ))}
           </ul>
-        </div>
+        </Panel>
       )}
 
       {hasResults && !loading && (
-        <>
-          {/* Mobile: frame rows */}
-          <ul className="md:hidden frame px-3" aria-label="AI ranking">
-            {displayResults.map((s) => (
-              <RankRow key={s.ticker} s={s} onNavigate={navigate} />
-            ))}
-          </ul>
-
-          {/* Desktop: full ranking table */}
-          <div className="frame hidden md:block">
-            <TableFrame label="AI ranking of the most promising stocks">
+        <Panel
+          title="Stock ranking"
+          titleId="ranking-results"
+          className="min-w-0"
+          headerClassName="h-auto min-h-11 flex-wrap gap-y-1 whitespace-normal py-2"
+          aside={
+            <span className="tabular-nums">
+              {displayResults.length} stocks{modelUsed ? ` · ${modelUsed}` : ""}
+            </span>
+          }
+        >
+          <div className="flex items-center gap-1 px-3 py-2 text-xs text-muted-foreground">
+            <p>Scores out of 100. Higher is stronger, except risk.</p>
+            <span className="inline-flex shrink-0 [&_button]:min-h-10 [&_button]:min-w-10">
+              <InfoTooltip text="Promise combines institutional signals with AI-selected weights. Growth measures price decline since filing, not a forecast. Momentum and low volatility rank historical prices. Risk is AI-estimated downside; lower is better. These scores are not the institutional Smart Score." />
+            </span>
+          </div>
+          <ResponsiveTable
+            label="AI ranking of the most promising stocks"
+            cards={
+              <ul
+                className="px-3 [&_a]:min-h-10 [&_button]:min-h-10 [&_button]:min-w-10"
+                aria-label="AI ranking"
+              >
+                {displayResults.map((s) => (
+                  <RankRow key={s.ticker} s={s} onNavigate={navigate} />
+                ))}
+              </ul>
+            }
+            table={
               <table
                 className="w-full text-sm"
                 aria-label="AI ranking of the most promising stocks"
@@ -435,7 +469,7 @@ export default function AIRanking() {
                               type="button"
                               aria-expanded={expanded}
                               aria-label={`${expanded ? "Hide" : "Show"} details for ${s.ticker}`}
-                              className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground transition-colors duration-[120ms] hover:bg-muted hover:text-foreground"
+                              className="h-10 w-10 inline-flex items-center justify-center rounded-md text-muted-foreground transition-colors duration-[120ms] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setExpandedRow(expanded ? null : s.ticker);
@@ -455,30 +489,15 @@ export default function AIRanking() {
                               colSpan={12}
                               className="px-6 py-4 bg-muted/40 text-[13px] text-muted-foreground border-b border-border/60"
                             >
-                              <dl className="grid grid-cols-2 lg:grid-cols-4 gap-px rounded-sm border border-border bg-border overflow-hidden">
-                                <div className="bg-card p-3">
-                                  <dt className="metric-label">High Conviction</dt>
-                                  <dd className="text-foreground tabular-nums">
-                                    {s.highConvictionCount}
-                                  </dd>
-                                </div>
-                                <div className="bg-card p-3">
-                                  <dt className="metric-label">Total Value</dt>
-                                  <dd className="text-foreground tabular-nums">
-                                    {formatValue(s.totalValue)}
-                                  </dd>
-                                </div>
-                                <div className="bg-card p-3">
-                                  <dt className="metric-label">Holders</dt>
-                                  <dd className="text-foreground tabular-nums">{s.holderCount}</dd>
-                                </div>
-                                <div className="bg-card p-3">
-                                  <dt className="metric-label">Net Buyers</dt>
-                                  <dd>
-                                    <SignedCount value={s.netBuyers} />
-                                  </dd>
-                                </div>
-                              </dl>
+                              <StatGrid className="grid-cols-2 lg:grid-cols-4">
+                                <Stat label="High Conviction" value={s.highConvictionCount} />
+                                <Stat label="Total Value" value={formatValue(s.totalValue)} />
+                                <Stat label="Holders" value={s.holderCount} />
+                                <Stat
+                                  label="Net Buyers"
+                                  value={<SignedCount value={s.netBuyers} />}
+                                />
+                              </StatGrid>
                               <div className="mt-3 flex gap-2">
                                 <Button
                                   variant="secondary"
@@ -493,7 +512,7 @@ export default function AIRanking() {
                                 <Button
                                   variant="secondary"
                                   size="sm"
-                                  className="text-magenta"
+                                  className="min-h-10"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     void navigate(aiDiligenceFor(s.ticker));
@@ -510,9 +529,9 @@ export default function AIRanking() {
                   })}
                 </tbody>
               </table>
-            </TableFrame>
-          </div>
-        </>
+            }
+          />
+        </Panel>
       )}
 
       {!hasResults && !loading && (

@@ -11,6 +11,28 @@ export type ChartPoint = { label: string; __band?: [number, number] } & Record<
  */
 export const PLOT_INSET = { left: 48, right: 8 } as const;
 
+/** Right margin reserved for the end-of-line labels when the chart is wide enough to show them. */
+export const END_LABEL_INSET = 160;
+
+/**
+ * Vertical positions for end-of-line labels: each label stays as close to its line's
+ * last point as possible while keeping at least `gap` pixels from its neighbours and
+ * staying inside [top, bottom]. Returns positions in the input order.
+ */
+export function spreadLabels(ys: number[], gap: number, top: number, bottom: number): number[] {
+  const order = ys.map((y, i) => ({ y, i })).sort((a, b) => a.y - b.y);
+  const placed = order.map((o) => o.y);
+  for (let k = 0; k < placed.length; k++) {
+    placed[k] = Math.max(placed[k], k === 0 ? top : placed[k - 1] + gap);
+  }
+  for (let k = placed.length - 1; k >= 0; k--) {
+    placed[k] = Math.min(placed[k], k === placed.length - 1 ? bottom : placed[k + 1] - gap);
+  }
+  const out: number[] = Array.from({ length: ys.length }, () => 0);
+  order.forEach((o, k) => (out[o.i] = placed[k]));
+  return out;
+}
+
 /**
  * Build the cumulative equity curve rows for a set of series.
  *

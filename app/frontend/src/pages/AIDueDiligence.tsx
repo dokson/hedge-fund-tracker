@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useSearchParams, Link } from "react-router";
+import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { stockPath, ROUTES } from "@/lib/routes";
@@ -17,26 +17,32 @@ import TickerAutocomplete from "@/components/TickerAutocomplete";
 import ModelSelector from "@/components/ModelSelector";
 import LocalOnlyNotice from "@/components/ai/LocalOnlyNotice";
 import AIEmptyState from "@/components/ai/AIEmptyState";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/accordion";
+import { Trigger as AccordionTrigger } from "@radix-ui/react-accordion";
+import { PanelTitle } from "@/components/ui/PanelTitle";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { ControlBand, Field } from "@/components/ui/Field";
+import { StatGrid, Stat } from "@/components/ui/Stat";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { MetaLine, MetaSep, TextLink } from "@/components/ui/TextLink";
+import { LogoPlate } from "@/components/LogoPlate";
+import { toneClass } from "@/lib/tone";
 import sampleDueDiligence from "@/data/sampleDueDiligence.json";
 import { StockPriceChart } from "@/components/StockPriceChart";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { ChevronDown, ClipboardCheck, TrendingDown, TrendingUp } from "lucide-react";
 import { toDueDiligenceReport, type DueDiligenceReport } from "@/lib/dueDiligence";
 
 function SentimentBadge({ sentiment }: { sentiment: string }) {
   if (!sentiment) return null;
-  const cls =
-    sentiment === "Bullish"
-      ? "badge-bullish"
-      : sentiment === "Bearish"
-        ? "badge-bearish"
-        : "badge-neutral";
-  return <span className={cls}>{sentiment}</span>;
+  return (
+    <StatusChip
+      tone={sentiment === "Bullish" ? "positive" : sentiment === "Bearish" ? "negative" : "warning"}
+    >
+      {sentiment}
+    </StatusChip>
+  );
 }
 
 function PriceTargetDelta({
@@ -56,7 +62,7 @@ function PriceTargetDelta({
   if (!isFinite(target) || !isFinite(current) || current === 0) return null;
   const pct = ((target - current) / current) * 100;
   const up = pct >= 0;
-  const cls = up ? "text-positive" : "text-negative";
+  const cls = toneClass(pct);
   const Icon = up ? TrendingUp : TrendingDown;
   return (
     <span className={`inline-flex items-center gap-1 text-[13px] tabular-nums ${cls}`}>
@@ -196,15 +202,16 @@ export default function AIDueDiligence() {
   const deltaUp = displayReport?.price_delta_percentage?.startsWith("+") ?? false;
 
   return (
-    <div className="space-y-6 max-w-screen-2xl">
-      <div className="space-y-1.5">
-        <h1 className="page-title text-magenta">Stock Due Diligence</h1>
-        <p className="text-sm text-muted-foreground">Comprehensive AI-generated analysis</p>
-      </div>
+    <div className="min-w-0 space-y-6 max-w-screen-2xl">
+      <PageHeader
+        title="Stock Due Diligence"
+        icon={ClipboardCheck}
+        description="AI-generated research on a stock’s business, valuation and risks, not investment advice."
+      />
 
       {isReadOnly && (
         <LocalOnlyNotice
-          description="Stock Due Diligence requires a local Python backend to analyze data via LLMs. This live demo shows the interface only. To use this feature, run the app locally with your own API keys."
+          description="Live stock research needs a local backend and your API keys. The sample below is a saved report, not a live analysis."
           sample={
             isSample && {
               label: "Sample report",
@@ -215,11 +222,10 @@ export default function AIDueDiligence() {
         />
       )}
 
-      {/* Controls */}
-      <div className="flex gap-3 items-end flex-wrap">
-        <div className="space-y-1 w-full sm:w-auto">
-          <span className="metric-label block">Ticker</span>
+      <ControlBand label="Analysis scope" className="grid min-w-0 gap-3 sm:flex sm:gap-x-6">
+        <Field label="Ticker" htmlFor="diligence-ticker" className="[&_[role=option]]:min-h-10">
           <TickerAutocomplete
+            id="diligence-ticker"
             value={inputTicker}
             onChange={setInputTicker}
             onSubmit={runDiligence}
@@ -230,27 +236,26 @@ export default function AIDueDiligence() {
                 ? "Demo only: Stock Due Diligence is available only when running the repo locally"
                 : undefined
             }
-            className="w-full sm:w-32"
+            className="min-h-10 w-full sm:w-36"
           />
-        </div>
-        <div className="space-y-1 w-full sm:w-auto">
-          <span className="metric-label block">Model</span>
+        </Field>
+        <Field label="AI model">
           <ModelSelector
             value={selectedModel}
             onChange={setSelectedModel}
             onProviderChange={setSelectedProviderId}
-            className="w-full sm:w-56"
+            className="min-h-10 w-full min-w-0 sm:w-64"
             disabled={isReadOnly}
           />
-        </div>
+        </Field>
         <Button
-          className="w-full sm:w-auto"
+          className="min-h-10 w-full sm:w-auto"
           onClick={runDiligence}
           disabled={loading || !inputTicker || !isValidTicker || isReadOnly}
         >
           {report ? "Re-run" : "Run"}
         </Button>
-      </div>
+      </ControlBand>
 
       {(loading || terminalLines.length > 0) && !report && (
         <TerminalOutput lines={terminalLines} running={loading} />
@@ -258,41 +263,41 @@ export default function AIDueDiligence() {
 
       {displayReport && !loading && (
         <div className="space-y-5">
-          <section className="frame" aria-labelledby="dd-header">
-            <div className="frame-title">
-              <h2 id="dd-header" className="text-magenta">
-                Report header
-              </h2>
-            </div>
-            <div className="space-y-4 p-3">
-              <div className="flex items-start justify-between gap-6 flex-wrap">
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="rounded-sm border border-border bg-card p-1 shrink-0">
+          <Panel title="Research overview" titleId="dd-header">
+            <div className="space-y-4 p-3 sm:p-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex min-w-0 max-w-full items-center gap-3">
+                  <LogoPlate size="lg">
                     <CompanyLogo ticker={displayReport.ticker} size={48} />
-                  </div>
+                  </LogoPlate>
                   <div className="min-w-0">
-                    <Link
+                    <TextLink
                       to={stockPath(displayReport.ticker)}
-                      className="block text-2xl font-semibold leading-none text-foreground transition-colors duration-[120ms] hover:text-primary-text"
+                      className="min-h-10 break-all text-2xl font-semibold leading-tight"
                       title={`View ${displayReport.ticker} analysis`}
                     >
                       {displayReport.ticker}
-                    </Link>
+                    </TextLink>
                     <p
-                      className="mt-2 text-sm text-muted-foreground truncate"
+                      className="mt-1 text-sm text-muted-foreground break-words"
                       title={displayReport.company}
                     >
                       {displayReport.company}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-4 shrink-0">
+                <div className="flex min-w-0 flex-wrap items-start gap-4">
                   <SentimentBadge
                     sentiment={displayReport.investment_thesis?.overall_sentiment ?? ""}
                   />
-                  <div className="text-right">
-                    <p className="metric-label">3-Month Price Target</p>
-                    <p className="metric-value flex items-baseline gap-2 justify-end">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1">
+                      <p className="metric-label">3-Month Price Target</p>
+                      <span className="inline-flex [&_button]:min-h-10 [&_button]:min-w-10">
+                        <InfoTooltip text="An AI-generated scenario, not a prediction or an analyst consensus. The percentage compares it with the report’s current price; neither is live market data." />
+                      </span>
+                    </div>
+                    <p className="metric-value flex flex-wrap items-baseline gap-2 tabular-nums break-words">
                       <span>{displayReport.investment_thesis?.price_target || "N/A"}</span>
                       <PriceTargetDelta
                         priceTarget={displayReport.investment_thesis?.price_target}
@@ -302,70 +307,69 @@ export default function AIDueDiligence() {
                   </div>
                 </div>
               </div>
-              <dl className="grid grid-cols-1 sm:grid-cols-3 gap-px overflow-hidden rounded-sm border border-border bg-border">
-                <div className="bg-card p-3">
-                  <dt className="metric-label">Current Price</dt>
-                  <dd className="tabular-nums">{displayReport.current_price || "N/A"}</dd>
-                </div>
-                <div className="bg-card p-3">
-                  <dt className="metric-label">Price on Filing Date</dt>
-                  <dd className="tabular-nums">{displayReport.filing_date_price || "N/A"}</dd>
-                </div>
-                <div className="bg-card p-3">
-                  <dt className="metric-label">Change Since Filing</dt>
-                  <dd
-                    className={`inline-flex items-center gap-1 tabular-nums ${deltaUp ? "text-positive" : "text-negative"}`}
-                  >
-                    {deltaUp ? (
-                      <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />
-                    ) : (
-                      <TrendingDown className="h-3.5 w-3.5" aria-hidden="true" />
-                    )}
-                    {displayReport.price_delta_percentage || "N/A"}
-                  </dd>
-                </div>
-              </dl>
+              <StatGrid className="grid-cols-1 sm:grid-cols-3">
+                <Stat label="Current Price" value={displayReport.current_price || "N/A"} />
+                <Stat
+                  label="Price on Filing Date"
+                  value={displayReport.filing_date_price || "N/A"}
+                />
+                <Stat
+                  label="Change Since Filing"
+                  valueClassName="inline-flex items-center gap-1"
+                  value={
+                    <span
+                      className={`inline-flex items-center gap-1 ${toneClass(parseFloat(displayReport.price_delta_percentage ?? ""))}`}
+                    >
+                      {deltaUp ? (
+                        <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />
+                      ) : (
+                        <TrendingDown className="h-3.5 w-3.5" aria-hidden="true" />
+                      )}
+                      {displayReport.price_delta_percentage || "N/A"}
+                    </span>
+                  }
+                />
+              </StatGrid>
             </div>
-          </section>
+          </Panel>
 
           <StockPriceChart
             ticker={displayReport.ticker}
             staticData={isSample ? sample.price_history : undefined}
           />
 
-          <section className="frame" aria-labelledby="dd-analysis">
-            <div className="frame-title">
-              <h2 id="dd-analysis" className="text-magenta">
-                Analysis
-              </h2>
-            </div>
-            <div className="px-3">
-              <Accordion type="multiple" defaultValue={sections.map((s) => s.value)}>
-                {sections.map((s) => (
-                  <AccordionItem
-                    key={s.value}
-                    value={s.value}
-                    className="border-b border-border/60 last:border-0"
-                  >
-                    <AccordionTrigger className="section-title font-normal py-3 hover:no-underline [&>svg]:text-muted-foreground">
-                      <span className="flex items-center gap-3">
-                        {s.title}
-                        {s.sentiment && <SentimentBadge sentiment={s.sentiment} />}
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent className="text-sm text-muted-foreground leading-6">
-                      {s.body}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </div>
-          </section>
+          <Accordion
+            type="multiple"
+            defaultValue={sections.map((s) => s.value)}
+            className="space-y-4"
+          >
+            {sections.map((s) => (
+              <AccordionItem key={s.value} value={s.value} className="frame min-w-0">
+                <PanelTitle className="frame-title block h-auto min-h-11 whitespace-normal p-0">
+                  <AccordionTrigger className="group flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4">
+                    <span className="flex min-w-0 flex-wrap items-center gap-2">
+                      {s.title}
+                      {s.sentiment && <SentimentBadge sentiment={s.sentiment} />}
+                    </span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
+                    />
+                  </AccordionTrigger>
+                </PanelTitle>
+                <AccordionContent className="px-3 pb-4 pt-3 sm:px-4">
+                  <p className="max-w-[70ch] whitespace-pre-line break-words text-sm leading-7 text-foreground">
+                    {s.body}
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
 
           {!isSample && (
-            <p className="status-line text-center text-muted-foreground">
-              Generated by {modelUsed} <span aria-hidden="true">·</span> {generatedAt}
-            </p>
+            <MetaLine className="justify-center">
+              Generated by {modelUsed} <MetaSep /> {generatedAt}
+            </MetaLine>
           )}
         </div>
       )}

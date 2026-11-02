@@ -102,14 +102,21 @@ function renderResearch(initialEntry: string = ROUTES.quarterly) {
   );
 }
 
+// Structural lookups: whole-page role resolution on this page is slow enough to time out under load.
 function tickers(): string[] {
-  return within(screen.getByRole("table", { name: "Ranked stocks" }))
-    .getAllByRole("row")
-    .slice(1)
-    .map((row) => within(row).getAllByRole("link")[0]?.textContent ?? "");
+  const table = screen.getByRole("table", { name: "Ranked stocks" });
+  return Array.from(
+    table.querySelectorAll("tbody tr"),
+    (row) => row.querySelector("a")?.textContent ?? "",
+  );
 }
 
-describe("Quarterly research context", () => {
+function minHolders(): HTMLInputElement {
+  return screen.getByLabelText<HTMLInputElement>("Min Holders");
+}
+
+// Full-page renders with navigation round trips exceed the 5s default when the suite runs in parallel.
+describe("Quarterly research context", { timeout: 15_000 }, () => {
   beforeEach(() => {
     localStorage.removeItem("starred_stock");
     localStorage.removeItem("starred_fund");
@@ -119,7 +126,7 @@ describe("Quarterly research context", () => {
   it("restores filters and a custom sort after returning from a stock", async () => {
     renderResearch();
     const table = await screen.findByRole("table", { name: "Ranked stocks" });
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Min Holders" }), {
+    fireEvent.change(minHolders(), {
       target: { value: "40" },
     });
     fireEvent.click(within(table).getByRole("button", { name: "Holders" }));
@@ -128,9 +135,7 @@ describe("Quarterly research context", () => {
     fireEvent.click(within(table).getByRole("link", { name: "AMZN" }));
     fireEvent.click(await screen.findByRole("button", { name: "Back to research" }));
     await screen.findByRole("table", { name: "Ranked stocks" });
-    expect(
-      (screen.getByRole("spinbutton", { name: "Min Holders" }) as HTMLInputElement).value,
-    ).toBe("40");
+    expect(minHolders().value).toBe("40");
     expect(tickers()).toEqual(["TSM", "AMZN"]);
     expect(screen.getByText("Sorted by Holders · ascending")).toBeTruthy();
   });
@@ -138,24 +143,20 @@ describe("Quarterly research context", () => {
   it("keeps each research question's filters separate", async () => {
     renderResearch();
     await screen.findByRole("table", { name: "Ranked stocks" });
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Min Holders" }), {
+    fireEvent.change(minHolders(), {
       target: { value: "40" },
     });
     fireEvent.keyDown(screen.getByRole("tab", { name: "Consensus Buys" }), { key: "Enter" });
-    expect(
-      (screen.getByRole("spinbutton", { name: "Min Holders" }) as HTMLInputElement).value,
-    ).toBe("0");
+    expect(minHolders().value).toBe("0");
     fireEvent.keyDown(screen.getByRole("tab", { name: "Smart Score" }), { key: "Enter" });
-    expect(
-      (screen.getByRole("spinbutton", { name: "Min Holders" }) as HTMLInputElement).value,
-    ).toBe("40");
+    expect(minHolders().value).toBe("40");
   });
 
   it("restores the strategy ranking without resetting research filters", async () => {
     renderResearch();
     const table = await screen.findByRole("table", { name: "Ranked stocks" });
     expect(screen.queryByRole("button", { name: "Restore default ranking" })).toBeNull();
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Min Holders" }), {
+    fireEvent.change(minHolders(), {
       target: { value: "40" },
     });
     fireEvent.click(within(table).getByRole("button", { name: "Holders" }));
@@ -167,9 +168,7 @@ describe("Quarterly research context", () => {
     expect(screen.getByText("Sorted by Holders · ascending")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Restore default ranking" }));
     expect(tickers()).toEqual(["AMZN", "TSM"]);
-    expect(
-      (screen.getByRole("spinbutton", { name: "Min Holders" }) as HTMLInputElement).value,
-    ).toBe("40");
+    expect(minHolders().value).toBe("40");
     expect(screen.queryByText(/Sorted by/)).toBeNull();
     const restoredCard = within(screen.getByRole("list", { name: "Ranked stocks" })).getAllByRole(
       "listitem",
@@ -217,14 +216,26 @@ describe("Quarterly research context", () => {
     localStorage.setItem("starred_fund", JSON.stringify(["Lingotto"]));
     renderResearch();
     await screen.findByRole("table", { name: "Ranked stocks" });
-    fireEvent.click(screen.getByRole("button", { name: /Stocks 1/ }));
+    fireEvent.click(
+      within(screen.getByRole("radiogroup", { name: "Stock scope" })).getByRole("radio", {
+        name: "Starred · 1",
+      }),
+    );
     expect(tickers()).toEqual(["TSM"]);
     expect(vi.mocked(useQuarterAnalysis).mock.lastCall?.[1]?.fundFilter).toBeUndefined();
-    fireEvent.click(screen.getByRole("button", { name: /Funds 1/ }));
+    fireEvent.click(
+      within(screen.getByRole("radiogroup", { name: "Fund universe" })).getByRole("radio", {
+        name: "Starred · 1",
+      }),
+    );
     expect(vi.mocked(useQuarterAnalysis).mock.lastCall?.[1]?.fundFilter).toEqual(
       new Set(["Lingotto"]),
     );
-    fireEvent.click(screen.getByRole("button", { name: /Stocks 1/ }));
+    fireEvent.click(
+      within(screen.getByRole("radiogroup", { name: "Stock scope" })).getByRole("radio", {
+        name: "All",
+      }),
+    );
     expect(tickers()).toEqual(["AMZN", "TSM", "STX"]);
   });
 });

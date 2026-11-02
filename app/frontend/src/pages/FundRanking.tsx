@@ -1,23 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Trophy } from "lucide-react";
-import { Link } from "react-router";
 
 import { FundCell } from "@/components/EntityLinks";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { LoadingState } from "@/components/ui/LoadingState";
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Panel } from "@/components/ui/Panel";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { FaqLink } from "@/components/ui/TextLink";
 import { QueryState } from "@/components/ui/QueryState";
-import { TableFrame } from "@/components/ui/TableFrame";
+import { ResponsiveTable } from "@/components/ui/ResponsiveTable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useSortState } from "@/hooks/useSortState";
 import { getFundPerformanceRows } from "@/lib/dataService";
 import { rankFunds, sortRanking, type RankedFund, type RankingKey } from "@/lib/fundRanking";
 import { RANKING_PAGE } from "@/lib/pageMeta";
-import { pctFrac, pp, toneClass } from "@/lib/performanceFormat";
-import { learnItem } from "@/lib/routes";
+import { pctFrac, pp } from "@/lib/performanceFormat";
+import { toneClass } from "@/lib/tone";
 import { canonicalUrl } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -120,16 +121,11 @@ export default function FundRanking() {
 
   return (
     <div className="space-y-6 max-w-screen-2xl">
-      <div>
-        <h1 className="page-title">
-          <Trophy aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
-          {RANKING_PAGE.heading}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">
-          Estimated cumulative returns of tracked funds' 13F holdings against the S&amp;P 500, not
-          certified fund returns.
-        </p>
-      </div>
+      <PageHeader
+        title={RANKING_PAGE.heading}
+        icon={Trophy}
+        description="Estimated cumulative returns of tracked funds' 13F holdings against the S&P 500, not certified fund returns."
+      />
 
       {isError ? (
         <QueryState isError error={error} title="Could not load fund performance" />
@@ -148,24 +144,16 @@ export default function FundRanking() {
                 ? `${partialCount} of ${ranking.funds.length} funds have partial windows; compare their excess (pp) over the same observed quarters. `
                 : "All funds have estimates for the full window. "}
               A short sample from a roster selected on past performance does not establish skill.{" "}
-              <Link
-                to={learnItem("how-funds-are-selected")}
-                className="text-primary-text hover:underline underline-offset-4"
-              >
-                Fund selection
-              </Link>
+              <FaqLink item="how-funds-are-selected">Fund selection</FaqLink>
               <span className="ml-2 inline-flex items-center gap-1 align-middle">
                 <InfoTooltip text="Each estimate prices the starting 13F book (top 100 positions) to the next quarter end. It excludes dividends, fees, shorts, options and trades within the quarter. Unpriced holdings count as flat. Partial windows need not be consecutive." />
               </span>
             </p>
           </div>
-          <div className="frame overflow-hidden">
-            <div className="frame-title frame-title--spaced">
-              <PanelTitle>Estimated cumulative return</PanelTitle>
-            </div>
-
-            <div className="hidden md:block">
-              <TableFrame label="Fund ranking">
+          <Panel title="Estimated cumulative return" spaced>
+            <ResponsiveTable
+              label="Fund ranking"
+              table={
                 <table className="w-full text-sm" aria-label="Fund ranking">
                   <thead>
                     <tr>
@@ -243,58 +231,63 @@ export default function FundRanking() {
                     ))}
                   </tbody>
                 </table>
-              </TableFrame>
-            </div>
-
-            <ol className="md:hidden divide-y divide-border" aria-label="Fund ranking cards">
-              {funds.map((f, i) => (
-                <li key={f.fund} className="px-3 py-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="w-6 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
-                      {i + 1}
-                    </span>
-                    <FundCell
-                      fundName={f.fund}
-                      className="flex-1 text-sm [&>span>span:first-child]:line-clamp-2 [&>span>span:first-child]:whitespace-normal [&>span>span:first-child]:leading-4"
-                    />
-                    <PartialFlag fund={f} window={windowSize} />
-                    <CoverageFlag fund={f} />
-                  </div>
-                  <div className="mt-2 text-right">
-                    <span
-                      className={cn(
-                        "whitespace-nowrap text-base font-medium tabular-nums",
-                        toneClass(f.cumReturn),
-                      )}
-                    >
-                      {pctFrac(f.cumReturn)}
-                    </span>
-                  </div>
-                  <ReturnBar value={f.cumReturn} max={best} benchmark={f.cumReturn - f.excess} />
-                  <dl className="mt-2 grid grid-cols-4 gap-2 text-xs tabular-nums">
-                    <div>
-                      <dt className="text-muted-foreground">vs S&amp;P</dt>
-                      <dd className={toneClass(f.excess)}>{pp(f.excess * 100)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">Ahead</dt>
-                      <dd>
-                        {f.beats}/{f.total}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">Worst Q</dt>
-                      <dd className={toneClass(f.worstQuarter)}>{pctFrac(f.worstQuarter)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">Consist.</dt>
-                      <dd>{consistencyLabel(f.consistency)}</dd>
-                    </div>
-                  </dl>
-                </li>
-              ))}
-            </ol>
-          </div>
+              }
+              cards={
+                <ol className="divide-y divide-border" aria-label="Fund ranking cards">
+                  {funds.map((f, i) => (
+                    <li key={f.fund} className="px-3 py-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="w-6 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                          {i + 1}
+                        </span>
+                        <FundCell
+                          fundName={f.fund}
+                          className="flex-1 text-sm [&>span>span:first-child]:line-clamp-2 [&>span>span:first-child]:whitespace-normal [&>span>span:first-child]:leading-4"
+                        />
+                        <PartialFlag fund={f} window={windowSize} />
+                        <CoverageFlag fund={f} />
+                      </div>
+                      <div className="mt-2 text-right">
+                        <span
+                          className={cn(
+                            "whitespace-nowrap text-base font-medium tabular-nums",
+                            toneClass(f.cumReturn),
+                          )}
+                        >
+                          {pctFrac(f.cumReturn)}
+                        </span>
+                      </div>
+                      <ReturnBar
+                        value={f.cumReturn}
+                        max={best}
+                        benchmark={f.cumReturn - f.excess}
+                      />
+                      <dl className="mt-2 grid grid-cols-4 gap-2 text-xs tabular-nums">
+                        <div>
+                          <dt className="text-muted-foreground">vs S&amp;P</dt>
+                          <dd className={toneClass(f.excess)}>{pp(f.excess * 100)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground">Ahead</dt>
+                          <dd>
+                            {f.beats}/{f.total}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground">Worst Q</dt>
+                          <dd className={toneClass(f.worstQuarter)}>{pctFrac(f.worstQuarter)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground">Consist.</dt>
+                          <dd>{consistencyLabel(f.consistency)}</dd>
+                        </div>
+                      </dl>
+                    </li>
+                  ))}
+                </ol>
+              }
+            />
+          </Panel>
 
           <p className="status-line border-t border-border pt-3 text-muted-foreground">
             S&amp;P 500 <span className={toneClass(benchmark)}>{pctFrac(benchmark)}</span> over{" "}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { buildChartData } from "@/lib/equityCurve";
+import { buildChartData, spreadLabels } from "@/lib/equityCurve";
 import type { PerfSeries } from "@/lib/dataService";
 
 const mkSeries = (id: string, cums: number[]): PerfSeries => ({
@@ -52,5 +52,20 @@ describe("buildChartData", () => {
     expect(data[1].__band).toEqual([10, 20]);
     expect(data[2].__band).toBeUndefined();
     expect(data[2].avg_portfolio).toBeCloseTo(-5);
+  });
+});
+
+describe("spreadLabels", () => {
+  it("separates crowded end labels without reordering them or leaving the plot", () => {
+    const placed = spreadLabels([100, 102, 98, 300, 299], 14, 10, 305);
+    const byY = placed.map((y, i) => ({ y, i })).sort((a, b) => a.y - b.y);
+    expect(byY.map((p) => p.i)).toEqual([2, 0, 1, 4, 3]);
+    for (let k = 1; k < byY.length; k++) expect(byY[k].y - byY[k - 1].y).toBeGreaterThanOrEqual(14);
+    expect(Math.min(...placed)).toBeGreaterThanOrEqual(10);
+    expect(Math.max(...placed)).toBeLessThanOrEqual(305);
+  });
+
+  it("leaves labels that already have room on their line", () => {
+    expect(spreadLabels([40, 120, 200], 14, 0, 300)).toEqual([40, 120, 200]);
   });
 });

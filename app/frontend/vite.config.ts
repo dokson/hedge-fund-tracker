@@ -382,6 +382,9 @@ export default defineConfig(({ mode }) => ({
   test: {
     globals: true,
     environment: "jsdom",
+    // One jsdom per worker (files stay isolated in their own VM context): the suite ran ~2.3x slower
+    // rebuilding the environment for every file.
+    pool: "vmThreads",
     setupFiles: ["./src/test/setup.ts"],
     coverage: {
       provider: "v8",

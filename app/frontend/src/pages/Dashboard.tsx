@@ -1,8 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SlidersHorizontal } from "lucide-react";
-import { Link } from "react-router";
-import { learnItem } from "@/lib/routes";
 import {
   getStocks,
   getHedgeFunds,
@@ -12,7 +10,8 @@ import {
 } from "@/lib/dataService";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { LATEST_PAGE } from "@/lib/pageMeta";
-import { useSortState, type SortDir } from "@/hooks/useSortState";
+import { useSortState } from "@/hooks/useSortState";
+import { ColumnHeader } from "@/components/ui/ColumnHeader";
 import { SortArrow } from "@/components/ui/SortArrow";
 import { canonicalUrl } from "@/lib/seo";
 import { TickerLink, FundCell, CompanyLink } from "@/components/EntityLinks";
@@ -27,8 +26,10 @@ import {
 import { SearchInput } from "@/components/ui/SearchInput";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { QueryState } from "@/components/ui/QueryState";
-import { InfoTooltip } from "@/components/ui/InfoTooltip";
-import { TableFrame } from "@/components/ui/TableFrame";
+import { ResponsiveTable } from "@/components/ui/ResponsiveTable";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { FaqLink } from "@/components/ui/TextLink";
+import { Stat, StatGrid } from "@/components/ui/Stat";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StarredFilterToggle } from "@/components/StarredFilterToggle";
 import { isoDaysBefore, toInitCap, matchesQuery } from "@/lib/utils";
@@ -85,43 +86,6 @@ const SORT_OPTIONS: readonly { value: SortField; label: string }[] = [
   { value: "delta", label: "Shares Δ" },
   { value: "value", label: "Est. value" },
 ];
-
-/** Sortable column header: the button carries the click, the th carries aria-sort. */
-function SortableTh({
-  field,
-  label,
-  align,
-  sortField,
-  sortDir,
-  onSort,
-}: {
-  field: SortField;
-  label: string;
-  align: "left" | "right";
-  sortField: SortField;
-  sortDir: SortDir;
-  onSort: (field: SortField) => void;
-}) {
-  const active = sortField === field;
-  return (
-    <th
-      scope="col"
-      aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-      className={`p-0 ${align === "right" ? "text-right" : "text-left"}`}
-    >
-      <button
-        type="button"
-        onClick={() => onSort(field)}
-        className={`h-full w-full px-2 py-3 whitespace-nowrap hover:text-foreground hover:bg-muted ${
-          align === "right" ? "text-right" : "text-left"
-        }`}
-      >
-        {label}
-        <SortArrow active={active} direction={sortDir} />
-      </button>
-    </th>
-  );
-}
 
 /** A position's disclosure and valuation context on narrow screens. */
 function FilingCard({
@@ -312,19 +276,16 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 max-w-screen-2xl">
-      <div>
-        <h1 className="page-title">Latest Filings</h1>
-        <p className="text-sm text-muted-foreground mt-1.5 max-w-3xl">
-          Latest saved 13D/G and Form 4 disclosure per position, by publication date. Changes are
-          measured against each fund’s latest 13F.{" "}
-          <Link
-            to={learnItem("how-to-read-filing-metrics")}
-            className="text-primary-text hover:underline underline-offset-4"
-          >
-            How to read these figures
-          </Link>
-        </p>
-      </div>
+      <PageHeader
+        title="Latest Filings"
+        description={
+          <>
+            Latest saved 13D/G and Form 4 disclosure per position, by publication date. Changes are
+            measured against each fund’s latest 13F.{" "}
+            <FaqLink item="how-to-read-filing-metrics">How to read these figures</FaqLink>
+          </>
+        }
+      />
 
       {!isLoading && filings.length > 0 && (
         <div>
@@ -338,50 +299,32 @@ export default function Dashboard() {
               </>
             )}
           </p>
-          <div
-            className="grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-border bg-border"
-            role="group"
-            aria-label="Filter by position change"
-          >
-            {FILING_TYPES.map((type) => {
-              const isActive = typeFilters.has(type);
-              const { label, text } = STAT_META[type];
-              const count = counts[type];
-              const toggle = () =>
-                setTypeFilters((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(type)) next.delete(type);
-                  else next.add(type);
-                  return next;
-                });
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={toggle}
-                  aria-pressed={isActive}
-                  className={`min-w-0 px-2 py-3 text-left transition-colors sm:px-4 ${
-                    isActive
-                      ? "bg-muted ring-2 ring-inset ring-primary"
-                      : "bg-card hover:bg-muted/60"
-                  }`}
-                >
-                  <span className="block text-[11px] text-muted-foreground sm:text-xs">
-                    {label}
-                  </span>
-                  <span className="mt-1 flex items-baseline justify-between gap-1">
-                    <span
-                      className={`text-2xl font-semibold tabular-nums leading-none sm:text-3xl ${count > 0 ? text : "text-foreground"}`}
-                    >
-                      {count}
-                    </span>
-                    <span className="hidden text-xs tabular-nums text-muted-foreground sm:inline">
-                      {totalCount > 0 ? Math.round((count / totalCount) * 100) : 0}%
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
+          <div role="group" aria-label="Filter by position change">
+            <StatGrid className="grid-cols-4">
+              {FILING_TYPES.map((type) => {
+                const isActive = typeFilters.has(type);
+                const { label, text } = STAT_META[type];
+                const count = counts[type];
+                const toggle = () =>
+                  setTypeFilters((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(type)) next.delete(type);
+                    else next.add(type);
+                    return next;
+                  });
+                return (
+                  <Stat
+                    key={type}
+                    onClick={toggle}
+                    active={isActive}
+                    label={label}
+                    size="lg"
+                    valueClassName={count > 0 ? text : "text-foreground"}
+                    value={<span className="text-2xl sm:text-3xl">{count}</span>}
+                  />
+                );
+              })}
+            </StatGrid>
           </div>
         </div>
       )}
@@ -465,174 +408,174 @@ export default function Dashboard() {
       ) : isLoading ? (
         <LoadingState message="Loading and enriching filings…" className="surface" />
       ) : (
-        <>
-          {/* Mobile: row list */}
-          <div className="md:hidden">
-            {filtered.length === 0 ? (
-              <div className="surface p-8 text-center text-muted-foreground">
-                No filings match your filters.
-              </div>
-            ) : (
-              <ul className="border-t border-border">
-                {filtered.map((f, i) => (
-                  <FilingCard
-                    key={`${f.cusip}-${f.fund}-${f.date}-${f.deltaType}-${f.shares ?? i}`}
-                    f={f}
-                    sector={tickerMeta.get(f.ticker)?.sector}
-                    industry={tickerMeta.get(f.ticker)?.industry}
+        <ResponsiveTable
+          label={`Latest filings, ${periodLabel}`}
+          tableClassName="surface @container"
+          cards={
+            <div>
+              {filtered.length === 0 ? (
+                <div className="surface p-8 text-center text-muted-foreground">
+                  No filings match your filters.
+                </div>
+              ) : (
+                <ul className="border-t border-border">
+                  {filtered.map((f, i) => (
+                    <FilingCard
+                      key={`${f.cusip}-${f.fund}-${f.date}-${f.deltaType}-${f.shares ?? i}`}
+                      f={f}
+                      sector={tickerMeta.get(f.ticker)?.sector}
+                      industry={tickerMeta.get(f.ticker)?.industry}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+          }
+          table={
+            <table
+              className="w-full min-w-[960px] table-fixed text-sm"
+              aria-label={`Latest filings, ${periodLabel}`}
+            >
+              <colgroup>
+                {/* Keep numeric/date columns stable; split remaining frame space 40/30/30. */}
+                <col className="w-[100px]" />
+                <col className="w-[max(172px,calc(40cqw_-_212px))]" />
+                <col className="w-[max(129px,calc(30cqw_-_159px))]" />
+                <col className="w-[max(129px,calc(30cqw_-_159px))]" />
+                <col className="w-[130px]" />
+                <col className="w-[84px]" />
+                <col className="w-[96px]" />
+                <col className="w-[120px]" />
+              </colgroup>
+              <thead>
+                <tr className="whitespace-nowrap">
+                  <th scope="col" className="text-left px-2 py-3">
+                    Ticker
+                  </th>
+                  <th scope="col" className="text-left px-2 py-3">
+                    Company
+                  </th>
+                  <th scope="col" className="text-left px-2 py-3">
+                    Industry
+                  </th>
+                  <th scope="col" className="text-left px-2 py-3">
+                    Fund
+                  </th>
+                  <ColumnHeader
+                    label="Published / As of"
+                    sort={{
+                      active: sortField === "date",
+                      direction: sortDir,
+                      onToggle: () => toggleSort("date"),
+                    }}
                   />
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Desktop: full data table */}
-          <div className="surface @container hidden md:block">
-            <TableFrame label={`Latest filings, ${periodLabel}`}>
-              <table
-                className="w-full min-w-[960px] table-fixed text-sm"
-                aria-label={`Latest filings, ${periodLabel}`}
-              >
-                <colgroup>
-                  {/* Keep numeric/date columns stable; split remaining frame space 40/30/30. */}
-                  <col className="w-[100px]" />
-                  <col className="w-[max(172px,calc(40cqw_-_212px))]" />
-                  <col className="w-[max(129px,calc(30cqw_-_159px))]" />
-                  <col className="w-[max(129px,calc(30cqw_-_159px))]" />
-                  <col className="w-[130px]" />
-                  <col className="w-[84px]" />
-                  <col className="w-[96px]" />
-                  <col className="w-[120px]" />
-                </colgroup>
-                <thead>
-                  <tr className="whitespace-nowrap">
-                    <th scope="col" className="text-left px-2 py-3">
-                      Ticker
-                    </th>
-                    <th scope="col" className="text-left px-2 py-3">
-                      Company
-                    </th>
-                    <th scope="col" className="text-left px-2 py-3">
-                      Industry
-                    </th>
-                    <th scope="col" className="text-left px-2 py-3">
-                      Fund
-                    </th>
-                    <SortableTh
-                      field="date"
-                      label="Published / As of"
-                      align="left"
-                      sortField={sortField}
-                      sortDir={sortDir}
-                      onSort={toggleSort}
-                    />
-                    <SortableTh
-                      field="delta"
-                      label="Shares Δ"
-                      align="right"
-                      sortField={sortField}
-                      sortDir={sortDir}
-                      onSort={toggleSort}
-                    />
-                    <th scope="col" className="text-right px-2 py-3">
-                      <span className="inline-flex items-center gap-1">
-                        Portfolio %
-                        <InfoTooltip text="Weight in the fund's latest 13F. ~ marks an estimated weight for a position absent from that baseline." />
-                      </span>
-                    </th>
-                    <SortableTh
-                      field="value"
-                      label="Est. value"
-                      align="right"
-                      sortField={sortField}
-                      sortDir={sortDir}
-                      onSort={toggleSort}
-                    />
+                  <ColumnHeader
+                    label="Shares Δ"
+                    align="right"
+                    sort={{
+                      active: sortField === "delta",
+                      direction: sortDir,
+                      onToggle: () => toggleSort("delta"),
+                    }}
+                  />
+                  <ColumnHeader
+                    label="Portfolio %"
+                    align="right"
+                    tooltip="Weight in the fund's latest 13F. ~ marks an estimated weight for a position absent from that baseline."
+                  />
+                  <ColumnHeader
+                    label="Est. value"
+                    align="right"
+                    sort={{
+                      active: sortField === "value",
+                      direction: sortDir,
+                      onToggle: () => toggleSort("value"),
+                    }}
+                  />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                      No filings match your filters.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="p-8 text-center text-muted-foreground">
-                        No filings match your filters.
+                ) : (
+                  filtered.map((f, i) => (
+                    <tr
+                      key={`${f.cusip}-${f.fund}-${f.date}-${f.deltaType}-${f.shares ?? i}`}
+                      className="data-table-row h-16"
+                    >
+                      <td className="px-2 py-3">
+                        <TickerLink ticker={f.ticker} />
+                      </td>
+                      <td className="px-2 py-3">
+                        <CompanyLink
+                          ticker={f.ticker}
+                          company={toInitCap(f.company)}
+                          className="line-clamp-2 whitespace-normal leading-4"
+                          showStar
+                        />
+                      </td>
+                      <td className="px-2 py-3">
+                        <IndustryLabel
+                          sector={tickerMeta.get(f.ticker)?.sector}
+                          industry={tickerMeta.get(f.ticker)?.industry}
+                        />
+                      </td>
+                      <td className="px-2 py-3">
+                        <FundCell
+                          fundName={f.fund}
+                          className="[&>span>span:first-child]:line-clamp-2 [&>span>span:first-child]:whitespace-normal [&>span>span:first-child]:leading-4"
+                        />
+                      </td>
+                      <td className="px-2 py-3 text-muted-foreground whitespace-nowrap">
+                        <time dateTime={f.filingDate} className="block text-foreground">
+                          {f.filingDate || "—"}
+                        </time>
+                        <span className="block text-xs">
+                          As of <time dateTime={f.date}>{f.date || "—"}</time>
+                        </span>
+                      </td>
+                      <td className="px-2 py-3 text-right font-mono whitespace-nowrap">
+                        {f.deltaType === "NEW" ? (
+                          <span className="badge-new">NEW</span>
+                        ) : f.deltaType === "CLOSED" ? (
+                          <span className="badge-closed">CLOSE</span>
+                        ) : f.deltaPct !== null ? (
+                          <Delta value={f.deltaPct} mode="percent" />
+                        ) : (
+                          <span className="badge-nochange">NO CHANGE</span>
+                        )}
+                      </td>
+                      <td
+                        className="px-2 py-3 text-right font-mono text-muted-foreground whitespace-nowrap"
+                        title={
+                          f.quarterPortfolioPct === null && f.estimatedPortfolioPct !== null
+                            ? "Estimated weight over the fund's merged portfolio (new position)"
+                            : undefined
+                        }
+                      >
+                        {f.quarterPortfolioPct !== null
+                          ? `${f.quarterPortfolioPct.toFixed(2)}%`
+                          : f.estimatedPortfolioPct !== null
+                            ? `~${f.estimatedPortfolioPct.toFixed(2)}%`
+                            : "—"}
+                      </td>
+                      <td className="px-2 py-3 text-right font-mono whitespace-nowrap">
+                        <span className="block">{f.value}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          Ref. price {f.avgPrice === "N/A" ? "—" : `$${f.avgPrice}`}
+                        </span>
                       </td>
                     </tr>
-                  ) : (
-                    filtered.map((f, i) => (
-                      <tr
-                        key={`${f.cusip}-${f.fund}-${f.date}-${f.deltaType}-${f.shares ?? i}`}
-                        className="data-table-row h-16"
-                      >
-                        <td className="px-2 py-3">
-                          <TickerLink ticker={f.ticker} />
-                        </td>
-                        <td className="px-2 py-3">
-                          <CompanyLink
-                            ticker={f.ticker}
-                            company={toInitCap(f.company)}
-                            className="line-clamp-2 whitespace-normal leading-4"
-                            showStar
-                          />
-                        </td>
-                        <td className="px-2 py-3">
-                          <IndustryLabel
-                            sector={tickerMeta.get(f.ticker)?.sector}
-                            industry={tickerMeta.get(f.ticker)?.industry}
-                          />
-                        </td>
-                        <td className="px-2 py-3">
-                          <FundCell
-                            fundName={f.fund}
-                            className="[&>span>span:first-child]:line-clamp-2 [&>span>span:first-child]:whitespace-normal [&>span>span:first-child]:leading-4"
-                          />
-                        </td>
-                        <td className="px-2 py-3 text-muted-foreground whitespace-nowrap">
-                          <time dateTime={f.filingDate} className="block text-foreground">
-                            {f.filingDate || "—"}
-                          </time>
-                          <span className="block text-xs">
-                            As of <time dateTime={f.date}>{f.date || "—"}</time>
-                          </span>
-                        </td>
-                        <td className="px-2 py-3 text-right font-mono whitespace-nowrap">
-                          {f.deltaType === "NEW" ? (
-                            <span className="badge-new">NEW</span>
-                          ) : f.deltaType === "CLOSED" ? (
-                            <span className="badge-closed">CLOSE</span>
-                          ) : f.deltaPct !== null ? (
-                            <Delta value={f.deltaPct} mode="percent" />
-                          ) : (
-                            <span className="badge-nochange">NO CHANGE</span>
-                          )}
-                        </td>
-                        <td
-                          className="px-2 py-3 text-right font-mono text-muted-foreground whitespace-nowrap"
-                          title={
-                            f.quarterPortfolioPct === null && f.estimatedPortfolioPct !== null
-                              ? "Estimated weight over the fund's merged portfolio (new position)"
-                              : undefined
-                          }
-                        >
-                          {f.quarterPortfolioPct !== null
-                            ? `${f.quarterPortfolioPct.toFixed(2)}%`
-                            : f.estimatedPortfolioPct !== null
-                              ? `~${f.estimatedPortfolioPct.toFixed(2)}%`
-                              : "—"}
-                        </td>
-                        <td className="px-2 py-3 text-right font-mono whitespace-nowrap">
-                          <span className="block">{f.value}</span>
-                          <span className="block text-xs text-muted-foreground">
-                            Ref. price {f.avgPrice === "N/A" ? "—" : `$${f.avgPrice}`}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </TableFrame>
-          </div>
-        </>
+                  ))
+                )}
+              </tbody>
+            </table>
+          }
+        />
       )}
     </div>
   );

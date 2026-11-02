@@ -107,16 +107,16 @@ export default function ModelSelector({
 
   return (
     <Select value={effectiveValue} onValueChange={handleChange} disabled={disabled}>
-      <SelectTrigger aria-label="AI model" className={className || "w-64"}>
+      <SelectTrigger aria-label="AI model" className={className || "min-h-10 w-64"}>
         <SelectValue placeholder="Select model…" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="max-w-[calc(100vw-2rem)]">
         {groupedModels.map(({ providerName, models }) => (
           <div key={providerName}>
             <div className="px-2 py-1.5 text-xs text-muted-foreground">{providerName}</div>
             {models.map((m) => (
-              <SelectItem key={m.id} value={m.id}>
-                <span className="text-[13px]">{m.description}</span>
+              <SelectItem key={m.id} value={m.id} className="min-h-10">
+                <span className="break-words text-[13px]">{m.description}</span>
               </SelectItem>
             ))}
           </div>

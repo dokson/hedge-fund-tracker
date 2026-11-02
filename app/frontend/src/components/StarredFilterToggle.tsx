@@ -3,10 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 /**
- * "Consider Starred only" filter row — two toggle chips (Funds / Stocks) bound
- * to the global star sets. Shared by Latest Filings and Quarterly Trends so the
- * markup and behaviour stay in one place. Renders nothing when nothing is
- * starred, so callers don't need their own guard.
+ * "Consider Starred only" filter row for Latest Filings — two toggle chips
+ * (Funds / Stocks) bound to the global star sets. Renders nothing when
+ * nothing is starred, so callers don't need their own guard.
  */
 export function StarredFilterToggle({
   fundsCount,

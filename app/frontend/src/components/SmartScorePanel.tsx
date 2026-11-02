@@ -1,9 +1,7 @@
-import { Link } from "react-router";
-
 import { SmartScoreBadge } from "@/components/SmartScoreBadge";
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Panel } from "@/components/ui/Panel";
+import { FaqLink } from "@/components/ui/TextLink";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
-import { learnItem } from "@/lib/routes";
 import type { SmartScoreView } from "@/lib/smartScore";
 
 const COMPONENTS: {
@@ -35,36 +33,38 @@ export function SmartScorePanel({
 }) {
   if (loading) {
     return (
-      <div className="frame" aria-busy="true">
-        <div className="frame-title h-10">
-          <PanelTitle>Smart Score</PanelTitle>
-          <span className="h-4 w-12 animate-pulse rounded-sm bg-muted" />
-        </div>
-        <div className="grid grid-cols-1 gap-x-6 divide-y divide-border px-3 pb-3 sm:grid-cols-3 sm:divide-y-0">
-          {COMPONENTS.map(({ key, label }) => (
-            <div key={key} className="py-2">
-              <span className="text-sm font-medium leading-5">{label}</span>
-              <span className="mt-1 block h-4 w-2/3 animate-pulse rounded-sm bg-muted" />
-            </div>
-          ))}
-        </div>
-        <span role="status" className="sr-only">
-          Loading Smart Score…
-        </span>
+      <div aria-busy="true">
+        <Panel
+          title="Smart Score"
+          aside={<span className="h-4 w-12 animate-pulse rounded-sm bg-muted" />}
+        >
+          <div className="grid grid-cols-1 gap-x-6 divide-y divide-border px-3 pb-3 sm:grid-cols-3 sm:divide-y-0">
+            {COMPONENTS.map(({ key, label }) => (
+              <div key={key} className="py-2">
+                <span className="text-sm font-medium leading-5">{label}</span>
+                <span className="mt-1 block h-4 w-2/3 animate-pulse rounded-sm bg-muted" />
+              </div>
+            ))}
+          </div>
+          <span role="status" className="sr-only">
+            Loading Smart Score…
+          </span>
+        </Panel>
       </div>
     );
   }
   if (!score) return null;
 
   return (
-    <div className="frame">
-      <div className="frame-title h-10">
-        <div className="flex items-center gap-2">
-          <PanelTitle>Smart Score</PanelTitle>
+    <Panel
+      title={
+        <span className="flex items-center gap-2">
+          Smart Score
           <InfoTooltip text="Relative to the selected quarter's analysis universe. Breadth, momentum and conviction combine into a 1–10 score; ties at one decimal follow the unrounded score. Latest-quarter data can include saved non-quarterly disclosures." />
-        </div>
-        <SmartScoreBadge score={score.smartScore} />
-      </div>
+        </span>
+      }
+      aside={<SmartScoreBadge score={score.smartScore} />}
+    >
       <div className="px-3 pb-3">
         <dl className="grid grid-cols-1 gap-x-6 divide-y divide-border sm:grid-cols-3 sm:divide-y-0">
           {COMPONENTS.map(({ key, label, meaning }) => (
@@ -80,15 +80,9 @@ export function SmartScorePanel({
         </dl>
         <p className="border-t border-border pt-2 text-xs leading-4 text-muted-foreground">
           {quarterLabel ? quarterLabel.replace("Q", " Q") : "Selected-quarter"} percentiles, not a
-          return forecast.{" "}
-          <Link
-            to={learnItem("what-is-smart-score")}
-            className="text-primary-text underline-offset-2 hover:underline"
-          >
-            Method FAQ
-          </Link>
+          return forecast. <FaqLink item="what-is-smart-score">Method FAQ</FaqLink>
         </p>
       </div>
-    </div>
+    </Panel>
   );
 }

@@ -2,7 +2,8 @@ import { useLocation, Link } from "react-router";
 import { useEffect } from "react";
 import { BarChart3, FileText, Home, LineChart, Wallet, type LucideIcon } from "lucide-react";
 
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Panel } from "@/components/ui/Panel";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { ROUTES } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
@@ -34,14 +35,9 @@ const NotFound = () => {
   return (
     <div className="flex min-h-[72vh] items-center justify-center px-4 py-12">
       <div className="mx-auto w-full max-w-xl space-y-6">
-        <h1 className="page-title">404 · Page not found</h1>
+        <PageHeader title="404 · Page not found" />
 
-        <div className="frame">
-          <div className="frame-title">
-            <PanelTitle>
-              {isSymbolLookup ? "No filings for this symbol" : "Route not found"}
-            </PanelTitle>
-          </div>
+        <Panel title={isSymbolLookup ? "No filings for this symbol" : "Route not found"}>
           <div className="space-y-3 p-3">
             <p className="flex min-w-0 items-center gap-2">
               <span className="sr-only">Requested route:</span>
@@ -55,26 +51,25 @@ const NotFound = () => {
                 : "The address never resolved. It may have been renamed, or the link that brought you here is stale."}
             </p>
           </div>
-        </div>
+        </Panel>
 
-        <nav aria-label="Recovery routes" className="frame">
-          <div className="frame-title">
-            <PanelTitle>Go to</PanelTitle>
-          </div>
-          <ul className="divide-y divide-border/60">
-            {RECOVERY.map(({ label, path, icon: Icon }) => (
-              <li key={path}>
-                <Link
-                  to={path}
-                  className="flex h-9 items-center gap-2 px-3 text-[13px] text-muted-foreground transition-colors duration-[120ms] hover:bg-muted hover:text-foreground hover:no-underline"
-                >
-                  <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <span className="truncate text-foreground">{label}</span>
-                  <span className="ml-auto text-muted-foreground">{path}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <nav aria-label="Recovery routes">
+          <Panel title="Go to">
+            <ul className="divide-y divide-border/60">
+              {RECOVERY.map(({ label, path, icon: Icon }) => (
+                <li key={path}>
+                  <Link
+                    to={path}
+                    className="flex h-9 items-center gap-2 px-3 text-[13px] text-muted-foreground transition-colors duration-[120ms] hover:bg-muted hover:text-foreground hover:no-underline"
+                  >
+                    <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="truncate text-foreground">{label}</span>
+                    <span className="ml-auto text-muted-foreground">{path}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Panel>
         </nav>
       </div>
     </div>

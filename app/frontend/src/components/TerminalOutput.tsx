@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Panel } from "@/components/ui/Panel";
 
 interface TerminalOutputProps {
   lines: string[];
@@ -12,10 +12,7 @@ function colorize(line: string): string {
   if (line.includes("❌") || line.includes("Error") || line.includes("error"))
     return "text-negative";
   if (line.includes("⚠️") || line.includes("Warning")) return "text-warning";
-  if (line.startsWith("🔍") || line.startsWith("🚀") || line.startsWith("📊"))
-    return "text-muted-foreground";
-  if (line.includes("Sending request") || line.includes("AI Agent")) return "text-magenta";
-  return "text-foreground";
+  return "text-muted-foreground";
 }
 
 export default function TerminalOutput({ lines, running }: TerminalOutputProps) {
@@ -26,13 +23,10 @@ export default function TerminalOutput({ lines, running }: TerminalOutputProps) 
   }, [lines]);
 
   return (
-    <div className="frame bg-background overflow-hidden">
-      <div className="frame-title">
-        <PanelTitle>Output</PanelTitle>
-      </div>
+    <Panel title="Output" className="min-w-0 bg-background">
       {/* Monospace belongs to the log body only: these are command lines. */}
       <div
-        className="p-3 max-h-[50vh] overflow-y-auto space-y-0.5 font-mono text-xs"
+        className="min-w-0 p-3 max-h-[32vh] overflow-y-auto space-y-0.5 font-mono text-xs"
         role="log"
         aria-live="polite"
         aria-label="Process output"
@@ -41,7 +35,7 @@ export default function TerminalOutput({ lines, running }: TerminalOutputProps) 
           <div
             // append-only log buffer; index is a stable identity
             key={i}
-            className={`leading-5 whitespace-pre ${colorize(line)}`}
+            className={`leading-5 whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${colorize(line)}`}
           >
             {line}
           </div>
@@ -55,6 +49,6 @@ export default function TerminalOutput({ lines, running }: TerminalOutputProps) 
         )}
         <div ref={bottomRef} />
       </div>
-    </div>
+    </Panel>
   );
 }

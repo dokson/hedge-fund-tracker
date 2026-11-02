@@ -31,13 +31,17 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { MeasuredChart } from "@/components/MeasuredChart";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { TableFrame } from "@/components/ui/TableFrame";
+import { ResponsiveTable } from "@/components/ui/ResponsiveTable";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { LogoPlate } from "@/components/LogoPlate";
+import { toneClass } from "@/lib/tone";
 import { ArrowDown, ArrowLeft, Brain } from "lucide-react";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { PageEnd } from "@/components/PageEnd";
 import { useBack } from "@/hooks/useBack";
-import { SortArrow } from "@/components/ui/SortArrow";
+import { ColumnHeader } from "@/components/ui/ColumnHeader";
 import { QueryState } from "@/components/ui/QueryState";
 import { useSortState } from "@/hooks/useSortState";
 import { useResearchState } from "@/hooks/useResearchState";
@@ -71,10 +75,6 @@ const TOOLTIP_STYLE = {
 
 function signed(n: number, digits = 0) {
   return `${n > 0 ? "+" : ""}${n.toFixed(digits)}`;
-}
-
-function deltaClass(n: number) {
-  return n > 0 ? "delta-positive" : n < 0 ? "delta-negative" : "";
 }
 
 /** Dot legend under a chart, so the colours are named, not only seen. */
@@ -122,13 +122,13 @@ function StockHolderCard({ h, rank }: { h: FundTickerHolding; rank: number }) {
           ) : deltaNum === 0 ? (
             <span className="badge-nochange">NO CHANGE</span>
           ) : (
-            <span className={deltaNum > 0 ? "delta-positive" : "delta-negative"}>{h.delta}</span>
+            <span className={toneClass(deltaNum)}>{h.delta}</span>
           )}
         </span>
         <span aria-hidden="true">·</span>
         <span>
           <span className="k">Position Δ $:</span>{" "}
-          <span className={deltaClass(h.deltaValue)}>{formatValue(h.deltaValue)}</span>
+          <span className={toneClass(h.deltaValue)}>{formatValue(h.deltaValue)}</span>
         </span>
       </div>
     </li>
@@ -269,11 +269,7 @@ export default function StockAnalysis() {
     { label: "Reduced", value: kpi.totalValueSold, fill: "hsl(var(--negative))" },
   ];
 
-  const { sortKey, sortDir, toggleSort, ariaSort } = useSortState<SortKey>(
-    "portfolioPct",
-    "desc",
-    "holders",
-  );
+  const { sortKey, sortDir, toggleSort } = useSortState<SortKey>("portfolioPct", "desc", "holders");
   const [holdingFilter, setHoldingFilter] = useResearchState<HoldingFilter>(
     "holders:filter",
     "all",
@@ -304,18 +300,6 @@ export default function StockAnalysis() {
   })();
 
   const holdersTitle = `Holders by Shares (${holdings.length} funds)`;
-  const sortableTh = (keyName: SortKey, label: string) => (
-    <th scope="col" aria-sort={ariaSort(keyName)} className="text-right p-0">
-      <button
-        type="button"
-        onClick={() => toggleSort(keyName)}
-        className="w-full p-3 text-right whitespace-nowrap hover:text-foreground hover:bg-muted"
-      >
-        {label}
-        <SortArrow active={sortKey === keyName} direction={sortDir} />
-      </button>
-    </th>
-  );
 
   return (
     <div className="space-y-3 max-w-screen-2xl">
@@ -343,45 +327,50 @@ export default function StockAnalysis() {
           Holders
         </Button>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="grid min-w-0 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 sm:w-auto sm:flex-1">
-          <div className="border border-border bg-card p-1.5">
-            <CompanyLogo ticker={ticker} size={44} />
-          </div>
-          <div className="min-w-0 space-y-1">
-            <h1 className="page-title flex-wrap gap-x-2 gap-y-0">
-              {ticker}
-              <span className="text-sm font-normal leading-5 text-muted-foreground sm:text-base">
-                {company}
+      <PageHeader
+        title={
+          <>
+            {ticker}
+            <span className="text-sm font-normal leading-5 text-muted-foreground sm:text-base">
+              {company}
+            </span>
+          </>
+        }
+        leading={
+          <LogoPlate size="lg">
+            <CompanyLogo ticker={ticker} size={40} />
+          </LogoPlate>
+        }
+        actions={
+          <StarButton active={isStarred(ticker)} onClick={() => toggleStar(ticker)} size={24} />
+        }
+      >
+        {(sector || industry) && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            {sector && (
+              <span
+                className={SECTOR_PILL}
+                style={sectorPillStyle(sectorStyle)}
+                title={`Yahoo Finance sector: ${sector}`}
+              >
+                <SectorIcon className="h-3 w-3" aria-hidden="true" />
+                {sector}
               </span>
-            </h1>
-            {(sector || industry) && (
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                {sector && (
-                  <span
-                    className={SECTOR_PILL}
-                    style={sectorPillStyle(sectorStyle)}
-                    title={`Yahoo Finance sector: ${sector}`}
-                  >
-                    <SectorIcon className="h-3 w-3" aria-hidden="true" />
-                    {sector}
-                  </span>
-                )}
-                {industry && (
-                  <button
-                    type="button"
-                    onClick={() => navigate(stocksByIndustry(industry))}
-                    className="inline-flex min-h-6 items-center text-xs font-medium text-muted-foreground transition-colors duration-[120ms] hover:text-foreground hover:underline"
-                    title={`Browse all ${industry} stocks`}
-                  >
-                    {industry}
-                  </button>
-                )}
-              </div>
+            )}
+            {industry && (
+              <button
+                type="button"
+                onClick={() => navigate(stocksByIndustry(industry))}
+                className="inline-flex min-h-6 items-center text-xs font-medium text-muted-foreground transition-colors duration-[120ms] hover:text-foreground hover:underline"
+                title={`Browse all ${industry} stocks`}
+              >
+                {industry}
+              </button>
             )}
           </div>
-          <StarButton active={isStarred(ticker)} onClick={() => toggleStar(ticker)} size={24} />
-        </div>
+        )}
+      </PageHeader>
+      <div className="flex flex-wrap justify-end gap-3">
         <div className="flex gap-3 w-full sm:w-auto">
           <Select
             value={quarter ?? ""}
@@ -460,10 +449,10 @@ export default function StockAnalysis() {
                   <InfoTooltip text="Share changes valued at reporting prices. The percentage divides that change by the implied prior position value; it is not aggregate share growth or a return." />
                 </dt>
                 <dd className="mt-1 flex items-baseline gap-2 tabular-nums">
-                  <span className={`text-2xl font-semibold ${deltaClass(kpi.totalDeltaValue)}`}>
+                  <span className={`text-2xl font-semibold ${toneClass(kpi.totalDeltaValue)}`}>
                     {formatValue(kpi.totalDeltaValue)}
                   </span>
-                  <span className={`text-sm ${deltaClass(kpi.deltaPct)}`}>
+                  <span className={`text-sm ${toneClass(kpi.deltaPct)}`}>
                     {formatPct(kpi.deltaPct, true)}
                   </span>
                 </dd>
@@ -474,7 +463,7 @@ export default function StockAnalysis() {
                   <InfoTooltip text="Funds that opened or increased the position minus funds that reduced or closed it." />
                 </dt>
                 <dd className="mt-1 flex flex-wrap items-baseline gap-x-2 tabular-nums">
-                  <span className={`text-2xl font-semibold ${deltaClass(kpi.netBuyers)}`}>
+                  <span className={`text-2xl font-semibold ${toneClass(kpi.netBuyers)}`}>
                     {signed(kpi.netBuyers)}
                   </span>
                   <span className="text-sm text-muted-foreground">
@@ -504,10 +493,7 @@ export default function StockAnalysis() {
           {!IS_GH_PAGES_MODE && <StockPriceChart ticker={ticker} />}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <section className="frame" aria-labelledby="sentiment-heading">
-              <h2 id="sentiment-heading" className="frame-title">
-                Funds increasing vs reducing
-              </h2>
+            <Panel title="Funds increasing vs reducing" titleId="sentiment-heading">
               <div className="p-3">
                 <div className="h-[80px]">
                   <MeasuredChart>
@@ -599,12 +585,9 @@ export default function StockAnalysis() {
                   ]}
                 />
               </div>
-            </section>
+            </Panel>
 
-            <section className="frame" aria-labelledby="flow-chart-heading">
-              <h2 id="flow-chart-heading" className="frame-title">
-                Reconstructed position change ($)
-              </h2>
+            <Panel title="Reconstructed position change ($)" titleId="flow-chart-heading">
               <div className="p-3">
                 <div className="h-[80px]">
                   <MeasuredChart>
@@ -654,7 +637,7 @@ export default function StockAnalysis() {
                   ]}
                 />
               </div>
-            </section>
+            </Panel>
           </div>
 
           <section aria-labelledby="holders-heading" className="space-y-3">
@@ -671,16 +654,17 @@ export default function StockAnalysis() {
               />
             </div>
 
-            {/* Mobile: row list */}
-            <ul className="md:hidden border-t border-border">
-              {sortedHoldings.map((h, i) => (
-                <StockHolderCard key={`${h.fund}-${h.delta}-${h.value}`} h={h} rank={i + 1} />
-              ))}
-            </ul>
-
-            {/* Desktop: full holders table */}
-            <div className="surface hidden md:block">
-              <TableFrame label={holdersTitle}>
+            <ResponsiveTable
+              label={holdersTitle}
+              tableClassName="surface"
+              cards={
+                <ul className="border-t border-border">
+                  {sortedHoldings.map((h, i) => (
+                    <StockHolderCard key={`${h.fund}-${h.delta}-${h.value}`} h={h} rank={i + 1} />
+                  ))}
+                </ul>
+              }
+              table={
                 <table className="w-full text-sm" aria-label={holdersTitle}>
                   <thead>
                     <tr>
@@ -690,12 +674,35 @@ export default function StockAnalysis() {
                       <th scope="col" className="text-left p-3">
                         Fund
                       </th>
-                      {sortableTh("portfolioPct", "Ptf %")}
-                      {sortableTh("value", "Value")}
+                      {(
+                        [
+                          ["portfolioPct", "Ptf %"],
+                          ["value", "Value"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <ColumnHeader
+                          key={key}
+                          label={label}
+                          align="right"
+                          sort={{
+                            active: sortKey === key,
+                            direction: sortDir,
+                            onToggle: () => toggleSort(key),
+                          }}
+                        />
+                      ))}
                       <th scope="col" className="text-right p-3">
                         Share Δ %
                       </th>
-                      {sortableTh("deltaValue", "Position Δ $")}
+                      <ColumnHeader
+                        label="Position Δ $"
+                        align="right"
+                        sort={{
+                          active: sortKey === "deltaValue",
+                          direction: sortDir,
+                          onToggle: () => toggleSort("deltaValue"),
+                        }}
+                      />
                     </tr>
                   </thead>
                   <tbody>
@@ -724,12 +731,10 @@ export default function StockAnalysis() {
                             ) : deltaNum === 0 ? (
                               <span className="badge-nochange">NO CHANGE</span>
                             ) : (
-                              <span className={deltaNum > 0 ? "delta-positive" : "delta-negative"}>
-                                {h.delta}
-                              </span>
+                              <span className={toneClass(deltaNum)}>{h.delta}</span>
                             )}
                           </td>
-                          <td className={`p-3 text-right font-mono ${deltaClass(h.deltaValue)}`}>
+                          <td className={`p-3 text-right font-mono ${toneClass(h.deltaValue)}`}>
                             {formatValue(h.deltaValue)}
                           </td>
                         </tr>
@@ -737,8 +742,8 @@ export default function StockAnalysis() {
                     })}
                   </tbody>
                 </table>
-              </TableFrame>
-            </div>
+              }
+            />
           </section>
         </>
       )}

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { Loader2 } from "lucide-react";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 import { Button } from "@/components/ui/button";
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Panel } from "@/components/ui/Panel";
 import {
   Select,
   SelectContent,
@@ -121,13 +121,15 @@ export default function CompositionPanel({ strategyId }: { strategyId: string })
   const label = def?.label ?? strategyId;
 
   return (
-    <div className="frame">
-      <div className="frame-title">
-        <PanelTitle className="flex items-center gap-1.5">
+    <Panel
+      title={
+        <span className="flex items-center gap-1.5">
           {Icon && <Icon className="h-4 w-4" style={{ color: seriesColor(strategyId) }} />}
           Composition · {label}
-        </PanelTitle>
-        <span className="ml-auto flex items-center gap-2">
+        </span>
+      }
+      aside={
+        <>
           {selectedSector && (
             <Button variant="ghost" size="sm" onClick={() => setPickedSector(null)}>
               Clear {selectedSector}
@@ -145,9 +147,9 @@ export default function CompositionPanel({ strategyId }: { strategyId: string })
               ))}
             </SelectContent>
           </Select>
-        </span>
-      </div>
-
+        </>
+      }
+    >
       <div className="p-3">
         {isLoading ? (
           <div className="h-[260px] flex items-center justify-center text-muted-foreground gap-2 text-sm">
@@ -194,6 +196,6 @@ export default function CompositionPanel({ strategyId }: { strategyId: string })
           </div>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }

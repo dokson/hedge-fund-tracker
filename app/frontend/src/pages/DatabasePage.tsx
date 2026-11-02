@@ -1,6 +1,7 @@
 import { Database } from "lucide-react";
 import DatabaseOperations from "@/components/DatabaseOperations";
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { ROUTES } from "@/lib/routes";
@@ -15,28 +16,20 @@ export default function DatabasePage() {
   });
 
   return (
-    <div className="space-y-6 max-w-screen-2xl">
-      <div>
-        <h1 className="page-title">
-          <Database className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Update
-          Operations
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1.5">
-          Invoke local Python commands from{" "}
-          <code className="font-mono bg-muted px-1 py-0.5 text-xs">database/updater.py</code>.
-        </p>
-      </div>
+    <div className="min-w-0 space-y-6 max-w-screen-2xl">
+      <PageHeader
+        title="Update Operations"
+        icon={Database}
+        description="Fetch filings, review coverage gaps and apply corrections to your local dataset."
+      />
 
       {IS_GH_PAGES_MODE && (
-        <div className="frame text-sm" role="note">
-          <div className="frame-title text-warning">
-            <PanelTitle>Backend restricted</PanelTitle>
-          </div>
-          <p className="p-3 text-muted-foreground">
+        <Panel title="Backend restricted" className="text-sm" headerClassName="text-warning">
+          <p className="p-3 text-muted-foreground" role="note">
             Database operations require direct access to the local filesystem and Python
             environment. These operations are disabled in this static web version.
           </p>
-        </div>
+        </Panel>
       )}
 
       <DatabaseOperations />

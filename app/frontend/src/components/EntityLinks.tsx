@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getHedgeFunds } from "@/lib/dataService";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { FundLogo } from "@/components/FundLogo";
+import { LogoPlate } from "@/components/LogoPlate";
 import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
 import { stockPath, fundPath } from "@/lib/routes";
@@ -108,7 +109,11 @@ export function TickerLink({
       title={title}
       onClick={(e) => e.stopPropagation()}
     >
-      {showLogo && <CompanyLogo ticker={ticker} size={32} />}
+      {showLogo && (
+        <LogoPlate>
+          <CompanyLogo ticker={ticker} size={24} />
+        </LogoPlate>
+      )}
       <span className="whitespace-nowrap">{ticker}</span>
     </Link>
   );
@@ -134,7 +139,9 @@ export function FundCell({ fundName, className = "" }: { fundName: string; class
       className={`group flex min-h-8 max-w-full items-center gap-2.5 min-w-0 rounded-sm ${className}`}
       onClick={(e) => e.stopPropagation()}
     >
-      <FundLogo fundName={fundName} url={fund?.url} size={32} />
+      <LogoPlate>
+        <FundLogo fundName={fundName} url={fund?.url} size={24} />
+      </LogoPlate>
       <span className="flex flex-col min-w-0 leading-tight">
         <span className="font-semibold text-foreground group-hover:text-primary-text group-focus-visible:text-primary-text transition-colors truncate">
           {display}

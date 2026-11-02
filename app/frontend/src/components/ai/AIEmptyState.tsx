@@ -1,15 +1,11 @@
 import { Sparkles } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface AIEmptyStateProps {
   message: string;
 }
 
-/** The AI door's idle screen. */
+/** Shared idle state for the two AI research pages. */
 export default function AIEmptyState({ message }: AIEmptyStateProps) {
-  return (
-    <div className="frame flex flex-col items-center gap-2 px-6 py-10 text-center">
-      <Sparkles className="h-5 w-5 text-magenta" aria-hidden="true" />
-      <p className="text-[13px] text-muted-foreground">{message}</p>
-    </div>
-  );
+  return <EmptyState icon={Sparkles} title="Ready for analysis" description={message} />;
 }

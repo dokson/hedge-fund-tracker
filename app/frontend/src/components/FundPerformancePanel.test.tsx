@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { parseFundPerformance, type FundPerformance } from "@/lib/dataService";
@@ -80,14 +80,17 @@ describe("FundPerformancePanel", () => {
     renderPanel();
 
     const table = await screen.findByRole("table", { name: /quarter by quarter/i });
-    const headers = within(table)
-      .getAllByRole("columnheader")
-      .map((h) => h.textContent);
+    // Structural queries: role resolution on this table is slow enough under a loaded
+    // jsdom to time the test out, and the assertions are about cell content.
+    const headers = Array.from(
+      table.querySelectorAll('[role="columnheader"]'),
+      (h) => h.textContent,
+    );
     expect(headers).toEqual(["", "2026 Q1", "2026 Q2 *"]);
-    const rows = within(table).getAllByRole("row");
+    const rows = table.querySelectorAll('[role="row"]');
     expect(rows[1].textContent).toContain("+10.0%");
     expect(rows[2].textContent).toContain("+5.0%");
-    const diff = within(rows[3]).getAllByRole("cell");
+    const diff = rows[3].querySelectorAll('[role="cell"]');
     expect(diff[0].textContent).toBe("+5.0 pp");
     expect(diff[1].textContent).toBe("-3.0 pp");
     expect(diff[1].getAttribute("aria-label")).toBe("2026 Q2: trailed the S&P 500 by 3.0 pp");

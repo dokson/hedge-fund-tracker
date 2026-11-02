@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { buildLogoUrl } from "@/components/companyLogoUrl";
-import { LOGO_PLATE_BACKGROUND } from "@/components/logoPresentation";
+import { LOGO_PLATE_BACKGROUND, type LogoPlate } from "@/components/logoPresentation";
 import { imageNeedsDarkPlate } from "@/lib/imageInk";
 
 interface CompanyLogoProps {
@@ -41,7 +41,7 @@ export function CompanyLogo({
   decorative = true,
 }: CompanyLogoProps) {
   const [failed, setFailed] = useState(false);
-  const [darkPlate, setDarkPlate] = useState(false);
+  const [plate, setPlate] = useState<LogoPlate>("pending");
   // Native loading="lazy" still fetches with a ~300px viewport margin — Chrome
   // ends up firing dozens of requests as soon as the page mounts. Gate the
   // fetch on actual intersection so a 500-card grid only fetches what's
@@ -121,13 +121,13 @@ export function CompanyLogo({
       height={size}
       crossOrigin="anonymous"
       onError={() => setFailed(true)}
-      onLoad={(e) => setDarkPlate(imageNeedsDarkPlate(e.currentTarget))}
-      className={`rounded-sm border border-border object-contain p-px ${className}`}
+      onLoad={(e) => setPlate(imageNeedsDarkPlate(e.currentTarget) ? "dark" : "light")}
+      className={`rounded-sm border border-border object-contain p-px transition-opacity duration-150 ${plate === "pending" ? "opacity-0" : "opacity-100"} ${className}`}
       style={{
         width: size,
         height: size,
         flexShrink: 0,
-        backgroundColor: darkPlate ? LOGO_PLATE_BACKGROUND.dark : LOGO_PLATE_BACKGROUND.light,
+        backgroundColor: LOGO_PLATE_BACKGROUND[plate],
       }}
       loading="lazy"
     />

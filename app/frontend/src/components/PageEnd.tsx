@@ -1,5 +1,6 @@
 import { ArrowUp } from "lucide-react";
-import { Link } from "react-router";
+
+import { TextLink } from "@/components/ui/TextLink";
 
 interface PageEndProps {
   /** Where to go next, in order. */
@@ -23,13 +24,9 @@ export function PageEnd({ links }: PageEndProps) {
       className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-border pt-3 text-sm"
     >
       {links.map((link) => (
-        <Link
-          key={link.to}
-          to={link.to}
-          className="inline-flex min-h-9 items-center text-primary-text hover:underline"
-        >
+        <TextLink key={link.to} to={link.to} className="min-h-9">
           {link.label}
-        </Link>
+        </TextLink>
       ))}
       <button
         type="button"

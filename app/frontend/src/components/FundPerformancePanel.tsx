@@ -1,25 +1,18 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { PanelTitle } from "@/components/ui/PanelTitle";
+import { Panel } from "@/components/ui/Panel";
+import { Stat, StatGrid } from "@/components/ui/Stat";
 import { useElementSize } from "@/hooks/useElementSize";
 import { FUND_SERIES_ID, getFundPerformance, type PerfWindow } from "@/lib/dataService";
 import { PLOT_INSET } from "@/lib/equityCurve";
-import { pctFrac, pp, toneClass } from "@/lib/performanceFormat";
+import { pctFrac, pp } from "@/lib/performanceFormat";
+import { toneClass } from "@/lib/tone";
 import { seriesColor } from "@/lib/seriesColors";
 import { cn } from "@/lib/utils";
 
 // Lazy so the fund list and the static pages never pull the charting library.
 const EquityCurveChart = lazy(() => import("@/components/EquityCurveChart"));
-
-function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <div className="bg-card p-3">
-      <p className="metric-label">{label}</p>
-      <p className={tone ? `text-lg leading-6 ${tone}` : "text-lg leading-6"}>{value}</p>
-    </div>
-  );
-}
 
 const quarterLabel = (quarter: string) => quarter.replace("Q", " Q");
 
@@ -188,29 +181,26 @@ export default function FundPerformancePanel({ fund }: { fund: string }) {
   const firstQuarter = data.quarters[0] ?? "";
 
   return (
-    <section className="frame overflow-hidden" aria-labelledby="fund-track-record">
-      <div className="frame-title">
-        <PanelTitle id="fund-track-record">Estimated return</PanelTitle>
-      </div>
+    <Panel title="Estimated return" titleId="fund-track-record">
       <p className="px-3 pb-3 text-xs leading-5 text-muted-foreground">
         Price-only return of the fund&apos;s top 100 US longs at each quarter start, since{" "}
         {firstQuarter.replace("Q", " Q")}, vs the S&amp;P 500. Not its actual return (no trades,
         fees, shorts, derivatives, cash). Not investment advice.
       </p>
-      <div className="grid grid-cols-2 gap-px border-y border-border bg-border sm:grid-cols-4">
+      <StatGrid className="grid-cols-2 rounded-none border-x-0 sm:grid-cols-4">
         <Stat
           label="Fund"
           value={pctFrac(fundSeries.cumReturn)}
-          tone={toneClass(fundSeries.cumReturn)}
+          valueClassName={toneClass(fundSeries.cumReturn)}
         />
         <Stat label="S&P 500" value={index && index.total > 0 ? pctFrac(index.cumReturn) : "—"} />
         <Stat
           label="Excess"
           value={fundSeries.excessPp === null ? "—" : pp(fundSeries.excessPp)}
-          tone={fundSeries.excessPp === null ? undefined : toneClass(fundSeries.excessPp)}
+          valueClassName={fundSeries.excessPp === null ? undefined : toneClass(fundSeries.excessPp)}
         />
         <Stat label="Quarters beating" value={`${fundSeries.beats} of ${fundSeries.total}`} />
-      </div>
+      </StatGrid>
       {/* EquityCurveChart sets its own 340px floor; a fixed box shorter than that overflows. */}
       <div className="px-3 pt-3">
         <Suspense fallback={null}>
@@ -237,6 +227,6 @@ export default function FundPerformancePanel({ fund }: { fund: string }) {
           could not be priced, so those quarters are less reliable.
         </p>
       )}
-    </section>
+    </Panel>
   );
 }
