@@ -15,25 +15,22 @@ describe("treemapLabel", () => {
 
   // The split with the shortest longest line allows the largest font.
   it("balances the split across the words", () => {
-    expect(treemapLabel("Consumer Cyclical Goods", 100, 80, false)?.lines).toEqual([
+    expect(treemapLabel("Consumer Cyclical Goods", 130, 80, false)?.lines).toEqual([
       "Consumer",
       "Cyclical Goods",
     ]);
   });
 
-  it("truncates with an ellipsis before giving up", () => {
-    expect(treemapLabel("Communication Services", 60, 70, true)).toEqual({
-      lines: ["Communi…"],
-      fontSize: 11,
-    });
-    expect(treemapLabel("SUPERCALIFRAGILISTIC", 50, 80, false)).toEqual({
-      lines: ["SUPER…"],
-      fontSize: 11,
-    });
+  it("drops names that cannot fit in full instead of showing fragments", () => {
+    expect(treemapLabel("Communication Services", 60, 70, true)).toBeNull();
+    expect(treemapLabel("SUPERCALIFRAGILISTIC", 50, 80, false)).toBeNull();
   });
 
-  it("drops the label only when not even a few characters fit", () => {
-    expect(treemapLabel("Communication Services", 30, 70, true)).toBeNull();
-    expect(treemapLabel("Communication Services", 110, 12, false)).toBeNull();
+  it("requires a readable minimum tile size", () => {
+    expect(treemapLabel("A", 43, 70, false)).toBeNull();
+    expect(treemapLabel("A", 44, 23, false)).toBeNull();
+    expect(treemapLabel("A", 44, 24, false)?.lines).toEqual(["A"]);
+    expect(treemapLabel("A", 44, 39, true)).toBeNull();
+    expect(treemapLabel("A", 44, 40, true)?.lines).toEqual(["A"]);
   });
 });

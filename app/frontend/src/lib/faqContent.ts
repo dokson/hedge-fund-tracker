@@ -44,7 +44,7 @@ export const FAQ_META = {
  * line and as schema `dateModified` — content freshness is a ranking and
  * AI-citation signal, so bump this whenever the answers are revised.
  */
-export const FAQ_LAST_UPDATED = "2026-10-07";
+export const FAQ_LAST_UPDATED = "2026-11-01";
 
 export const FAQ_SECTIONS: FaqSection[] = [
   {
@@ -129,6 +129,15 @@ export const FAQ_SECTIONS: FaqSection[] = [
         ],
       },
       {
+        id: "how-to-read-filing-metrics",
+        question: "How should I read the dates, prices and changes in Latest Filings?",
+        answer: [
+          "Published is the SEC filing date. Position as of is the date the disclosed holding refers to, which may be earlier. Latest Filings orders and filters by publication date and shows the latest saved disclosure per fund and position, not every filing or transaction. The 13F baseline shown in the navigation is the newest usable quarterly snapshot, not an update date for all prices and disclosures.",
+          "Shares Δ compares the disclosed share count with that fund's own latest saved 13F. NEW means the position is absent from that baseline, not that the fund bought it on the publication date. The changes describe differences between disclosed positions; they do not reconstruct individual trade executions.",
+          "Reference price is a historical market-price estimate for the position date, not the fund's cost basis. Estimated value is disclosed shares multiplied by that price. Portfolio % is the position's weight in the last 13F; ~ marks an estimated weight for a new position. The saved rows come from SEC EDGAR but do not retain the specific form type or document URL.",
+        ],
+      },
+      {
         id: "what-is-promise-score",
         question: "What is the Promise Score?",
         answer: [
@@ -141,7 +150,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
         question: "What is the Smart Score?",
         answer: [
           "The Smart Score is a 1 to 10 rating computed from the institutional filings on this site, with no model and no price data involved. For each stock in the selected quarter it takes three percentiles against every other stock tracked that quarter: Breadth (how many tracked funds hold it), Momentum (net buyers: funds that bought or opened a position minus funds that sold or closed one) and Conviction (how large the position is in a typical holder's portfolio, plus a bonus for each fund that opened a large new position, capped at 100). The three are averaged and rescaled to the 1 to 10 range.",
-          "The score is relative, not absolute: a 10 means the stock ranks at the top of this quarter's universe on all three signals, not that it will rise. It ignores fundamentals, valuation, price and analyst opinion. Use it to sort a long list into a shorter one, not as investment advice.",
+          "The score is relative, not absolute, and is displayed to one decimal place. Different underlying signals can therefore show the same score; tied displayed scores are ordered by the unrounded component mean. Even a displayed 10.0 is not a forecast or a guarantee of top marks on every component. Momentum means net fund buying, not price momentum. The score ignores fundamentals, valuation, price and analyst opinion. Use it to sort a long list into a shorter one, not as investment advice.",
         ],
       },
       {

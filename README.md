@@ -115,7 +115,7 @@ The app will be available at `http://localhost:8000`.
 
 | Feature | Description |
 | :--- | :--- |
-| **🌐 Web UI** | React interface laid out as a terminal-style register, with a sidebar grouped into **Board / AI / Info / Admin**, system-sans typography, light/dark themes following the OS, and SSE streaming for long-running AI tasks. |
+| **🌐 Web UI** | Research-first React interface with an editorial landing page, compact filing register, familiar tables and charts, light/dark themes, and SSE streaming for long-running AI tasks. |
 | **📊 Visual Analytics** | Interactive charts (Recharts) to track institutional holdings, sectoral trends, and quarterly portfolio evolutions. |
 | **🆚 Comparative Analysis** | Combines quarterly (13F) and non-quarterly (13D/G, Form 4) filings for an up-to-date view. |
 | **📋 Fund & Stock Pages** | Per-fund portfolio pages (holdings, weights, quarter-over-quarter deltas, composition by stock and by sector) and per-ticker analysis pages (which tracked funds own it and how their conviction is shifting). |
@@ -126,7 +126,9 @@ The app will be available at `http://localhost:8000`.
 | **⭐ Personalized Watchlist** | Star your favorite funds or stocks for quick access and personalized tracking across the platform. |
 | **🏷️ Sector & Industry** | Every stock is auto-tagged with Yahoo Finance industry; sector is derived via `sector_hierarchy.csv`. ETFs share a single "ETF" bucket. New tickers run through a `yfinance → same-Company match → Groq LLM` fallback chain. |
 | **🔎 Global Search** | Top-bar search across tickers, companies, fund names and managers, with grouped results, keyboard navigation (`⌘K`) and company logos inline. |
-| **🖼️ Company Logos** | Logos served via Cloudinary's edge CDN, sourced lazily from Financial Modeling Prep. Pre-warmed for the full universe of tracked stocks. |
+| **🖼️ Company Logos** | Logos served via Cloudinary's edge CDN, sourced lazily from Financial Modeling Prep, shown in a dedicated 32px slot on a white or dark plate chosen from the artwork so light marks stay visible. |
+
+The navigation's **13F baseline** labels the newest usable quarterly snapshot, not the freshness of every price or disclosure. **Latest Filings** filters and orders the latest saved position disclosures by publication date, shows their separate position dates, and labels each **reference price** as a historical market-price estimate rather than a fund's cost basis. **Smart Score** is a relative institutional screen, not a return forecast; its Momentum component measures net fund buying, not price momentum. Strategy and fund-return pages show sample and coverage limits before their results; fund returns estimate reported 13F holdings, not certified manager performance. Research context is kept for the session: filters, sorting and list position survive opening a stock or fund and coming back, while explicit URL parameters still win.
 
 ## 📦 Installation
 
@@ -407,7 +409,7 @@ The quality of the output analysis is directly tied to the quality of the input 
 - _Paul Thwaite_'s [NatWest Group](https://www.natwestgroup.com/)
 - _Tianqiao Chen_'s [Shanda](https://www.shanda.com/)
 - _Bill Nygren_'s [Harris Associates](https://harrisassoc.com/)
-- and many more... (see [`/home/runner/work/hedge-fund-tracker/hedge-fund-tracker/database/excluded_hedge_funds.csv`](//home/runner/work/hedge-fund-tracker/hedge-fund-tracker/database/excluded_hedge_funds.csv) for the full list)
+- and many more... (see [`C:\Users\dokso\Desktop\hedge-fund-tracker\database/excluded_hedge_funds.csv`](/C:\Users\dokso\Desktop\hedge-fund-tracker\database/excluded_hedge_funds.csv) for the full list)
 <!-- EXCLUDED_FUNDS_LIST_END -->
 
 > **💡 Note**: For convenience, key information for these funds, including their CIKs, is maintained in the `database/excluded_hedge_funds.csv` file.

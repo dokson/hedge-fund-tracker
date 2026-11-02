@@ -104,18 +104,18 @@ export function TickerLink({
   return (
     <Link
       to={stockPath(ticker)}
-      className={`ticker-pill min-h-6 ${className}`}
+      className={`inline-flex min-h-8 items-center gap-2 rounded-sm text-sm font-semibold text-foreground hover:text-primary-text focus-visible:text-primary-text transition-colors ${className}`}
       title={title}
       onClick={(e) => e.stopPropagation()}
     >
-      {showLogo && <CompanyLogo ticker={ticker} size={20} />}
-      <span>{ticker}</span>
+      {showLogo && <CompanyLogo ticker={ticker} size={32} />}
+      <span className="whitespace-nowrap">{ticker}</span>
     </Link>
   );
 }
 
 /**
- * Two-line block: site favicon + fund denomination (bold, navigable) with
+ * Two-line block: fund logo + fund denomination (bold, navigable) with
  * the manager name muted underneath. Use for table cells where the fund is
  * the primary entity. For inline contexts (lists, paragraphs) prefer FundLink.
  */
@@ -127,22 +127,23 @@ export function FundCell({ fundName, className = "" }: { fundName: string; class
   const display = formatFundName(fundName);
 
   return (
-    <div className={`flex items-center gap-2.5 min-w-0 ${className}`}>
-      <FundLogo fundName={fundName} url={fund?.url} size={16} className="mt-0.5" />
-      <div className="flex flex-col min-w-0 leading-tight">
-        <Link
-          to={fundPath(fundName)}
-          title={fund?.denomination || display}
-          className="inline-flex min-h-6 items-center font-semibold text-foreground hover:text-primary-text focus-visible:text-primary-text transition-colors truncate"
-          onClick={(e) => e.stopPropagation()}
-        >
+    <Link
+      to={fundPath(fundName)}
+      title={fund?.denomination || display}
+      aria-label={display}
+      className={`group flex min-h-8 max-w-full items-center gap-2.5 min-w-0 rounded-sm ${className}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <FundLogo fundName={fundName} url={fund?.url} size={32} />
+      <span className="flex flex-col min-w-0 leading-tight">
+        <span className="font-semibold text-foreground group-hover:text-primary-text group-focus-visible:text-primary-text transition-colors truncate">
           {display}
-        </Link>
+        </span>
         {fund?.manager && (
           <span className="text-xs text-muted-foreground truncate">{fund.manager}</span>
         )}
-      </div>
-    </div>
+      </span>
+    </Link>
   );
 }
 

@@ -39,7 +39,7 @@ export function MobileNav() {
   /** Whatever was focused when the overlay opened — the header toggle. */
   const openerRef = useRef<HTMLElement | null>(null);
   const { latestQuarter } = useAvailableQuarters();
-  const dataAsOfLabel = latestQuarter ? latestQuarter.replace("Q", " Q") : null;
+  const baselineQuarter = latestQuarter ? latestQuarter.replace("Q", " Q") : null;
   const close = () => setOpenMobile(false);
 
   // Back/forward navigation fires no click, so nothing else would close the
@@ -168,11 +168,11 @@ export function MobileNav() {
             aria-label="Dataset and version"
             className="status-line shrink-0 border-t border-border px-4 py-2 text-xs"
           >
-            {dataAsOfLabel && (
+            {baselineQuarter && (
               <p className="flex items-center gap-2 truncate">
                 <span className="h-2 w-2 shrink-0 bg-positive" aria-hidden="true" />
                 <span>
-                  <span className="k">Data</span> {dataAsOfLabel}
+                  <span className="k">13F baseline</span> {baselineQuarter}
                 </span>
               </p>
             )}

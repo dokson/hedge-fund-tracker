@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 
 import { buildCuratedFaviconUrl, buildFaviconUrl } from "@/components/faviconUrl";
-import { isBlankImage } from "@/lib/imageInk";
+import { LOGO_PLATE_BACKGROUND } from "@/components/logoPresentation";
+import { imageNeedsDarkPlate, isBlankImage } from "@/lib/imageInk";
 
 interface FundLogoProps {
   /** Short canonical fund name (CSV `Fund` column) — used for the fallback avatar. */
@@ -53,7 +54,7 @@ export function FundLogo({
   }, [url, size]);
 
   const [index, setIndex] = useState(0);
-  const [loaded, setLoaded] = useState(false);
+  const [darkPlate, setDarkPlate] = useState(false);
   const src = candidates[index];
 
   if (!src) {
@@ -83,13 +84,25 @@ export function FundLogo({
       width={size}
       height={size}
       crossOrigin="anonymous"
-      onError={() => setIndex((i) => i + 1)}
-      onLoad={(e) => {
-        if (isBlankImage(e.currentTarget)) setIndex((i) => i + 1);
-        else setLoaded(true);
+      onError={() => {
+        setDarkPlate(false);
+        setIndex((i) => i + 1);
       }}
-      className={`rounded-sm border border-border object-contain ${loaded ? "bg-white p-px" : "bg-card"} ${className}`}
-      style={{ width: size, height: size, flexShrink: 0 }}
+      onLoad={(e) => {
+        if (isBlankImage(e.currentTarget)) {
+          setDarkPlate(false);
+          setIndex((i) => i + 1);
+        } else {
+          setDarkPlate(imageNeedsDarkPlate(e.currentTarget));
+        }
+      }}
+      className={`rounded-sm border border-border object-contain p-px ${className}`}
+      style={{
+        width: size,
+        height: size,
+        flexShrink: 0,
+        backgroundColor: darkPlate ? LOGO_PLATE_BACKGROUND.dark : LOGO_PLATE_BACKGROUND.light,
+      }}
       loading="lazy"
     />
   );

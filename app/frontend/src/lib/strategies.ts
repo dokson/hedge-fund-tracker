@@ -139,7 +139,8 @@ export const STRATEGY_DEFS: StrategyDef[] = [
     excludeInfiniteDelta: true,
     capped: true,
     topN: TOP_N,
-    description: "Stocks with the largest percentage increase in aggregate shares held.",
+    description:
+      "Stocks with the largest percentage increase in aggregate position value, reconstructed between disclosures.",
     deltaSign: "positive",
   },
   {

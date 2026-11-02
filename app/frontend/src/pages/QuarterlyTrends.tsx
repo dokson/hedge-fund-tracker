@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, Link } from "react-router";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import {
@@ -10,12 +10,13 @@ import {
 import { sortAnalysisRows } from "@/lib/analysisSort";
 import { isQuarter, type Quarter } from "@/lib/quarters";
 import { STRATEGY_BY_TAB, STRATEGY_DEFS_PERF_ORDER, isStrategyTab } from "@/lib/strategies";
-import { performanceFor } from "@/lib/routes";
+import { learnItem, performanceFor } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { QUARTERLY_PAGE } from "@/lib/pageMeta";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useSortState } from "@/hooks/useSortState";
+import { useResearchState } from "@/hooks/useResearchState";
 import { useQuarterAnalysis } from "@/hooks/useQuarterAnalysis";
 import { TickerLink, CompanyLink } from "@/components/EntityLinks";
 import { Delta } from "@/components/Delta";
@@ -31,7 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { BarChart3, Filter, LineChart, ArrowUpRight, ArrowUp, ArrowDown } from "lucide-react";
+import { BarChart3, LineChart, ArrowUpRight, ArrowUp, ArrowDown } from "lucide-react";
 import { AnalysisProgress } from "@/components/ui/AnalysisProgress";
 import { QueryState } from "@/components/ui/QueryState";
 import { TableFrame } from "@/components/ui/TableFrame";
@@ -137,10 +138,21 @@ function AnalysisTable({
   /** Hard constraint: keep only positive / negative deltas (Increasing / Decreasing). */
   deltaSign?: "positive" | "negative";
 }) {
-  const { sortKey, sortDir, toggleSort } = useSortState<SortKey>(defaultSort, defaultDir);
-  const [minHolders, setMinHolders] = useState(defaultMinHolders);
-  const [filterInfinite, setFilterInfinite] = useState(defaultFilterInfinite);
-  const [limit, setLimit] = useState(defaultLimit);
+  const researchKey = `question:${defaultSort}`;
+  const { sortKey, sortDir, toggleSort, setSort } = useSortState<SortKey>(
+    defaultSort,
+    defaultDir,
+    researchKey,
+  );
+  const [minHolders, setMinHolders] = useResearchState(
+    `${researchKey}:minHolders`,
+    defaultMinHolders,
+  );
+  const [filterInfinite, setFilterInfinite] = useResearchState(
+    `${researchKey}:excludeNew`,
+    defaultFilterInfinite,
+  );
+  const [limit, setLimit] = useResearchState(`${researchKey}:limit`, defaultLimit);
 
   const filtered = useMemo(() => {
     let arr = disableFilters ? data : data.filter((s) => s.holderCount >= minHolders);
@@ -157,20 +169,17 @@ function AnalysisTable({
     return disableFilters ? arr : arr.slice(0, limit);
   }, [filtered, sortKey, sortDir, limit, disableFilters]);
 
-  // On mobile the Δ% column is promoted to the card headline (next to the
-  // ticker), so it's excluded from the metric grid below.
-  const deltaColumn = columns.find((c) => c.key === "delta");
-  const metricColumns = columns.filter((c) => c.key !== "delta");
+  // The headline follows the actual ranking, including a restored custom sort.
+  const headlineColumn = columns.find((c) => c.key === sortKey);
+  const metricColumns = columns.filter((c) => c.key !== sortKey);
+  const customRanking = sortKey !== defaultSort || sortDir !== defaultDir;
 
   return (
     <div className="space-y-3">
       {/* Filter controls */}
       <div
-        className={`flex flex-wrap items-center gap-4 text-sm ${disableFilters ? "opacity-40 pointer-events-none" : ""}`}
+        className={`flex flex-wrap items-center gap-x-3 gap-y-2 text-sm ${disableFilters ? "opacity-40 pointer-events-none" : ""}`}
       >
-        <span className="control-label flex items-center gap-1">
-          <Filter className="h-3 w-3" aria-hidden="true" /> Filters:
-        </span>
         <div className="flex items-center gap-2">
           <Label htmlFor="minHolders" className="text-xs text-muted-foreground whitespace-nowrap">
             Min Holders
@@ -207,17 +216,17 @@ function AnalysisTable({
             spacing exception does not rescue it either (SC 2.5.8). */}
         <Label
           htmlFor="excludeInf"
-          className="flex min-h-6 cursor-pointer items-center gap-2 text-xs text-muted-foreground whitespace-nowrap"
+          className="flex h-9 cursor-pointer items-center gap-2 text-xs text-muted-foreground whitespace-nowrap"
         >
           Exclude NEW
           <Switch id="excludeInf" checked={filterInfinite} onCheckedChange={setFilterInfinite} />
         </Label>
-        <div className="flex items-center gap-2">
+        <div className="flex h-9 items-center gap-2">
           <Label htmlFor="limit" className="text-xs text-muted-foreground whitespace-nowrap">
             Show top
           </Label>
           <Select value={String(limit)} onValueChange={(v) => setLimit(parseInt(v))}>
-            <SelectTrigger id="limit" className="w-20 text-xs">
+            <SelectTrigger id="limit" className="h-9 w-16 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -227,11 +236,25 @@ function AnalysisTable({
               <SelectItem value="100">100</SelectItem>
             </SelectContent>
           </Select>
+          <span className="whitespace-nowrap text-xs text-muted-foreground">
+            {filtered.length} stocks matching
+          </span>
         </div>
-        <span className="text-xs text-muted-foreground ml-auto">
-          {filtered.length} stocks matching
-        </span>
       </div>
+      {customRanking && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <span className="text-muted-foreground">
+            Sorted by {headlineColumn?.label} · {sortDir === "asc" ? "ascending" : "descending"}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSort(defaultSort, defaultDir)}
+            className="min-h-6 text-primary-text underline-offset-4 hover:underline focus-visible:outline-ring"
+          >
+            Restore default ranking
+          </button>
+        </div>
+      )}
 
       {/* Mobile: ranked frame rows (the dynamic multi-metric table can't fit a phone) */}
       <ol className="md:hidden border-t border-border" aria-label="Ranked stocks">
@@ -239,7 +262,7 @@ function AnalysisTable({
           <li className="py-8 text-center text-muted-foreground">No data available.</li>
         ) : (
           sorted.map((s, index) => {
-            const deltaVal = deltaColumn ? (s[deltaColumn.key] ?? null) : null;
+            const headlineValue = headlineColumn ? s[headlineColumn.key] : null;
             return (
               <li key={s.ticker} className="border-b border-border/60 py-2">
                 <div className="flex items-start justify-between gap-3">
@@ -249,9 +272,24 @@ function AnalysisTable({
                     </span>
                     <TickerLink ticker={s.ticker} />
                   </div>
-                  {deltaColumn && typeof deltaVal === "number" && (
-                    <span className="shrink-0">
-                      <Delta value={deltaVal} mode={deltaColumn.deltaMode ?? "percent"} />
+                  {headlineColumn && (
+                    <span className="shrink-0 text-right">
+                      <span className="block text-xs text-muted-foreground">
+                        {headlineColumn.label}
+                      </span>
+                      {headlineColumn.render ? (
+                        headlineColumn.render(s)
+                      ) : headlineColumn.deltaMode && typeof headlineValue === "number" ? (
+                        <Delta value={headlineValue} mode={headlineColumn.deltaMode} />
+                      ) : (
+                        <span
+                          className={`text-sm tabular-nums ${headlineColumn.colorFn?.(headlineValue ?? NaN) ?? "text-foreground"}`}
+                        >
+                          {headlineColumn.format
+                            ? headlineColumn.format(headlineValue ?? NaN, s)
+                            : String(headlineValue ?? "—")}
+                        </span>
+                      )}
                     </span>
                   )}
                 </div>
@@ -396,13 +434,16 @@ export default function QuarterlyTrends() {
   });
 
   const { quarters, latestQuarter } = useAvailableQuarters();
-  const [selectedQuarter, setSelectedQuarter] = useState<Quarter | undefined>();
+  const [selectedQuarter, setSelectedQuarter] = useResearchState<Quarter | undefined>(
+    "quarter",
+    undefined,
+  );
   const quarter = selectedQuarter ?? latestQuarter;
   const [progress, setProgress] = useState({ msg: "", pct: 0 });
   const { starred: starredStocks } = useStarred("stock");
   const { starred: starredFunds } = useStarred("fund");
-  const [filterStarredStocks, setFilterStarredStocks] = useState(false);
-  const [filterStarredFunds, setFilterStarredFunds] = useState(false);
+  const [filterStarredStocks, setFilterStarredStocks] = useResearchState("starredStocks", false);
+  const [filterStarredFunds, setFilterStarredFunds] = useResearchState("starredFunds", false);
   const anyStarredFilter = filterStarredStocks || filterStarredFunds;
 
   // URL sync: ?tab=<id> drives the active analysis tab so the view is
@@ -410,6 +451,7 @@ export default function QuarterlyTrends() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<string>(isStrategyTab(urlTab) ? urlTab : DEFAULT_TAB);
+  const strategyTabsRef = useRef<HTMLDivElement>(null);
   // Canonical setState-in-effect: syncing state with an external system
   // (the URL). The setter short-circuits when the value already matches.
   /* oxlint-disable react-hooks/set-state-in-effect */
@@ -431,6 +473,12 @@ export default function QuarterlyTrends() {
     onProgress: (msg, pct) => setProgress({ msg, pct }),
     fundFilter: activeFundFilter,
   });
+
+  useEffect(() => {
+    strategyTabsRef.current
+      ?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+      ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [activeTab, isLoading]);
 
   const { data: quarterFundList = [] } = useQuery({
     queryKey: ["quarterFundList", quarter],
@@ -458,9 +506,15 @@ export default function QuarterlyTrends() {
     }
     return rawData;
   }, [rawData, filterStarredStocks, starredStocks]);
+  // Keep the registry's question visible; the tab tooltip retains its full explanation.
+  const questionDescription = STRATEGY_BY_TAB[activeTab].description
+    .split(/[:,]/)[0]
+    .replace(/^Stocks ranked by /, "Ranked by ")
+    .replace(/^Stocks with the /, "")
+    .replace(/^Stocks attracting /, "Attracting ");
 
   return (
-    <div className="space-y-6 max-w-screen-2xl">
+    <div className="space-y-3 min-w-0 max-w-screen-2xl">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -473,7 +527,7 @@ export default function QuarterlyTrends() {
               {anyStarredFilter && <span className="ml-1 text-muted-foreground">(filtered)</span>}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
             {STRATEGY_BY_TAB[activeTab] && (
               <Link
                 to={performanceFor(STRATEGY_BY_TAB[activeTab].id)}
@@ -492,7 +546,7 @@ export default function QuarterlyTrends() {
                 if (isQuarter(v)) setSelectedQuarter(v);
               }}
             >
-              <SelectTrigger aria-label="Quarter" className="w-36">
+              <SelectTrigger aria-label="Quarter" className="order-first h-9 w-36 sm:order-none">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -521,25 +575,39 @@ export default function QuarterlyTrends() {
             else next.set("tab", value);
             setSearchParams(next, { replace: false });
           }}
-          className="w-full"
+          className="w-full min-w-0"
         >
-          {/* Seven screens as underline tabs; the active one carries the primary rule. */}
-          <TabsList aria-label="Strategy screen" className="flex-wrap max-w-full">
-            {STRATEGY_DEFS_PERF_ORDER.map((d) => (
-              <Tooltip key={d.tab}>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value={d.tab}>{d.label}</TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[280px] text-xs font-normal">
-                  {d.description}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </TabsList>
+          {/* Keep all seven questions available without widening the page. */}
+          <div className="w-full min-w-0 overflow-x-auto">
+            <TabsList
+              ref={strategyTabsRef}
+              aria-label="Strategy screen"
+              className="flex h-10 w-max min-w-full flex-nowrap gap-4"
+            >
+              {STRATEGY_DEFS_PERF_ORDER.map((d) => (
+                <Tooltip key={d.tab}>
+                  <TooltipTrigger asChild>
+                    <TabsTrigger value={d.tab} className="h-10 shrink-0">
+                      {d.label}
+                    </TabsTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[280px] text-xs font-normal">
+                    {d.description}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </TabsList>
+          </div>
+          <p
+            className="mt-3 truncate text-xs text-foreground first-letter:uppercase"
+            title={STRATEGY_BY_TAB[activeTab].description}
+          >
+            {questionDescription}
+          </p>
 
           {/* Starred filters */}
           <StarredFilterToggle
-            className="mt-4"
+            className="mt-3"
             fundsCount={starredFunds.size}
             stocksCount={starredStocks.size}
             filterFunds={filterStarredFunds}
@@ -547,8 +615,18 @@ export default function QuarterlyTrends() {
             onToggleFunds={() => setFilterStarredFunds((v) => !v)}
             onToggleStocks={() => setFilterStarredStocks((v) => !v)}
           />
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            Institutional signals, not forecasts.
+            <InfoTooltip text="Changes are reconstructed between disclosures, not observed trades or return forecasts." />
+            <Link
+              to={learnItem("what-is-smart-score")}
+              className="text-primary-text hover:underline underline-offset-4"
+            >
+              FAQ
+            </Link>
+          </p>
 
-          <TabsContent value="smartscore" className="mt-4">
+          <TabsContent value="smartscore" className="mt-3">
             <AnalysisTable
               data={data}
               {...tableDefaults("smartscore")}
@@ -556,7 +634,7 @@ export default function QuarterlyTrends() {
               columns={[
                 {
                   key: "smartScore",
-                  label: "Score",
+                  label: "Smart Score",
                   render: (row) =>
                     row.smartScore != null ? (
                       <SmartScoreBadge score={row.smartScore} size="sm" />
@@ -564,7 +642,7 @@ export default function QuarterlyTrends() {
                       <span className="text-muted-foreground">—</span>
                     ),
                   tooltip:
-                    "Composite 1-10 smart score: mean of the Breadth, Momentum and Conviction percentiles (institutional signals only).",
+                    "Relative institutional screen (1–10): equal-weight blend of Breadth, Momentum and Conviction. Not a return forecast.",
                 },
                 {
                   key: "holderCount",
@@ -585,9 +663,10 @@ export default function QuarterlyTrends() {
                 },
                 {
                   key: "delta",
-                  label: "Δ%",
+                  label: "Aggregate Δ %",
                   deltaMode: "percent",
-                  tooltip: "Percentage change in aggregate shares held vs previous quarter.",
+                  tooltip:
+                    "Reconstructed position Δ $ / (total held value − position Δ $). Not aggregate share growth or investment return.",
                 },
                 {
                   key: "totalValue",
@@ -599,7 +678,7 @@ export default function QuarterlyTrends() {
             />
           </TabsContent>
 
-          <TabsContent value="consensus" className="mt-4">
+          <TabsContent value="consensus" className="mt-3">
             <AnalysisTable
               data={data}
               {...tableDefaults("consensus")}
@@ -607,9 +686,10 @@ export default function QuarterlyTrends() {
               columns={[
                 {
                   key: "delta",
-                  label: "Δ%",
+                  label: "Aggregate Δ %",
                   deltaMode: "percent",
-                  tooltip: "Percentage change in aggregate shares held vs previous quarter.",
+                  tooltip:
+                    "Reconstructed position Δ $ / (total held value − position Δ $). Not aggregate share growth or investment return.",
                 },
                 {
                   key: "netBuyers",
@@ -634,15 +714,16 @@ export default function QuarterlyTrends() {
                 },
                 {
                   key: "totalDeltaValue",
-                  label: "Δ Value",
+                  label: "Position Δ $",
                   deltaMode: "currency",
-                  tooltip: "Net change in dollar value across all holders.",
+                  tooltip:
+                    "Estimated dollar amount of position changes at reporting prices, not observed trade execution amounts.",
                 },
               ]}
             />
           </TabsContent>
 
-          <TabsContent value="new" className="mt-4">
+          <TabsContent value="new" className="mt-3">
             <AnalysisTable
               data={data}
               {...tableDefaults("new")}
@@ -666,15 +747,17 @@ export default function QuarterlyTrends() {
                 },
                 {
                   key: "delta",
-                  label: "Δ%",
+                  label: "Aggregate Δ %",
                   deltaMode: "percent",
-                  tooltip: "Percentage change in aggregate shares held.",
+                  tooltip:
+                    "Reconstructed position Δ $ / (total held value − position Δ $). Not aggregate share growth or investment return.",
                 },
                 {
                   key: "totalDeltaValue",
-                  label: "Δ Value",
+                  label: "Position Δ $",
                   deltaMode: "currency",
-                  tooltip: "Net change in dollar value across all holders.",
+                  tooltip:
+                    "Estimated dollar amount of position changes at reporting prices, not observed trade execution amounts.",
                 },
                 {
                   key: "totalValue",
@@ -686,7 +769,7 @@ export default function QuarterlyTrends() {
             />
           </TabsContent>
 
-          <TabsContent value="increasing" className="mt-4">
+          <TabsContent value="increasing" className="mt-3">
             <AnalysisTable
               data={data}
               {...tableDefaults("increasing")}
@@ -710,15 +793,17 @@ export default function QuarterlyTrends() {
                 },
                 {
                   key: "delta",
-                  label: "Δ%",
+                  label: "Aggregate Δ %",
                   deltaMode: "percent",
-                  tooltip: "Percentage change in aggregate shares held.",
+                  tooltip:
+                    "Reconstructed position Δ $ / (total held value − position Δ $). Not aggregate share growth or investment return.",
                 },
                 {
                   key: "totalDeltaValue",
-                  label: "Δ Value",
+                  label: "Position Δ $",
                   deltaMode: "currency",
-                  tooltip: "Net change in dollar value across all holders.",
+                  tooltip:
+                    "Estimated dollar amount of position changes at reporting prices, not observed trade execution amounts.",
                 },
                 {
                   key: "totalValue",
@@ -730,7 +815,7 @@ export default function QuarterlyTrends() {
             />
           </TabsContent>
 
-          <TabsContent value="decreasing" className="mt-4">
+          <TabsContent value="decreasing" className="mt-3">
             <AnalysisTable
               data={data}
               {...tableDefaults("decreasing")}
@@ -754,15 +839,17 @@ export default function QuarterlyTrends() {
                 },
                 {
                   key: "delta",
-                  label: "Δ%",
+                  label: "Aggregate Δ %",
                   deltaMode: "percent",
-                  tooltip: "Percentage change in aggregate shares held.",
+                  tooltip:
+                    "Reconstructed position Δ $ / (total held value − position Δ $). Not aggregate share growth or investment return.",
                 },
                 {
                   key: "totalDeltaValue",
-                  label: "Δ Value",
+                  label: "Position Δ $",
                   deltaMode: "currency",
-                  tooltip: "Net change in dollar value across all holders.",
+                  tooltip:
+                    "Estimated dollar amount of position changes at reporting prices, not observed trade execution amounts.",
                 },
                 {
                   key: "totalValue",
@@ -774,7 +861,7 @@ export default function QuarterlyTrends() {
             />
           </TabsContent>
 
-          <TabsContent value="bigbets" className="mt-4">
+          <TabsContent value="bigbets" className="mt-3">
             <AnalysisTable
               data={data}
               {...tableDefaults("bigbets")}
@@ -794,15 +881,17 @@ export default function QuarterlyTrends() {
                 },
                 {
                   key: "delta",
-                  label: "Δ%",
+                  label: "Aggregate Δ %",
                   deltaMode: "percent",
-                  tooltip: "Percentage change in aggregate shares held.",
+                  tooltip:
+                    "Reconstructed position Δ $ / (total held value − position Δ $). Not aggregate share growth or investment return.",
                 },
                 {
                   key: "totalDeltaValue",
-                  label: "Δ Value",
+                  label: "Position Δ $",
                   deltaMode: "currency",
-                  tooltip: "Net change in dollar value across all holders.",
+                  tooltip:
+                    "Estimated dollar amount of position changes at reporting prices, not observed trade execution amounts.",
                 },
                 {
                   key: "totalValue",
@@ -814,7 +903,7 @@ export default function QuarterlyTrends() {
             />
           </TabsContent>
 
-          <TabsContent value="avgportfolio" className="mt-4">
+          <TabsContent value="avgportfolio" className="mt-3">
             <AnalysisTable
               data={data}
               {...tableDefaults("avgportfolio")}
@@ -839,9 +928,10 @@ export default function QuarterlyTrends() {
                 },
                 {
                   key: "delta",
-                  label: "Δ%",
+                  label: "Aggregate Δ %",
                   deltaMode: "percent",
-                  tooltip: "Percentage change in aggregate shares held.",
+                  tooltip:
+                    "Reconstructed position Δ $ / (total held value − position Δ $). Not aggregate share growth or investment return.",
                 },
               ]}
             />

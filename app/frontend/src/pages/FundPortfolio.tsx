@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useMemo, type ComponentProps } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import { filingFreshness, isQuarter, quartersBehind, type FilingFreshness } from "@/lib/quarters";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -19,6 +19,8 @@ import {
 } from "@/lib/dataService";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { useSortState, type SortDir } from "@/hooks/useSortState";
+import { useResearchState } from "@/hooks/useResearchState";
+import { useElementSize } from "@/hooks/useElementSize";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TickerLink, CompanyLink, formatFundName } from "@/components/EntityLinks";
 import { FundLogo } from "@/components/FundLogo";
@@ -139,19 +141,33 @@ function FundList({
         {list.map((fund, i) => {
           const meta = metaMap.get(fund.fund);
           return (
-            <li key={fund.cik} className="border-b border-border/60 py-2 flex items-start gap-3">
+            <li
+              key={fund.cik}
+              className="border-b border-border/60 py-3 grid grid-cols-[2rem_minmax(0,1fr)_2rem] items-start gap-x-3 gap-y-1"
+            >
               <FundLogoSquare fund={fund} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="flex items-start gap-2">
                   {withRank && (
                     <span className="text-xs text-muted-foreground shrink-0">{i + 1}</span>
                   )}
-                  <Link to={fundPath(fund.fund)} className="fund-link truncate">
+                  <Link
+                    to={fundPath(fund.fund)}
+                    className="fund-link line-clamp-2 whitespace-normal leading-5"
+                  >
                     {fund.denomination}
                   </Link>
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{fund.manager}</p>
-                <p className="text-xs mt-1 flex flex-wrap gap-x-3">
+              </div>
+              <StarButton
+                active={isStarred(fund.fund)}
+                onClick={() => onToggleStar(fund.fund)}
+                size={16}
+                className="h-8 w-8 m-0 shrink-0"
+              />
+              <div className="col-start-2 col-span-2 min-w-0">
+                <p className="text-xs leading-4 text-muted-foreground">{fund.manager}</p>
+                <p className="text-xs mt-1 flex flex-wrap gap-x-3 gap-y-1">
                   <span>
                     <span className="text-muted-foreground">Holdings </span>
                     {meta ? meta.holdings : "…"}
@@ -168,12 +184,6 @@ function FundList({
                   </span>
                 </p>
               </div>
-              <StarButton
-                active={isStarred(fund.fund)}
-                onClick={() => onToggleStar(fund.fund)}
-                size={16}
-                className="h-8 w-8 m-0 shrink-0"
-              />
             </li>
           );
         })}
@@ -266,10 +276,11 @@ function FundGrid() {
     canonical: canonicalUrl(FUNDS_PAGE.path),
   });
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useResearchState("funds:search", "");
   const { starred, toggle: toggleStar, isStarred } = useStarred("fund");
-  const [tab, setTab] = useState<"starred" | "updated" | "alphabetical" | "byvalue">(() =>
-    starred.size > 0 ? "starred" : "updated",
+  const [tab, setTab] = useResearchState<"starred" | "updated" | "alphabetical" | "byvalue">(
+    "funds:tab",
+    () => (starred.size > 0 ? "starred" : "updated"),
   );
 
   const { data: funds = [], isLoading } = useQuery({
@@ -459,7 +470,7 @@ function HoldingDeltaCell({
   const deltaValueNum = parseValueString(deltaValueRaw);
   const deltaValue =
     deltaValueNum !== 0 ? (
-      <div className="mt-0.5 opacity-70 flex justify-end">
+      <div className="mt-0.5 flex justify-end">
         <Delta value={deltaValueNum} mode="currency" size="sm" />
       </div>
     ) : null;
@@ -535,16 +546,104 @@ function HoldingCard({ h, rank }: { h: QuarterlyHolding; rank: number }) {
 
 const NO_HOLDINGS: QuarterlyHolding[] = [];
 
+type FundMapData = ComponentProps<typeof HoldingsTreemap>["data"];
+
+function FundMaps({
+  holdings,
+  sectors,
+  activeSector,
+  onTickerClick,
+  onSectorClick,
+}: {
+  holdings: FundMapData;
+  sectors: FundMapData;
+  activeSector: string;
+  onTickerClick: (ticker: string) => void;
+  onSectorClick: (sector: string) => void;
+}) {
+  const [containerRef, size] = useElementSize();
+  const [map, setMap] = useResearchState<"holdings" | "sectors">("holdings:map", "holdings");
+  // Two 240px plotting areas, 24px panel padding each, borders and a 16px gap.
+  const tabbed = sectors.length > 0 && (!size || size.width < 548);
+  const holdingsMap = (
+    <HoldingsTreemap data={holdings} onClickTicker={onTickerClick} displayMode="pct" />
+  );
+  const sectorMap = (
+    <HoldingsTreemap
+      data={sectors}
+      onClickTicker={onSectorClick}
+      displayMode="pct"
+      activeName={activeSector === "all" ? null : activeSector}
+    />
+  );
+  const holdingsTitle = (
+    <PanelTitle>
+      Holdings map
+      {activeSector !== "all" && (
+        <span className="font-normal text-muted-foreground"> · {activeSector}</span>
+      )}
+    </PanelTitle>
+  );
+
+  return (
+    <div ref={containerRef} className="min-w-0 lg:col-span-2 lg:sticky lg:top-4 lg:self-start">
+      {tabbed ? (
+        <Tabs
+          value={map}
+          onValueChange={(value) => setMap(value as typeof map)}
+          className="frame overflow-hidden"
+        >
+          <div className="px-3 pt-2">
+            <TabsList aria-label="Portfolio maps" className="w-full">
+              <TabsTrigger value="holdings">Holdings</TabsTrigger>
+              <TabsTrigger value="sectors">Sectors</TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent value="holdings" className="mt-0">
+            <div className="frame-title frame-title--spaced">{holdingsTitle}</div>
+            <div className="p-3 pt-0">{holdingsMap}</div>
+          </TabsContent>
+          <TabsContent value="sectors" className="mt-0">
+            <div className="frame-title frame-title--spaced">
+              <PanelTitle>Sector map</PanelTitle>
+            </div>
+            <div className="p-3 pt-0">{sectorMap}</div>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className={`grid gap-4 ${sectors.length > 0 ? "grid-cols-2" : "grid-cols-1"}`}>
+          <div className="frame overflow-hidden">
+            <div className="frame-title frame-title--spaced">{holdingsTitle}</div>
+            <div className="p-3 pt-0">{holdingsMap}</div>
+          </div>
+          {sectors.length > 0 && (
+            <div className="frame overflow-hidden">
+              <div className="frame-title frame-title--spaced">
+                <PanelTitle>Sector map</PanelTitle>
+              </div>
+              <div className="p-3 pt-0">{sectorMap}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FundDetail({ fundName }: { fundName: string }) {
   const navigate = useNavigate();
   const goBack = useBack(ROUTES.funds);
-  const [quarter, setQuarter] = useState<string | null>(null);
-  const { sortKey, sortDir, toggleSort, ariaSort } = useSortState<SortKey>("portfolioPct");
-  const [showAll, setShowAll] = useState(false);
-  const [positionFilter, setPositionFilter] = useState<
+  const [quarter, setQuarter] = useResearchState<string | null>("holdings:quarter", null);
+  const { sortKey, sortDir, toggleSort, ariaSort } = useSortState<SortKey>(
+    "portfolioPct",
+    "desc",
+    "holdings",
+  );
+  const [showAll, setShowAll] = useResearchState("holdings:showAll", false);
+  const [positionFilter, setPositionFilter] = useResearchState<
     "all" | "new" | "closed" | "increased" | "decreased"
-  >("all");
-  const [sectorFilter, setSectorFilter] = useState<string>("all");
+  >("holdings:position", "all");
+  const [sectorFilter, setSectorFilter] = useResearchState<string>("holdings:sector", "all");
   const TOP_N = 50;
   const { isStarred, toggle: toggleStar } = useStarred("fund");
 
@@ -1054,43 +1153,15 @@ function FundDetail({ fundName }: { fundName: string }) {
           )}
         </div>
 
-        {/* Right: Holdings map + Sector map side-by-side (stack on narrow viewports) */}
-        <div className="min-w-0 lg:col-span-2 lg:sticky lg:top-4 lg:self-start grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="frame flex h-full flex-col overflow-hidden">
-            <div className="frame-title frame-title--spaced">
-              <PanelTitle>
-                Holdings map
-                {activeSector !== "all" && (
-                  <span className="font-normal text-muted-foreground"> · {activeSector}</span>
-                )}
-              </PanelTitle>
-            </div>
-            <div className="flex-1 min-h-0 p-3 pt-0">
-              <HoldingsTreemap
-                data={treemapData}
-                onClickTicker={(t) => navigate(stockPath(t))}
-                displayMode="pct"
-              />
-            </div>
-          </div>
-          {sectorTreemapData.length > 0 && (
-            <div className="frame flex h-full flex-col overflow-hidden">
-              <div className="frame-title frame-title--spaced">
-                <PanelTitle>Sector map</PanelTitle>
-              </div>
-              <div className="flex-1 min-h-0 p-3 pt-0">
-                <HoldingsTreemap
-                  data={sectorTreemapData}
-                  onClickTicker={(sector) =>
-                    setSectorFilter((cur) => (cur === sector ? "all" : sector))
-                  }
-                  displayMode="pct"
-                  activeName={activeSector === "all" ? null : activeSector}
-                />
-              </div>
-            </div>
-          )}
-        </div>
+        <FundMaps
+          holdings={treemapData}
+          sectors={sectorTreemapData}
+          activeSector={activeSector}
+          onTickerClick={(ticker) => navigate(stockPath(ticker))}
+          onSectorClick={(sector) =>
+            setSectorFilter((current) => (current === sector ? "all" : sector))
+          }
+        />
       </div>
 
       <FundPerformancePanel fund={fundName} />
@@ -1111,7 +1182,7 @@ export default function FundPortfolio() {
   const { fundId } = useParams();
   if (fundId) {
     const fundName = decodeURIComponent(fundId);
-    // Keyed so quarter, sort and filter state reset when navigating between funds.
+    // Remount to read this fund's retained quarter, sort and filters.
     return <FundDetail key={fundName} fundName={fundName} />;
   }
   return <FundGrid />;

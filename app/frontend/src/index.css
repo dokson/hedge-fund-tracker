@@ -453,21 +453,6 @@
   .company-link:hover {
     text-decoration: underline;
   }
-  .ticker-pill {
-    @apply inline-flex items-center gap-1.5 pl-1 pr-2 font-medium text-foreground cursor-pointer;
-    font-size: 12px;
-    line-height: 20px;
-    border: 1px solid hsl(var(--border));
-    border-radius: calc(var(--radius) - 2px);
-    transition:
-      background-color 120ms,
-      border-color 120ms;
-  }
-  .ticker-pill:hover,
-  .ticker-pill:focus-visible {
-    background: hsl(var(--muted));
-    border-color: hsl(var(--input));
-  }
   .fund-link {
     @apply font-medium text-foreground cursor-pointer;
   }

@@ -12,7 +12,6 @@ import {
 } from "@/lib/dataService";
 import type { SmartScoreView } from "@/lib/smartScore";
 import { SmartScorePanel } from "@/components/SmartScorePanel";
-import { SmartScoreBadge } from "@/components/SmartScoreBadge";
 import { stocksByIndustry, aiDiligenceFor, stockPath, ROUTES } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
@@ -33,13 +32,15 @@ import { MeasuredChart } from "@/components/MeasuredChart";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { TableFrame } from "@/components/ui/TableFrame";
-import { ArrowDown, ArrowLeft, Brain, ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowLeft, Brain } from "lucide-react";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { PageEnd } from "@/components/PageEnd";
 import { useBack } from "@/hooks/useBack";
 import { SortArrow } from "@/components/ui/SortArrow";
 import { QueryState } from "@/components/ui/QueryState";
 import { useSortState } from "@/hooks/useSortState";
+import { useResearchState } from "@/hooks/useResearchState";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { StockPriceChart } from "@/components/StockPriceChart";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
@@ -74,31 +75,6 @@ function signed(n: number, digits = 0) {
 
 function deltaClass(n: number) {
   return n > 0 ? "delta-positive" : n < 0 ? "delta-negative" : "";
-}
-
-/** One status cell: label over value, in the shared hairline grid. */
-function StatusCell({
-  label,
-  value,
-  hint,
-  className = "",
-  cellClassName = "",
-}: {
-  label: string;
-  value: React.ReactNode;
-  /** A plain-words reading of the value, under it. */
-  hint?: string;
-  className?: string;
-  /** Extra classes for the cell itself (e.g. a column span). */
-  cellClassName?: string;
-}) {
-  return (
-    <div className={`bg-card p-3 ${cellClassName}`}>
-      <p className="metric-label">{label}</p>
-      <p className={`metric-value ${className}`}>{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  );
 }
 
 /** Dot legend under a chart, so the colours are named, not only seen. */
@@ -138,7 +114,7 @@ function StockHolderCard({ h, rank }: { h: FundTickerHolding; rank: number }) {
         </span>
         <span aria-hidden="true">·</span>
         <span>
-          <span className="k">Δ%:</span>{" "}
+          <span className="k">Share Δ %:</span>{" "}
           {h.isNew ? (
             <span className="badge-new">NEW</span>
           ) : h.isClosed ? (
@@ -151,7 +127,7 @@ function StockHolderCard({ h, rank }: { h: FundTickerHolding; rank: number }) {
         </span>
         <span aria-hidden="true">·</span>
         <span>
-          <span className="k">Δ Value:</span>{" "}
+          <span className="k">Position Δ $:</span>{" "}
           <span className={deltaClass(h.deltaValue)}>{formatValue(h.deltaValue)}</span>
         </span>
       </div>
@@ -165,7 +141,10 @@ export default function StockAnalysis() {
   const goBack = useBack(ROUTES.stocks);
   const { isStarred, toggle: toggleStar } = useStarred("stock");
   const { quarters, latestQuarter } = useAvailableQuarters();
-  const [selectedQuarter, setSelectedQuarter] = useState<Quarter | undefined>();
+  const [selectedQuarter, setSelectedQuarter] = useResearchState<Quarter | undefined>(
+    "quarter",
+    undefined,
+  );
   const quarter = selectedQuarter ?? latestQuarter;
   const [progress, setProgress] = useState({ msg: "", pct: 0 });
 
@@ -185,11 +164,12 @@ export default function StockAnalysis() {
   // Sector + industry come from stocks.csv (joined with sector_hierarchy inside
   // getStocks). Same in-memory cache as the rest of the app — no extra fetch.
   const { data: stocks = [] } = useQuery({ queryKey: ["stocks"], queryFn: getStocks });
-  // The smart score is derived on the fly from the selected quarter's analysis
-  // (same cached data the browser pages use), so it always matches the dropdown.
+  // Score uses the shared quarter-analysis universe. The latest stock-holder
+  // view independently overlays saved non-quarterly disclosures.
   const {
     data: quarterRows = [],
     isError: scoreError,
+    isLoading: scoreLoading,
     error: scoreErrorDetail,
   } = useQuarterAnalysis(quarter);
   const scoreRow = quarterRows.find((r) => r.ticker === ticker);
@@ -285,12 +265,19 @@ export default function StockAnalysis() {
   ];
 
   const valueFlowData = [
-    { label: "Value Bought", value: kpi.totalValueBought, fill: "hsl(var(--positive))" },
-    { label: "Value Sold", value: kpi.totalValueSold, fill: "hsl(var(--negative))" },
+    { label: "Added", value: kpi.totalValueBought, fill: "hsl(var(--positive))" },
+    { label: "Reduced", value: kpi.totalValueSold, fill: "hsl(var(--negative))" },
   ];
 
-  const { sortKey, sortDir, toggleSort, ariaSort } = useSortState<SortKey>("portfolioPct");
-  const [holdingFilter, setHoldingFilter] = useState<HoldingFilter>("all");
+  const { sortKey, sortDir, toggleSort, ariaSort } = useSortState<SortKey>(
+    "portfolioPct",
+    "desc",
+    "holders",
+  );
+  const [holdingFilter, setHoldingFilter] = useResearchState<HoldingFilter>(
+    "holders:filter",
+    "all",
+  );
 
   const sortedHoldings = (() => {
     let list = [...holdings];
@@ -331,9 +318,20 @@ export default function StockAnalysis() {
   );
 
   return (
-    <div className="space-y-5 max-w-screen-2xl">
+    <div className="space-y-3 max-w-screen-2xl">
       <div className="flex items-center justify-between gap-3">
-        <Breadcrumb trail={[{ label: "Stocks", to: ROUTES.stocks }]} current={ticker} />
+        <div className="flex min-w-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            aria-label="Back"
+            onClick={goBack}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <Breadcrumb trail={[{ label: "Stocks", to: ROUTES.stocks }]} current={ticker} />
+        </div>
         <Button
           variant="ghost"
           size="sm"
@@ -345,31 +343,20 @@ export default function StockAnalysis() {
           Holders
         </Button>
       </div>
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-start gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            aria-label="Back"
-            onClick={goBack}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="border border-border bg-card p-1.5 shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="grid min-w-0 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 sm:w-auto sm:flex-1">
+          <div className="border border-border bg-card p-1.5">
             <CompanyLogo ticker={ticker} size={44} />
           </div>
-          <div className="flex flex-col gap-2 min-w-0">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="page-title">
-                {ticker}
-                <span className="text-base font-normal text-muted-foreground">{company}</span>
-              </h1>
-              <StarButton active={isStarred(ticker)} onClick={() => toggleStar(ticker)} size={24} />
-              {smartScore && <SmartScoreBadge score={smartScore.smartScore} />}
-            </div>
+          <div className="min-w-0 space-y-1">
+            <h1 className="page-title flex-wrap gap-x-2 gap-y-0">
+              {ticker}
+              <span className="text-sm font-normal leading-5 text-muted-foreground sm:text-base">
+                {company}
+              </span>
+            </h1>
             {(sector || industry) && (
-              <div className="flex items-center gap-2 flex-wrap text-xs">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 {sector && (
                   <span
                     className={SECTOR_PILL}
@@ -384,7 +371,7 @@ export default function StockAnalysis() {
                   <button
                     type="button"
                     onClick={() => navigate(stocksByIndustry(industry))}
-                    className="inline-flex h-7 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors duration-[120ms] hover:bg-muted hover:text-foreground"
+                    className="inline-flex min-h-6 items-center text-xs font-medium text-muted-foreground transition-colors duration-[120ms] hover:text-foreground hover:underline"
                     title={`Browse all ${industry} stocks`}
                   >
                     {industry}
@@ -393,6 +380,7 @@ export default function StockAnalysis() {
               </div>
             )}
           </div>
+          <StarButton active={isStarred(ticker)} onClick={() => toggleStar(ticker)} size={24} />
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <Select
@@ -425,14 +413,14 @@ export default function StockAnalysis() {
         </div>
       </div>
 
-      {/* Smart score: independent of the selected quarter's 13F holdings, so it
-          renders even for stocks no tracked fund currently holds. */}
+      {/* Quarter-analysis score and the stock's independently merged holder
+          view need not have the same disclosure coverage. */}
       <QueryState
         isError={scoreError}
         error={scoreErrorDetail}
         title="Could not load the smart score"
       >
-        <SmartScorePanel score={smartScore} quarterLabel={quarter} />
+        <SmartScorePanel score={smartScore} quarterLabel={quarter} loading={scoreLoading} />
       </QueryState>
 
       {isError ? (
@@ -448,54 +436,68 @@ export default function StockAnalysis() {
         </div>
       ) : (
         <>
-          <section aria-labelledby="flow-heading" className="space-y-2">
-            <h2 id="flow-heading" className="section-title">
-              Institutional flow, {quarter?.replace("Q", " Q")}
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border">
-              <StatusCell label="Total Held" value={formatValue(kpi.totalValue)} />
-              <StatusCell
-                label="Δ Value"
-                value={formatValue(kpi.totalDeltaValue)}
-                className={deltaClass(kpi.totalDeltaValue)}
-              />
-              <StatusCell
-                label="Δ %"
-                value={formatPct(kpi.deltaPct, true)}
-                className={deltaClass(kpi.deltaPct)}
-              />
-              <StatusCell
-                label="Net Buyers"
-                value={signed(kpi.netBuyers)}
-                hint={`${kpi.buyerCount} bought · ${kpi.sellerCount} sold`}
-                className={deltaClass(kpi.netBuyers)}
-              />
+          <section aria-labelledby="flow-heading" className="space-y-3">
+            <div>
+              <h2 id="flow-heading" className="section-title">
+                Institutional position changes, {quarter?.replace("Q", " Q")}
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Reconstructed between disclosures at reporting prices — not returns or executed
+                trades.
+                {quarter === latestQuarter && " Includes saved 13D/G and Form 4 updates."}
+              </p>
             </div>
-            <details className="frame group">
-              <summary className="frame-title cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                More flow metrics
-                <ChevronDown
-                  className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180"
-                  aria-hidden="true"
-                />
-              </summary>
-              <div className="m-3 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-px bg-border border border-border">
-                <StatusCell label="Holders" value={kpi.holderCount} />
-                <StatusCell label="Buyers" value={kpi.buyerCount} className="delta-positive" />
-                <StatusCell label="New" value={kpi.newHolderCount} className="delta-positive" />
-                <StatusCell label="Sellers" value={kpi.sellerCount} className="delta-negative" />
-                <StatusCell label="Sold Out" value={kpi.closeCount} className="delta-negative" />
-                <StatusCell
-                  label="B/S Ratio"
-                  value={isFinite(kpi.bsRatio) ? kpi.bsRatio.toFixed(1) + "x" : "∞"}
-                />
-                <StatusCell
-                  label="Avg / Max Ptf %"
-                  value={`${kpi.avgPtfPct.toFixed(2)}% / ${kpi.maxPtfPct.toFixed(1)}%`}
-                  cellClassName="col-span-2 lg:col-span-1"
-                />
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-border py-4 sm:grid-cols-[auto_auto_1fr] sm:gap-x-10">
+              <div>
+                <dt className="metric-label flex h-5 items-center">Total held</dt>
+                <dd className="mt-1 text-2xl font-semibold tabular-nums">
+                  {formatValue(kpi.totalValue)}
+                </dd>
               </div>
-            </details>
+              <div>
+                <dt className="metric-label flex h-5 items-center gap-1">
+                  Position change
+                  <InfoTooltip text="Share changes valued at reporting prices. The percentage divides that change by the implied prior position value; it is not aggregate share growth or a return." />
+                </dt>
+                <dd className="mt-1 flex items-baseline gap-2 tabular-nums">
+                  <span className={`text-2xl font-semibold ${deltaClass(kpi.totalDeltaValue)}`}>
+                    {formatValue(kpi.totalDeltaValue)}
+                  </span>
+                  <span className={`text-sm ${deltaClass(kpi.deltaPct)}`}>
+                    {formatPct(kpi.deltaPct, true)}
+                  </span>
+                </dd>
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <dt className="metric-label flex h-5 items-center gap-1">
+                  Net buyers
+                  <InfoTooltip text="Funds that opened or increased the position minus funds that reduced or closed it." />
+                </dt>
+                <dd className="mt-1 flex flex-wrap items-baseline gap-x-2 tabular-nums">
+                  <span className={`text-2xl font-semibold ${deltaClass(kpi.netBuyers)}`}>
+                    {signed(kpi.netBuyers)}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {kpi.buyerCount} increased · {kpi.sellerCount} reduced
+                  </span>
+                </dd>
+              </div>
+            </dl>
+            <dl className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
+              {[
+                ["Holders", kpi.holderCount],
+                ["New", kpi.newHolderCount],
+                ["Sold out", kpi.closeCount],
+                ["Buy/sell ratio", isFinite(kpi.bsRatio) ? `${kpi.bsRatio.toFixed(1)}×` : "∞"],
+                ["Avg weight", `${kpi.avgPtfPct.toFixed(2)}%`],
+                ["Max weight", `${kpi.maxPtfPct.toFixed(1)}%`],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-baseline gap-1.5">
+                  <dt>{label}</dt>
+                  <dd className="font-medium tabular-nums text-foreground">{value}</dd>
+                </div>
+              ))}
+            </dl>
           </section>
 
           {/* The static build has no backend: no chart, and no apology card either. */}
@@ -504,7 +506,7 @@ export default function StockAnalysis() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <section className="frame" aria-labelledby="sentiment-heading">
               <h2 id="sentiment-heading" className="frame-title">
-                Buyers vs Sellers
+                Funds increasing vs reducing
               </h2>
               <div className="p-3">
                 <div className="h-[80px]">
@@ -601,7 +603,7 @@ export default function StockAnalysis() {
 
             <section className="frame" aria-labelledby="flow-chart-heading">
               <h2 id="flow-chart-heading" className="frame-title">
-                Value Bought vs Value Sold
+                Reconstructed position change ($)
               </h2>
               <div className="p-3">
                 <div className="h-[80px]">
@@ -643,11 +645,11 @@ export default function StockAnalysis() {
                   items={[
                     {
                       swatch: "hsl(var(--positive))",
-                      label: `Bought ${formatValue(kpi.totalValueBought)}`,
+                      label: `Added ${formatValue(kpi.totalValueBought)}`,
                     },
                     {
                       swatch: "hsl(var(--negative))",
-                      label: `Sold ${formatValue(kpi.totalValueSold)}`,
+                      label: `Reduced ${formatValue(kpi.totalValueSold)}`,
                     },
                   ]}
                 />
@@ -691,9 +693,9 @@ export default function StockAnalysis() {
                       {sortableTh("portfolioPct", "Ptf %")}
                       {sortableTh("value", "Value")}
                       <th scope="col" className="text-right p-3">
-                        Δ%
+                        Share Δ %
                       </th>
-                      {sortableTh("deltaValue", "Δ Value")}
+                      {sortableTh("deltaValue", "Position Δ $")}
                     </tr>
                   </thead>
                   <tbody>

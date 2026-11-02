@@ -34,4 +34,23 @@ describe("buildChartData", () => {
     expect(data[1].avg_portfolio).toBeCloseTo(20, 6);
     expect(data[2].SPY).toBeCloseTo(15.5, 6);
   });
+
+  it("keeps the supplied origin label and omits returns for missing windows", () => {
+    const data = buildChartData([mkSeries("avg_portfolio", [0.2])], ["2025Q2", "2025Q3"], "2025Q1");
+    expect(data[0]).toEqual({ label: "2025Q1", avg_portfolio: 0 });
+    expect(data[2]).toEqual({ label: "2025Q3" });
+  });
+
+  it("shades the selected strategy against its benchmark without adding a missing return", () => {
+    const data = buildChartData(
+      [mkSeries("avg_portfolio", [0.2, -0.05]), mkSeries("SPY", [0.1])],
+      ["2025Q2", "2025Q3"],
+      "2025Q1",
+      { baseId: "SPY", topId: "avg_portfolio" },
+    );
+    expect(data[0].__band).toEqual([0, 0]);
+    expect(data[1].__band).toEqual([10, 20]);
+    expect(data[2].__band).toBeUndefined();
+    expect(data[2].avg_portfolio).toBeCloseTo(-5);
+  });
 });

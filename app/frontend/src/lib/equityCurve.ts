@@ -6,9 +6,8 @@ export type ChartPoint = { label: string; __band?: [number, number] } & Record<
 >;
 
 /**
- * Horizontal space the chart keeps around its plot: the Y-axis labels on the left, a small
- * margin on the right. A table under the chart uses the same insets to line its columns up
- * with the x-axis points.
+ * Horizontal space the chart keeps around its plot: the Y-axis labels on the
+ * left and a small margin on the right.
  */
 export const PLOT_INSET = { left: 48, right: 8 } as const;
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { House, Sun, Moon, Search } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -11,7 +11,7 @@ import { CoalesceCIcon } from "@/components/CoalesceCIcon";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
-import { useScrollTopOnNavigate } from "@/hooks/useScrollTopOnNavigate";
+import { useResearchScrollRestoration } from "@/hooks/useResearchScrollRestoration";
 import { APP_VERSION } from "@/lib/config";
 import { ROUTES } from "@/lib/routes";
 import { BrandLogo } from "@/components/ui/BrandLogo";
@@ -41,14 +41,14 @@ function HeaderLogo() {
   );
 }
 
-/** The top status line: board name, data vintage, version. */
+/** The top status line: 13F baseline, filing source, version. */
 function StatusLine() {
   const { latestQuarter } = useAvailableQuarters();
-  const asOf = latestQuarter ? latestQuarter.replace("Q", " Q") : "…";
+  const baselineQuarter = latestQuarter ? latestQuarter.replace("Q", " Q") : "…";
   return (
     <div className="status-line hidden lg:flex items-center gap-3 min-w-0 truncate">
       <span>
-        <span className="k">Data as of</span> {asOf}
+        <span className="k">13F baseline</span> {baselineQuarter}
       </span>
       <span aria-hidden="true">·</span>
       <span>
@@ -111,7 +111,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { theme, setTheme } = useTheme();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const location = useLocation();
-  useScrollTopOnNavigate();
+  const mainRef = useRef<HTMLElement>(null);
+  useResearchScrollRestoration(mainRef);
 
   return (
     <SidebarProvider defaultOpen={readSidebarOpen()}>
@@ -186,6 +187,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Keyed on the path so each screen mounts fresh on arrival. */}
           <main
             id="main"
+            ref={mainRef}
             key={location.pathname}
             className="relative flex-1 min-w-0 p-3 sm:p-4 md:p-6 md:overflow-auto"
           >

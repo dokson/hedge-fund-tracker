@@ -211,6 +211,7 @@ Three-stage Dockerfile (Node frontend build → Python deps venv → slim runtim
 - `src/lib/smartScore.ts` — TS mirror of the Python smart-score core (`smartScoreComponents`/`withSmartScores`, applied by the quarter loaders) + the score tone/chip class helpers; parity with Python pinned by hand-computed percentile tests
 - `src/lib/strategies.ts` — the seven `StrategyDef`s (tabs, icons, sort keys) pinned to `tests/fixtures/strategies.json`; regenerate the fixture with `pipenv run python scripts/gen_strategy_definitions.py` after changing the Python specs
 - `src/lib/routes.ts` — single source of truth for route paths (`ROUTES` + `stockPath`/`fundPath`/… builders)
+- `src/hooks/useResearchState.ts` + `src/components/ResearchProvider.tsx` + `src/hooks/useResearchScrollRestoration.ts` — research context for the app session (in memory, never storage): controls opt in with a stable key (`useResearchState(key, initial)`, `useSortState(defaultKey, defaultDir, researchKey)`) scoped per pathname, and scroll (window, desktop `main`, `VirtualList` with `scrollKey`) is saved per history entry and restored on Back/forward once the content has grown back. Explicit URL parameters still win over remembered state; a fresh navigation starts at the top.
 - `src/lib/aiClient.ts` — SSE calls to `/api/ai/*`
 - `src/components/ModelSelector.tsx` — reads `models.csv` via `getModels()`; `CLIENT_TO_PROVIDER_ID` maps CSV `Client` column to provider IDs
 - `src/components/TerminalOutput.tsx` — macOS-style streaming terminal

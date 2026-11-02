@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import { buildLogoUrl } from "@/components/companyLogoUrl";
+import { LOGO_PLATE_BACKGROUND } from "@/components/logoPresentation";
+import { imageNeedsDarkPlate } from "@/lib/imageInk";
 
 interface CompanyLogoProps {
   ticker: string;
@@ -39,7 +41,7 @@ export function CompanyLogo({
   decorative = true,
 }: CompanyLogoProps) {
   const [failed, setFailed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [darkPlate, setDarkPlate] = useState(false);
   // Native loading="lazy" still fetches with a ~300px viewport margin — Chrome
   // ends up firing dozens of requests as soon as the page mounts. Gate the
   // fetch on actual intersection so a 500-card grid only fetches what's
@@ -110,17 +112,23 @@ export function CompanyLogo({
     );
   }
 
-  // Logos ship on white; the plate keeps them legible on the dark board.
+  // Preserve the full source; only light transparent artwork needs a dark plate.
   return (
     <img
       src={buildLogoUrl(ticker, size)}
       alt={decorative ? "" : ticker}
       width={size}
       height={size}
+      crossOrigin="anonymous"
       onError={() => setFailed(true)}
-      onLoad={() => setLoaded(true)}
-      className={`rounded-sm object-contain ${loaded ? "bg-white" : "bg-card"} ${className}`}
-      style={{ width: size, height: size, flexShrink: 0 }}
+      onLoad={(e) => setDarkPlate(imageNeedsDarkPlate(e.currentTarget))}
+      className={`rounded-sm border border-border object-contain p-px ${className}`}
+      style={{
+        width: size,
+        height: size,
+        flexShrink: 0,
+        backgroundColor: darkPlate ? LOGO_PLATE_BACKGROUND.dark : LOGO_PLATE_BACKGROUND.light,
+      }}
       loading="lazy"
     />
   );

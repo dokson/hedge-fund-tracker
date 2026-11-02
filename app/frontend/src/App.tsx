@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router";
 import { LoadingState } from "@/components/ui/LoadingState";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ResearchProvider } from "@/components/ResearchProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Dashboard from "@/pages/Dashboard";
 import Landing from "@/pages/Landing";
@@ -54,46 +55,48 @@ const App = () => (
     <TooltipProvider>
       <Sonner />
       <BrowserRouter basename={BASE_PATH || "/"}>
-        <DashboardLayout>
-          <RoutedErrorBoundary>
-            <Suspense fallback={<RouteFallback />}>
-              <Routes>
-                {/* Home / landing — inside the shell so the sidebar persists */}
-                <Route path={ROUTES.home} element={<Landing />} />
+        <ResearchProvider>
+          <DashboardLayout>
+            <RoutedErrorBoundary>
+              <Suspense fallback={<RouteFallback />}>
+                <Routes>
+                  {/* Home / landing — inside the shell so the sidebar persists */}
+                  <Route path={ROUTES.home} element={<Landing />} />
 
-                {/* Core analysis routes — always available */}
-                <Route path={ROUTES.latest} element={<Dashboard />} />
-                <Route path={ROUTES.quarterly} element={<QuarterlyTrends />} />
-                <Route path={ROUTES.strategyPerformance} element={<StrategyPerformance />} />
-                <Route path={ROUTES.fundRanking} element={<FundRanking />} />
-                <Route path={ROUTES.funds} element={<FundPortfolio />} />
-                <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
-                <Route path={ROUTES.stocks} element={<StockBrowser />} />
-                <Route path={`${ROUTES.stock}/:ticker`} element={<StockAnalysis />} />
+                  {/* Core analysis routes — always available */}
+                  <Route path={ROUTES.latest} element={<Dashboard />} />
+                  <Route path={ROUTES.quarterly} element={<QuarterlyTrends />} />
+                  <Route path={ROUTES.strategyPerformance} element={<StrategyPerformance />} />
+                  <Route path={ROUTES.fundRanking} element={<FundRanking />} />
+                  <Route path={ROUTES.funds} element={<FundPortfolio />} />
+                  <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
+                  <Route path={ROUTES.stocks} element={<StockBrowser />} />
+                  <Route path={`${ROUTES.stock}/:ticker`} element={<StockAnalysis />} />
 
-                {/* Educational FAQ — public, available in every mode */}
-                <Route path={ROUTES.learn} element={<Learn />} />
-                <Route path={ROUTES.about} element={<About />} />
+                  {/* Educational FAQ — public, available in every mode */}
+                  <Route path={ROUTES.learn} element={<Learn />} />
+                  <Route path={ROUTES.about} element={<About />} />
 
-                {/* AI routes — available but disabled in GH Pages mode */}
-                <Route path={ROUTES.aiRanking} element={<AIRanking />} />
-                <Route path={ROUTES.aiDiligence} element={<AIDueDiligence />} />
+                  {/* AI routes — available but disabled in GH Pages mode */}
+                  <Route path={ROUTES.aiRanking} element={<AIRanking />} />
+                  <Route path={ROUTES.aiDiligence} element={<AIDueDiligence />} />
 
-                {/* Restricted routes — completely unreachable in GH Pages mode for security */}
-                {!IS_GH_PAGES_MODE && (
-                  <>
-                    <Route path={ROUTES.fundsConfig} element={<FundsConfig />} />
-                    <Route path={ROUTES.aiSettings} element={<AISettings />} />
-                    <Route path={ROUTES.database} element={<DatabasePage />} />
-                  </>
-                )}
+                  {/* Restricted routes — completely unreachable in GH Pages mode for security */}
+                  {!IS_GH_PAGES_MODE && (
+                    <>
+                      <Route path={ROUTES.fundsConfig} element={<FundsConfig />} />
+                      <Route path={ROUTES.aiSettings} element={<AISettings />} />
+                      <Route path={ROUTES.database} element={<DatabasePage />} />
+                    </>
+                  )}
 
-                {/* 404 */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </RoutedErrorBoundary>
-        </DashboardLayout>
+                  {/* 404 */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </RoutedErrorBoundary>
+          </DashboardLayout>
+        </ResearchProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

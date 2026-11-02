@@ -65,7 +65,8 @@ export const MENU_SECTIONS: readonly MenuSection[] = [
         code: "LF",
         icon: FileText,
         url: ROUTES.latest,
-        blurb: "13D/G and Form 4 layered on the last 13F, with deltas vs the prior quarter.",
+        blurb:
+          "Recent disclosures by publication date, with position dates and changes vs each fund’s latest 13F.",
       },
       {
         title: "Quarterly Trends",
@@ -86,14 +87,15 @@ export const MENU_SECTIONS: readonly MenuSection[] = [
         code: "FP",
         icon: Wallet,
         url: ROUTES.funds,
-        blurb: "Managers selected by track record, and exactly what each one holds.",
+        blurb: "Managers selected by track record, and the positions they report.",
       },
       {
         title: "Fund Ranking",
         code: "FR",
         icon: Trophy,
         url: ROUTES.fundRanking,
-        blurb: "Every tracked fund on the same quarters, against the S&P 500.",
+        blurb:
+          "Estimated 13F-holdings returns, compared with the S&P 500 on each fund’s observed quarters.",
       },
       {
         title: "Stocks",

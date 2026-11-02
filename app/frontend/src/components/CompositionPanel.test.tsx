@@ -71,7 +71,9 @@ function tile(name: string): HTMLElement {
   return screen.getByRole("button", { name });
 }
 
-const opacityOf = (name: string) => (tile(name) as HTMLElement).style.opacity;
+/** The dimming sits on the tile's background layer, so labels keep full contrast. */
+const opacityOf = (name: string) =>
+  (tile(name).querySelector('[aria-hidden="true"]') as HTMLElement).style.opacity;
 
 describe("CompositionPanel sector filter", () => {
   it("dims the stocks outside the selected sector and marks the sector tile", async () => {

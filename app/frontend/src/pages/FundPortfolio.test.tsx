@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ResearchProvider } from "@/components/ResearchProvider";
 import type { HedgeFund, QuarterlyHolding } from "@/lib/dataService";
 import { fundPath, ROUTES } from "@/lib/routes";
 
@@ -59,10 +60,12 @@ describe("FundPortfolio fund detail", () => {
       <QueryClientProvider client={new QueryClient()}>
         <TooltipProvider>
           <MemoryRouter initialEntries={[fundPath("Fund A")]}>
-            <GoToFund name="Fund B" />
-            <Routes>
-              <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
-            </Routes>
+            <ResearchProvider>
+              <GoToFund name="Fund B" />
+              <Routes>
+                <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
+              </Routes>
+            </ResearchProvider>
           </MemoryRouter>
         </TooltipProvider>
       </QueryClientProvider>,
@@ -87,9 +90,11 @@ describe("FundPortfolio holdings aggregation", () => {
       <QueryClientProvider client={new QueryClient()}>
         <TooltipProvider>
           <MemoryRouter initialEntries={[fundPath("Fund A")]}>
-            <Routes>
-              <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
-            </Routes>
+            <ResearchProvider>
+              <Routes>
+                <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
+              </Routes>
+            </ResearchProvider>
           </MemoryRouter>
         </TooltipProvider>
       </QueryClientProvider>,
@@ -102,5 +107,32 @@ describe("FundPortfolio holdings aggregation", () => {
     if (sortButton) fireEvent.click(sortButton);
     if (sortButton) fireEvent.click(sortButton);
     expect(aggregateSpy.mock.calls.length).toBe(callsBefore);
+  });
+
+  it("switches narrow portfolio maps with tabs while preserving the sector filter", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TooltipProvider>
+          <MemoryRouter initialEntries={[fundPath("Fund A")]}>
+            <ResearchProvider>
+              <Routes>
+                <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
+              </Routes>
+            </ResearchProvider>
+          </MemoryRouter>
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+    const sectors = await screen.findByRole("tab", { name: "Sectors" });
+    fireEvent.mouseDown(sectors, { button: 0, ctrlKey: false });
+    fireEvent.click(sectors);
+    const sector = await screen.findByRole("button", { name: "Unclassified" });
+    fireEvent.click(sector);
+    expect(sector.getAttribute("aria-pressed")).toBe("true");
+    const holdings = screen.getByRole("tab", { name: "Holdings" });
+    fireEvent.mouseDown(holdings, { button: 0, ctrlKey: false });
+    fireEvent.click(holdings);
+    expect(await screen.findByRole("button", { name: "AAA" })).toBeTruthy();
+    expect(screen.getByText("Holdings map").textContent).toContain("Unclassified");
   });
 });

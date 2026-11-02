@@ -1,5 +1,5 @@
 import { treemapLabel } from "@/components/treemapLabel";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { formatPct } from "@/lib/dataService";
@@ -68,9 +68,11 @@ interface TooltipState {
 function TreemapTooltip({
   tip,
   displayMode,
+  id,
 }: {
   tip: TooltipState | null;
   displayMode: "value" | "pct";
+  id: string;
 }) {
   if (!tip) return null;
 
@@ -101,7 +103,12 @@ function TreemapTooltip({
   const DeltaIcon = isNew || up ? TrendingUp : down ? TrendingDown : Minus;
 
   return createPortal(
-    <div className="pointer-events-none fixed z-[60]" style={{ left, top, transform: translate }}>
+    <div
+      id={id}
+      role="tooltip"
+      className="pointer-events-none fixed z-[60] max-w-[min(20rem,calc(100vw-2rem))]"
+      style={{ left, top, transform: translate }}
+    >
       <div className="flex overflow-hidden rounded-md border border-border bg-popover text-xs text-popover-foreground shadow-md">
         <span aria-hidden className="w-1 shrink-0" style={{ backgroundColor: accent }} />
         <div className="px-3 py-2">
@@ -115,7 +122,7 @@ function TreemapTooltip({
             </span>
           </div>
           {item.company && item.company !== item.name && (
-            <div className="mt-0.5 max-w-[14rem] truncate text-[11px] text-muted-foreground">
+            <div className="mt-0.5 text-[11px] text-muted-foreground break-words">
               {item.company}
             </div>
           )}
@@ -239,6 +246,7 @@ export function HoldingsTreemap({
   const active = activeName ?? null;
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null);
   const [tip, setTip] = useState<TooltipState | null>(null);
+  const tooltipId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerPx, setContainerPx] = useState(0);
 
@@ -279,32 +287,25 @@ export function HoldingsTreemap({
             (active != null && !isSelected) ||
             (highlightNames != null && !highlightNames.has(item.name));
           const bgColor = getDeltaColor(item.deltaPct, item.delta);
-          const showValue = h > 40;
-
-          // Until the container is measured, size from the width-% heuristic.
+          const showValue = h >= 40;
           const label = containerPx
             ? treemapLabel(item.name, (w / 100) * containerPx, h, showValue)
-            : Math.min(14, w * 0.8) >= 11
-              ? { lines: [item.name], fontSize: Math.min(14, w * 0.8) }
-              : null;
+            : null;
 
           return (
             <button
               type="button"
               key={item.name}
               aria-label={item.name}
+              aria-describedby={tip?.item.name === item.name ? tooltipId : undefined}
               aria-pressed={selectable ? isSelected : undefined}
-              className="absolute flex flex-col items-center justify-center overflow-hidden rounded-sm border border-border text-foreground transition-[opacity,filter,box-shadow] duration-[120ms]"
+              className="absolute flex flex-col items-center justify-center overflow-hidden rounded-sm border border-border bg-card text-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
               style={{
                 left: `${x}%`,
                 top: y,
                 width: `${w}%`,
                 height: h,
-                backgroundColor: bgColor,
-                opacity: isHovered ? 1 : isDimmed ? 0.25 : hoveredTicker ? 0.7 : 1,
-                // Dimming desaturates too, so the delta hue does not compete
-                // with the tiles that are still in the filter.
-                filter: isDimmed && !isHovered ? "saturate(0.25)" : undefined,
+                // Only the background dims: financial labels keep full contrast.
                 // Inset, so the container's overflow-hidden cannot clip it.
                 boxShadow: isSelected ? "inset 0 0 0 2px hsl(var(--primary))" : undefined,
               }}
@@ -315,11 +316,36 @@ export function HoldingsTreemap({
                 setHoveredTicker(null);
                 setTip(null);
               }}
+              onFocus={(e) => {
+                const bounds = e.currentTarget.getBoundingClientRect();
+                setHoveredTicker(item.name);
+                setTip({
+                  item,
+                  x: bounds.left + bounds.width / 2,
+                  y: bounds.top + bounds.height / 2,
+                });
+              }}
+              onBlur={() => {
+                setHoveredTicker(null);
+                setTip(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setTip(null);
+              }}
             >
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 transition-[opacity,filter] duration-[120ms]"
+                style={{
+                  backgroundColor: bgColor,
+                  opacity: isHovered ? 1 : isDimmed ? 0.25 : hoveredTicker ? 0.7 : 1,
+                  filter: isDimmed && !isHovered ? "saturate(0.25)" : undefined,
+                }}
+              />
               {label?.lines.map((line) => (
                 <span
                   key={line}
-                  className="max-w-full truncate px-0.5 font-semibold leading-tight"
+                  className="relative max-w-full whitespace-nowrap px-1 font-semibold leading-tight"
                   style={{ fontSize: label.fontSize }}
                 >
                   {line}
@@ -330,7 +356,7 @@ export function HoldingsTreemap({
                 // delta tints the muted tone is 1.9:1 and even foreground at
                 // 80% is 3.6:1. At 100% the worst tile is 4.65:1. Size and
                 // weight carry the hierarchy instead.
-                <span className="mt-0.5 text-[11px] leading-tight text-foreground">
+                <span className="relative mt-0.5 text-[11px] leading-tight text-foreground">
                   {displayMode === "pct"
                     ? formatTreemapPct(item.value)
                     : formatTreemapValue(item.value)}
@@ -340,7 +366,7 @@ export function HoldingsTreemap({
           );
         })}
       </div>
-      <TreemapTooltip tip={tip} displayMode={displayMode} />
+      <TreemapTooltip tip={tip} displayMode={displayMode} id={tooltipId} />
     </>
   );
 }

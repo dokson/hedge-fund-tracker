@@ -27,15 +27,15 @@ export const HOME_PAGE: PublicPage = {
   path: ROUTES.home,
   title: "Hedge Fund Tracker — SEC Filing Tracker & Hedge Fund Analytics",
   description:
-    "SEC filings from a roster of hedge funds selected by measured performance, turned into portfolios, deltas and consensus you can read in seconds.",
-  heading: "No Buffett. No Burry. Only the best track records.",
+    "Research stocks through SEC filings from funds selected by measured performance. Compare quarterly conviction and examine recent ownership disclosures.",
+  heading: "No Buffett. No Burry. Selected by measured performance.",
 };
 
 export const LATEST_PAGE: PublicPage = {
   path: ROUTES.latest,
   title: pageTitle("Latest Filings"),
   description:
-    "The newest SEC filings from every tracked hedge fund — 13F, 13D/G, Form 4 and N-Q — with position deltas, in one board.",
+    "Latest saved 13D/G and Form 4 disclosures by publication date, with position dates, share changes against each fund's latest 13F and estimated values.",
   heading: "Latest Filings",
 };
 
@@ -59,7 +59,7 @@ export const RANKING_PAGE: PublicPage = {
   path: ROUTES.fundRanking,
   title: pageTitle("Fund Ranking"),
   description:
-    "Every tracked hedge fund ranked on the same quarters by the estimated return of its 13F holdings, against the S&P 500, with consistency and worst quarter.",
+    "Rank tracked funds by estimated 13F-holdings returns, with S&P 500 comparisons on each fund's observed quarters, coverage limits and consistency.",
   heading: "Fund Ranking",
 };
 

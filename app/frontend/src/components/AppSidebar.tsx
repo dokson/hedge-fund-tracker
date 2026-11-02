@@ -24,7 +24,7 @@ function SidebarNav({
 }) {
   const location = useLocation();
   const { latestQuarter } = useAvailableQuarters();
-  const dataAsOfLabel = latestQuarter ? latestQuarter.replace("Q", " Q") : null;
+  const baselineQuarter = latestQuarter ? latestQuarter.replace("Q", " Q") : null;
 
   return (
     <>
@@ -72,22 +72,21 @@ function SidebarNav({
       <SidebarFooter
         className={cn("py-2 border-t border-border status-line", collapsed ? "px-1" : "px-3")}
       >
-        {/* The data-freshness line and the version/copyright line sat outside
-            every landmark (SC 1.3.1, axe `region`). */}
+        {/* Keep the snapshot and version information inside a landmark. */}
         <footer aria-label="Dataset and version">
           {collapsed ? (
-            dataAsOfLabel && (
-              <div className="flex justify-center" title={`Data as of ${dataAsOfLabel}`}>
+            baselineQuarter && (
+              <div className="flex justify-center" title={`13F baseline ${baselineQuarter}`}>
                 <span className="h-2 w-2 bg-positive" aria-hidden="true" />
               </div>
             )
           ) : (
             <div className="space-y-0 text-xs">
-              {dataAsOfLabel && (
+              {baselineQuarter && (
                 <p className="flex items-center gap-2 truncate">
                   <span className="h-2 w-2 bg-positive shrink-0" aria-hidden="true" />
                   <span>
-                    <span className="k">Data</span> {dataAsOfLabel}
+                    <span className="k">13F baseline</span> {baselineQuarter}
                   </span>
                 </p>
               )}

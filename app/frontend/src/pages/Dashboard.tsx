@@ -1,5 +1,8 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { SlidersHorizontal } from "lucide-react";
+import { Link } from "react-router";
+import { learnItem } from "@/lib/routes";
 import {
   getStocks,
   getHedgeFunds,
@@ -12,7 +15,6 @@ import { LATEST_PAGE } from "@/lib/pageMeta";
 import { useSortState, type SortDir } from "@/hooks/useSortState";
 import { SortArrow } from "@/components/ui/SortArrow";
 import { canonicalUrl } from "@/lib/seo";
-import { getSectorStyle, sectorPillStyle, SECTOR_PILL } from "@/lib/sectorStyle";
 import { TickerLink, FundCell, CompanyLink } from "@/components/EntityLinks";
 import { Delta } from "@/components/Delta";
 import {
@@ -25,24 +27,22 @@ import {
 import { SearchInput } from "@/components/ui/SearchInput";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { QueryState } from "@/components/ui/QueryState";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { TableFrame } from "@/components/ui/TableFrame";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StarredFilterToggle } from "@/components/StarredFilterToggle";
 import { isoDaysBefore, toInitCap, matchesQuery } from "@/lib/utils";
 import { useStarred } from "@/hooks/useStarred";
 import { useEnrichedNQFilings } from "@/hooks/useEnrichedNQFilings";
+import { useResearchState } from "@/hooks/useResearchState";
 
-/** Sector tag: a tinted pill in the sector's own colour, applied inline. */
-function SectorPill({ sector, industry }: { sector?: string; industry?: string }) {
-  if (!sector) {
-    return <span className="text-faint">—</span>;
-  }
-  const style = getSectorStyle(sector);
-  const Icon = style.icon;
+function IndustryLabel({ sector, industry }: { sector?: string; industry?: string }) {
   return (
-    <span className={SECTOR_PILL} style={sectorPillStyle(style)} title={industry ?? sector}>
-      <Icon className="h-3 w-3" aria-hidden="true" />
-      {sector}
+    <span
+      className="block truncate text-xs text-muted-foreground md:line-clamp-2 md:whitespace-normal md:leading-4"
+      title={industry ?? sector}
+    >
+      {industry ?? sector ?? "—"}
     </span>
   );
 }
@@ -81,9 +81,9 @@ function isCountedDeltaType(t: EnrichedNQFiling["deltaType"]): t is CountedDelta
 }
 
 const SORT_OPTIONS: readonly { value: SortField; label: string }[] = [
-  { value: "date", label: "Date" },
-  { value: "delta", label: "Delta" },
-  { value: "value", label: "Value" },
+  { value: "date", label: "Published" },
+  { value: "delta", label: "Shares Δ" },
+  { value: "value", label: "Est. value" },
 ];
 
 /** Sortable column header: the button carries the click, the th carries aria-sort. */
@@ -112,7 +112,7 @@ function SortableTh({
       <button
         type="button"
         onClick={() => onSort(field)}
-        className={`h-full w-full p-3 whitespace-nowrap hover:text-foreground hover:bg-muted ${
+        className={`h-full w-full px-2 py-3 whitespace-nowrap hover:text-foreground hover:bg-muted ${
           align === "right" ? "text-right" : "text-left"
         }`}
       >
@@ -123,7 +123,7 @@ function SortableTh({
   );
 }
 
-/** Mobile row for one filing: the 9-column table does not fit a phone. */
+/** A position's disclosure and valuation context on narrow screens. */
 function FilingCard({
   f,
   sector,
@@ -154,9 +154,14 @@ function FilingCard({
         <CompanyLink ticker={f.ticker} company={toInitCap(f.company)} showStar />
       </div>
 
-      <div className="mt-1 flex items-center gap-2 flex-wrap text-xs">
-        <SectorPill sector={sector} industry={industry} />
-        <span className="text-muted-foreground whitespace-nowrap">{f.date}</span>
+      <div className="mt-1 flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+        <IndustryLabel sector={sector} industry={industry} />
+        <span>
+          Published <time dateTime={f.filingDate}>{f.filingDate || "—"}</time>
+        </span>
+        <span>
+          Position as of <time dateTime={f.date}>{f.date || "—"}</time>
+        </span>
       </div>
 
       <div className="mt-2">
@@ -165,7 +170,7 @@ function FilingCard({
 
       <div className="status-line mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
         <span>
-          <span className="k">Value:</span> {f.value}
+          <span className="k">Est. value:</span> {f.value}
         </span>
         <span aria-hidden="true">·</span>
         <span>
@@ -178,7 +183,8 @@ function FilingCard({
         </span>
         <span aria-hidden="true">·</span>
         <span>
-          <span className="k">Avg Px:</span> {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}
+          <span className="k">Reference price:</span>{" "}
+          {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}
         </span>
       </div>
     </li>
@@ -192,16 +198,21 @@ export default function Dashboard() {
     canonical: canonicalUrl(LATEST_PAGE.path),
   });
 
-  const [search, setSearch] = useState("");
-  const [fundFilter, setFundFilter] = useState("all");
-  const [typeFilters, setTypeFilters] = useState<Set<string>>(() => new Set());
-  const [daysBackPick, setDaysBackPick] = useState<string | null>(null);
-  const { sortKey: sortField, sortDir, toggleSort } = useSortState<SortField>("date");
+  const [search, setSearch] = useResearchState("search", "");
+  const [fundFilter, setFundFilter] = useResearchState("fund", "all");
+  const [typeFilters, setTypeFilters] = useResearchState<Set<string>>("changes", () => new Set());
+  const [daysBackPick, setDaysBackPick] = useResearchState<string | null>("period", null);
+  const [filtersOpen, setFiltersOpen] = useResearchState("filtersOpen", false);
+  const {
+    sortKey: sortField,
+    sortDir,
+    toggleSort,
+  } = useSortState<SortField>("date", "desc", "filings");
   const [today] = useState(() => new Date());
   const { starred: starredStocks } = useStarred("stock");
   const { starred: starredFunds } = useStarred("fund");
-  const [filterStarredStocks, setFilterStarredStocks] = useState(false);
-  const [filterStarredFunds, setFilterStarredFunds] = useState(false);
+  const [filterStarredStocks, setFilterStarredStocks] = useResearchState("starredStocks", false);
+  const [filterStarredFunds, setFilterStarredFunds] = useResearchState("starredFunds", false);
 
   const { data: filings = [], isLoading, isError, error } = useEnrichedNQFilings();
 
@@ -238,7 +249,7 @@ export default function Dashboard() {
   const autoDaysBack = useMemo(() => {
     if (filings.length === 0) return "30";
     const cutoffStr = isoDaysBefore(today, 30);
-    return filings.some((f) => f.date >= cutoffStr) ? "30" : "9999";
+    return filings.some((f) => f.filingDate >= cutoffStr) ? "30" : "9999";
   }, [filings, today]);
   const daysBack = daysBackPick ?? autoDaysBack;
 
@@ -247,7 +258,7 @@ export default function Dashboard() {
   const scoped = useMemo(() => {
     const cutoffStr = isoDaysBefore(today, parseInt(daysBack));
     return filings.filter(
-      (f) => f.date >= cutoffStr && (fundFilter === "all" || f.fund === fundFilter),
+      (f) => f.filingDate >= cutoffStr && (fundFilter === "all" || f.fund === fundFilter),
     );
   }, [filings, daysBack, fundFilter, today]);
 
@@ -265,7 +276,7 @@ export default function Dashboard() {
     rows = [...rows].sort((a, b) => {
       let cmp = 0;
       if (sortField === "date") {
-        cmp = a.date.localeCompare(b.date);
+        cmp = a.filingDate.localeCompare(b.filingDate) || a.date.localeCompare(b.date);
       } else if (sortField === "delta") {
         cmp = formatDelta(a).sortValue - formatDelta(b).sortValue;
       } else {
@@ -297,21 +308,28 @@ export default function Dashboard() {
   }, [scoped]);
 
   const totalCount = FILING_TYPES.reduce((s, t) => s + counts[t], 0);
-  const periodLabel = daysBack === "30" ? "last 30 days" : "all filings";
+  const periodLabel = daysBack === "30" ? "published in the last 30 days" : "all publication dates";
 
   return (
-    <div className="space-y-6 max-w-screen-2xl">
+    <div className="space-y-4 max-w-screen-2xl">
       <div>
         <h1 className="page-title">Latest Filings</h1>
-        <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">
-          13D/G and Form 4, latest filing per position, delta vs last 13F quarter
+        <p className="text-sm text-muted-foreground mt-1.5 max-w-3xl">
+          Latest saved 13D/G and Form 4 disclosure per position, by publication date. Changes are
+          measured against each fund’s latest 13F.{" "}
+          <Link
+            to={learnItem("how-to-read-filing-metrics")}
+            className="text-primary-text hover:underline underline-offset-4"
+          >
+            How to read these figures
+          </Link>
         </p>
       </div>
 
       {!isLoading && filings.length > 0 && (
         <div>
           <p className="status-line mb-1">
-            <span className="k">Filings, {periodLabel}:</span> {totalCount}
+            <span className="k">Positions {periodLabel}:</span> {totalCount}
             {fundFilter !== "all" && (
               <>
                 {" "}
@@ -321,15 +339,14 @@ export default function Dashboard() {
             )}
           </p>
           <div
-            className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border"
+            className="grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-border bg-border"
             role="group"
-            aria-label="Filter by filing type"
+            aria-label="Filter by position change"
           >
             {FILING_TYPES.map((type) => {
               const isActive = typeFilters.has(type);
               const { label, text } = STAT_META[type];
               const count = counts[type];
-              const share = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
               const toggle = () =>
                 setTypeFilters((prev) => {
                   const next = new Set(prev);
@@ -343,24 +360,25 @@ export default function Dashboard() {
                   type="button"
                   onClick={toggle}
                   aria-pressed={isActive}
-                  className={`relative p-3 text-left transition-colors ${
-                    isActive ? "bg-muted" : "bg-card hover:bg-muted/60"
+                  className={`min-w-0 px-2 py-3 text-left transition-colors sm:px-4 ${
+                    isActive
+                      ? "bg-muted ring-2 ring-inset ring-primary"
+                      : "bg-card hover:bg-muted/60"
                   }`}
                 >
-                  <span className="metric-label block">{label}</span>
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span className={`metric-value ${count > 0 ? text : "text-faint"}`}>
+                  <span className="block text-[11px] text-muted-foreground sm:text-xs">
+                    {label}
+                  </span>
+                  <span className="mt-1 flex items-baseline justify-between gap-1">
+                    <span
+                      className={`text-2xl font-semibold tabular-nums leading-none sm:text-3xl ${count > 0 ? text : "text-foreground"}`}
+                    >
                       {count}
                     </span>
-                    <span className="text-xs tabular-nums text-muted-foreground">{share}%</span>
+                    <span className="hidden text-xs tabular-nums text-muted-foreground sm:inline">
+                      {totalCount > 0 ? Math.round((count / totalCount) * 100) : 0}%
+                    </span>
                   </span>
-                  {/* Pressed state: the 2px primary bar, the same signal the nav uses. */}
-                  {isActive && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute inset-x-0 bottom-0 h-0.5 bg-primary"
-                    />
-                  )}
                 </button>
               );
             })}
@@ -377,34 +395,69 @@ export default function Dashboard() {
         onToggleStocks={() => setFilterStarredStocks((v) => !v)}
       />
 
-      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         <SearchInput
           label="Search fund, manager, ticker, company"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           wrapperClassName="w-full sm:w-64"
         />
-        <Select value={fundFilter} onValueChange={setFundFilter}>
-          <SelectTrigger aria-label="Fund" className="w-full sm:w-48 bg-card border-border">
-            <SelectValue placeholder="All Funds" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Funds</SelectItem>
-            {fundNames.map((name) => (
-              <SelectItem key={name} value={name}>
-                {name.replace(/_/g, " ")}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <SegmentedControl
           value={daysBack}
           onValueChange={setDaysBackPick}
+          aria-label="Publication period"
           options={[
             { value: "30", label: "Last 30 days" },
             { value: "9999", label: "All" },
           ]}
         />
+        <button
+          type="button"
+          aria-expanded={filtersOpen}
+          aria-controls="filing-filters"
+          onClick={() => setFiltersOpen((open) => !open)}
+          className="md:hidden inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs hover:bg-muted"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+          Filters{fundFilter !== "all" ? " · 1" : ""}
+        </button>
+        <div
+          id="filing-filters"
+          className={`${filtersOpen ? "flex" : "hidden md:flex"} w-full flex-wrap items-center gap-2 md:w-auto`}
+        >
+          <Select value={fundFilter} onValueChange={setFundFilter}>
+            <SelectTrigger aria-label="Fund" className="w-full sm:w-48 bg-card border-border">
+              <SelectValue placeholder="All Funds" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Funds</SelectItem>
+              {fundNames.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name.replace(/_/g, " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="md:hidden flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Sort:</span>
+            <SegmentedControl
+              size="sm"
+              aria-label="Sort filings"
+              value={sortField}
+              onValueChange={toggleSort}
+              options={SORT_OPTIONS.map((option) => ({
+                value: option.value,
+                title: option.label,
+                label: (
+                  <span className="inline-flex items-center">
+                    {option.label}
+                    <SortArrow active={sortField === option.value} direction={sortDir} />
+                  </span>
+                ),
+              }))}
+            />
+          </div>
+        </div>
       </div>
 
       {isError ? (
@@ -413,29 +466,6 @@ export default function Dashboard() {
         <LoadingState message="Loading and enriching filings…" className="surface" />
       ) : (
         <>
-          {/* Mobile: sort strip (the table's sortable headers are gone here) */}
-          <div className="md:hidden flex items-center gap-2 overflow-x-auto">
-            <span className="status-line shrink-0">
-              <span className="k">Sort:</span>
-            </span>
-            <SegmentedControl
-              size="sm"
-              aria-label="Sort filings"
-              value={sortField}
-              onValueChange={toggleSort}
-              options={SORT_OPTIONS.map((o) => ({
-                value: o.value,
-                title: o.label,
-                label: (
-                  <span className="inline-flex items-center">
-                    {o.label}
-                    <SortArrow active={sortField === o.value} direction={sortDir} />
-                  </span>
-                ),
-              }))}
-            />
-          </div>
-
           {/* Mobile: row list */}
           <div className="md:hidden">
             {filtered.length === 0 ? (
@@ -457,26 +487,40 @@ export default function Dashboard() {
           </div>
 
           {/* Desktop: full data table */}
-          <div className="surface hidden md:block">
+          <div className="surface @container hidden md:block">
             <TableFrame label={`Latest filings, ${periodLabel}`}>
-              <table className="w-full text-sm" aria-label={`Latest filings, ${periodLabel}`}>
+              <table
+                className="w-full min-w-[960px] table-fixed text-sm"
+                aria-label={`Latest filings, ${periodLabel}`}
+              >
+                <colgroup>
+                  {/* Keep numeric/date columns stable; split remaining frame space 40/30/30. */}
+                  <col className="w-[100px]" />
+                  <col className="w-[max(172px,calc(40cqw_-_212px))]" />
+                  <col className="w-[max(129px,calc(30cqw_-_159px))]" />
+                  <col className="w-[max(129px,calc(30cqw_-_159px))]" />
+                  <col className="w-[130px]" />
+                  <col className="w-[84px]" />
+                  <col className="w-[96px]" />
+                  <col className="w-[120px]" />
+                </colgroup>
                 <thead>
                   <tr className="whitespace-nowrap">
-                    <th scope="col" className="text-left p-3">
+                    <th scope="col" className="text-left px-2 py-3">
                       Ticker
                     </th>
-                    <th scope="col" className="text-left p-3">
+                    <th scope="col" className="text-left px-2 py-3">
                       Company
                     </th>
-                    <th scope="col" className="text-left p-3">
-                      Sector
+                    <th scope="col" className="text-left px-2 py-3">
+                      Industry
                     </th>
-                    <th scope="col" className="text-left p-3">
+                    <th scope="col" className="text-left px-2 py-3">
                       Fund
                     </th>
                     <SortableTh
                       field="date"
-                      label="Date"
+                      label="Published / As of"
                       align="left"
                       sortField={sortField}
                       sortDir={sortDir}
@@ -484,25 +528,21 @@ export default function Dashboard() {
                     />
                     <SortableTh
                       field="delta"
-                      label="Delta"
+                      label="Shares Δ"
                       align="right"
                       sortField={sortField}
                       sortDir={sortDir}
                       onSort={toggleSort}
                     />
-                    <th
-                      scope="col"
-                      className="text-right p-3"
-                      title="Position weight in the fund's last 13F portfolio; ~ marks an estimated weight for positions known only from a 13D/G or Form 4 filing"
-                    >
-                      Portfolio %
-                    </th>
-                    <th scope="col" className="text-right p-3">
-                      Avg Price
+                    <th scope="col" className="text-right px-2 py-3">
+                      <span className="inline-flex items-center gap-1">
+                        Portfolio %
+                        <InfoTooltip text="Weight in the fund's latest 13F. ~ marks an estimated weight for a position absent from that baseline." />
+                      </span>
                     </th>
                     <SortableTh
                       field="value"
-                      label="Value"
+                      label="Est. value"
                       align="right"
                       sortField={sortField}
                       sortDir={sortDir}
@@ -513,7 +553,7 @@ export default function Dashboard() {
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="p-8 text-center text-muted-foreground">
                         No filings match your filters.
                       </td>
                     </tr>
@@ -521,30 +561,40 @@ export default function Dashboard() {
                     filtered.map((f, i) => (
                       <tr
                         key={`${f.cusip}-${f.fund}-${f.date}-${f.deltaType}-${f.shares ?? i}`}
-                        className="data-table-row"
+                        className="data-table-row h-16"
                       >
-                        <td className="p-3">
+                        <td className="px-2 py-3">
                           <TickerLink ticker={f.ticker} />
                         </td>
-                        <td className="p-3">
+                        <td className="px-2 py-3">
                           <CompanyLink
                             ticker={f.ticker}
                             company={toInitCap(f.company)}
-                            className="max-w-[180px] xl:max-w-[260px]"
+                            className="line-clamp-2 whitespace-normal leading-4"
                             showStar
                           />
                         </td>
-                        <td className="p-3 text-xs whitespace-nowrap">
-                          <SectorPill
+                        <td className="px-2 py-3">
+                          <IndustryLabel
                             sector={tickerMeta.get(f.ticker)?.sector}
                             industry={tickerMeta.get(f.ticker)?.industry}
                           />
                         </td>
-                        <td className="p-3">
-                          <FundCell fundName={f.fund} />
+                        <td className="px-2 py-3">
+                          <FundCell
+                            fundName={f.fund}
+                            className="[&>span>span:first-child]:line-clamp-2 [&>span>span:first-child]:whitespace-normal [&>span>span:first-child]:leading-4"
+                          />
                         </td>
-                        <td className="p-3 text-muted-foreground whitespace-nowrap">{f.date}</td>
-                        <td className="p-3 text-right font-mono">
+                        <td className="px-2 py-3 text-muted-foreground whitespace-nowrap">
+                          <time dateTime={f.filingDate} className="block text-foreground">
+                            {f.filingDate || "—"}
+                          </time>
+                          <span className="block text-xs">
+                            As of <time dateTime={f.date}>{f.date || "—"}</time>
+                          </span>
+                        </td>
+                        <td className="px-2 py-3 text-right font-mono whitespace-nowrap">
                           {f.deltaType === "NEW" ? (
                             <span className="badge-new">NEW</span>
                           ) : f.deltaType === "CLOSED" ? (
@@ -556,7 +606,7 @@ export default function Dashboard() {
                           )}
                         </td>
                         <td
-                          className="p-3 text-right font-mono text-muted-foreground"
+                          className="px-2 py-3 text-right font-mono text-muted-foreground whitespace-nowrap"
                           title={
                             f.quarterPortfolioPct === null && f.estimatedPortfolioPct !== null
                               ? "Estimated weight over the fund's merged portfolio (new position)"
@@ -569,10 +619,12 @@ export default function Dashboard() {
                               ? `~${f.estimatedPortfolioPct.toFixed(2)}%`
                               : "—"}
                         </td>
-                        <td className="p-3 text-right font-mono">
-                          {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}
+                        <td className="px-2 py-3 text-right font-mono whitespace-nowrap">
+                          <span className="block">{f.value}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            Ref. price {f.avgPrice === "N/A" ? "—" : `$${f.avgPrice}`}
+                          </span>
                         </td>
-                        <td className="p-3 text-right font-mono">{f.value}</td>
                       </tr>
                     ))
                   )}

@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router";
 import { SmartScorePanel } from "./SmartScorePanel";
 import { FAQ_SECTIONS } from "@/lib/faqContent";
 import type { SmartScoreView } from "@/lib/smartScore";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const score: SmartScoreView = {
   smartScore: 8.6,
@@ -16,7 +17,9 @@ const score: SmartScoreView = {
 const renderPanel = (props: { score: SmartScoreView | undefined; quarterLabel?: string }) =>
   render(
     <MemoryRouter>
-      <SmartScorePanel {...props} />
+      <TooltipProvider>
+        <SmartScorePanel {...props} />
+      </TooltipProvider>
     </MemoryRouter>,
   );
 
@@ -26,24 +29,25 @@ describe("SmartScorePanel", () => {
     expect(container.firstElementChild).toBeNull();
   });
 
-  it("renders the composite, the three components and the quarter label", () => {
-    const { container } = renderPanel({ score, quarterLabel: "2026Q2" });
-    expect(container.textContent).toContain("8.6");
-    expect(container.textContent).toContain("/10");
-    expect(container.textContent).toContain("Breadth");
-    expect(container.textContent).toContain("Momentum");
-    expect(container.textContent).toContain("Conviction");
-    expect(container.textContent).toContain("2026 Q2");
-  });
-
   it("links to the FAQ entry that defines the score, and that entry exists", () => {
     renderPanel({ score, quarterLabel: "2026Q2" });
 
-    const href = screen.getByRole("link", { name: "How is this calculated?" }).getAttribute("href");
+    const href = screen.getByRole("link", { name: "Method FAQ" }).getAttribute("href");
     const id = href?.split("#")[1];
     const faqIds = FAQ_SECTIONS.flatMap((s) => s.items).map((item) => item.id);
 
     expect(href?.startsWith("/learn#")).toBe(true);
     expect(faqIds).toContain(id);
+  });
+
+  it("shows the component values with their meanings and preserves unavailable values", () => {
+    renderPanel({ score: { ...score, momentum: null } });
+
+    expect(screen.getByRole("heading", { name: "Smart Score" })).toBeTruthy();
+    expect(screen.getByText("51")).toBeTruthy();
+    expect(screen.getByText("—")).toBeTruthy();
+    expect(screen.getByText("89")).toBeTruthy();
+    expect(screen.getByText("Net fund buyers, not price momentum")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "More information" })).toBeTruthy();
   });
 });

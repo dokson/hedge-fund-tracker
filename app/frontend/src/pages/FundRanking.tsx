@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Info, Trophy } from "lucide-react";
+import { AlertTriangle, Trophy } from "lucide-react";
+import { Link } from "react-router";
 
 import { FundCell } from "@/components/EntityLinks";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { PanelTitle } from "@/components/ui/PanelTitle";
 import { QueryState } from "@/components/ui/QueryState";
@@ -14,7 +16,8 @@ import { useSortState } from "@/hooks/useSortState";
 import { getFundPerformanceRows } from "@/lib/dataService";
 import { rankFunds, sortRanking, type RankedFund, type RankingKey } from "@/lib/fundRanking";
 import { RANKING_PAGE } from "@/lib/pageMeta";
-import { pctFrac, toneClass } from "@/lib/performanceFormat";
+import { pctFrac, pp, toneClass } from "@/lib/performanceFormat";
+import { learnItem } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -52,18 +55,18 @@ function PartialFlag({ fund, window }: { fund: RankedFund; window: number }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span
-          role="img"
+        <button
+          type="button"
           aria-label={label}
-          className="inline-flex h-4 items-center rounded-sm border border-border px-1 text-[10px] leading-none text-muted-foreground"
+          className="-my-1 inline-flex min-h-7 shrink-0 cursor-help items-center rounded-sm border border-border px-1.5 text-[10px] leading-none text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {fund.total}/{window}Q
-        </span>
+        </button>
       </TooltipTrigger>
       <TooltipContent className="max-w-[260px] text-xs font-normal leading-relaxed">
-        {label}: a quarter whose starting 13F held no measurable long equity (for example options
-        only) has no return. Its return covers a shorter window; the S&amp;P 500 comparison uses the
-        same quarters.
+        {label}: a missing quarter or a starting 13F with no measurable long equity has no return.
+        These are fewer observed quarters, not necessarily consecutive. The S&amp;P 500 excess
+        comparison uses only those same quarters.
       </TooltipContent>
     </Tooltip>
   );
@@ -75,13 +78,13 @@ function CoverageFlag({ fund }: { fund: RankedFund }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span
-          role="img"
+        <button
+          type="button"
           aria-label={`Low price coverage: up to ${share} of the book unpriced in a quarter`}
-          className="inline-flex text-amber-500"
+          className="-my-1 inline-flex min-h-7 min-w-7 shrink-0 cursor-help items-center justify-center rounded-sm text-warning hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
-        </span>
+        </button>
       </TooltipTrigger>
       <TooltipContent className="max-w-[260px] text-xs font-normal leading-relaxed">
         Up to {share} of the starting book could not be priced in one quarter and counts as flat, so
@@ -103,7 +106,7 @@ export default function FundRanking() {
     queryFn: async () => rankFunds(await getFundPerformanceRows()),
     staleTime: 10 * 60 * 1000,
   });
-  const { sortKey, sortDir, columnSort } = useSortState<RankingKey>("cumReturn");
+  const { sortKey, sortDir, columnSort } = useSortState<RankingKey>("cumReturn", "desc", "ranking");
 
   const ranking = data;
   const funds = ranking ? sortRanking(ranking.funds, sortKey, sortDir) : [];
@@ -123,8 +126,8 @@ export default function FundRanking() {
           {RANKING_PAGE.heading}
         </h1>
         <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">
-          Every tracked fund on the same quarters, by the estimated return of its 13F holdings
-          against the S&amp;P 500.
+          Estimated cumulative returns of tracked funds' 13F holdings against the S&amp;P 500, not
+          certified fund returns.
         </p>
       </div>
 
@@ -133,14 +136,32 @@ export default function FundRanking() {
       ) : isLoading ? (
         <LoadingState message="Loading ranking…" />
       ) : !ranking || ranking.funds.length === 0 ? (
-        <EmptyState padding="sm" title="No fund has an estimate for every quarter yet." />
+        <EmptyState padding="sm" title="No fund has a measurable return estimate yet." />
       ) : (
         <>
+          <div className="space-y-2 border-y border-border py-3 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">
+              {first} → {last} · {windowSize} observed quarter{windowSize === 1 ? "" : "s"}
+            </p>
+            <p className="max-w-3xl">
+              {partialCount > 0
+                ? `${partialCount} of ${ranking.funds.length} funds have partial windows; compare their excess (pp) over the same observed quarters. `
+                : "All funds have estimates for the full window. "}
+              A short sample from a roster selected on past performance does not establish skill.{" "}
+              <Link
+                to={learnItem("how-funds-are-selected")}
+                className="text-primary-text hover:underline underline-offset-4"
+              >
+                Fund selection
+              </Link>
+              <span className="ml-2 inline-flex items-center gap-1 align-middle">
+                <InfoTooltip text="Each estimate prices the starting 13F book (top 100 positions) to the next quarter end. It excludes dividends, fees, shorts, options and trades within the quarter. Unpriced holdings count as flat. Partial windows need not be consecutive." />
+              </span>
+            </p>
+          </div>
           <div className="frame overflow-hidden">
             <div className="frame-title frame-title--spaced">
-              <PanelTitle>
-                {first} → {last}
-              </PanelTitle>
+              <PanelTitle>Estimated cumulative return</PanelTitle>
             </div>
 
             <div className="hidden md:block">
@@ -156,12 +177,16 @@ export default function FundRanking() {
                       </th>
                       <ColumnHeader label="Fund" />
                       <ColumnHeader
-                        label="Return"
+                        label="Est. return"
                         align="right"
                         sort={columnSort("cumReturn")}
                         className="w-56"
                       />
-                      <ColumnHeader label="vs S&P 500" align="right" sort={columnSort("excess")} />
+                      <ColumnHeader
+                        label="vs S&P 500 (pp)"
+                        align="right"
+                        sort={columnSort("excess")}
+                      />
                       <ColumnHeader
                         label="Quarters ahead"
                         align="right"
@@ -185,18 +210,25 @@ export default function FundRanking() {
                       <tr key={f.fund} className="data-table-row">
                         <td className="px-3 py-1.5 text-right text-muted-foreground">{i + 1}</td>
                         <td className="px-3 py-1.5">
-                          <span className="inline-flex items-center gap-1.5">
-                            <FundCell fundName={f.fund} />
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <FundCell
+                              fundName={f.fund}
+                              className="min-w-0 [&>span>span:first-child]:whitespace-normal [&>span>span:first-child]:leading-4"
+                            />
                             <PartialFlag fund={f} window={windowSize} />
                             <CoverageFlag fund={f} />
                           </span>
                         </td>
                         <td className={cn("px-3 py-1.5 text-right", toneClass(f.cumReturn))}>
                           {pctFrac(f.cumReturn)}
-                          <ReturnBar value={f.cumReturn} max={best} benchmark={benchmark} />
+                          <ReturnBar
+                            value={f.cumReturn}
+                            max={best}
+                            benchmark={f.cumReturn - f.excess}
+                          />
                         </td>
                         <td className={cn("px-3 py-1.5 text-right", toneClass(f.excess))}>
-                          {pctFrac(f.excess)}
+                          {pp(f.excess * 100)}
                         </td>
                         <td className="px-3 py-1.5 text-right text-muted-foreground">
                           {f.beats}/{f.total}
@@ -217,26 +249,32 @@ export default function FundRanking() {
             <ol className="md:hidden divide-y divide-border" aria-label="Fund ranking cards">
               {funds.map((f, i) => (
                 <li key={f.fund} className="px-3 py-3">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="inline-flex min-w-0 items-center gap-2">
-                      <span className="w-6 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
-                        {i + 1}
-                      </span>
-                      <FundCell fundName={f.fund} />
-                      <PartialFlag fund={f} window={windowSize} />
-                      <CoverageFlag fund={f} />
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="w-6 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                      {i + 1}
                     </span>
+                    <FundCell
+                      fundName={f.fund}
+                      className="flex-1 text-sm [&>span>span:first-child]:line-clamp-2 [&>span>span:first-child]:whitespace-normal [&>span>span:first-child]:leading-4"
+                    />
+                    <PartialFlag fund={f} window={windowSize} />
+                    <CoverageFlag fund={f} />
+                  </div>
+                  <div className="mt-2 text-right">
                     <span
-                      className={cn("text-base font-medium tabular-nums", toneClass(f.cumReturn))}
+                      className={cn(
+                        "whitespace-nowrap text-base font-medium tabular-nums",
+                        toneClass(f.cumReturn),
+                      )}
                     >
                       {pctFrac(f.cumReturn)}
                     </span>
                   </div>
-                  <ReturnBar value={f.cumReturn} max={best} benchmark={benchmark} />
+                  <ReturnBar value={f.cumReturn} max={best} benchmark={f.cumReturn - f.excess} />
                   <dl className="mt-2 grid grid-cols-4 gap-2 text-xs tabular-nums">
                     <div>
                       <dt className="text-muted-foreground">vs S&amp;P</dt>
-                      <dd className={toneClass(f.excess)}>{pctFrac(f.excess)}</dd>
+                      <dd className={toneClass(f.excess)}>{pp(f.excess * 100)}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">Ahead</dt>
@@ -260,28 +298,8 @@ export default function FundRanking() {
 
           <p className="status-line border-t border-border pt-3 text-muted-foreground">
             S&amp;P 500 <span className={toneClass(benchmark)}>{pctFrac(benchmark)}</span> over{" "}
-            {ranking.quarters.length} quarters; {ahead} of {ranking.funds.length} funds ahead of it.
-            {partialCount > 0 &&
-              ` ${partialCount} fund${partialCount === 1 ? "" : "s"} measured on fewer quarters, marked; compare those on the S&P 500 column.`}{" "}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="How this is measured"
-                  className="inline-flex items-center justify-center h-6 w-6 align-middle text-muted-foreground hover:text-foreground"
-                >
-                  <Info className="h-3.5 w-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[320px] text-xs font-normal leading-relaxed">
-                Each quarter starts from the fund's 13F book (top 100 positions) and prices it to
-                the next quarter end: no dividends, fees, shorts, options or trades inside the
-                quarter. The funds were selected for their track record and the window spans a
-                single rising market, so beating the index is partly selection and market, not only
-                skill.
-              </TooltipContent>
-            </Tooltip>{" "}
-            <span aria-hidden="true">·</span> Estimates, not investment advice
+            {ranking.quarters.length} quarters; {ahead} of {ranking.funds.length} funds ahead on
+            their observed quarters.
           </p>
         </>
       )}

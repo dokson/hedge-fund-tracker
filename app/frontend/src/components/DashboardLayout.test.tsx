@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import DashboardLayout from "./DashboardLayout";
+import { ResearchProvider } from "./ResearchProvider";
 
 vi.mock("@/lib/dataService", () => ({
   getStocks: () => Promise.resolve([]),
@@ -33,9 +34,11 @@ describe("DashboardLayout top bar", () => {
     render(
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={["/stocks"]}>
-          <DashboardLayout>
-            <p>page</p>
-          </DashboardLayout>
+          <ResearchProvider>
+            <DashboardLayout>
+              <p>page</p>
+            </DashboardLayout>
+          </ResearchProvider>
         </MemoryRouter>
       </QueryClientProvider>,
     );

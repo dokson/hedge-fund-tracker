@@ -243,7 +243,7 @@ export function buildHomeJsonLd(): JsonLdGraph {
         isAccessibleForFree: true,
         image: canonicalUrl("/logo.png"),
         description:
-          "Merges quarterly 13F filings with 13D/G and Form 4 activity to show what hedge funds are buying and selling.",
+          "Combines quarterly 13F snapshots with saved 13D/G and Form 4 disclosures to research reported holdings and changes between disclosures.",
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
         author: { "@id": AUTHOR_ID },
       },

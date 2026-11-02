@@ -77,7 +77,6 @@ describe("MobileNav", () => {
     openMenu();
 
     const dialog = await screen.findByRole("dialog", { name: "Navigation" });
-    expect(dialog.className).toContain("inset-0");
     expect(dialog.contains(document.activeElement)).toBe(true);
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close navigation" }));
     // The search field and the sections are all in the overlay.

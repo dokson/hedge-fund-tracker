@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ResearchProvider } from "@/components/ResearchProvider";
 import type { HedgeFund, RawFundPerformanceRow } from "@/lib/data/types";
 
 function rows(fund: string, returns: number[], unpriced = 0): RawFundPerformanceRow[] {
@@ -44,7 +45,9 @@ function renderPage() {
     <QueryClientProvider client={new QueryClient()}>
       <TooltipProvider>
         <MemoryRouter initialEntries={["/ranking"]}>
-          <FundRanking />
+          <ResearchProvider>
+            <FundRanking />
+          </ResearchProvider>
         </MemoryRouter>
       </TooltipProvider>
     </QueryClientProvider>,
@@ -56,7 +59,7 @@ function tableFunds(): string[] {
   return within(table)
     .getAllByRole("row")
     .slice(1)
-    .map((r) => within(r).getAllByRole("link")[0]?.textContent ?? "");
+    .map((r) => within(r).getAllByRole("link")[0]?.getAttribute("aria-label") ?? "");
 }
 
 describe("FundRanking page", () => {
@@ -81,17 +84,29 @@ describe("FundRanking page", () => {
     renderPage();
     await screen.findByRole("table", { name: /fund ranking/i });
     expect(tableFunds()).toContain("Partial");
-    expect(screen.getAllByLabelText(/measured on 1 of 2 quarters/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByLabelText(/low price coverage/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("button", { name: /measured on 1 of 2 quarters/i }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /low price coverage/i }).length).toBeGreaterThan(
+      0,
+    );
   });
 
-  it("shows each fund with its logo and manager, as elsewhere on the site", async () => {
+  it("shows each fund with its linked identity, logo and manager in tables and cards", async () => {
     renderPage();
     const table = await screen.findByRole("table", { name: /fund ranking/i });
-    const row = within(table).getByRole("link", { name: "Steady" }).closest("tr");
-    expect(row).not.toBeNull();
-    if (!row) return;
-    expect(await within(row).findByText("Jane Doe")).toBeTruthy();
-    expect(within(row).getByText("S")).toBeTruthy();
+    const cards = screen.getByRole("list", { name: /fund ranking cards/i });
+    for (const [surface, parent] of [
+      [table, "tr"],
+      [cards, "li"],
+    ] as const) {
+      const link = within(surface).getByRole("link", { name: "Steady" });
+      expect(link.getAttribute("href")).toBe(fundPath("Steady"));
+      const row = link.closest(parent);
+      expect(row).not.toBeNull();
+      if (!row) continue;
+      expect(await within(row as HTMLElement).findByText("Jane Doe")).toBeTruthy();
+      expect(within(row as HTMLElement).getByText("S")).toBeTruthy();
+    }
   });
 });
