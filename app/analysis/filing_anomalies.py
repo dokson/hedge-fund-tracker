@@ -12,9 +12,11 @@ fund's own history is not one, because genuine moves look the same.
 
 A flagged row whose price matches exactly one other CUSIP of the same filing
 (another flagged row, or a position the filing closes) gets that CUSIP as its
-correction. Findings go into the register ``filing_anomalies.csv``
-(``app.database.filing_anomalies``), whose corrected rows the parser applies
-on every fetch.
+correction. A filing identical to the fund's previous one is that report filed
+again: it is no reference for the quarter, and its positions are restated as
+held unchanged at the quarter's prices. Findings go into the register
+``filing_anomalies.csv`` (``app.database.filing_anomalies``), whose corrected
+rows the parser applies on every fetch.
 """
 
 import statistics
@@ -117,6 +119,11 @@ class CusipAnomalyDetector:
     A filing valued at another date than the quarter end shows as most of its
     book off the funds' prices (see ``_stale_filings``): every row of it more than
     ``stale_gap`` off, even within ``price_tolerance``, has its value restated.
+
+    A filing identical to the fund's previous one (``_repeated_filings``) is that
+    report filed again: its prices are no reference for the quarter, and each
+    position is read as held unchanged, on the quarter's split basis and at the
+    funds' price (``_repeat_restatement``).
     """
 
     price_tolerance: float = 0.4
@@ -130,6 +137,7 @@ class CusipAnomalyDetector:
     stale_gap: float = 0.05
     stale_share: float = 0.4
     stale_min_rows: int = 10
+    repeat_min_rows: int = 10
 
     def detect(
         self,
@@ -142,8 +150,13 @@ class CusipAnomalyDetector:
         quarter) to the CUSIPs that filing closes, with the share count held before.
         """
         priced = [r for r in rows if r.price > 0]
+        fund_quarters: dict[str, set[str]] = defaultdict(set)
+        for fund, quarter in [(r.fund, r.quarter) for r in priced] + list(closed or {}):
+            fund_quarters[fund].add(quarter)
+        repeats = self._repeated_filings(priced, fund_quarters)
+        genuine = [r for r in priced if (r.fund, r.quarter) not in repeats]
         reported: dict[tuple[str, str], list[float]] = defaultdict(list)
-        for r in priced:
+        for r in genuine:
             reported[(r.quarter, r.cusip)].append(r.price)
         medians = {
             key: statistics.median(prices)
@@ -151,10 +164,10 @@ class CusipAnomalyDetector:
             if len(prices) >= self.min_reporters
         }
 
-        stale = self._stale_filings(priced, medians)
+        stale = self._stale_filings(genuine, medians)
         by_filing: dict[tuple[str, str], list[tuple[CusipAnomaly, FiledRow]]] = defaultdict(list)
         stale_rows: list[tuple[CusipAnomaly, FiledRow]] = []
-        for r in priced:
+        for r in genuine:
             median = medians.get((r.quarter, r.cusip))
             if not median:
                 continue
@@ -166,10 +179,11 @@ class CusipAnomalyDetector:
                 stale_rows.append((replace(self._anomaly(r, median), note=note), r))
 
         filed = {(r.fund, r.quarter, r.cusip): r for r in priced}
-        fund_quarters: dict[str, set[str]] = defaultdict(set)
-        for fund, quarter in [(r.fund, r.quarter) for r in priced] + list(closed or {}):
-            fund_quarters[fund].add(quarter)
         anomalies: list[CusipAnomaly] = [self._value_restatement(a, r) for a, r in stale_rows]
+        for r in priced:
+            origin = repeats.get((r.fund, r.quarter))
+            if origin and (a := self._repeat_restatement(r, origin, medians)):
+                anomalies.append(a)
         for (fund, quarter), flagged in by_filing.items():
             closing = (closed or {}).get((fund, quarter), {})
             for a in self._match(flagged, closing, lambda c, q=quarter: medians.get((q, c))):
@@ -179,7 +193,9 @@ class CusipAnomalyDetector:
                     row = filed[(a.fund, a.quarter, a.cusip)]
                     neighbours = self._neighbours(row, filed, fund_quarters[fund])
                     anomalies.append(self._restate(a, row, neighbours))
-        anomalies = self._follow_share_restatements(anomalies, filed, closed or {}, fund_quarters)
+        anomalies = self._follow_share_restatements(
+            anomalies, filed, closed or {}, fund_quarters, set(repeats)
+        )
         return sorted(anomalies, key=lambda a: (a.quarter, a.fund, a.cusip))
 
     def _factor(self, cusip: str, previous: str, current: str) -> float:
@@ -188,6 +204,50 @@ class CusipAnomalyDetector:
         """
         factors = self.split_factors_fn(previous, current) if self.split_factors_fn else {}
         return factors.get(cusip, 1.0)
+
+    def _repeated_filings(
+        self, priced: list[FiledRow], fund_quarters: Mapping[str, set[str]]
+    ) -> dict[tuple[str, str], str]:
+        """
+        The (fund, quarter) filings identical to the fund's previous one (same
+        CUSIPs, share counts and prices, at least ``repeat_min_rows`` of them),
+        each mapped to the quarter of the report first filed: holdings never stay
+        the same value from one quarter end to the next.
+        """
+        books: dict[tuple[str, str], dict[str, tuple[float, float]]] = defaultdict(dict)
+        for r in priced:
+            books[(r.fund, r.quarter)][r.cusip] = (r.shares, r.price)
+        repeats: dict[tuple[str, str], str] = {}
+        for fund, quarters in fund_quarters.items():
+            ordered = sorted(quarters)
+            for previous, quarter in zip(ordered, ordered[1:], strict=False):
+                current = books.get((fund, quarter), {})
+                if len(current) >= self.repeat_min_rows and current == books.get((fund, previous)):
+                    repeats[(fund, quarter)] = repeats.get((fund, previous), previous)
+        return repeats
+
+    def _repeat_restatement(
+        self, row: FiledRow, origin: str, medians: Mapping[tuple[str, str], float]
+    ) -> CusipAnomaly | None:
+        """
+        A row of a filing that repeats the ``origin`` report, as the position held
+        unchanged: its shares moved onto the quarter's split basis and valued at
+        the funds' price when they report one. None when that changes nothing.
+        """
+        factor = self._factor(row.cusip, origin, row.quarter)
+        price = medians.get((row.quarter, row.cusip)) or row.price / factor
+        if factor == 1 and abs(row.price / price - 1) <= self.stale_gap:
+            return None
+        shares = round(row.shares * factor)
+        restated = Restatement(
+            shares=shares, value=shares * price, delta_shares=0, delta_value=0.0, delta="NO CHANGE"
+        )
+        return replace(
+            self._anomaly(row, price),
+            note=f"the filing repeats the {origin} report",
+            kind="value" if factor == 1 else "shares",
+            restated=restated,
+        )
 
     def _neighbours(
         self, row: FiledRow, filed: Mapping[tuple[str, str, str], FiledRow], quarters: set[str]
@@ -310,10 +370,12 @@ class CusipAnomalyDetector:
         filed: Mapping[tuple[str, str, str], FiledRow],
         closed: Mapping[tuple[str, str], Mapping[str, float]],
         fund_quarters: Mapping[str, set[str]],
+        repeats: set[tuple[str, str]],
     ) -> list[CusipAnomaly]:
         """
         Correct the delta of the fund's next filing after every share restatement:
         shifted in place when that filing is restated itself, a carried row otherwise.
+        A repeated next filing is left alone: its rows changed nothing by definition.
         """
         index = {(a.fund, a.quarter, a.cusip): i for i, a in enumerate(anomalies)}
         result = list(anomalies)
@@ -323,6 +385,8 @@ class CusipAnomalyDetector:
             if a.kind != "shares" or a.restated is None or not later:
                 continue
             quarter = later[0]
+            if (a.fund, quarter) in repeats:
+                continue
             factor = self._factor(a.cusip, a.quarter, quarter)
             shift = round((a.restated.shares - filed[(a.fund, a.quarter, a.cusip)].shares) * factor)
             i = index.get((a.fund, quarter, a.cusip))

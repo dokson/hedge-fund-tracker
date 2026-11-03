@@ -369,6 +369,82 @@ class TestFilingPricedAtAnotherDate(unittest.TestCase):
         self.assertEqual(DETECTOR.detect(stale_filing(off=2)), [])
 
 
+def book(
+    fund: str, quarter: str, prices: dict[str, float], shares: float = 1000.0
+) -> list[FiledRow]:
+    """
+    One fund's filing: ``shares`` of every security at the given prices.
+    """
+    return [row(fund, cusip, price, quarter, shares) for cusip, price in prices.items()]
+
+
+class TestRepeatedFiling(unittest.TestCase):
+    """
+    A filing identical to the fund's previous one is last quarter's report filed
+    again: its positions are read as still held, on the new quarter's split basis
+    and at the funds' new price, unchanged since the report it repeats.
+    """
+
+    june = {f"S{i}": 100.0 for i in range(10)}
+    september = {**{f"S{i}": 130.0 for i in range(9)}, "S9": 32.5}
+
+    def rows(self) -> list[FiledRow]:
+        """
+        Three funds filing both quarters, S9 splitting 4:1 in between, and the
+        Copy fund filing its June book again for September.
+        """
+        rows: list[FiledRow] = []
+        for fund, shares in [(f"Fund{i}", 1000.0) for i in range(3)]:
+            rows += book(fund, "2026Q2", self.june, shares)
+            rows += book(fund, "2026Q3", self.september, shares)
+        return [*rows, *book("Copy", "2026Q2", self.june), *book("Copy", "2026Q3", self.june)]
+
+    detector = CusipAnomalyDetector(
+        split_factors={"S9": {4.0}},
+        split_factors_fn=lambda p, c: {"S9": 4.0} if p < "2026Q3" <= c else {},
+    )
+
+    def test_a_repeated_report_is_held_on_at_the_quarter_end(self):
+        """
+        Every position is valued at the September price, the split one with four
+        times the shares, none of them traded.
+        """
+        found = {a.cusip: a for a in self.detector.detect(self.rows()) if a.fund == "Copy"}
+        self.assertEqual(sorted(found), sorted(self.june))
+        for a in found.values():
+            self.assertIn("repeats the 2026Q2 report", a.note)
+            assert a.restated is not None
+            self.assertEqual((a.restated.delta_shares, a.restated.delta), (0, "NO CHANGE"))
+        assert found["S0"].restated is not None and found["S9"].restated is not None
+        self.assertEqual((found["S0"].kind, found["S0"].restated.shares), ("value", 1000))
+        self.assertAlmostEqual(found["S0"].restated.value, 130_000)
+        self.assertEqual((found["S9"].kind, found["S9"].restated.shares), ("shares", 4000))
+        self.assertAlmostEqual(found["S9"].restated.value, 130_000)
+
+    def test_the_next_filing_is_compared_against_the_split_basis(self):
+        """
+        The December filing of the split position measured its change against the
+        repeated June count: a fund that kept it bought nothing.
+        """
+        december = FiledRow("2026Q4", "Copy", "S9", "ANY", 32.5, 4000, 3000, "+300%")
+        found = self.detector.detect([*self.rows(), december])
+        (carried,) = [a for a in found if a.quarter == "2026Q4"]
+        assert carried.restated is not None
+        self.assertEqual((carried.restated.delta_shares, carried.restated.delta), (0, "NO CHANGE"))
+
+    def test_a_fund_that_did_not_trade_is_no_repeat(self):
+        """
+        The same positions valued at the new quarter end are a genuine report.
+        """
+        september = [
+            row("Copy", cusip, price, "2026Q3", 4000.0 if cusip == "S9" else 1000.0)
+            for cusip, price in self.september.items()
+        ]
+        rows = [r for r in self.rows() if (r.fund, r.quarter) != ("Copy", "2026Q3")]
+        found = self.detector.detect([*rows, *september])
+        self.assertEqual([a for a in found if a.fund == "Copy"], [])
+
+
 def anomaly(fund: str) -> CusipAnomaly:
     """
     A report entry for the rendering tests.
