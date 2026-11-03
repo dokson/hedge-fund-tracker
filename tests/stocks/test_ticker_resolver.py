@@ -377,7 +377,7 @@ class TestTickerResolverAssignCUSIP(unittest.TestCase):
 
         result = TickerResolver.assign_cusip(df)
 
-        self.assertTrue(pd.isna(result.loc[0, "CUSIP"]))
+        self.assertTrue(result["CUSIP"].isna().iloc[0])
         mock_save.assert_not_called()
         mock_issue.assert_called_once()
 
@@ -393,7 +393,7 @@ class TestTickerResolverAssignCUSIP(unittest.TestCase):
 
         result = TickerResolver.assign_cusip(df)
 
-        self.assertTrue(pd.isna(result.loc[0, "CUSIP"]))
+        self.assertTrue(result["CUSIP"].isna().iloc[0])
 
     @patch("app.stocks.ticker_resolver.save_stock")
     @patch("app.stocks.ticker_resolver.FMP.get_cusip")

@@ -45,10 +45,8 @@ def _link_cusip_changes(df_comparison: pd.DataFrame) -> pd.DataFrame:
         if len(new_rows) != 1 or len(close_rows) != 1:
             continue
         new_row, close_row = new_rows[0], close_rows[0]
-        df_comparison.at[new_row, "Shares_previous"] = df_comparison.at[
-            close_row, "Shares_previous"
-        ]
-        df_comparison.at[new_row, "Value_previous"] = df_comparison.at[close_row, "Value_previous"]
+        carried = ["Shares_previous", "Value_previous"]
+        df_comparison.loc[new_row, carried] = df_comparison.loc[close_row, carried].to_numpy()
         df_comparison.at[new_row, "CUSIP_Changed"] = True
         rows_to_drop.append(close_row)
         logger.info(

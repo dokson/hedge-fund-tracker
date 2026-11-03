@@ -25,9 +25,9 @@ def generate_excluded_funds_list() -> str | None:
         markdown_list = []
         # Iterate over the first N funds defined by README_DISPLAY_LIMIT
         for row in df.head(README_DISPLAY_LIMIT).itertuples():
-            manager = row.Manager
-            fund = row.Fund
-            url = row.URL
+            manager = str(row.Manager)
+            fund = str(row.Fund)
+            url = str(row.URL)
 
             if manager and manager != fund:
                 markdown_list.append(f"- _{manager!s}_'s [{fund!s}]({url!s})")
