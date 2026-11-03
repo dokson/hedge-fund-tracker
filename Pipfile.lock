@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "7805b95f212c9102c62a8dc13e5baaeb068c03ea1d876eb5891f221353ff3241"
+            "sha256": "79c152d558670bd28f3a1343196f6b6f8aaa6c4914dd1932fac5c45d34d5ef76"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -43,11 +43,11 @@
         },
         "anyio": {
             "hashes": [
-                "sha256:6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101",
-                "sha256:9f28306018cbd6d329e64a36d58256edff76dd996fe423bc957326e578b82a94"
+                "sha256:59bb03251907983d1603d27c3087ddb1e93299ea2163adcdba37899a4fb12ffb",
+                "sha256:c66ae634e0b8228396b801741beb3294326d4b6102f7bba4041c0dfb58c29026"
             ],
             "markers": "python_version >= '3.10'",
-            "version": "==4.15.1"
+            "version": "==4.16.0"
         },
         "argon2-cffi": {
             "hashes": [
@@ -1583,12 +1583,12 @@
         },
         "openai": {
             "hashes": [
-                "sha256:7060a74b239609b21f2919eb98807a8aad463b4f510b8b3b388b15559360b0a8",
-                "sha256:d065fc59d3d7d8537a77b3ceb527732952c6ff610158e8a2a95b246be637e86f"
+                "sha256:deffe27f9e20e4f1d9d471978d12f23aa119382494c0a9860795e66943d0fe42",
+                "sha256:efb9d089ecf66c668289f647717389df98b40b954cd86d4fe54eddce39aabb3f"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==3.41.0"
+            "version": "==3.42.0"
         },
         "opentelemetry-api": {
             "hashes": [
