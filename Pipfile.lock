@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "19ac8af2a749833808cce6afeb9b1c0b23bbb6784e3881cd48b49ba54e4c9eba"
+            "sha256": "b31c690273b5cbab3ca972e5d6b11433498ebad47ed6a424c09ddcf2673c5342"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -709,12 +709,12 @@
         },
         "fastapi": {
             "hashes": [
-                "sha256:9ebd2a69b579141315b2447d8e3f518e6fd909abd6c01cac5cc6b06d5c8841f4",
-                "sha256:d0584f9662317e01140df94c64f4bed1d8b059fe35496e30c9c92f70e6e5ff15"
+                "sha256:4abdb1ef367090678d8bc664631df432ae7a1bfe7709c37547d3606e667650e3",
+                "sha256:f093bc306d3958278d30ffd14f3834ca3d9b144fbb898ab5c9b652cf6e75f869"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==0.162.2"
+            "version": "==0.162.4"
         },
         "fastapi-users": {
             "extras": [
@@ -741,20 +741,20 @@
                 "requests"
             ],
             "hashes": [
-                "sha256:015399a5abde39033c69404cc1c079e6d4c2de2993e164c9f4eac6e5376ad72b",
-                "sha256:3c8e1ce2553784ae17fd220e6f88df3281d86ab98019278f436d06dffab17a9e"
+                "sha256:046c61a72d3a847d6df6417a7f0d5cf054e3b82bbcb54fb1e69d47880964049c",
+                "sha256:e9bcdb0679b6a4369ac327c5c59f06d92f7b4cd2624e7100294c14632f55a36b"
             ],
             "markers": "python_version >= '3.10'",
-            "version": "==2.62.1"
+            "version": "==2.62.2"
         },
         "google-genai": {
             "hashes": [
-                "sha256:af56a7754312c3a4a562e100160d05b701d03d5f49101e6c85796694a789ae07",
-                "sha256:f3e1a05a464a39cb6caf59a69824d3c54ef20dc5e403ff8fab1f4662cb18edf9"
+                "sha256:08f482dea818a06068303e02fc2073ba5a2fd1312407ed9914e810a5cf179fea",
+                "sha256:e28aea20f9c20ef3f7d3d923d19980099a910e865512f343a060f78a4754fb1d"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.11'",
-            "version": "==3.0.0"
+            "version": "==3.1.0"
         },
         "greenlet": {
             "hashes": [
@@ -1569,12 +1569,12 @@
         },
         "openai": {
             "hashes": [
-                "sha256:1a798238712133c237712907cc68a059c10b264ca284b9d7f1c253212db67802",
-                "sha256:8786c46c2496baef3ca840ff6abff59882a7735b08f610bfe96fcf407338527d"
+                "sha256:3977754792115027ba80ae16996ba3366478b5b228e1ab58e2660bd7ac8c3d78",
+                "sha256:44badf2bea9bcd643dafa0bc4d5a109a14395889219fd68b8560322288196e96"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==3.48.0"
+            "version": "==3.49.0"
         },
         "opentelemetry-api": {
             "hashes": [
