@@ -230,11 +230,17 @@ def clean_stocks(filepath: str | None = None) -> None:
     """
     Identifies and removes orphan CUSIPs from the master stocks CSV file.
     An orphan CUSIP is one that exists in stocks.csv but not in any filing (quarterly or non-quarterly),
-    and belongs to a ticker that has more than one CUSIP entry.
+    belongs to a ticker that has more than one CUSIP entry, and is not equity-style.
+
+    Retired equity CUSIPs stay: a regenerate compares the oldest saved quarter against the
+    unsaved filing before it, where only that row lets the CUSIP change be linked, and the
+    providers can no longer resolve a retired CUSIP.
     """
     if filepath is None:
         filepath = str(Path(_db.DB_FOLDER) / _db.STOCKS_FILE)
     try:
+        from app.stocks.utils.identifiers import is_equity_cusip
+
         stocks_df = load_stocks().reset_index()
         if stocks_df.empty:
             return
@@ -275,6 +281,7 @@ def clean_stocks(filepath: str | None = None) -> None:
         final_orphans_df = stocks_df[
             (stocks_df["CUSIP"].isin(orphan_cusips))
             & (stocks_df["Ticker"].isin(tickers_with_multiple_cusips))
+            & ~stocks_df["CUSIP"].map(is_equity_cusip)
         ]
 
         if final_orphans_df.empty:

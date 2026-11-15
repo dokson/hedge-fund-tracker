@@ -6,6 +6,7 @@ from app.database import (
     load_sector_hierarchy,
     load_stocks,
 )
+from app.stocks.utils.identifiers import is_equity_cusip
 import pandas as pd
 import unittest
 
@@ -39,8 +40,9 @@ class TestStocksDatabase(unittest.TestCase):
 
     def test_orphan_cusips(self):
         """
-        Identifies orphan CUSIPs that belong to a Ticker with multiple CUSIPs in stocks.csv.
-        An orphan CUSIP is one that exists in stocks.csv but not in any filing. This test helps pinpoint and clean up obsolete CUSIPs.
+        Identifies orphan non-equity CUSIPs that belong to a Ticker with multiple CUSIPs in stocks.csv.
+        An orphan CUSIP is one that exists in stocks.csv but not in any filing. Retired equity CUSIPs
+        are kept on purpose (see clean_stocks): a regenerate needs them to link CUSIP changes.
         """
         stocks_df = load_stocks().reset_index()
         all_stock_cusips = set(stocks_df["CUSIP"])
@@ -66,7 +68,9 @@ class TestStocksDatabase(unittest.TestCase):
             return
 
         # 4. Filter orphans to find only those belonging to Tickers with more than one CUSIP
-        orphan_df = stocks_df[stocks_df["CUSIP"].isin(orphan_cusips)]
+        orphan_df = stocks_df[
+            stocks_df["CUSIP"].isin(orphan_cusips) & ~stocks_df["CUSIP"].map(is_equity_cusip)
+        ]
         ticker_cusip_counts = stocks_df.groupby("Ticker")["CUSIP"].nunique()
         tickers_with_multiple_cusips = ticker_cusip_counts[ticker_cusip_counts > 1].index
 
@@ -76,8 +80,8 @@ class TestStocksDatabase(unittest.TestCase):
         if not final_orphans_df.empty:
             sorted_orphans_df = final_orphans_df.sort_values(by=["Ticker", "CUSIP"])
             error_message = (
-                f"Found {len(final_orphans_df)} orphan CUSIPs for tickers with multiple CUSIP entries in stocks.csv.\n"
-                "These CUSIPs are not found in any filings and are likely outdated. Review and consider removing them.\n\n"
+                f"Found {len(final_orphans_df)} orphan non-equity CUSIPs for tickers with multiple CUSIP entries in stocks.csv.\n"
+                "These CUSIPs are not found in any filings and are likely outdated. Run the database updater with option '0. Exit' to remove them.\n\n"
                 f"{sorted_orphans_df.to_string(index=False)}"
             )
             self.fail(error_message)
