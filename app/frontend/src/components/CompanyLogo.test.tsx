@@ -63,6 +63,6 @@ describe("CompanyLogo", () => {
     const { queryByRole, container } = render(<CompanyLogo ticker="" />);
 
     expect(queryByRole("img")).toBeNull();
-    expect(container.querySelector("[aria-label='Logo placeholder']")).not.toBeNull();
+    expect(container.querySelector("[aria-hidden='true']")).not.toBeNull();
   });
 });

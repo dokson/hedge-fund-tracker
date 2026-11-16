@@ -352,17 +352,17 @@ function FundGrid() {
       list = list.filter((f) => matchesQuery(search, f.fund, f.manager, f.denomination));
     }
     if (tab === "byvalue") {
-      list = [...list].sort(
+      list = list.toSorted(
         (a, b) => (fundMetaMap.get(b.fund)?.aum || 0) - (fundMetaMap.get(a.fund)?.aum || 0),
       );
     } else if (tab === "updated") {
-      list = [...list].sort(
+      list = list.toSorted(
         (a, b) =>
           lastUpdatedOf(b).localeCompare(lastUpdatedOf(a)) ||
           a.denomination.localeCompare(b.denomination),
       );
     } else {
-      list = [...list].sort((a, b) => a.denomination.localeCompare(b.denomination));
+      list = list.toSorted((a, b) => a.denomination.localeCompare(b.denomination));
     }
     return list;
   }, [funds, search, tab, fundMetaMap, nqLatestByFund]);
@@ -853,7 +853,7 @@ function FundDetail({ fundName }: { fundName: string }) {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <LogoPlate size="md">
-                <FundLogo fundName={fundName} url={fund?.url} size={28} />
+                <FundLogo fundName={fundName} url={fund?.url} size={28} eager />
               </LogoPlate>
             </>
           }
@@ -871,6 +871,21 @@ function FundDetail({ fundName }: { fundName: string }) {
     );
   }
 
+  const quarterSelect = (className: string) => (
+    <Select value={selectedQuarter || ""} onValueChange={setQuarter}>
+      <SelectTrigger aria-label="Quarter" className={className}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {availableQuarters.toReversed().map((q) => (
+          <SelectItem key={q} value={q}>
+            {q.replace("Q", " Q")}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   return (
     <div className="space-y-6 max-w-screen-2xl">
       <Breadcrumb trail={[{ label: "Funds", to: ROUTES.funds }]} current={fundLabel} />
@@ -883,7 +898,7 @@ function FundDetail({ fundName }: { fundName: string }) {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <LogoPlate size="md">
-              <FundLogo fundName={fundName} url={fund?.url} size={28} />
+              <FundLogo fundName={fundName} url={fund?.url} size={28} eager />
             </LogoPlate>
           </>
         }
@@ -895,21 +910,12 @@ function FundDetail({ fundName }: { fundName: string }) {
               size={20}
               className="h-8 w-8 m-0"
             />
-            <Select value={selectedQuarter || ""} onValueChange={setQuarter}>
-              <SelectTrigger aria-label="Quarter" className="flex-1 sm:flex-none sm:w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[...availableQuarters].reverse().map((q) => (
-                  <SelectItem key={q} value={q}>
-                    {q.replace("Q", " Q")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="max-sm:hidden">{quarterSelect("w-36")}</div>
           </>
         }
-      />
+      >
+        <div className="sm:hidden">{quarterSelect("w-full")}</div>
+      </PageHeader>
 
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Left: KPIs + Table */}
@@ -1089,7 +1095,7 @@ function FundDetail({ fundName }: { fundName: string }) {
                             <CompanyLink
                               ticker={h.ticker}
                               company={toInitCap(h.company)}
-                              className="max-w-[180px] xl:max-w-[260px]"
+                              className="max-w-[180px] 2xl:max-w-[260px]"
                               showStar
                             />
                           </td>

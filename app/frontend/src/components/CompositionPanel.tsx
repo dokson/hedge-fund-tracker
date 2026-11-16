@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
-import { Loader2 } from "lucide-react";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/Panel";
@@ -140,7 +140,7 @@ export default function CompositionPanel({ strategyId }: { strategyId: string })
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[...quarters].reverse().map((q) => (
+              {quarters.toReversed().map((q) => (
                 <SelectItem key={q} value={q}>
                   {q.replace("Q", " Q")}
                 </SelectItem>
@@ -152,9 +152,7 @@ export default function CompositionPanel({ strategyId }: { strategyId: string })
     >
       <div className="p-3">
         {isLoading ? (
-          <div className="h-[260px] flex items-center justify-center text-muted-foreground gap-2 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading composition…
-          </div>
+          <LoadingState message="Loading composition…" className="h-[260px] py-0" />
         ) : stockItems.length === 0 ? (
           <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">
             No holdings for this strategy in {quarter}.

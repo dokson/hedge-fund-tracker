@@ -72,6 +72,9 @@ function QuarterTable({
     <div className="border-t border-border px-3">
       <div
         ref={containerRef}
+        role="region"
+        aria-label="Quarter by quarter"
+        tabIndex={0}
         onScroll={(e) => {
           const el = e.currentTarget;
           setMoreToTheRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
@@ -93,7 +96,9 @@ function QuarterTable({
             className={cn("grid text-muted-foreground", aligned && "sr-only")}
             style={gridStyle}
           >
-            <div role="columnheader" />
+            <div role="columnheader">
+              <span className="sr-only">Series</span>
+            </div>
             {fundWindows.map((w, i) => (
               <div key={w.quarterOut} role="columnheader" className={cn(cell, cellAlign(i))}>
                 {quarterLabel(w.quarterOut)}

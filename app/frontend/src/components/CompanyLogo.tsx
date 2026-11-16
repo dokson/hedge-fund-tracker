@@ -14,6 +14,8 @@ interface CompanyLogoProps {
    * `image-redundant-alt`). Pass `false` only where the logo stands alone.
    */
   decorative?: boolean;
+  /** Above-the-fold logo (page header): skips the lazy gate so it is requested with the page. */
+  eager?: boolean;
 }
 
 /**
@@ -39,6 +41,7 @@ export function CompanyLogo({
   size = 32,
   className = "",
   decorative = true,
+  eager = false,
 }: CompanyLogoProps) {
   const [failed, setFailed] = useState(false);
   const [plate, setPlate] = useState<LogoPlate>("pending");
@@ -47,7 +50,7 @@ export function CompanyLogo({
   // fetch on actual intersection so a 500-card grid only fetches what's
   // genuinely on screen.
   const placeholderRef = useRef<HTMLDivElement | null>(null);
-  const [intersected, setIntersected] = useState(false);
+  const [intersected, setIntersected] = useState(eager);
   useEffect(() => {
     if (intersected || !placeholderRef.current) return;
     const el = placeholderRef.current;
@@ -67,7 +70,7 @@ export function CompanyLogo({
   if (!ticker) {
     return (
       <div
-        aria-label="Logo placeholder"
+        aria-hidden="true"
         className={`rounded-sm border border-border bg-muted ${className}`}
         style={{ width: size, height: size, flexShrink: 0 }}
       />
@@ -129,7 +132,7 @@ export function CompanyLogo({
         flexShrink: 0,
         backgroundColor: LOGO_PLATE_BACKGROUND[plate],
       }}
-      loading="lazy"
+      loading={eager ? undefined : "lazy"}
     />
   );
 }

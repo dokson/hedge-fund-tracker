@@ -86,7 +86,7 @@ describe("FundPerformancePanel", () => {
       table.querySelectorAll('[role="columnheader"]'),
       (h) => h.textContent,
     );
-    expect(headers).toEqual(["", "2026 Q1", "2026 Q2 *"]);
+    expect(headers).toEqual(["Series", "2026 Q1", "2026 Q2 *"]);
     const rows = table.querySelectorAll('[role="row"]');
     expect(rows[1].textContent).toContain("+10.0%");
     expect(rows[2].textContent).toContain("+5.0%");

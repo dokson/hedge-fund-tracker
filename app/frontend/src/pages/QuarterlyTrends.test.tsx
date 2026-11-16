@@ -193,7 +193,7 @@ describe("Quarterly research context", { timeout: 15_000 }, () => {
       expect(screen.getAllByRole("tab")).toHaveLength(7);
       expect(tickers()).toEqual(expected);
       const strategy = STRATEGY_BY_TAB[tab];
-      expect(screen.getByTitle(strategy.description).textContent).toBeTruthy();
+      expect(screen.getByText(strategy.description).textContent).toBeTruthy();
       expect(
         within(table)
           .getByRole("button", { name: metric })

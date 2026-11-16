@@ -58,6 +58,8 @@ export function AddFundDialog({
   );
 }
 
+const REQUIRED_TEXT = String.raw`.*\S.*`;
+
 function AddFundForm({
   onCancel,
   onAdd,
@@ -68,72 +70,96 @@ function AddFundForm({
   onDone: () => void;
 }) {
   const [form, setForm] = useState<HedgeFund>(EMPTY_FORM);
+  const [pending, setPending] = useState(false);
   const update = (field: keyof HedgeFund, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
-  const canSubmit = Boolean(form.cik.trim() && form.fund.trim() && form.manager.trim());
 
-  const submit = async () => {
-    if (!canSubmit) return;
+  const submit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (pending) return;
     if (form.url.trim() && !isValidFundUrl(form.url)) {
       toast.error("Website URL must start with https://");
       return;
     }
-    await onAdd({
-      cik: form.cik.trim(),
-      fund: form.fund.trim(),
-      manager: form.manager.trim(),
-      denomination: form.denomination.trim(),
-      ciks: form.ciks.trim() || form.cik.trim(),
-      url: form.url.trim(),
-    });
-    onDone();
+    setPending(true);
+    try {
+      await onAdd({
+        cik: form.cik.trim(),
+        fund: form.fund.trim(),
+        manager: form.manager.trim(),
+        denomination: form.denomination.trim(),
+        ciks: form.ciks.trim() || form.cik.trim(),
+        url: form.url.trim(),
+      });
+      onDone();
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
-    <>
+    <form onSubmit={submit}>
       <div className="space-y-4 py-2">
         <Field htmlFor="new-cik" label="CIK">
           <Input
             id="new-cik"
+            name="cik"
+            required
+            inputMode="numeric"
+            autoComplete="off"
+            aria-describedby="new-cik-hint"
             placeholder="e.g. 0001067983"
             value={form.cik}
             onChange={(e) => update("cik", e.target.value.replace(/[^0-9]/g, ""))}
             className="font-mono text-sm"
           />
-          <p className="text-xs text-muted-foreground">
+          <p id="new-cik-hint" className="text-xs text-muted-foreground">
             Central Index Key: the unique SEC identifier for filing entities.
           </p>
         </Field>
         <Field htmlFor="new-fund" label="Fund Name">
           <Input
             id="new-fund"
+            name="fund"
+            required
+            pattern={REQUIRED_TEXT}
+            autoComplete="off"
+            aria-describedby="new-fund-hint"
             placeholder="e.g. Berkshire Hathaway"
             value={form.fund}
             onChange={(e) => update("fund", e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">
+          <p id="new-fund-hint" className="text-xs text-muted-foreground">
             Short name used to generate quarterly file names.
           </p>
         </Field>
         <Field htmlFor="new-manager" label="Manager">
           <Input
             id="new-manager"
+            name="manager"
+            required
+            pattern={REQUIRED_TEXT}
+            autoComplete="off"
+            aria-describedby="new-manager-hint"
             placeholder="e.g. Warren Buffett"
             value={form.manager}
             onChange={(e) => update("manager", e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">
+          <p id="new-manager-hint" className="text-xs text-muted-foreground">
             Portfolio manager as listed in official fund filings.
           </p>
         </Field>
         <Field htmlFor="new-denomination" label="Denomination">
           <Input
             id="new-denomination"
+            name="denomination"
+            autoComplete="off"
+            aria-describedby="new-denomination-hint"
             placeholder="e.g. Berkshire Hathaway Inc."
             value={form.denomination}
             onChange={(e) => update("denomination", e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">
+          <p id="new-denomination-hint" className="text-xs text-muted-foreground">
             Full legal name from SEC filings. Used to identify positions in non-quarterly filings
             containing multiple institutional entities.
           </p>
@@ -141,35 +167,46 @@ function AddFundForm({
         <Field htmlFor="new-ciks" label="CIKs (optional)">
           <Input
             id="new-ciks"
+            name="ciks"
+            inputMode="numeric"
+            autoComplete="off"
+            aria-describedby="new-ciks-hint"
             placeholder="Defaults to CIK if empty"
             value={form.ciks}
             onChange={(e) => update("ciks", e.target.value.replace(/[^0-9,]/g, ""))}
             className="font-mono text-sm"
           />
-          <p className="text-xs text-muted-foreground">
+          <p id="new-ciks-hint" className="text-xs text-muted-foreground">
             Comma-separated list of related CIKs, if different from primary.
           </p>
         </Field>
         <Field htmlFor="new-url" label="Website (optional)">
           <Input
             id="new-url"
+            name="url"
+            inputMode="url"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            aria-describedby="new-url-hint"
             placeholder="https://www.example.com"
             value={form.url}
             onChange={(e) => update("url", e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">
+          <p id="new-url-hint" className="text-xs text-muted-foreground">
             Official fund website. Must start with <code>https://</code> if provided.
           </p>
         </Field>
       </div>
       <DialogFooter className="gap-2 sm:gap-0">
-        <Button variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button disabled={!canSubmit} onClick={submit}>
+        <Button type="submit" disabled={pending}>
           Add Fund
         </Button>
       </DialogFooter>
-    </>
+    </form>
   );
 }

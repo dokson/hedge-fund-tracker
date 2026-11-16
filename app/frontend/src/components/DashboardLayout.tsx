@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { House, Sun, Moon, Search } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -28,12 +28,14 @@ function readSidebarOpen(): boolean {
 
 /** On phones the mark opens the nav drawer; there is no hamburger. */
 function HeaderLogo() {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, openMobile } = useSidebar();
   return (
     <button
       type="button"
       onClick={toggleSidebar}
       aria-label="Open navigation"
+      aria-haspopup="dialog"
+      aria-expanded={openMobile}
       className="shrink-0 grid place-items-center h-9 w-9 rounded-md transition-colors duration-[120ms] hover:bg-muted"
     >
       <BrandLogo size={28} className="h-7 w-7" />
@@ -107,8 +109,40 @@ function IconAction({
   );
 }
 
+// Mirrors --background in index.css; the browser UI colour cannot read CSS variables.
+const THEME_COLOR = { dark: "#090a10", light: "#ffffff" } as const;
+
+/** Announces the new page title after a client-side navigation, which fires no load event. */
+function RouteAnnouncer() {
+  const [announcement, setAnnouncement] = useState("");
+  useEffect(() => {
+    const title = document.querySelector("title");
+    if (!title) return;
+    const observer = new MutationObserver(() => setAnnouncement(document.title));
+    observer.observe(title, { childList: true, characterData: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div role="status" className="sr-only">
+      {announcement}
+    </div>
+  );
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, systemTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  // Flip what is rendered; landing back on the OS scheme returns to "system"
+  // instead of pinning it, so the visitor is never stuck against the OS.
+  const toggleTheme = () => {
+    const next = isDark ? "light" : "dark";
+    setTheme(next === systemTheme ? "system" : next);
+  };
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (meta && resolvedTheme)
+      meta.content = resolvedTheme === "dark" ? THEME_COLOR.dark : THEME_COLOR.light;
+  }, [resolvedTheme]);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);
@@ -123,6 +157,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         Skip to content
       </a>
       <MobileNav />
+      <RouteAnnouncer />
       {/* Phones scroll the document so the browser chrome can collapse. */}
       <div className="flex w-full md:h-screen md:overflow-clip">
         <AppSidebar />
@@ -151,8 +186,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </IconAction>
               </span>
               <IconAction
-                label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+                onClick={toggleTheme}
               >
                 <Sun className="h-4 w-4 hidden dark:block" />
                 <Moon className="h-4 w-4 block dark:hidden" />
@@ -176,7 +211,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </header>
 
           <Sheet open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
-            <SheetContent side="top" className="p-3 pt-4 gap-0">
+            <SheetContent side="top" className="p-3 pt-4 pr-14 gap-0">
               <SheetTitle className="sr-only">Search</SheetTitle>
               {mobileSearchOpen && (
                 <GlobalSearch focusOnMount onNavigate={() => setMobileSearchOpen(false)} />
@@ -189,7 +224,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             id="main"
             ref={mainRef}
             key={location.pathname}
-            className="relative flex-1 min-w-0 p-3 sm:p-4 md:p-6 md:overflow-auto"
+            tabIndex={-1}
+            className="relative flex-1 min-w-0 p-3 sm:p-4 md:p-6 md:overflow-auto focus:outline-none"
           >
             {children}
           </main>

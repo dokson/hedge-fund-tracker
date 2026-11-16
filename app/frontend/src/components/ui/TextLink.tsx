@@ -5,8 +5,10 @@ import { ArrowUpRight } from "lucide-react";
 import { learnItem } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
+// Inside running text the link colour is ~1.1:1 against the body text, so the underline
+// must be persistent there (SC 1.4.1); standalone links underline on hover only.
 const LINK_CLASS =
-  "inline-flex items-center gap-1 text-primary-text underline-offset-4 hover:underline";
+  "inline-flex items-center gap-1 text-primary-text underline-offset-4 hover:underline [p_&]:underline";
 
 interface TextLinkBase {
   /** Trailing ↗ marking a jump to another page or site. */

@@ -49,9 +49,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     if (!error) return this.props.children;
 
     return (
-      <div className="flex justify-center px-4 py-16">
+      <div role="alert" className="flex justify-center px-4 py-16">
         <Panel className="w-full max-w-xl p-8 text-center">
-          <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive opacity-60" />
+          <AlertTriangle
+            aria-hidden="true"
+            className="mx-auto mb-4 h-12 w-12 text-destructive opacity-60"
+          />
           <h2 className="text-base font-semibold">Something went wrong</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             This page hit an unexpected error while rendering. Your data is untouched — retry, or
@@ -62,7 +65,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           </pre>
           <div className="mt-6 flex justify-center gap-3">
             <Button onClick={this.handleRetry} variant="default" size="sm">
-              <RotateCcw className="mr-2 h-4 w-4" />
+              <RotateCcw aria-hidden="true" className="mr-2 h-4 w-4" />
               Try again
             </Button>
             <Button onClick={() => window.location.reload()} variant="outline" size="sm">

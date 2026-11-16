@@ -28,13 +28,33 @@ export function SegmentedControl<T extends string>({
   className,
   ...props
 }: SegmentedControlProps<T>) {
+  // Radiogroup contract: one tab stop (the checked radio), arrows move and select.
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const step =
+      event.key === "ArrowRight" || event.key === "ArrowDown"
+        ? 1
+        : event.key === "ArrowLeft" || event.key === "ArrowUp"
+          ? -1
+          : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const index = options.findIndex((opt) => opt.value === value);
+    const next = options[(index + step + options.length) % options.length];
+    onValueChange(next.value);
+    const radios = event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]');
+    radios[options.indexOf(next)]?.focus();
+  };
+
+  const hasActive = options.some((opt) => opt.value === value);
+
   return (
     <div
       role="radiogroup"
+      onKeyDown={onKeyDown}
       className={cn("inline-flex items-stretch rounded-lg border border-border bg-muted p-0.5", className)}
       {...props}
     >
-      {options.map((opt) => {
+      {options.map((opt, i) => {
         const isActive = opt.value === value;
         return (
           <button
@@ -42,6 +62,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={isActive}
+            tabIndex={isActive || (!hasActive && i === 0) ? 0 : -1}
             aria-label={opt.title}
             title={opt.title}
             onClick={() => onValueChange(opt.value)}
@@ -50,7 +71,9 @@ export function SegmentedControl<T extends string>({
               size === "sm"
                 ? "px-3 h-9 text-[13px] md:px-2 md:h-6 md:text-xs"
                 : "px-3 h-10 text-sm md:h-8 md:text-[13px]",
-              isActive ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              isActive
+                ? "bg-card text-foreground shadow-sm forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {opt.label}

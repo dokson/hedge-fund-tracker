@@ -232,7 +232,6 @@ export function renderStockBody(
   ].join("");
 }
 
-/** Static body of a fund page: summary sentence and the top holdings. */
 /** One quarter of a fund's holding-based return; null index values were unpriced. */
 export interface TrackPoint {
   quarter: string;
@@ -268,6 +267,7 @@ function renderTrackRecord(track: readonly TrackPoint[]): string {
   ].join("");
 }
 
+/** Static body of a fund page: summary sentence and the top holdings. */
 export function renderFundBody(
   summary: FundSummary,
   ctx: {

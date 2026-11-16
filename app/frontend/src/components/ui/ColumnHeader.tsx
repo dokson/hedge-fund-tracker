@@ -38,7 +38,7 @@ export function ColumnHeader({
       ? sort.direction === "asc"
         ? "ascending"
         : "descending"
-      : "none"
+      : undefined
     : undefined;
   const SortIcon = sort?.active ? (sort.direction === "asc" ? ChevronUp : ChevronDown) : null;
 
@@ -61,7 +61,7 @@ export function ColumnHeader({
         ) : (
           label
         )}
-        {tooltip && <InfoTooltip text={tooltip} />}
+        {tooltip && <InfoTooltip text={tooltip} label={label} />}
       </span>
     </th>
   );

@@ -236,6 +236,9 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
   const yDomain: [number, number] | undefined = stats
     ? [stats.min - (stats.max - stats.min) * 0.05, stats.max + (stats.max - stats.min) * 0.05]
     : undefined;
+  const chartLabel = stats
+    ? `${ticker} price over ${range}: ${fmtCurrency(stats.first)} to ${fmtCurrency(stats.last)} (${stats.pct >= 0 ? "+" : ""}${stats.pct.toFixed(1)}%), low ${fmtCurrency(stats.min)}, high ${fmtCurrency(stats.max)}`
+    : `${ticker} price history`;
 
   const renderTooltip = ({ active, payload }: TooltipContentProps) => {
     if (!active || !payload?.length) return null;
@@ -372,20 +375,27 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
           ref={containerRef}
           className="h-[320px] w-full cursor-crosshair select-none"
           onDragStart={(e) => e.preventDefault()}
-          style={{ touchAction: "none" }}
+          style={{ touchAction: "pan-y" }}
         >
           {isLoading ? (
-            <div className="h-full flex items-center justify-center text-muted-foreground gap-2 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading price history…
+            <div
+              role="status"
+              className="h-full flex items-center justify-center text-muted-foreground gap-2 text-sm"
+            >
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading price history…
             </div>
           ) : isError || series.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+            <div
+              role="status"
+              className="h-full flex items-center justify-center text-muted-foreground text-sm"
+            >
               Price history unavailable for {ticker}.
             </div>
           ) : !size ? null : mode === "candles" ? (
             <ComposedChart
               width={size.width}
               height={size.height}
+              aria-label={chartLabel}
               data={candleSeries}
               margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
               onMouseDown={handleMouseDown}
@@ -450,6 +460,7 @@ export function StockPriceChart({ ticker, staticData }: { ticker: string; static
             <AreaChart
               width={size.width}
               height={size.height}
+              aria-label={chartLabel}
               data={series}
               margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
               onMouseDown={handleMouseDown}

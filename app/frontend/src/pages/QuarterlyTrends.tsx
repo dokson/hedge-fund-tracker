@@ -444,10 +444,7 @@ function QuestionCard({ strategy, track }: { strategy: StrategyDef; track: Track
           <Icon className="h-5 w-5" />
         </span>
         <div className="min-w-0">
-          <p
-            className="line-clamp-2 text-sm text-foreground sm:line-clamp-none sm:text-[15px] sm:leading-6"
-            title={strategy.description}
-          >
+          <p className="text-sm text-foreground sm:text-[15px] sm:leading-6">
             {strategy.description}
           </p>
           <MetaLine className="mt-1">
@@ -642,7 +639,7 @@ export default function QuarterlyTrends() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[...quarters].reverse().map((q) => (
+              {quarters.toReversed().map((q) => (
                 <SelectItem key={q} value={q}>
                   {q.replace("Q", " Q")}
                 </SelectItem>

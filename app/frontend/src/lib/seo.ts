@@ -151,6 +151,9 @@ export function renderStaticPage(params: {
     `<meta property="og:url" content="${escapeAttr(canonical)}" />`,
     `<meta property="og:site_name" content="${escapeAttr(SITE_NAME)}" />`,
     `<meta property="og:image" content="${escapeAttr(canonicalUrl("/logo.png"))}" />`,
+    `<meta property="og:image:width" content="512" />`,
+    `<meta property="og:image:height" content="512" />`,
+    `<meta property="og:image:alt" content="${escapeAttr(`${SITE_NAME} logo`)}" />`,
     `<meta name="twitter:card" content="summary" />`,
     ...jsonLd.map((ld) => `<script type="application/ld+json">${inlineJson(ld)}</script>`),
   ].join("\n    ");

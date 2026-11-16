@@ -48,7 +48,7 @@ function pctRank(values: (number | null)[]): (number | null)[] {
     .filter((pair): pair is readonly [number, number] => pair[0] !== null);
   const n = present.length;
   const out: (number | null)[] = values.map(() => null);
-  const sorted = [...present].sort((a, b) => a[0] - b[0]);
+  const sorted = present.toSorted((a, b) => a[0] - b[0]);
   let i = 0;
   while (i < sorted.length) {
     let j = i;

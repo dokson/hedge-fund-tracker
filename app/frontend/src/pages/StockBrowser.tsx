@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useDeferredValue } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getStocks, formatValue, type Stock, type StockQuarterAnalysis } from "@/lib/dataService";
@@ -212,6 +212,10 @@ export default function StockBrowser() {
   const [alphaReveal, setAlphaReveal] = useResearchState("alphabetical:reveal", ALPHA_CHUNK);
   const [valueSearch, setValueSearch] = useResearchState("value:search", "");
   const [scoreSearch, setScoreSearch] = useResearchState("score:search", "");
+  // Typing stays instant; the 12k-row filter and its re-render run at lower priority.
+  const deferredSearch = useDeferredValue(search);
+  const deferredValueSearch = useDeferredValue(valueSearch);
+  const deferredScoreSearch = useDeferredValue(scoreSearch);
   const {
     sortKey: valueSortKey,
     sortDir: valueSortDir,
@@ -326,7 +330,7 @@ export default function StockBrowser() {
 
   const topTickersByValue = useMemo(() => {
     if (quarterData.length === 0) return null;
-    const sorted = [...quarterData].sort((a, b) => b.totalValue - a.totalValue);
+    const sorted = quarterData.toSorted((a, b) => b.totalValue - a.totalValue);
     return new Set(sorted.slice(0, alphaReveal).map((s) => s.ticker));
   }, [quarterData, alphaReveal]);
 
@@ -336,9 +340,14 @@ export default function StockBrowser() {
       .sort((a, b) => a.ticker.localeCompare(b.ticker));
   }, [uniqueStocks, starred]);
 
+  const uniqueSorted = useMemo(
+    () => uniqueStocks.toSorted((a, b) => a.ticker.localeCompare(b.ticker)),
+    [uniqueStocks],
+  );
+
   const filtered = useMemo(() => {
-    let list = uniqueStocks;
-    if (topTickersByValue && !search) {
+    let list = uniqueSorted;
+    if (topTickersByValue && !deferredSearch) {
       list = list.filter((s) => topTickersByValue.has(s.ticker));
     }
     if (activeLetter) {
@@ -348,11 +357,11 @@ export default function StockBrowser() {
         list = list.filter((s) => s.ticker.toUpperCase().startsWith(activeLetter));
       }
     }
-    if (search) {
-      list = list.filter((s) => matchesQuery(search, s.ticker, s.company));
+    if (deferredSearch) {
+      list = list.filter((s) => matchesQuery(deferredSearch, s.ticker, s.company));
     }
-    return list.sort((a, b) => a.ticker.localeCompare(b.ticker));
-  }, [uniqueStocks, search, activeLetter, topTickersByValue]);
+    return list;
+  }, [uniqueSorted, deferredSearch, activeLetter, topTickersByValue]);
 
   const grouped = useMemo(() => {
     const visible = filtered.slice(0, renderCount);
@@ -412,7 +421,7 @@ export default function StockBrowser() {
     return map;
   }, [stocks]);
 
-  const valueRanked = useMemo(() => {
+  const valueSorted = useMemo(() => {
     let list = [...quarterData];
     if (industryFilter) {
       list = list.filter((s) => tickerIndustry.get(s.ticker) === industryFilter);
@@ -428,13 +437,9 @@ export default function StockBrowser() {
       const vb = b[valueSortKey] ?? -1;
       return valueSortDir === "desc" ? vb - va : va - vb;
     });
-    if (valueSearch) {
-      list = list.filter((s) => matchesQuery(valueSearch, s.ticker, s.company));
-    }
     return list;
   }, [
     quarterData,
-    valueSearch,
     valueSortKey,
     valueSortDir,
     industryFilter,
@@ -446,7 +451,7 @@ export default function StockBrowser() {
   // Ranked smart-score list: scored rows straight from the quarter analysis
   // (computed on the fly like every other consensus metric) plus 1.0-floor
   // rows for the rest of the registry, so every ticker is searchable.
-  const scoreRanked = useMemo(() => {
+  const scoreSorted = useMemo(() => {
     if (!analysisReady) return [];
     const held = new Set(quarterData.map((s) => s.ticker));
     const floor: StockQuarterAnalysis[] = uniqueStocks
@@ -476,15 +481,28 @@ export default function StockBrowser() {
       }));
     let list = [...quarterData, ...floor];
     list.sort((a, b) => compareBySmartScore(a, b) || a.ticker.localeCompare(b.ticker));
-    if (scoreSearch) {
-      list = list.filter((s) => matchesQuery(scoreSearch, s.ticker, s.company));
-    }
     return list;
-  }, [analysisReady, quarterData, uniqueStocks, scoreSearch]);
+  }, [analysisReady, quarterData, uniqueStocks]);
+
+  const valueRanked = useMemo(
+    () =>
+      deferredValueSearch
+        ? valueSorted.filter((s) => matchesQuery(deferredValueSearch, s.ticker, s.company))
+        : valueSorted,
+    [valueSorted, deferredValueSearch],
+  );
+
+  const scoreRanked = useMemo(
+    () =>
+      deferredScoreSearch
+        ? scoreSorted.filter((s) => matchesQuery(deferredScoreSearch, s.ticker, s.company))
+        : scoreSorted,
+    [scoreSorted, deferredScoreSearch],
+  );
 
   const heatmapData = useMemo(() => {
     if (quarterData.length === 0) return [];
-    const sorted = [...quarterData].sort((a, b) => b.totalValue - a.totalValue);
+    const sorted = quarterData.toSorted((a, b) => b.totalValue - a.totalValue);
     return sorted.slice(0, 20).map((s) => ({
       name: s.ticker,
       company: s.company,

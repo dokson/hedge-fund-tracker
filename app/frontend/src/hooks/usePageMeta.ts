@@ -69,7 +69,15 @@ export function usePageMeta({ title, description, canonical, jsonLd }: PageMeta)
       upsertMeta("property", "og:url", canonical),
     ];
 
-    const scripts = (JSON.parse(serializedJsonLd) as object[]).map((ld) => {
+    const lds = JSON.parse(serializedJsonLd) as object[];
+    // Replace the pre-rendered JSON-LD (it describes the entry URL) rather than duplicating it.
+    if (lds.length > 0) {
+      document.head
+        .querySelectorAll('script[type="application/ld+json"]:not([data-managed])')
+        .forEach((el) => el.remove());
+    }
+
+    const scripts = lds.map((ld) => {
       const el = document.createElement("script");
       el.type = "application/ld+json";
       el.text = JSON.stringify(ld);

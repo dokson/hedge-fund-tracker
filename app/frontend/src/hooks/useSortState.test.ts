@@ -34,12 +34,6 @@ describe("useSortState", () => {
     expect(result.current.sortDir).toBe("asc");
   });
 
-  it("reports aria-sort per column", () => {
-    const { result } = renderHook(() => useSortState<Key>("a"));
-    expect(result.current.ariaSort("a")).toBe("descending");
-    expect(result.current.ariaSort("b")).toBe("none");
-  });
-
   it("keeps toggleSort stable across renders", () => {
     const { result, rerender } = renderHook(() => useSortState<Key>("a"));
     const first = result.current.toggleSort;

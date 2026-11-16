@@ -6,7 +6,8 @@ import { useQuarterAnalysis } from "@/hooks/useQuarterAnalysis";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 import { Panel } from "@/components/ui/Panel";
 import { QueryState } from "@/components/ui/QueryState";
-import { Loader2, Info } from "lucide-react";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { Info } from "lucide-react";
 
 interface SectorGroup {
   name: string;
@@ -79,11 +80,7 @@ export default function SectorHeatmap({
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading data…
-      </div>
-    );
+    return <LoadingState message="Loading data…" />;
   }
 
   if (!hasSectorData) {

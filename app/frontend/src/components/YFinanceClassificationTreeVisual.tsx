@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, Loader2, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Search } from "lucide-react";
+import { LoadingState } from "@/components/ui/LoadingState";
 
 import { getSectorHierarchy } from "@/lib/dataService";
 import { matchesQuery } from "@/lib/utils";
@@ -37,11 +38,7 @@ export default function YFinanceClassificationTreeVisual({ onSelectIndustry }: P
   }, [hierarchy, query]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading taxonomy…
-      </div>
-    );
+    return <LoadingState message="Loading taxonomy…" />;
   }
 
   const toggle = (sector: string) => {

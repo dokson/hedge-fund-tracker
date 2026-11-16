@@ -32,7 +32,7 @@ function renderTooltip({ active, label, payload }: TooltipContentProps) {
       : [],
   );
   if (!rows.length) return null;
-  const sorted = [...rows].sort((a, b) => b.value - a.value);
+  const sorted = rows.toSorted((a, b) => b.value - a.value);
   return (
     <div className="rounded-md border border-border bg-popover px-3 py-2.5 text-xs text-popover-foreground shadow-md">
       <div className="mb-2 text-muted-foreground">{label} · Cumulative return</div>
@@ -136,6 +136,12 @@ export default function EquityCurveChart({
       if (typeof value === "number") lastValues.set(s.id, value);
     }
   }
+  const chartLabel = `Cumulative return: ${series
+    .flatMap((s) => {
+      const value = lastValues.get(s.id);
+      return value === undefined ? [] : [`${s.label} ${fmtTooltipPct(value)}`];
+    })
+    .join(", ")}`;
 
   return (
     /* Fills a flex parent with a definite height; the min-h is the floor when
@@ -145,6 +151,7 @@ export default function EquityCurveChart({
         <ComposedChart
           width={size.width}
           height={size.height}
+          aria-label={chartLabel}
           data={data}
           margin={{
             top: 8,

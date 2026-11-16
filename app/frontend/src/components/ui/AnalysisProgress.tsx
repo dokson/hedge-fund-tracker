@@ -24,7 +24,7 @@ export function AnalysisProgress({
         className="py-0"
         message={started && msg ? msg : "Loading analysis…"}
       />
-      {started && <Progress value={pct} className="w-64" />}
+      {started && <Progress value={pct} aria-label="Analysis progress" className="w-64" />}
     </div>
   );
 }

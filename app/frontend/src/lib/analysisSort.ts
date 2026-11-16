@@ -13,7 +13,7 @@ export function sortAnalysisRows<T extends StockQuarterAnalysis>(
   dir: "asc" | "desc",
 ): T[] {
   const sign = dir === "desc" ? 1 : -1;
-  return [...rows].sort((a, b) => {
+  return rows.toSorted((a, b) => {
     if (key === "smartScore") return sign * compareBySmartScore(a, b);
     const va = a[key] ?? NaN;
     const vb = b[key] ?? NaN;

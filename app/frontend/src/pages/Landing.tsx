@@ -45,8 +45,8 @@ const RESEARCH_CONTEXT = [
 function Wire({ funds }: { funds: readonly HedgeFund[] }) {
   const { data: filings = [], isLoading, isError, error } = useEnrichedNQFilings();
   const urlByFund = new Map(funds.map((f) => [f.fund, f.url]));
-  const rows = [...filings]
-    .sort((a, b) => (b.filingDate > a.filingDate ? 1 : b.filingDate < a.filingDate ? -1 : 0))
+  const rows = filings
+    .toSorted((a, b) => (b.filingDate > a.filingDate ? 1 : b.filingDate < a.filingDate ? -1 : 0))
     .slice(0, WIRE_ROWS);
 
   return (

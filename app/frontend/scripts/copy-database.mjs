@@ -1,6 +1,7 @@
 /**
  * Copies database CSV files from the repo root database/ directory
- * into app/frontend/dist/database/ for GitHub Pages static deployment.
+ * into app/frontend/dist/database/ (or the directory given as the first
+ * argument) for GitHub Pages static deployment.
  *
  * Also generates:
  *  - manifest.json for each quarter (list of fund names)
@@ -18,11 +19,13 @@ import { staticFiles } from "./copy-database-files.mjs";
 // repo root = app/frontend/scripts/../../..  (up 3 levels: scripts → frontend → app → repo root)
 const repoRoot = resolve(import.meta.dirname, "../../..");
 const sourceDir = resolve(repoRoot, "database");
-const distDir = resolve(import.meta.dirname, "../dist");
+const distDir = process.argv[2]
+  ? resolve(process.argv[2])
+  : resolve(import.meta.dirname, "../dist");
 const targetDir = resolve(distDir, "database");
 
 if (!existsSync(distDir)) {
-  console.error("dist/ directory not found. Run `vite build` first.");
+  console.error(`${distDir} not found. Run \`vite build\` first.`);
   process.exit(1);
 }
 
@@ -80,4 +83,4 @@ const metadata = {
 writeFileSync(resolve(targetDir, "metadata.json"), JSON.stringify(metadata, null, 2));
 console.log(`  metadata.json (${quarters.length} quarters)`);
 
-console.log("\nDatabase files copied to dist/database/");
+console.log(`\nDatabase files copied to ${targetDir}`);

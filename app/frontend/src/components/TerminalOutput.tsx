@@ -16,16 +16,20 @@ function colorize(line: string): string {
 }
 
 export default function TerminalOutput({ lines, running }: TerminalOutputProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const logRef = useRef<HTMLDivElement>(null);
 
+  // Scroll the log itself: scrollIntoView would also drag the page along.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const log = logRef.current;
+    if (log) log.scrollTop = log.scrollHeight;
   }, [lines]);
 
   return (
     <Panel title="Output" className="min-w-0 bg-background">
       {/* Monospace belongs to the log body only: these are command lines. */}
       <div
+        ref={logRef}
+        tabIndex={0}
         className="min-w-0 p-3 max-h-[32vh] overflow-y-auto space-y-0.5 font-mono text-xs"
         role="log"
         aria-live="polite"
@@ -41,13 +45,10 @@ export default function TerminalOutput({ lines, running }: TerminalOutputProps) 
           </div>
         ))}
         {running ? (
-          <div className="text-muted-foreground mt-1" aria-label="Running">
-            Running…
-          </div>
+          <div className="text-muted-foreground mt-1">Running…</div>
         ) : (
           lines.length > 0 && <div className="text-muted-foreground mt-1">Done</div>
         )}
-        <div ref={bottomRef} />
       </div>
     </Panel>
   );

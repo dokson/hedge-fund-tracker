@@ -17,6 +17,8 @@ interface FundLogoProps {
    * `false` only where the logo stands alone.
    */
   decorative?: boolean;
+  /** Above-the-fold logo (page header): requested with the page instead of lazily. */
+  eager?: boolean;
 }
 
 /** Two initials at most: "Baupost Group" reads better than a lone "B". */
@@ -43,6 +45,7 @@ export function FundLogo({
   size = 32,
   className = "",
   decorative = true,
+  eager = false,
 }: FundLogoProps) {
   const candidates = useMemo(() => {
     const list: string[] = [];
@@ -103,7 +106,7 @@ export function FundLogo({
         flexShrink: 0,
         backgroundColor: LOGO_PLATE_BACKGROUND[plate],
       }}
-      loading="lazy"
+      loading={eager ? undefined : "lazy"}
     />
   );
 }

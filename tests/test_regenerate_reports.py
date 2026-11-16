@@ -1,10 +1,13 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
+from app.scraper.sec_scraper import _FilingRequestError
 from scripts.regenerate_reports import (
     build_comparison_pairs,
     collect_filings_until_floor,
     dedupe_filings_by_period,
+    fetch_fund_filings,
     regenerate_fund,
 )
 
@@ -65,6 +68,24 @@ class TestCollectFilingsUntilFloor(unittest.TestCase):
         collect_filings_until_floor(listing())
 
         self.assertNotIn("beyond", consumed)
+
+
+class TestFetchFundFilings(unittest.TestCase):
+    @patch("app.scraper.sec_scraper._get_request", return_value=None)
+    @patch("scripts.regenerate_reports._get_request")
+    def test_failed_filing_download_aborts_instead_of_dropping_the_period(
+        self, mock_listing, _mock_filing_request
+    ):
+        """
+        A filing EDGAR fails to serve must fail the fund: skipping it silently
+        compared the next quarter against the one two quarters back.
+        """
+        mock_listing.return_value = SimpleNamespace(
+            text='<a id="documentsbutton" href="/Archives/edgar/data/1/a-index.htm">Docs</a>'
+        )
+
+        with self.assertRaises(_FilingRequestError):
+            fetch_fund_filings("0000000001")
 
 
 class TestDedupeFilingsByPeriod(unittest.TestCase):

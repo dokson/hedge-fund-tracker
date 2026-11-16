@@ -113,7 +113,7 @@ export function sortRanking(
   dir: "asc" | "desc",
 ): RankedFund[] {
   const sign = dir === "desc" ? -1 : 1;
-  return [...funds].sort((a, b) => {
+  return funds.toSorted((a, b) => {
     const x = a[key];
     const y = b[key];
     if (x === null) return y === null ? 0 : 1;

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/routes";
 import { Sidebar, SidebarContent, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { BrandLogo } from "@/components/ui/BrandLogo";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function isActiveUrl(pathname: string, url: string): boolean {
   if (url === ROUTES.stocks)
@@ -42,24 +43,34 @@ function SidebarNav({
               <ul>
                 {section.doors.map((item) => {
                   const active = isActiveUrl(location.pathname, item.url);
+                  const link = (
+                    <NavLink
+                      to={item.url}
+                      end={item.url === ROUTES.home}
+                      data-active={active}
+                      onClick={onNavigate}
+                      aria-label={collapsed ? item.title : undefined}
+                      className={cn(
+                        "menu-line",
+                        collapsed && "justify-center px-0",
+                        item.tone === "ai" && !active && "text-magenta",
+                      )}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      {!collapsed && <span className="truncate">{item.title}</span>}
+                    </NavLink>
+                  );
                   return (
                     <li key={item.url}>
-                      <NavLink
-                        to={item.url}
-                        end={item.url === ROUTES.home}
-                        data-active={active}
-                        onClick={onNavigate}
-                        title={collapsed ? item.title : undefined}
-                        aria-label={collapsed ? item.title : undefined}
-                        className={cn(
-                          "menu-line",
-                          collapsed && "justify-center px-0",
-                          item.tone === "ai" && !active && "text-magenta",
-                        )}
-                      >
-                        <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        {!collapsed && <span className="truncate">{item.title}</span>}
-                      </NavLink>
+                      {collapsed ? (
+                        // The rail shows icons only: a tooltip, unlike `title`, also appears on keyboard focus.
+                        <Tooltip>
+                          <TooltipTrigger asChild>{link}</TooltipTrigger>
+                          <TooltipContent side="right">{item.title}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        link
+                      )}
                     </li>
                   );
                 })}
@@ -72,39 +83,37 @@ function SidebarNav({
       <SidebarFooter
         className={cn("py-2 border-t border-border status-line", collapsed ? "px-1" : "px-3")}
       >
-        {/* Keep the snapshot and version information inside a landmark. */}
-        <footer aria-label="Dataset and version">
-          {collapsed ? (
-            baselineQuarter && (
-              <div className="flex justify-center" title={`13F baseline ${baselineQuarter}`}>
-                <span className="h-2 w-2 bg-positive" aria-hidden="true" />
-              </div>
-            )
-          ) : (
-            <div className="space-y-0 text-xs">
-              {baselineQuarter && (
-                <p className="flex items-center gap-2 truncate">
-                  <span className="h-2 w-2 bg-positive shrink-0" aria-hidden="true" />
-                  <span>
-                    <span className="k">13F baseline</span> {baselineQuarter}
-                  </span>
-                </p>
-              )}
-              <p className="truncate text-muted-foreground">
-                v{APP_VERSION} · ©{" "}
-                <a
-                  href="https://www.coalesce.coach/en"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="COalesCE website"
-                  className="underline underline-offset-2 hover:text-foreground"
-                >
-                  COalesCE
-                </a>
-              </p>
+        {collapsed ? (
+          baselineQuarter && (
+            <div className="flex justify-center">
+              <span className="h-2 w-2 bg-positive" aria-hidden="true" />
+              <span className="sr-only">13F baseline {baselineQuarter}</span>
             </div>
-          )}
-        </footer>
+          )
+        ) : (
+          <div className="space-y-0 text-xs">
+            {baselineQuarter && (
+              <p className="flex items-center gap-2 truncate">
+                <span className="h-2 w-2 bg-positive shrink-0" aria-hidden="true" />
+                <span>
+                  <span className="k">13F baseline</span> {baselineQuarter}
+                </span>
+              </p>
+            )}
+            <p className="truncate text-muted-foreground">
+              v{APP_VERSION} · ©{" "}
+              <a
+                href="https://www.coalesce.coach/en"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="COalesCE website"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                COalesCE
+              </a>
+            </p>
+          </div>
+        )}
       </SidebarFooter>
     </>
   );
@@ -117,11 +126,7 @@ function SidebarNav({
 function SidebarBrand({ collapsed }: { collapsed: boolean }) {
   const { toggleSidebar } = useSidebar();
   return (
-    // A landmark, so the wordmark and the collapse toggle are not orphaned
-    // outside every region (SC 1.3.1, axe `region`). Labelled because the
-    // content top bar is the other banner on the page.
-    <header
-      aria-label="Sidebar"
+    <div
       className={cn(
         "flex items-center h-12 border-b border-border shrink-0",
         collapsed ? "justify-center px-1" : "gap-2 px-3",
@@ -144,20 +149,24 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
           <p className="text-[11px] text-muted-foreground truncate">SEC 13F · 13D/G · Form 4</p>
         </Link>
       )}
-    </header>
+    </div>
   );
 }
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  // The rail's own landmark: the top bar is the page's single banner, and the
+  // collapse toggle and wordmark stay inside a region (SC 1.3.1).
   return (
-    <Sidebar
-      collapsible="none"
-      className={cn("hidden md:flex border-r border-border", collapsed && "w-[3.5rem]")}
-    >
-      <SidebarBrand collapsed={collapsed} />
-      <SidebarNav collapsed={collapsed} />
-    </Sidebar>
+    <aside aria-label="Sidebar" className="hidden md:flex">
+      <Sidebar
+        collapsible="none"
+        className={cn("border-r border-border", collapsed && "w-[3.5rem]")}
+      >
+        <SidebarBrand collapsed={collapsed} />
+        <SidebarNav collapsed={collapsed} />
+      </Sidebar>
+    </aside>
   );
 }

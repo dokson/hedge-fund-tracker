@@ -159,8 +159,8 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-size: 13px;
-    line-height: 20px;
+    font-size: 0.8125rem;
+    line-height: 1.5385;
     font-variant-numeric: tabular-nums;
     /* Inter's open digits and single-storey a read cleaner at 13px. */
     font-feature-settings: "cv11", "ss01";
@@ -169,12 +169,15 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    /* The phone top bar is sticky over the scrolling document: keep focused
+       elements and #hash targets clear of it (SC 2.4.11). */
+    scroll-padding-top: 3.5rem;
   }
 
   @media (max-width: 767.98px) {
     body {
-      font-size: 14px;
-      line-height: 21px;
+      font-size: 0.875rem;
+      line-height: 1.5;
     }
     /* iOS Safari zooms the page on focus below 16px and leaves it zoomed. */
     input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
@@ -194,19 +197,20 @@
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+  /* The thumb must read against the page (3:1, SC 1.4.11), so it takes the
+     muted text tone rather than the hairline border colour. */
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
+    background: hsl(var(--muted-foreground) / 0.75);
     border-radius: 5px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--input));
+    background: hsl(var(--muted-foreground));
     background-clip: content-box;
   }
   * {
-    scrollbar-color: hsl(var(--border)) transparent;
-    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.75) transparent;
   }
 
   button:not(:disabled):not([aria-disabled="true"]):not([data-disabled="true"]) {
@@ -333,6 +337,12 @@
   }
   .menu-line[data-active="true"] svg {
     color: hsl(var(--primary-text));
+  }
+  /* Forced colors drop the wash and the inset bar; keep an edge on the current page. */
+  @media (forced-colors: active) {
+    .menu-line[data-active="true"] {
+      border-inline-start: 2px solid Highlight;
+    }
   }
 
   /* `Key value · Key value`: keys muted, values in the text colour. */

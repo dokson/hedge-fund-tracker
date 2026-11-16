@@ -237,7 +237,7 @@ export default function Dashboard() {
       return true;
     });
 
-    rows = [...rows].sort((a, b) => {
+    rows = rows.toSorted((a, b) => {
       let cmp = 0;
       if (sortField === "date") {
         cmp = a.filingDate.localeCompare(b.filingDate) || a.date.localeCompare(b.date);

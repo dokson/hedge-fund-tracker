@@ -32,12 +32,12 @@ export function Field({
       {htmlFor ? (
         <label htmlFor={htmlFor} className={labelClass}>
           {label}
-          {info && <InfoTooltip text={info} />}
+          {info && <InfoTooltip text={info} label={typeof label === "string" ? label : undefined} />}
         </label>
       ) : (
         <span className={labelClass}>
           {label}
-          {info && <InfoTooltip text={info} />}
+          {info && <InfoTooltip text={info} label={typeof label === "string" ? label : undefined} />}
         </span>
       )}
       {children}

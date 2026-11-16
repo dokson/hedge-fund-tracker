@@ -201,6 +201,12 @@ export default function GlobalSearch({
     : { tickers: 0, companies: 0, funds: 0, managers: 0 };
 
   const optionId = (i: number) => `${listId}-opt-${i}`;
+
+  // Arrowing past the visible slice of the results must follow the active option.
+  useEffect(() => {
+    if (!expanded || !hasResults) return;
+    document.getElementById(`${listId}-opt-${activeIndex}`)?.scrollIntoView?.({ block: "nearest" });
+  }, [activeIndex, expanded, hasResults, listId]);
   const groupCount = grouped
     ? [grouped.tickers, grouped.companies, grouped.funds, grouped.managers].filter((g) => g.length)
         .length
@@ -226,6 +232,7 @@ export default function GlobalSearch({
             setActiveIndex(0);
           }}
           onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
           onKeyDown={handleKeyDown}
           placeholder="ticker, cusip, fund, manager"
           // No `focus:outline-none`: Tailwind emits it into the `utilities`
@@ -255,7 +262,7 @@ export default function GlobalSearch({
       >
         {expanded && isLoading && (
           <li className="flex items-center gap-2 px-3 py-3 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading index…
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading index…
           </li>
         )}
         {expanded && !isLoading && !hasResults && (

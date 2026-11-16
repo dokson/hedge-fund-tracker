@@ -57,7 +57,7 @@ function csvQuote(value: string): string {
 }
 
 function fundsToCSV(funds: HedgeFund[]): string {
-  const sorted = [...funds].sort((a, b) =>
+  const sorted = funds.toSorted((a, b) =>
     a.fund.localeCompare(b.fund, undefined, { sensitivity: "base" }),
   );
   return (

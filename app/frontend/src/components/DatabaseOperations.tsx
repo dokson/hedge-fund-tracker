@@ -316,6 +316,10 @@ export default function DatabaseOperations() {
           <Field label="New Ticker" htmlFor={`${op.id}-new-ticker`}>
             <Input
               id={`${op.id}-new-ticker`}
+              autoComplete="off"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
               placeholder="e.g. META"
               value={fieldValues[op.id]?.new_ticker || ""}
               onChange={(e) => setField(op.id, "new_ticker", e.target.value.toUpperCase())}
@@ -351,6 +355,10 @@ export default function DatabaseOperations() {
           <Field label="New Ticker" htmlFor={`${op.id}-new-ticker`}>
             <Input
               id={`${op.id}-new-ticker`}
+              autoComplete="off"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
               placeholder="e.g. MSFT"
               value={fieldValues[op.id]?.new_ticker || ""}
               onChange={(e) => setField(op.id, "new_ticker", e.target.value.toUpperCase())}
@@ -483,7 +491,12 @@ export default function DatabaseOperations() {
             <TerminalOutput lines={activeLogs} running={activeIsRunning} />
           ) : (
             <Panel title="Output" className="bg-background">
-              <div className="p-3 max-h-64 overflow-y-auto font-mono text-xs">
+              <div
+                role="log"
+                aria-label="Process output"
+                tabIndex={0}
+                className="p-3 max-h-64 overflow-y-auto font-mono text-xs"
+              >
                 {activeLogs.map((log, i) => (
                   <p
                     // append-only log buffer; index is a stable identity

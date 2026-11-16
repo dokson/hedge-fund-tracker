@@ -32,14 +32,11 @@ export function useSortState<K extends string>(
 
   const setSort = useCallback((key: K, dir: SortDir) => setSortState({ key, dir }), [setSortState]);
 
-  const ariaSort = (key: K): "ascending" | "descending" | "none" =>
-    sort.key === key ? (sort.dir === "desc" ? "descending" : "ascending") : "none";
-
   const columnSort = (key: K): ColumnSort => ({
     active: sort.key === key,
     direction: sort.dir,
     onToggle: () => toggleSort(key),
   });
 
-  return { sortKey: sort.key, sortDir: sort.dir, toggleSort, setSort, ariaSort, columnSort };
+  return { sortKey: sort.key, sortDir: sort.dir, toggleSort, setSort, columnSort };
 }

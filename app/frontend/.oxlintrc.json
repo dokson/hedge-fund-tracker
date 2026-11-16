@@ -31,6 +31,7 @@
     "react/only-export-components": ["warn", { "allowConstantExport": true }],
     "jsx-a11y/prefer-tag-over-role": "off",
     "jsx-a11y/no-noninteractive-element-to-interactive-role": "off",
+    "jsx-a11y/no-noninteractive-tabindex": ["error", { "roles": ["tabpanel", "region", "log"] }],
     "jsx-a11y/control-has-associated-label": "off"
   },
   "overrides": [

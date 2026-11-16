@@ -305,7 +305,7 @@ export async function runQuarterAnalysis(
     }
 
     for (const holdings of fundGroups.values()) {
-      const sorted = [...holdings].sort((a, b) => b.portfolioPct - a.portfolioPct);
+      const sorted = holdings.toSorted((a, b) => b.portfolioPct - a.portfolioPct);
       const top10Sum = sorted.slice(0, 10).reduce((s, h) => s + h.portfolioPct, 0);
 
       sorted.forEach((fth, idx) => {

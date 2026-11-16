@@ -27,7 +27,7 @@ import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
 import { ROUTES } from "@/lib/routes";
 import { matchesQuery } from "@/lib/utils";
 import { canonicalUrl } from "@/lib/seo";
-import { Loader2 } from "lucide-react";
+import { LoadingState } from "@/components/ui/LoadingState";
 import {
   Dialog,
   DialogContent,
@@ -486,9 +486,7 @@ function ModelsTab() {
       </p>
 
       {modelsLoading ? (
-        <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading models…
-        </div>
+        <LoadingState message="Loading models…" size="sm" />
       ) : models.length === 0 ? (
         <EmptyState padding="sm" title="No models configured. Add one to get started." />
       ) : filteredModels.length === 0 ? (
@@ -542,52 +540,68 @@ function ModelsTab() {
             </DialogTitle>
             <DialogDescription>Add a new model to the configuration.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <Field label="Provider" htmlFor="model-provider">
-              <Select
-                value={newModelProvider}
-                onValueChange={(v) => {
-                  if (isModelProvider(v)) setNewModelProvider(v);
-                }}
-              >
-                <SelectTrigger id="model-provider" className="min-h-10 bg-card">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MODEL_PROVIDERS.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {PROVIDER_DISPLAY_NAMES[p] || p}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Model ID" htmlFor="model-id">
-              <Input
-                id="model-id"
-                placeholder="e.g. xai/grok-3-mini"
-                value={newModelId}
-                onChange={(e) => setNewModelId(e.target.value)}
-                className="font-mono text-sm"
-              />
-            </Field>
-            <Field label="Description" htmlFor="model-desc">
-              <Input
-                id="model-desc"
-                placeholder="e.g. Grok-3 Mini (best)"
-                value={newModelDesc}
-                onChange={(e) => setNewModelDesc(e.target.value)}
-              />
-            </Field>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button disabled={!newModelId.trim() || !newModelDesc.trim()} onClick={handleAddModel}>
-              Add Model
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleAddModel();
+            }}
+          >
+            <div className="space-y-4 py-2">
+              <Field label="Provider" htmlFor="model-provider">
+                <Select
+                  value={newModelProvider}
+                  onValueChange={(v) => {
+                    if (isModelProvider(v)) setNewModelProvider(v);
+                  }}
+                >
+                  <SelectTrigger id="model-provider" className="min-h-10 bg-card">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MODEL_PROVIDERS.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {PROVIDER_DISPLAY_NAMES[p] || p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Model ID" htmlFor="model-id">
+                <Input
+                  id="model-id"
+                  name="model_id"
+                  required
+                  pattern=".*\S.*"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="e.g. xai/grok-3-mini"
+                  value={newModelId}
+                  onChange={(e) => setNewModelId(e.target.value)}
+                  className="font-mono text-sm"
+                />
+              </Field>
+              <Field label="Description" htmlFor="model-desc">
+                <Input
+                  id="model-desc"
+                  name="description"
+                  required
+                  pattern=".*\S.*"
+                  autoComplete="off"
+                  placeholder="e.g. Grok-3 Mini (best)"
+                  value={newModelDesc}
+                  onChange={(e) => setNewModelDesc(e.target.value)}
+                />
+              </Field>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="outline" onClick={() => setAddDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Add Model</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

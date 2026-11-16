@@ -188,7 +188,7 @@ export default function StockAnalysis() {
   const sectorStyle = getSectorStyle(sector);
   const SectorIcon = sectorStyle.icon;
 
-  const company = holdings[0]?.company || ticker;
+  const company = holdings[0]?.company || meta?.company || ticker;
 
   usePageMeta({
     title: pageTitle(company === ticker ? ticker : `${ticker} · ${company}`),
@@ -328,17 +328,11 @@ export default function StockAnalysis() {
         </Button>
       </div>
       <PageHeader
-        title={
-          <>
-            {ticker}
-            <span className="text-sm font-normal leading-5 text-muted-foreground sm:text-base">
-              {company}
-            </span>
-          </>
-        }
+        title={ticker}
+        description={company === ticker ? undefined : company}
         leading={
           <LogoPlate size="lg">
-            <CompanyLogo ticker={ticker} size={40} />
+            <CompanyLogo ticker={ticker} size={40} eager />
           </LogoPlate>
         }
         actions={
@@ -385,7 +379,7 @@ export default function StockAnalysis() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[...quarters].reverse().map((q) => (
+              {quarters.toReversed().map((q) => (
                 <SelectItem key={q} value={q}>
                   {q.replace("Q", " Q")}
                 </SelectItem>
@@ -501,6 +495,7 @@ export default function StockAnalysis() {
                       <BarChart
                         width={width}
                         height={height}
+                        aria-label={`Funds increasing ${sentimentData[0].buyers + sentimentData[0].new}, reducing ${sentimentData[1].sellers + sentimentData[1].closed}`}
                         data={sentimentData}
                         layout="vertical"
                       >
@@ -595,6 +590,7 @@ export default function StockAnalysis() {
                       <BarChart
                         width={width}
                         height={height}
+                        aria-label={`Added ${formatValue(kpi.totalValueBought)}, reduced ${formatValue(kpi.totalValueSold)}`}
                         data={valueFlowData}
                         layout="vertical"
                       >

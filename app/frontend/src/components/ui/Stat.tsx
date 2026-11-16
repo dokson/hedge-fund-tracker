@@ -55,7 +55,11 @@ export function Stat({
         )}
       >
         {label}
-        {info && <InfoTooltip text={info} className={active ? "!text-primary-foreground" : undefined} />}
+        {info && <InfoTooltip
+            text={info}
+            label={typeof label === "string" ? label : undefined}
+            className={active ? "!text-primary-foreground" : undefined}
+          />}
       </span>
       <span
         className={cn(

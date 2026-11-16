@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useId } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getStocks } from "@/lib/dataService";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ export default function CusipAutocomplete({
 }: CusipAutocompleteProps) {
   const [open, setOpen] = useState(false);
   const [highlightIdx, setHighlightIdx] = useState(-1);
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
 
   const { data: stocks = [] } = useQuery({
     queryKey: ["stocks"],
@@ -83,27 +83,29 @@ export default function CusipAutocomplete({
     setHighlightIdx(-1);
   }
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const selectCusip = (cusip: string) => {
     onChange(cusip);
     setOpen(false);
   };
 
+  const expanded = open && suggestions.length > 0;
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
+      if (!open) setOpen(true);
       setHighlightIdx((i) => Math.min(i + 1, suggestions.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setHighlightIdx((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && highlightIdx >= 0 && suggestions[highlightIdx]) {
+    } else if (
+      e.key === "Enter" &&
+      !e.nativeEvent.isComposing &&
+      expanded &&
+      highlightIdx >= 0 &&
+      suggestions[highlightIdx]
+    ) {
+      e.preventDefault();
       selectCusip(suggestions[highlightIdx].cusip);
     } else if (e.key === "Escape") {
       setOpen(false);
@@ -111,25 +113,45 @@ export default function CusipAutocomplete({
   };
 
   const showError = value.length >= 3 && !isValid && !open;
+  const errorId = `${listboxId}-error`;
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div className="relative">
       <Input
         id={id}
+        role="combobox"
+        aria-expanded={expanded}
+        aria-controls={expanded ? listboxId : undefined}
+        aria-autocomplete="list"
+        aria-activedescendant={
+          expanded && highlightIdx >= 0 ? `${listboxId}-${highlightIdx}` : undefined
+        }
+        aria-invalid={showError || undefined}
+        aria-describedby={showError ? errorId : undefined}
+        autoComplete="off"
+        autoCapitalize="characters"
+        autoCorrect="off"
+        spellCheck={false}
         value={value}
         onChange={(e) => {
           onChange(e.target.value.toUpperCase());
           setOpen(true);
         }}
         onFocus={() => value.length >= 2 && setOpen(true)}
+        onBlur={() => setOpen(false)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         size={9}
         className={`${className} font-mono uppercase ${showError ? "border-destructive" : ""}`}
       />
-      {showError && <p className="text-[11px] text-destructive mt-0.5 absolute">CUSIP not found</p>}
-      {open && suggestions.length > 0 && (
+      {showError && (
+        <p id={errorId} role="alert" className="text-[11px] text-destructive mt-0.5 absolute">
+          CUSIP not found
+        </p>
+      )}
+      {expanded && (
         <div
+          id={listboxId}
           role="listbox"
           aria-label="CUSIP suggestions"
           className="absolute z-50 mt-1 w-72 overflow-hidden rounded-md border border-border bg-popover shadow-md"
@@ -139,20 +161,19 @@ export default function CusipAutocomplete({
             return (
               <div
                 key={item.cusip}
+                id={`${listboxId}-${idx}`}
                 role="option"
                 aria-selected={isHighlighted}
                 tabIndex={-1}
                 className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer transition-colors ${
                   isHighlighted ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                 }`}
-                onMouseDown={() => selectCusip(item.cusip)}
-                onMouseEnter={() => setHighlightIdx(idx)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    selectCusip(item.cusip);
-                  }
+                // Keeps focus in the input so the blur-close does not swallow the pick.
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  selectCusip(item.cusip);
                 }}
+                onMouseEnter={() => setHighlightIdx(idx)}
               >
                 <span className="font-mono font-medium w-24 shrink-0 text-xs">{item.cusip}</span>
                 <span className="font-mono w-12 shrink-0 text-xs">{item.ticker}</span>

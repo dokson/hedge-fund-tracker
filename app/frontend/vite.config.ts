@@ -171,9 +171,9 @@ function staticSeo(enabled: boolean): Plugin {
     apply: "build",
     // writeBundle (not closeBundle): with rolldown-vite the bundle is not yet
     // flushed to disk when closeBundle fires, so dist/index.html would ENOENT.
-    writeBundle() {
+    writeBundle(options) {
       if (!enabled) return;
-      const distDir = path.resolve(import.meta.dirname, "dist");
+      const distDir = options.dir ?? path.resolve(import.meta.dirname, "dist");
       const template = readFileSync(path.resolve(distDir, "index.html"), "utf-8");
       const write = (page: PublicPage, html: string): void => {
         const file = path.resolve(distDir, staticFileFor(page.path));
@@ -335,6 +335,43 @@ function staticSeo(enabled: boolean): Plugin {
   };
 }
 
+/**
+ * Preloads the latin Inter subset so the above-the-fold font is requested with
+ * the HTML instead of after the CSS and the first React render.
+ */
+function preloadLatinFont(): Plugin {
+  let base = "/";
+  return {
+    name: "preload-latin-font",
+    apply: "build",
+    configResolved(config) {
+      base = config.base;
+    },
+    transformIndexHtml: {
+      order: "post",
+      handler(_html, ctx) {
+        const file = Object.keys(ctx.bundle ?? {}).find((name) =>
+          /inter-latin-wght-normal-[\w-]+\.woff2$/.test(name),
+        );
+        if (!file) return;
+        return [
+          {
+            tag: "link",
+            attrs: {
+              rel: "preload",
+              as: "font",
+              type: "font/woff2",
+              crossorigin: "",
+              href: base + file,
+            },
+            injectTo: "head",
+          },
+        ];
+      },
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => ({
   base: mode === "gh-pages" ? "/hedge-fund-tracker/" : "/",
   define: {
@@ -355,7 +392,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   publicDir: "public",
-  plugins: [react(), staticSeo(mode === "gh-pages")],
+  plugins: [react(), preloadLatinFont(), staticSeo(mode === "gh-pages")],
   build: {
     rollupOptions: {
       output: {

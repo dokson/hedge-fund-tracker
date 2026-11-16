@@ -100,6 +100,9 @@ def collect_filings_until_floor(filings: Iterable[dict | None]) -> list[dict]:
 def fetch_fund_filings(cik: str) -> list[dict]:
     """
     Scrapes a fund's 13F filings newest-published-first until the fetch floor.
+
+    A filing EDGAR fails to serve raises instead of being skipped: a missing
+    period would silently pair the next quarter with the one two quarters back.
     """
     response = _get_request(_create_search_url(cik, "13F-HR"))
     if not response:
@@ -112,7 +115,7 @@ def fetch_fund_filings(cik: str) -> list[dict]:
         Yields each scraped filing from the fund's EDGAR listing, lazily.
         """
         for tag in soup.find_all("a", id="documentsbutton"):
-            yield _scrape_filing(tag, "13F-HR")
+            yield _scrape_filing(tag, "13F-HR", raise_on_request_error=True)
 
     return collect_filings_until_floor(scrape_all())
 
