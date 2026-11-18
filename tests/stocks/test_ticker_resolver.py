@@ -64,7 +64,7 @@ class TestTickerResolverResolveTicker(unittest.TestCase):
 
         TickerResolver.resolve_ticker(df)
 
-        mock_resolve_industry.assert_called_once_with("AAPL", "Apple Inc")
+        mock_resolve_industry.assert_called_once_with("AAPL", "Apple Inc", "037833100")
         call_kwargs = mock_save.call_args.kwargs
         self.assertEqual(call_kwargs["industry"], "Consumer Electronics")
 

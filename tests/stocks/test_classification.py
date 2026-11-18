@@ -24,8 +24,8 @@ def _stocks_df(rows: list[tuple[str, str, str, str]]) -> pd.DataFrame:
 class TestResolveIndustry(unittest.TestCase):
     """
     resolve_industry runs a three-step fallback chain:
-       1. YFinance.get_classification
-       2. Same-Company lookup in stocks.csv
+       1. Same issuer in stocks.csv (same Company name, else agreeing CUSIP issuer code)
+       2. YFinance.get_classification
        3. LLM classification (Gemini flash-lite, Groq fallback)
     Returns "" when every step misses, so callers can store an empty Industry
     without crashing.
@@ -33,36 +33,77 @@ class TestResolveIndustry(unittest.TestCase):
 
     @patch("app.stocks.classification.YFinance.get_classification")
     @patch("app.stocks.classification.load_stocks")
-    def test_returns_yfinance_industry_when_present(self, mock_load, mock_yf):
+    def test_returns_yfinance_industry_when_issuer_unknown(self, mock_load, mock_yf):
         """
-        Step 1 wins: yfinance.get_classification returns an industry → use it.
+        No stored row for the issuer → yfinance.get_classification decides.
         """
         mock_yf.return_value = {"sector": "Technology", "industry": "Software - Application"}
         mock_load.return_value = _stocks_df([])
 
         self.assertEqual(resolve_industry("AAPL", "Apple Inc"), "Software - Application")
-        mock_load.assert_not_called()  # short-circuited at step 1
 
     @patch("app.stocks.classification._llm_classify")
     @patch("app.stocks.classification.YFinance.get_classification")
     @patch("app.stocks.classification.load_stocks")
-    def test_falls_back_to_same_company_industry(self, mock_load, mock_yf, mock_llm):
+    def test_stored_same_company_industry_wins_over_yfinance(self, mock_load, mock_yf, mock_llm):
         """
-        Step 2 wins: yfinance misses, but another CUSIP with the SAME Company
-        name already has an Industry → inherit it.
+        A new share class inherits the Industry its issuer already carries even
+        when Yahoo now classifies it differently, so one Company never maps to
+        two industries (QVCG came back 'Specialty Retail' beside 'Internet Retail').
         """
-        mock_yf.return_value = None
+        mock_yf.return_value = {"sector": "Consumer Cyclical", "industry": "Specialty Retail"}
         mock_load.return_value = _stocks_df(
             [
-                ("111", "AEVA", "Aeva Technologies Inc", "Software - Infrastructure"),
+                ("74915M100", "QVCGA", "QVC Group Inc", "Internet Retail"),
                 ("222", "OTHER", "Other Co", "Banks - Regional"),
             ]
         )
 
-        result = resolve_industry("AEVAW", "Aeva Technologies Inc")
+        result = resolve_industry("QVCG", "QVC Group Inc", "74915M407")
 
-        self.assertEqual(result, "Software - Infrastructure")
-        mock_llm.assert_not_called()  # short-circuited at step 2
+        self.assertEqual(result, "Internet Retail")
+        mock_llm.assert_not_called()
+
+    @patch("app.stocks.classification._llm_classify")
+    @patch("app.stocks.classification.YFinance.get_classification")
+    @patch("app.stocks.classification.load_stocks")
+    def test_issuer_code_match_covers_a_differently_named_warrant(
+        self, mock_load, mock_yf, mock_llm
+    ):
+        """
+        A warrant filed under another spelling of the issuer's name still shares
+        the CUSIP issuer code (first 6 characters) with the classified stock.
+        """
+        mock_yf.return_value = None
+        mock_llm.return_value = None
+        mock_load.return_value = _stocks_df(
+            [("462921107", "IQMX", "Iqm Quantum Computers Oy-Adr", "Computer Hardware")]
+        )
+
+        result = resolve_industry("IQMXW", "IQM Quantum Computers Oyj", "462921115")
+
+        self.assertEqual(result, "Computer Hardware")
+
+    @patch("app.stocks.classification._llm_classify")
+    @patch("app.stocks.classification.YFinance.get_classification")
+    @patch("app.stocks.classification.load_stocks")
+    def test_disagreeing_issuer_code_siblings_are_not_trusted(self, mock_load, mock_yf, mock_llm):
+        """
+        When the rows sharing the issuer code disagree, none is picked: the
+        chain falls through to the providers.
+        """
+        mock_yf.return_value = {"sector": "Technology", "industry": "Software - Application"}
+        mock_load.return_value = _stocks_df(
+            [
+                ("123456101", "AAA", "Alpha Inc", "Banks - Regional"),
+                ("123456200", "AAB", "Alpha Holdings", "Auto Parts"),
+            ]
+        )
+
+        result = resolve_industry("AABW", "Alpha Warrants", "123456119")
+
+        self.assertEqual(result, "Software - Application")
+        mock_llm.assert_not_called()
 
     @patch("app.stocks.classification._llm_classify")
     @patch("app.stocks.classification.YFinance.get_classification")

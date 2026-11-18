@@ -66,6 +66,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
       # Gate the commit on the test suite: the data-integrity tests
       # (test_csv_integrity, test_stocks) read the real database/, so they

@@ -105,11 +105,11 @@ class TickerResolver:
                             open_issue(subject, body)
 
                         # Resolve the Industry through the chained fallback:
-                        # yfinance → same-Company in stocks.csv → Groq LLM. Empty on
+                        # same issuer in stocks.csv → yfinance → LLM. Empty on
                         # full miss so the row is still saved; the AI backfill can
                         # revisit it. Sector is not stored — derive it via
                         # database/sector_hierarchy.csv.
-                        industry = resolve_industry(ticker, company_name)
+                        industry = resolve_industry(ticker, company_name, cusip)
 
                     # save_stock persists; 'stocks' here is just an in-memory copy.
                     stocks.loc[cusip, "Ticker"] = ticker
@@ -190,7 +190,7 @@ class TickerResolver:
                     cusip,
                     ticker,
                     row["Company"],
-                    industry=resolve_industry(ticker, row["Company"]),
+                    industry=resolve_industry(ticker, row["Company"], cusip),
                 )
                 return cusip
 

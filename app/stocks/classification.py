@@ -5,11 +5,13 @@ and `TickerResolver.assign_cusip` so every new row landing in stocks.csv has
 an Industry whenever possible.
 
 Chain (each step short-circuits if it produces a value):
-    1. yfinance.info.industry — direct, fast, free.
-    2. Same-Company lookup in stocks.csv — propagates the Industry from any
-       row that already carries it for the same company name (typical case:
-       the underlying common stock was resolved earlier and now its warrant /
-       unit / share-class hits the resolver).
+    1. Same issuer already classified in stocks.csv — a row with the same
+       Company name, else the rows sharing the CUSIP's 6-character issuer
+       code when they agree. Checked before any provider so every security of
+       one issuer (common stock, warrant, unit, share class) keeps one
+       Industry: Yahoo reclassifies issuers over time and a fresh lookup for a
+       new share class would otherwise disagree with its stored siblings.
+    2. yfinance.info.industry — direct, fast, free.
     3. LLM classification — Gemini flash-lite (Groq fallback) picks an Industry
        from the closed sector_hierarchy.csv vocabulary. Optional: skipped when
        no API key is set, so the chain degrades gracefully.
@@ -48,20 +50,27 @@ def _looks_like_blank_check(company: str) -> bool:
     return bool(_BLANK_CHECK_RE.search(company or ""))
 
 
-def _match_by_company_name(company: str) -> str:
+def _match_stored_issuer(company: str, cusip: str | None) -> str:
     """
-    Returns the Industry of any existing stocks.csv row with the exact same
-    Company name and a non-empty Industry, or "" if none.
+    Returns the Industry already stored for the same issuer, or "" if none.
+
+    A row with the exact same Company name wins; otherwise the rows sharing the
+    CUSIP's issuer code (first 6 characters) are used, only when they agree.
     """
-    if not company:
-        return ""
     stocks = load_stocks()
     if stocks.empty:
         return ""
-    matches = stocks[(stocks["Company"] == company) & (stocks["Industry"] != "")]
-    if matches.empty:
-        return ""
-    return cast(str, matches.iloc[0]["Industry"])
+    classified = stocks[stocks["Industry"] != ""]
+    if company:
+        matches = classified[classified["Company"] == company]
+        if not matches.empty:
+            return cast(str, matches.iloc[0]["Industry"])
+    if cusip and len(cusip) >= 6:
+        siblings = classified[classified.index.str[:6] == cusip[:6]]
+        industries = siblings["Industry"].unique()
+        if len(industries) == 1:
+            return cast(str, industries[0])
+    return ""
 
 
 def _build_prompt(ticker: str, company: str, vocabulary: list[str], operating: bool) -> str:
@@ -185,13 +194,16 @@ def _llm_classify(ticker: str, company: str) -> str | None:
     return None
 
 
-def resolve_industry(ticker: str, company: str) -> str:
+def resolve_industry(ticker: str, company: str, cusip: str | None = None) -> str:
     """
     Returns the best-effort Industry for (ticker, company). Empty string if
     every fallback misses, so callers can persist the row and a later AI
     backfill can revisit it.
     """
-    # Step 1 — yfinance, direct.
+    stored = _match_stored_issuer(company, cusip)
+    if stored:
+        return stored
+
     try:
         classification = YFinance.get_classification(ticker) or {}
     except Exception:
@@ -200,12 +212,6 @@ def resolve_industry(ticker: str, company: str) -> str:
     if industry:
         return industry
 
-    # Step 2 — same Company already classified in stocks.csv.
-    name_match = _match_by_company_name(company)
-    if name_match:
-        return name_match
-
-    # Step 3 — LLM (optional, requires GOOGLE_API_KEY or GROQ_API_KEY).
     llm_answer = _llm_classify(ticker, company)
     if llm_answer:
         return llm_answer
