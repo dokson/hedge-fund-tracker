@@ -38,7 +38,7 @@ yfinance = "~=1.8"
 
 [dev-packages]
 coverage = "~=7.17"
-httpx2 = "~=2.15"
+httpx2 = "~=2.16"
 pandas-stubs = "~=3.1"
 pre-commit = "~=4.7"
 pyright = "~=1.1"
