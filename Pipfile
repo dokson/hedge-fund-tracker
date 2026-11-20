@@ -15,10 +15,10 @@ curl-cffi = "~=0.17.0"
 fastapi = "~=0.163"
 fastapi-users = { extras = ["sqlalchemy"], version = "~=15.0" }
 fastapi-users-db-sqlalchemy = "~=7.0"
-google-genai = "~=3.3"
+google-genai = "~=3.4"
 httptools = { version = "==0.9.0", markers = "sys_platform != 'win32' or platform_machine == 'AMD64'" }
 lxml = "~=6.1"
-openai = "~=3.51"
+openai = "~=3.53"
 pandas = "~=3.1"
 prometheus-client = "==0.26.0"
 psutil = "~=7.2"
@@ -44,7 +44,7 @@ pre-commit = "~=4.7"
 pyright = "~=1.1"
 ruff = "~=0.17"
 types-tabulate = "~=0.10"
-virtualenv = "~=21.15.6"
+virtualenv = "~=21.15.8"
 
 [pipenv]
 allow_prereleases = false
