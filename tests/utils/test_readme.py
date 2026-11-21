@@ -3,7 +3,12 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from app.utils.readme import EXCLUDED_HEDGE_FUNDS_FILE, generate_excluded_funds_list, update_readme
+from app.utils.readme import (
+    EXCLUDED_HEDGE_FUNDS_FILE,
+    README_DISPLAY_LIMIT,
+    generate_excluded_funds_list,
+    update_readme,
+)
 
 
 class TestReadme(unittest.TestCase):
@@ -43,6 +48,26 @@ class TestReadme(unittest.TestCase):
             result = generate_excluded_funds_list()
         self.assertIsNone(result)
         self.assertIn(EXCLUDED_HEDGE_FUNDS_FILE, "\n".join(cm.output))
+
+    @patch("app.utils.readme.pd.read_csv")
+    def test_generate_excluded_funds_list_links_full_list_relative_to_repo(self, mock_read_csv):
+        """
+        The "and many more" link points at the CSV relative to the repo root: an
+        absolute local path (e.g. C:\\Users\\...) is a dead link on GitHub.
+        """
+        count = README_DISPLAY_LIMIT + 1
+        mock_read_csv.return_value = pd.DataFrame(
+            {"Manager": ["M"] * count, "Fund": ["F"] * count, "URL": ["u"] * count}
+        )
+
+        result = generate_excluded_funds_list() or ""
+
+        self.assertTrue(
+            result.endswith(
+                "- and many more... (see [`database/excluded_hedge_funds.csv`]"
+                "(/database/excluded_hedge_funds.csv) for the full list)"
+            )
+        )
 
     @patch("app.utils.readme.atomic_write_text")
     @patch("app.utils.readme.generate_excluded_funds_list")

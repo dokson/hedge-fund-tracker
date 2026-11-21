@@ -35,7 +35,7 @@ def generate_excluded_funds_list() -> str | None:
                 markdown_list.append(f"- [{fund!s}]({url!s})")
 
         if len(df) > README_DISPLAY_LIMIT:
-            file_path = EXCLUDED_HEDGE_FUNDS_FILE.replace("./", "")
+            file_path = f"{Path(DB_FOLDER).name}/{EXCLUDED_FILENAME}"
             markdown_list.append(
                 f"- and many more... (see [`{file_path}`](/{file_path}) for the full list)"
             )

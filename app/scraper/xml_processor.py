@@ -22,6 +22,9 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 # with nested ``>`` characters inside the internal subset.
 _ENTITY_RE = re.compile(rb"<!ENTITY[^>]*>", re.IGNORECASE)
 _DOCTYPE_RE = re.compile(rb"<!DOCTYPE[^>]*>", re.IGNORECASE)
+# A title of class naming the option itself ("PUT", "CALLS", "PUT OPTION"): some filers mark
+# an option there and leave <putCall> empty, so the row would otherwise read as shares.
+_OPTION_CLASS_RE = re.compile(r"^\s*(PUT|CALL)S?(\s+OPTIONS?)?\s*$", re.IGNORECASE)
 
 
 class UnparseableHoldingsError(ValueError):
@@ -79,6 +82,9 @@ def xml_to_dataframe_13f(
         value = _get_tag_text(info_table, "value")
         shares = _get_tag_text(info_table, "sshprnamt")
         put_call = _get_tag_text(info_table, "putcall") or ""
+        title = _get_tag_text(info_table, "titleofclass") or ""
+        if not put_call and _OPTION_CLASS_RE.match(title):
+            put_call = title.split()[0].title()
 
         data.append([company, cusip, value, shares, put_call])
 

@@ -247,7 +247,7 @@ All in `database/`:
 
 Workflows in `.github/workflows/`:
 
-**`.github/workflows/filings-fetch.yml`** — 4× daily Mon–Fri (01:30, 13:30, 17:30, 21:30 UTC) + Saturday 04:00 UTC. Fetches new filings, commits to **`automated/filings-fetch` branch** (NOT master). Opens GitHub Issues for unidentified filers. To merge: review the branch's diff, then merge into master.
+**`.github/workflows/filings-fetch.yml`** — daily Mon–Fri 08:30 UTC + Saturday 04:00 UTC. Fetches new filings, commits to **`automated/filings-fetch` branch** (NOT master). Opens GitHub Issues for unidentified filers. To merge: review the branch's diff, then merge into master. Runs without LLM keys, so a new security the issuer lookup and yfinance cannot classify is saved with an empty Industry.
 
 **`.github/workflows/deploy-pages.yml`** — Triggers on push to `master` when `app/frontend/**` or `database/**` change. Builds `--mode gh-pages`, deploys via `actions/deploy-pages@v4`. Requires Settings > Pages > Source = "GitHub Actions".
 

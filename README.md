@@ -362,13 +362,11 @@ The quality of the output analysis is directly tied to the quality of the input 
 - _Abigail Johnson_'s [FMR](https://www.fidelity.com/)
 - _Cathie Wood_'s [ARK Invest](https://www.ark-invest.com/)
 - _Ben Horowitz_'s [a16z](https://a16z.com/)
-- _David Tepper_'s [Appaloosa](https://www.appaloosawm.com/)
 - _Jan Koum_'s [Newlands](https://www.thenewlands.com/)
 - _Bill Gates_'s [Gates Foundation Trust](https://www.gatesfoundation.org/about/financials/foundation-trust)
 - _Paul Tudor Jones_'s [Tudor Investment Corporation](https://www.tudorfunds.com/)
 - _Brad Gerstner_'s [Altimeter Capital Management](https://www.altimeter.com/)
 - _Robert Pitts_'s [Steadfast Capital Management](https://www.steadfast.com/)
-- _John Paulson_'s [Paulson & Co.](https://paulsonco.com/)
 - _David Lane_'s [Geode Capital Management](https://www.geodecapital.com/)
 - _Chris Hohn_'s [The Children's Investment](https://ciff.org/)
 - _Jeremy Grantham_'s [GMO](https://www.gmo.com/)
@@ -391,7 +389,6 @@ The quality of the output analysis is directly tied to the quality of the input 
 - _Joel Greenblatt_'s [Gotham Funds](https://www.gothamfunds.com/)
 - _Chase Coleman_'s [Tiger Global](https://www.tigerglobal.com/)
 - _David Booth_'s [Dimensional Fund Advisors](https://www.dimensional.com/)
-- _Philippe Laffont_'s [Coatue](https://www.coatue.com/)
 - _Ali Dibadj_'s [Janus Henderson Investors](https://www.janushenderson.com/)
 - _Robert Citrone_'s [Discovery Capital Management](https://discoverycapitalmanagement.com/)
 - _Boaz Weinstein_'s [Saba Capital](https://www.sabacapital.com/)
@@ -409,7 +406,10 @@ The quality of the output analysis is directly tied to the quality of the input 
 - _Paul Thwaite_'s [NatWest Group](https://www.natwestgroup.com/)
 - _Tianqiao Chen_'s [Shanda](https://www.shanda.com/)
 - _Bill Nygren_'s [Harris Associates](https://harrisassoc.com/)
-- and many more... (see [`C:\Users\dokso\Desktop\hedge-fund-tracker\database/excluded_hedge_funds.csv`](/C:\Users\dokso\Desktop\hedge-fund-tracker\database/excluded_hedge_funds.csv) for the full list)
+- _Jorge Paulo Lehman_'s [3G Capital](https://www.3g-capital.com/)
+- _Dominique Ceolin_'s [ABC Arbitrage](https://www.abc-arbitrage.com/)
+- _David Abrams_'s [Abrams Capital Management](https://www.abramscapital.com/)
+- and many more... (see [`database/excluded_hedge_funds.csv`](/database/excluded_hedge_funds.csv) for the full list)
 <!-- EXCLUDED_FUNDS_LIST_END -->
 
 > **💡 Note**: For convenience, key information for these funds, including their CIKs, is maintained in the `database/excluded_hedge_funds.csv` file.
@@ -558,7 +558,7 @@ This repository includes a [GitHub Actions](https://github.com/features/actions)
 
 ### How It Works
 
-- **Scheduled Runs**: The workflow runs automatically to check for **new 13F, 13D/G, and Form 4 filings** from the funds you are tracking (`hedge_funds.csv`). It runs four times a day from Monday to Friday (at 01:30, 13:30, 17:30, and 21:30 UTC) and once on Saturday (at 04:00 UTC).
+- **Scheduled Runs**: The workflow runs automatically to check for **new 13F, 13D/G, and Form 4 filings** from the funds you are tracking (`hedge_funds.csv`). It runs once a day from Monday to Friday (at 08:30 UTC) and once on Saturday (at 04:00 UTC).
 - **Safe Branching Strategy**: Instead of committing directly to your main branch, the workflow pushes all new data to a dedicated branch named `automated/filings-fetch`.
 - **GitHub Pages Deploy**: A separate workflow (`.github/workflows/deploy-pages.yml`) automatically rebuilds and deploys the static frontend to GitHub Pages whenever frontend or database files change on `master`.
 - **User-Controlled Merging**: This approach gives you full control. You can review the changes committed by the bot and then merge them into your main branch whenever you're ready. This prevents unexpected changes and allows you to manage updates at your own pace.

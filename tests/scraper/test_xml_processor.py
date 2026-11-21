@@ -263,6 +263,33 @@ class TestXmlProcessor(unittest.TestCase):
 
         self.assertTrue(xml_to_dataframe_13f(xml_content).empty)
 
+    def test_xml_to_dataframe_13f_option_named_only_in_title_of_class_is_dropped(self):
+        """
+        An option marked in titleOfClass with an empty putCall (Headwater's 2025Q3 QQQ put,
+        CUSIP 46090E953) is still an option, not shares; a common-stock class is kept.
+        """
+        xml_content = """
+        <informationtable>
+            <infotable>
+                <nameofissuer>INVESCO QQQ TR</nameofissuer>
+                <titleofclass>PUT</titleofclass>
+                <cusip>46090E953</cusip>
+                <value>1947000</value>
+                <shrsorprnamt><sshprnamt>3300</sshprnamt></shrsorprnamt>
+            </infotable>
+            <infotable>
+                <nameofissuer>CALLAWAY GOLF CO</nameofissuer>
+                <titleofclass>COM</titleofclass>
+                <cusip>131193104</cusip>
+                <value>1000000</value>
+                <shrsorprnamt><sshprnamt>100000</sshprnamt></shrsorprnamt>
+            </infotable>
+        </informationtable>
+        """
+
+        df = xml_to_dataframe_13f(xml_content)
+        self.assertEqual(list(df["CUSIP"]), ["131193104"])
+
 
 class TestXmlToDataframeSchedule(unittest.TestCase):
     SCHEDULE_XML = """

@@ -1,0 +1,10 @@
+CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
+90184D100,TWST,Twist Bioscience Corporation,828815,0,39.39M,0,NO CHANGE,33.1%
+88160R101,TSLA,"Tesla, Inc.",86250,0,32.06M,0,NO CHANGE,27%
+68989M202,OUST,"Ouster, Inc.",845316,0,15.53M,0,NO CHANGE,13.1%
+558868105,MDGL,"Madrigal Pharmaceuticals, Inc.",21000,0,10.99M,0,NO CHANGE,9.3%
+448579102,H,Hyatt Hotels Corporation,70000,0,10.07M,0,NO CHANGE,8.5%
+88025U109,TXG,"10x Genomics, Inc.",210862,0,4.48M,0,NO CHANGE,3.8%
+65443P102,MASS,908 Devices Inc.,568981,0,3.48M,0,NO CHANGE,2.9%
+93403J106,WRBY,Warby Parker Inc.,134473,0,2.83M,0,NO CHANGE,2.4%
+Total,,,,,118.83M,0,+0%,100%

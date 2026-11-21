@@ -3,7 +3,7 @@ name: Scheduled Filings Fetch
 on:
   workflow_dispatch: # Allows manual triggering
   schedule:
-    - cron: "30 1,13,17,21 * * 1-5" # Four times a day (Mon-Fri)
+    - cron: "30 8 * * 1-5" # Once a day (Mon-Fri, at 8:30 UTC)
     - cron: "0 4 * * 6" # Once on Saturday (at 4:00 UTC)
 
 jobs:
@@ -66,8 +66,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
       # Gate the commit on the test suite: the data-integrity tests
       # (test_csv_integrity, test_stocks) read the real database/, so they

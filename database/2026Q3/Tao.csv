@@ -1,0 +1,9 @@
+CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
+03770Y107,APMD,"Apnimed, Inc.",2178138,2178138,47.72M,47.72M,NEW,4.4%
+88160R101,TSLA,"Tesla, Inc.",86250,0,30.6M,0,NO CHANGE,2.8%
+448579102,H,Hyatt Hotels Corporation,70000,0,11.1M,0,NO CHANGE,1%
+558868105,MDGL,"Madrigal Pharmaceuticals, Inc.",21000,0,10.58M,0,NO CHANGE,0.98%
+88025U109,TXG,"10x Genomics, Inc.",0,-283469,0,-10.87M,CLOSE,0%
+90184D100,TWST,Twist Bioscience Corporation,189815,-289000,36.68M,-55.85M,-60.4%,3.4%
+84615Q103,SPCX,Space Exploration Technologies Corp.,6280163,-4364177,947.43M,-658.38M,-41%,87.4%
+Total,,,,,1.08B,-677.37M,-34.9%,100%

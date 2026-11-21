@@ -1,0 +1,10 @@
+CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
+55173P109,LYNX,"Lyntris, Inc.",885888,885888,10.93M,10.93M,NEW,56%
+433313103,HNGE,"Hinge Health, Inc.",79492,79492,7.73M,7.73M,NEW,39.6%
+64119N608,NTSK,Netskope Inc - Class A,33213,33213,579.24K,579.24K,NEW,3%
+91332U101,U,Unity Software Inc.,6636,6636,271.61K,271.61K,NEW,1.4%
+09352U108,BLND,"Blend Labs, Inc.",0,-214209,0,-366.3K,CLOSE,0%
+81764X103,TTAN,"ServiceTitan, Inc.",0,-38094,0,-2.69M,CLOSE,0%
+770700102,HOOD,"Robinhood Markets, Inc.",0,-80373,0,-8.06M,CLOSE,0%
+781154109,RBRK,"Rubrik, Inc.",0,-159775,0,-12.83M,CLOSE,0%
+Total,,,,,19.51M,-4.43M,-18.5%,100%

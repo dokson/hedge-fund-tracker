@@ -1,0 +1,11 @@
+CUSIP,Ticker,Company,Shares,Delta_Shares,Value,Delta_Value,Delta,Portfolio%
+84615Q103,SPCX,Space Exploration Technologies Corp.,10644340,10644340,1.82B,1.82B,NEW,93.7%
+88025U109,TXG,"10x Genomics, Inc.",283469,72607,10.87M,2.78M,+34.4%,0.56%
+88160R101,TSLA,"Tesla, Inc.",86250,0,36.28M,0,NO CHANGE,1.9%
+448579102,H,Hyatt Hotels Corporation,70000,0,13.57M,0,NO CHANGE,0.7%
+558868105,MDGL,"Madrigal Pharmaceuticals, Inc.",21000,0,11.28M,0,NO CHANGE,0.58%
+93403J106,WRBY,Warby Parker Inc.,0,-134473,0,-2.83M,CLOSE,0%
+65443P102,MASS,908 Devices Inc.,0,-568981,0,-3.48M,CLOSE,0%
+68989M202,OUST,"Ouster, Inc.",0,-845316,0,-15.53M,CLOSE,0%
+90184D100,TWST,Twist Bioscience Corporation,478815,-350000,49.26M,-36.01M,-42.2%,2.5%
+Total,,,,,1.94B,1.76B,+1484.2%,100%
