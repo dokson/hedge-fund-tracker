@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "41f9faa89418c68fc15f1fe2a5160e2b44b30edc73f981e040e889a438168ec2"
+            "sha256": "2e9bb19deb04a6eca61b3c57ef94ea0ab54db1141b8d8e543009db1723f8b1e1"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -273,11 +273,11 @@
         },
         "certifi": {
             "hashes": [
-                "sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd",
-                "sha256:e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1"
+                "sha256:7422df25243767b9877031a2248cb14d09ddac9beee846f4cef3d5c9191d488f",
+                "sha256:af1cb240a8133f105aa52684a3a3258339d7f2fd0bd4e2812698ff5cf5588c4e"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==2026.10.23"
+            "version": "==2026.11.20"
         },
         "cffi": {
             "hashes": [
@@ -709,12 +709,12 @@
         },
         "fastapi": {
             "hashes": [
-                "sha256:825a8fdd18d7bfcb1b86735e9805c59b7400d55c4060d3df5331b62ae452f004",
-                "sha256:e605c4c9b94be78b43aa8239a62ccf7b6684346cdc9e053633feab0ab21b87c7"
+                "sha256:896f48462042bb4f162147eb8fac7e858753dc1f486765709baf105d70e4fc5b",
+                "sha256:dd94d4128319c1e1d50535ab023ab698f850a4d2822f0e181747b46f4ff3c0ab"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.11'",
-            "version": "==0.163.2"
+            "version": "==0.165.0"
         },
         "fastapi-users": {
             "extras": [
@@ -741,20 +741,20 @@
                 "requests"
             ],
             "hashes": [
-                "sha256:046c61a72d3a847d6df6417a7f0d5cf054e3b82bbcb54fb1e69d47880964049c",
-                "sha256:e9bcdb0679b6a4369ac327c5c59f06d92f7b4cd2624e7100294c14632f55a36b"
+                "sha256:3c977ca57114a302c2589f3a24be7ca1b6862d30da7619f4230a78809f58a0e9",
+                "sha256:f69f387dba9abe536fec87483a749485f2ef0c81bfa79f609d9873e57054a1a5"
             ],
             "markers": "python_version >= '3.10'",
-            "version": "==2.62.2"
+            "version": "==2.63.1"
         },
         "google-genai": {
             "hashes": [
-                "sha256:1da2cb06b4560e2046d04c0a5c91b3ba0a0b9155e98158b584f3583ad000090d",
-                "sha256:498ff46909743b7c84929a77263a8b5e3cfb030fcf0505eab32aae8d424e2e77"
+                "sha256:2a8320df8a27d4483a95a65211bc787a78a7ba3c8512d0e9e3daabf9d8dda34e",
+                "sha256:3bf424714df775f38aa8adf6c002d660276a147bec288c55db41cccae6ba2eef"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.11'",
-            "version": "==3.4.0"
+            "version": "==3.5.0"
         },
         "greenlet": {
             "hashes": [
@@ -1569,12 +1569,12 @@
         },
         "openai": {
             "hashes": [
-                "sha256:7fc5e457bcf191f93d54c71fa0977b494878aa19f5954735272e0bcba5f9eff3",
-                "sha256:ade02e38795eec9a8aae5336d38bce30a68aea5095a4d92b7c285ed0ceb1d4c6"
+                "sha256:9136b1a760401aa150d084b0a673a4eca5b434917f3afe0378321cf544d5bdc2",
+                "sha256:db5a9ae65d21e5a51ef7fa395e5418942b04120cc73f2ab25bd2fc22db101ecd"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==3.53.0"
+            "version": "==3.55.1"
         },
         "opentelemetry-api": {
             "hashes": [
@@ -2963,12 +2963,12 @@
         },
         "virtualenv": {
             "hashes": [
-                "sha256:cfa97e12996373ea030ccbae8eda23cae9cfdbe74aa7b627621b6a0bd03cd7d4",
-                "sha256:e4cb274633d6f3ddb19f535a3be7539ce8fe34fc7aa2b0c417ff6e96c3cf67dc"
+                "sha256:adc6799981f513ce852aea17ea592e0d342ce48e87f5d17a3d997966df582a67",
+                "sha256:c0fbae7de061402e31897d96cfbe7dc35ce93cd464fe05f9bdbecf61313447bf"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==21.15.8"
+            "version": "==21.15.9"
         }
     }
 }
