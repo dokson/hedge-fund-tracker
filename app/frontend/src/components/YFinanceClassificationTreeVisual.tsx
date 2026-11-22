@@ -6,6 +6,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { getSectorHierarchy } from "@/lib/dataService";
 import { matchesQuery } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { SEARCH_INPUT } from "@/lib/forms";
 import { Panel } from "@/components/ui/Panel";
 import { getSectorStyle } from "@/lib/sectorStyle";
 import { getIndustryIcon } from "@/lib/industryIcon";
@@ -64,6 +65,7 @@ export default function YFinanceClassificationTreeVisual({ onSelectIndustry }: P
             aria-hidden="true"
           />
           <Input
+            {...SEARCH_INPUT}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search sector or industry…"

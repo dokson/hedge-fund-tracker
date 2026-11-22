@@ -1,6 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { configure, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+// The panel lazy-loads its chart module (recharts). On the first run after a change Vite
+// transforms it from a cold cache inside a full parallel run, which has taken over 4s, so
+// every query in this file waits up to 10s and each test gets 20s.
+configure({ asyncUtilTimeout: 10_000 });
+vi.setConfig({ testTimeout: 20_000 });
 
 import { parseFundPerformance, type FundPerformance } from "@/lib/dataService";
 

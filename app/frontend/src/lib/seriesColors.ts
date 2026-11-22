@@ -1,3 +1,5 @@
+import { prefersReducedMotion } from "@/lib/motion";
+
 /**
  * Chart colour tokens. Every value resolves through the theme's HSL triples,
  * so a chart re-themes with the page and never carries a hue of its own.
@@ -40,7 +42,14 @@ export const SERIES_COLORS: Record<string, string> = {
   increasing: POSITIVE,
   decreasing: NEGATIVE,
   SPY: BENCHMARK,
-  QQQ: BENCHMARK,
+  // The second benchmark needs its own hue: two greys told apart only by dash read as one line.
+  QQQ: "hsl(var(--chart-3))",
+};
+
+/** Each benchmark's dash, so the two stay apart even without colour (print, colour blindness). */
+export const BENCHMARK_DASH: Record<string, string> = {
+  SPY: "4 4",
+  QQQ: "8 3 2 3",
 };
 
 /** Deterministic palette entry for an arbitrary category key (e.g. a sector). */
@@ -56,6 +65,5 @@ export function seriesColor(id: string): string {
 
 /** Recharts `isAnimationActive`: off when the OS asks for reduced motion. */
 export function chartAnimationActive(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
-  return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return !prefersReducedMotion();
 }

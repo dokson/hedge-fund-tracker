@@ -5,7 +5,7 @@ const toastMock = vi.hoisted(() => ({
   success: vi.fn<(msg: string) => void>(),
   error: vi.fn<(msg: string) => void>(),
 }));
-vi.mock("sonner", () => ({ toast: toastMock }));
+vi.mock("@/components/ui/toast", () => ({ toast: toastMock }));
 
 import type { HedgeFund } from "@/lib/dataService";
 import { useInlineFundEdit } from "./useInlineFundEdit";

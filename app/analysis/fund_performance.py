@@ -39,6 +39,8 @@ CSV_FIELDS = [
     "fund_cum_return",
     "benchmark_cum_return",
     "unpriced_weight",
+    "nasdaq_return",
+    "nasdaq_cum_return",
 ]
 
 HoldingsFn = Callable[[str, str], pd.DataFrame]
@@ -190,19 +192,23 @@ def build_fund_performance(
     closed_return_fn: MarketReturnFn,
     benchmark_return_fn: BenchmarkReturnFn,
     universe_prices_fn: UniversePricesFn | None = None,
+    nasdaq_return_fn: BenchmarkReturnFn | None = None,
 ) -> list[dict[str, object]]:
     """
     One row per fund and quarter for which the fund filed both that quarter and
     the one before, with quarterly and cumulative returns for the fund and the
-    benchmark over the same windows.
+    S&P 500 over the same windows. With ``nasdaq_return_fn``, the Nasdaq-100 is
+    added over those windows as a second reference; it never anchors an excess.
     """
     ordered = sorted(set(quarters))
     benchmark: dict[str, float] = {}
+    nasdaq: dict[str, float | None] = {}
     universe: dict[str, dict[str, float]] = {}
     rows: list[dict[str, object]] = []
     for fund in funds:
         fund_cum: float | None = 0.0
         bench_cum: float | None = 0.0
+        nasdaq_cum: float | None = 0.0
         for quarter in ordered:
             prev_quarter = get_previous_quarter(quarter)
             if prev_quarter not in ordered:
@@ -237,6 +243,12 @@ def build_fund_performance(
             bench_return = benchmark[quarter]
             fund_cum = _compound(fund_cum, fund_return)
             bench_cum = _compound(bench_cum, bench_return)
+            nasdaq_return: float | None = None
+            if nasdaq_return_fn is not None:
+                if quarter not in nasdaq:
+                    nasdaq[quarter] = nasdaq_return_fn(start, end)
+                nasdaq_return = nasdaq[quarter]
+                nasdaq_cum = _compound(nasdaq_cum, nasdaq_return)
             rows.append(
                 {
                     "fund": fund,
@@ -246,6 +258,8 @@ def build_fund_performance(
                     "fund_cum_return": fund_cum,
                     "benchmark_cum_return": bench_cum,
                     "unpriced_weight": unpriced_weight(frame),
+                    "nasdaq_return": nasdaq_return,
+                    "nasdaq_cum_return": nasdaq_cum if nasdaq_return_fn is not None else None,
                 }
             )
     return rows
@@ -386,6 +400,7 @@ def rebuild_fund_performance(path: Path | str | None = None) -> str:
         factors_fn=registry_split_factors(),
         closed_return_fn=market_return,
         benchmark_return_fn=lambda start, end: market_return("SPY", start, end),
+        nasdaq_return_fn=lambda start, end: market_return("QQQ", start, end),
         universe_prices_fn=tracked_universe_prices(holdings_for),
     )
     target = Path(path) if path is not None else _db._safe_db_join(FUND_PERFORMANCE_FILE)

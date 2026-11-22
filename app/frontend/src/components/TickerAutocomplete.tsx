@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo, useId } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getStocks } from "@/lib/dataService";
 import { Input } from "@/components/ui/input";
+import { IDENTIFIER_INPUT } from "@/lib/forms";
 
 interface TickerAutocompleteProps {
   value: string;
@@ -111,6 +112,7 @@ export default function TickerAutocomplete({
     <div className="relative">
       <Input
         id={id}
+        {...IDENTIFIER_INPUT}
         role="combobox"
         aria-expanded={expanded}
         aria-controls={expanded ? listboxId : undefined}
@@ -140,7 +142,7 @@ export default function TickerAutocomplete({
         }`}
       />
       {showError && (
-        <p id={errorId} role="alert" className="text-[11px] text-destructive mt-0.5 absolute">
+        <p id={errorId} role="alert" className="text-[11px] text-destructive-text mt-0.5 absolute">
           Ticker not found
         </p>
       )}

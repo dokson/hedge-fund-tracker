@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SlidersHorizontal } from "lucide-react";
 import {
@@ -12,7 +12,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { LATEST_PAGE } from "@/lib/pageMeta";
 import { useSortState } from "@/hooks/useSortState";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
-import { SortArrow } from "@/components/ui/SortArrow";
+import { CardSortBar } from "@/components/ui/CardSortBar";
 import { canonicalUrl } from "@/lib/seo";
 import { TickerLink, FundCell, CompanyLink } from "@/components/EntityLinks";
 import { Delta } from "@/components/Delta";
@@ -28,7 +28,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { QueryState } from "@/components/ui/QueryState";
 import { ResponsiveTable } from "@/components/ui/ResponsiveTable";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { FaqLink } from "@/components/ui/TextLink";
+import { FaqLink, MetaLine, MetaSep } from "@/components/ui/TextLink";
 import { Stat, StatGrid } from "@/components/ui/Stat";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StarredFilterToggle } from "@/components/StarredFilterToggle";
@@ -36,17 +36,9 @@ import { isoDaysBefore, toInitCap, matchesQuery } from "@/lib/utils";
 import { useStarred } from "@/hooks/useStarred";
 import { useEnrichedNQFilings } from "@/hooks/useEnrichedNQFilings";
 import { useResearchState } from "@/hooks/useResearchState";
-
-function IndustryLabel({ sector, industry }: { sector?: string; industry?: string }) {
-  return (
-    <span
-      className="block truncate text-xs text-muted-foreground md:line-clamp-2 md:whitespace-normal md:leading-4"
-      title={industry ?? sector}
-    >
-      {industry ?? sector ?? "—"}
-    </span>
-  );
-}
+import { IndustryLabel } from "@/components/IndustryLabel";
+import { announce } from "@/lib/announce";
+import { ChangeChip } from "@/components/ui/ChangeChip";
 
 const FILING_TYPES = ["NEW", "INCREASE", "DECREASE", "CLOSED"] as const;
 type FilingType = (typeof FILING_TYPES)[number];
@@ -55,7 +47,7 @@ const STAT_META: Record<FilingType, { label: string; text: string }> = {
   NEW: { label: "New", text: "text-positive" },
   INCREASE: { label: "Increased", text: "text-positive" },
   DECREASE: { label: "Decreased", text: "text-negative" },
-  CLOSED: { label: "Closed", text: "text-closed" },
+  CLOSED: { label: "Closed", text: "text-negative" },
 };
 
 function formatDelta(f: EnrichedNQFiling): { text: string; className: string; sortValue: number } {
@@ -102,14 +94,12 @@ function FilingCard({
       <div className="flex items-start justify-between gap-3">
         <TickerLink ticker={f.ticker} />
         <span className="shrink-0 font-mono">
-          {f.deltaType === "NEW" ? (
-            <span className="badge-new">NEW</span>
-          ) : f.deltaType === "CLOSED" ? (
-            <span className="badge-closed">CLOSE</span>
+          {f.deltaType === "NEW" || f.deltaType === "CLOSED" ? (
+            <ChangeChip change={f.deltaType} />
           ) : f.deltaPct !== null ? (
             <Delta value={f.deltaPct} mode="percent" />
           ) : (
-            <span className="badge-nochange">NO CHANGE</span>
+            <ChangeChip change="NO CHANGE" />
           )}
         </span>
       </div>
@@ -136,7 +126,7 @@ function FilingCard({
         <span>
           <span className="k">Est. value:</span> {f.value}
         </span>
-        <span aria-hidden="true">·</span>
+        <MetaSep />
         <span>
           <span className="k">Port. %:</span>{" "}
           {f.quarterPortfolioPct !== null
@@ -145,7 +135,7 @@ function FilingCard({
               ? `~${f.estimatedPortfolioPct.toFixed(2)}%`
               : "—"}
         </span>
-        <span aria-hidden="true">·</span>
+        <MetaSep />
         <span>
           <span className="k">Reference price:</span>{" "}
           {f.avgPrice === "N/A" ? "N/A" : `$${f.avgPrice}`}
@@ -220,7 +210,7 @@ export default function Dashboard() {
   // Period + fund scope, shared by the counters and the table so they never
   // disagree. The type toggles, starred filters and search apply after.
   const scoped = useMemo(() => {
-    const cutoffStr = isoDaysBefore(today, parseInt(daysBack));
+    const cutoffStr = daysBack === "30" ? isoDaysBefore(today, 30) : "";
     return filings.filter(
       (f) => f.filingDate >= cutoffStr && (fundFilter === "all" || f.fund === fundFilter),
     );
@@ -271,22 +261,51 @@ export default function Dashboard() {
     return c;
   }, [scoped]);
 
-  const totalCount = FILING_TYPES.reduce((s, t) => s + counts[t], 0);
+  const totalCount = scoped.length;
   const periodLabel = daysBack === "30" ? "published in the last 30 days" : "all publication dates";
+  const filterKey = JSON.stringify([
+    search,
+    fundFilter,
+    daysBack,
+    [...typeFilters].sort(),
+    filterStarredFunds,
+    filterStarredStocks,
+  ]);
+  const previousFilterKey = useRef(filterKey);
+  useEffect(() => {
+    if (previousFilterKey.current === filterKey) return;
+    const timer = window.setTimeout(() => {
+      announce(`Showing ${filtered.length} filings`);
+      previousFilterKey.current = filterKey;
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [filterKey, filtered.length]);
 
   return (
     <div className="space-y-4 max-w-screen-2xl">
-      <PageHeader
-        title="Latest Filings"
-        description={
-          <>
-            Latest saved 13D/G and Form 4 disclosure per position, by publication date. Changes are
-            measured against each fund’s latest 13F.{" "}
-            <FaqLink item="how-to-read-filing-metrics">How to read these figures</FaqLink>
-          </>
-        }
-      />
+      <PageHeader title="Latest Filings" />
+      {/* One paragraph: a separator before the link would start a wrapped line on a phone. */}
+      <MetaLine className="block">
+        Latest saved 13D/G and Form 4 disclosures per position, by publication date. Changes are
+        measured against each fund’s latest 13F.{" "}
+        <FaqLink item="how-to-read-filing-metrics">How to read these figures</FaqLink>
+      </MetaLine>
 
+      {isLoading && (
+        <div aria-hidden="true">
+          <p className="status-line mb-1">Positions {periodLabel}: …</p>
+          <StatGrid className="grid-cols-2 sm:grid-cols-4">
+            {FILING_TYPES.map((type) => (
+              <Stat
+                key={type}
+                label={STAT_META[type].label}
+                size="lg"
+                value={<span className="text-2xl sm:text-3xl">…</span>}
+              />
+            ))}
+          </StatGrid>
+        </div>
+      )}
       {!isLoading && filings.length > 0 && (
         <div>
           <p className="status-line mb-1">
@@ -294,13 +313,13 @@ export default function Dashboard() {
             {fundFilter !== "all" && (
               <>
                 {" "}
-                <span aria-hidden="true">·</span> <span className="k">Fund:</span>{" "}
+                <MetaSep className="mx-1.5 align-middle" /> <span className="k">Fund:</span>{" "}
                 {fundFilter.replace(/_/g, " ")}
               </>
             )}
           </p>
           <div role="group" aria-label="Filter by position change">
-            <StatGrid className="grid-cols-4">
+            <StatGrid toggles className="grid-cols-2 sm:grid-cols-4">
               {FILING_TYPES.map((type) => {
                 const isActive = typeFilters.has(type);
                 const { label, text } = STAT_META[type];
@@ -317,6 +336,7 @@ export default function Dashboard() {
                     key={type}
                     onClick={toggle}
                     active={isActive}
+                    tone={type === "NEW" || type === "INCREASE" ? "positive" : "negative"}
                     label={label}
                     size="lg"
                     valueClassName={count > 0 ? text : "text-foreground"}
@@ -359,17 +379,17 @@ export default function Dashboard() {
           aria-expanded={filtersOpen}
           aria-controls="filing-filters"
           onClick={() => setFiltersOpen((open) => !open)}
-          className="md:hidden inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs hover:bg-muted"
+          className="md:hidden inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-          Filters{fundFilter !== "all" ? " · 1" : ""}
+          Filters{fundFilter !== "all" ? " (1)" : ""}
         </button>
         <div
           id="filing-filters"
           className={`${filtersOpen ? "flex" : "hidden md:flex"} w-full flex-wrap items-center gap-2 md:w-auto`}
         >
           <Select value={fundFilter} onValueChange={setFundFilter}>
-            <SelectTrigger aria-label="Fund" className="w-full sm:w-48 bg-card border-border">
+            <SelectTrigger aria-label="Fund" className="w-full sm:w-48 bg-card">
               <SelectValue placeholder="All Funds" />
             </SelectTrigger>
             <SelectContent>
@@ -381,27 +401,15 @@ export default function Dashboard() {
               ))}
             </SelectContent>
           </Select>
-          <div className="md:hidden flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Sort:</span>
-            <SegmentedControl
-              size="sm"
-              aria-label="Sort filings"
-              value={sortField}
-              onValueChange={toggleSort}
-              options={SORT_OPTIONS.map((option) => ({
-                value: option.value,
-                title: option.label,
-                label: (
-                  <span className="inline-flex items-center">
-                    {option.label}
-                    <SortArrow active={sortField === option.value} direction={sortDir} />
-                  </span>
-                ),
-              }))}
-            />
-          </div>
         </div>
       </div>
+      <CardSortBar
+        className="md:hidden"
+        options={SORT_OPTIONS.map(({ value, label }) => ({ key: value, label }))}
+        sortKey={sortField}
+        sortDir={sortDir}
+        onToggle={toggleSort}
+      />
 
       {isError ? (
         <QueryState isError error={error} title="Could not load filings" />
@@ -539,14 +547,12 @@ export default function Dashboard() {
                         </span>
                       </td>
                       <td className="px-2 py-3 text-right font-mono whitespace-nowrap">
-                        {f.deltaType === "NEW" ? (
-                          <span className="badge-new">NEW</span>
-                        ) : f.deltaType === "CLOSED" ? (
-                          <span className="badge-closed">CLOSE</span>
+                        {f.deltaType === "NEW" || f.deltaType === "CLOSED" ? (
+                          <ChangeChip change={f.deltaType} />
                         ) : f.deltaPct !== null ? (
                           <Delta value={f.deltaPct} mode="percent" />
                         ) : (
-                          <span className="badge-nochange">NO CHANGE</span>
+                          <ChangeChip change="NO CHANGE" />
                         )}
                       </td>
                       <td

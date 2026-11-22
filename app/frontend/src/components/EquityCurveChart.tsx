@@ -13,9 +13,11 @@ import {
 } from "recharts";
 import { useElementSize } from "@/hooks/useElementSize";
 import { buildChartData, END_LABEL_INSET, PLOT_INSET, spreadLabels } from "@/lib/equityCurve";
-import { BENCHMARK, GRID, NEUTRAL, seriesColor } from "@/lib/seriesColors";
+import { BENCHMARK_DASH, GRID, NEUTRAL, seriesColor } from "@/lib/seriesColors";
 import { cn } from "@/lib/utils";
+import { toneClass } from "@/lib/tone";
 import type { PerfSeries } from "@/lib/dataService";
+import { SeriesSwatch } from "@/components/ui/SeriesSwatch";
 
 const AXIS_TICK = { fill: NEUTRAL, fontSize: 11 };
 /** Below this chart width the labels would squeeze the plot; the legend carries the names. */
@@ -40,11 +42,7 @@ function renderTooltip({ active, label, payload }: TooltipContentProps) {
         {sorted.map((p) => (
           <div key={p.name} className="flex items-center justify-between gap-5 tabular-nums">
             <dt className="inline-flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="h-2 w-2 shrink-0"
-                style={{ backgroundColor: p.color }}
-              />
+              <SeriesSwatch color={p.color} />
               {p.name}
             </dt>
             <dd className="font-medium">{fmtTooltipPct(p.value)}</dd>
@@ -84,12 +82,12 @@ function EndLabels({ series, last }: { series: PerfSeries[]; last: Map<string, n
           y={ys[i]}
           dominantBaseline="middle"
           fontSize={11}
-          fill={it.s.type === "benchmark" ? NEUTRAL : seriesColor(it.s.id)}
+          fill="hsl(var(--foreground))"
         >
+          {/* The value in the text colour (an 11px figure in a series hue fell to 3.6:1); the
+              series is named by the label beside it and drawn by the line it ends. */}
           <tspan fontWeight={600}>{fmtTooltipPct(it.value)}</tspan>
-          <tspan dx={5} fill="hsl(var(--foreground))">
-            {it.s.label}
-          </tspan>
+          <tspan dx={5}>{it.s.label}</tspan>
         </text>
       ))}
     </g>
@@ -144,59 +142,120 @@ export default function EquityCurveChart({
     .join(", ")}`;
 
   return (
-    /* Fills a flex parent with a definite height; the min-h is the floor when
-       the parent's height is content-driven (mobile stack). */
-    <div ref={containerRef} className={cn("h-full min-h-[340px] w-full", className)}>
-      {!size || data.length === 0 ? null : (
-        <ComposedChart
-          width={size.width}
-          height={size.height}
-          aria-label={chartLabel}
-          data={data}
-          margin={{
-            top: 8,
-            right: showEndLabels ? END_LABEL_INSET : PLOT_INSET.right,
-            left: 0,
-            bottom: 0,
-          }}
-        >
-          <CartesianGrid stroke={GRID} strokeWidth={1} vertical={false} />
-          <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} />
-          <YAxis
-            tickFormatter={fmtPct}
-            tick={AXIS_TICK}
-            axisLine={false}
-            tickLine={false}
-            width={PLOT_INSET.left}
-          />
-          <ReferenceLine y={0} stroke={NEUTRAL} strokeOpacity={0.4} />
-          <Tooltip shared content={renderTooltip} />
-          {band && (
-            <Area
-              type="monotone"
-              dataKey="__band"
-              fill={band.color}
-              fillOpacity={0.16}
-              stroke="none"
-              tooltipType="none"
-              isAnimationActive={false}
+    <div className="flex min-h-full flex-col">
+      <div ref={containerRef} className={cn("h-full min-h-[340px] w-full flex-1", className)}>
+        {!size || data.length === 0 ? null : (
+          <ComposedChart
+            width={size.width}
+            height={size.height}
+            aria-label={chartLabel}
+            data={data}
+            margin={{
+              top: 8,
+              right: showEndLabels ? END_LABEL_INSET : PLOT_INSET.right,
+              left: 0,
+              bottom: 0,
+            }}
+          >
+            <CartesianGrid stroke={GRID} strokeWidth={1} vertical={false} />
+            <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} />
+            <YAxis
+              tickFormatter={fmtPct}
+              tick={AXIS_TICK}
+              axisLine={false}
+              tickLine={false}
+              width={PLOT_INSET.left}
             />
-          )}
-          {series.map((s) => (
-            <Line
-              key={s.id}
-              type="monotone"
-              dataKey={s.id}
-              name={s.label}
-              stroke={s.type === "benchmark" ? BENCHMARK : seriesColor(s.id)}
-              strokeWidth={s.type === "benchmark" ? 1.5 : 2.5}
-              strokeDasharray={s.type === "benchmark" ? "4 4" : undefined}
-              dot={false}
-              isAnimationActive={false}
-            />
-          ))}
-          {showEndLabels && <EndLabels series={series} last={lastValues} />}
-        </ComposedChart>
+            <ReferenceLine y={0} stroke={NEUTRAL} strokeOpacity={0.4} />
+            <Tooltip shared content={renderTooltip} />
+            {band && (
+              <Area
+                type="monotone"
+                dataKey="__band"
+                fill={band.color}
+                fillOpacity={0.16}
+                stroke="none"
+                tooltipType="none"
+                isAnimationActive={false}
+              />
+            )}
+            {series.map((s) => (
+              <Line
+                key={s.id}
+                type="monotone"
+                dataKey={s.id}
+                name={s.label}
+                stroke={seriesColor(s.id)}
+                strokeWidth={s.type === "benchmark" ? 1.5 : 2.5}
+                strokeDasharray={
+                  s.type === "benchmark" ? (BENCHMARK_DASH[s.id] ?? "4 4") : undefined
+                }
+                dot={false}
+                isAnimationActive={false}
+              />
+            ))}
+            {showEndLabels && <EndLabels series={series} last={lastValues} />}
+          </ComposedChart>
+        )}
+      </div>
+      {data.length > 0 && (
+        <details className="mt-2 text-sm">
+          <summary className="tap-target cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+            View cumulative return data
+          </summary>
+          <div
+            role="region"
+            aria-label="Cumulative return data"
+            tabIndex={0}
+            className="mt-2 overflow-x-auto rounded-md border border-border"
+          >
+            <table className="w-full text-sm">
+              <caption className="sr-only">Cumulative return by quarter for visible series</caption>
+              <thead>
+                <tr className="border-b border-border">
+                  <th
+                    scope="col"
+                    className="px-3 py-2 text-left text-xs font-normal text-muted-foreground"
+                  >
+                    Quarter
+                  </th>
+                  {series.map((s) => (
+                    <th
+                      key={s.id}
+                      scope="col"
+                      className="whitespace-nowrap px-3 py-2 text-right text-xs font-normal text-muted-foreground"
+                    >
+                      {s.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="tabular-nums">
+                {data.map((point, i) => (
+                  <tr key={`${point.label}-${i}`} className="data-table-row">
+                    <th scope="row" className="whitespace-nowrap px-3 py-1.5 text-left font-normal">
+                      {point.label}
+                    </th>
+                    {series.map((s) => {
+                      const value = point[s.id];
+                      return (
+                        <td
+                          key={s.id}
+                          className={cn(
+                            "whitespace-nowrap px-3 py-1.5 text-right",
+                            typeof value === "number" ? toneClass(value) : "text-muted-foreground",
+                          )}
+                        >
+                          {typeof value === "number" ? fmtTooltipPct(value) : "–"}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
       )}
     </div>
   );

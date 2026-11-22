@@ -7,6 +7,7 @@ import { LogoPlate } from "@/components/LogoPlate";
 import { StarButton } from "@/components/StarButton";
 import { useStarred } from "@/hooks/useStarred";
 import { stockPath, fundPath } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 
 /**
  * These are real `<Link>`s, not `role="link"` spans: an anchor with an href is
@@ -64,14 +65,16 @@ export function CompanyLink({
    */
   showStar?: boolean;
 }) {
+  // The link box (24px target) centres its text, so a name of any line height or line count
+  // sits level with the star beside it; truncation and clamping apply to the inner text.
   const link = (
     <Link
       to={stockPath(ticker)}
       title={title ?? company}
-      className={`company-link min-w-0 min-h-6 ${className}`}
+      className="inline-flex min-h-6 min-w-0 max-w-full items-center"
       onClick={(e) => e.stopPropagation()}
     >
-      {company}
+      <span className={cn("company-link min-w-0", className)}>{company}</span>
     </Link>
   );
   if (!showStar) return link;
@@ -88,7 +91,14 @@ export function CompanyLink({
 
 function InlineStockStar({ ticker }: { ticker: string }) {
   const { isStarred, toggle } = useStarred("stock");
-  return <StarButton active={isStarred(ticker)} onClick={() => toggle(ticker)} size={14} />;
+  return (
+    <StarButton
+      active={isStarred(ticker)}
+      subject={ticker}
+      onClick={() => toggle(ticker)}
+      size={14}
+    />
+  );
 }
 
 export function TickerLink({

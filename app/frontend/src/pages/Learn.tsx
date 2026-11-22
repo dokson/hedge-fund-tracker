@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import {
   Accordion,
@@ -8,7 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/SearchInput";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Panel } from "@/components/ui/Panel";
 import { MetaLine, MetaSep } from "@/components/ui/TextLink";
@@ -23,6 +23,8 @@ import {
 } from "@/lib/faqContent";
 import { ROUTES } from "@/lib/routes";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, canonicalUrl } from "@/lib/seo";
+import { prefersReducedMotion } from "@/lib/motion";
+import { announce } from "@/lib/announce";
 
 const LAST_UPDATED_LABEL = new Date(`${FAQ_LAST_UPDATED}T00:00:00Z`).toLocaleDateString("en-US", {
   year: "numeric",
@@ -57,9 +59,12 @@ function getScrollParent(node: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
-/** `matchMedia` is absent in some non-browser environments (jsdom), so guard it. */
-function prefersReducedMotion(): boolean {
-  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+function decodeHash(hash: string): string {
+  try {
+    return decodeURIComponent(hash.replace(/^#/, ""));
+  } catch {
+    return "";
+  }
 }
 
 /**
@@ -199,7 +204,7 @@ export default function Learn() {
   // from the router so it also reacts to hash changes while already on /learn.
   const { hash } = useLocation();
   const hashItemId = useMemo(() => {
-    const id = decodeURIComponent(hash.replace(/^#/, ""));
+    const id = decodeHash(hash);
     return ITEMS_BY_ID.has(id) ? id : null;
   }, [hash]);
 
@@ -215,6 +220,17 @@ export default function Learn() {
     () => sections.reduce((sum, s) => sum + s.items.length, 0),
     [sections],
   );
+  const matchMessage = !query
+    ? ""
+    : matchCount === 0
+      ? `No questions match “${query}”.`
+      : `${matchCount} of ${totalQuestions} questions match “${query}”.`;
+  // The count is plain text on the page; screen readers hear it once typing pauses.
+  useEffect(() => {
+    if (!matchMessage) return;
+    const timer = window.setTimeout(() => announce(matchMessage), 300);
+    return () => window.clearTimeout(timer);
+  }, [matchMessage]);
 
   // A search expands every match (the answers are what is being searched), no
   // search leaves only the hash-pinned question open. Derived during render
@@ -319,7 +335,7 @@ export default function Learn() {
     // Deep-link support: jump straight to the section named in the URL hash
     // on first load (the browser's native hash-scroll only targets the
     // window, so it never reaches content inside a nested scroll container).
-    const hashId = decodeURIComponent(hash.replace(/^#/, ""));
+    const hashId = decodeHash(hash);
     if (!hashItemId && hashId && sectionRefs.current.has(hashId)) {
       scrollToSection(hashId, "auto");
       setActiveSection(hashId);
@@ -332,11 +348,9 @@ export default function Learn() {
   }, [sections, hash, hashItemId]);
 
   return (
-    // pb-[70vh]: lets any section (including the last one) scroll all the way
-    // to the top of the scroll container — without slack after the last
-    // section, the browser clamps the scroll offset before it gets there, so
-    // the last entries could never become "active" via anchor nav or the rail.
-    <div ref={rootRef} className="space-y-8 max-w-screen-2xl pb-[70vh]">
+    // Only the desktop index rail needs enough slack to bring the last section
+    // to the top; on smaller screens it would leave a large blank page end.
+    <div ref={rootRef} className="space-y-8 max-w-screen-2xl xl:pb-[70vh]">
       <PageHeader title={FAQ_META.heading} description={FAQ_META.intro}>
         <MetaLine>
           Board info <MetaSep /> Reviewed {LAST_UPDATED_LABEL}
@@ -345,23 +359,18 @@ export default function Learn() {
       </PageHeader>
 
       <div className="relative max-w-md">
-        <Search
-          className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none"
-          aria-hidden="true"
-        />
-        <Input
-          placeholder={`Search ${totalQuestions} questions…`}
+        <SearchInput
+          label={`Search ${totalQuestions} questions`}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search questions"
-          className="pl-8 pr-9"
+          className="pr-9"
         />
         {query && (
           <button
             type="button"
             onClick={() => setQuery("")}
             aria-label="Clear search"
-            className="absolute right-0 top-0 h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute right-0 top-0 h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -376,21 +385,28 @@ export default function Learn() {
               const isFiltered = !sections.some((s) => s.id === section.id);
               return (
                 <li key={section.id}>
-                  <a
-                    href={`#${section.id}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      window.history.replaceState(null, "", `#${section.id}`);
-                      scrollToSection(section.id, "smooth");
-                      setActiveSection(section.id);
-                    }}
-                    aria-current={isActive ? "location" : undefined}
-                    data-active={isActive || undefined}
-                    className={`menu-line ${isFiltered ? "opacity-30 pointer-events-none" : ""}`}
-                  >
-                    <span className="truncate">{section.title}</span>
-                    <span className="tabular-nums">{section.items.length}</span>
-                  </a>
+                  {isFiltered ? (
+                    <span className="menu-line text-muted-foreground line-through">
+                      <span className="truncate">{section.title}</span>
+                      <span className="tabular-nums">{section.items.length}</span>
+                    </span>
+                  ) : (
+                    <a
+                      href={`#${section.id}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.history.replaceState(null, "", `#${section.id}`);
+                        scrollToSection(section.id, "smooth");
+                        setActiveSection(section.id);
+                      }}
+                      aria-current={isActive ? "location" : undefined}
+                      data-active={isActive || undefined}
+                      className="menu-line"
+                    >
+                      <span className="truncate">{section.title}</span>
+                      <span className="tabular-nums">{section.items.length}</span>
+                    </a>
+                  )}
                 </li>
               );
             })}
@@ -398,13 +414,7 @@ export default function Learn() {
         </nav>
 
         <div className="min-w-0 space-y-8">
-          {query && (
-            <p className="text-xs text-muted-foreground" role="status">
-              {matchCount === 0
-                ? `No questions match “${query}”.`
-                : `${matchCount} of ${totalQuestions} questions match “${query}”.`}
-            </p>
-          )}
+          {query && <p className="break-words text-xs text-muted-foreground">{matchMessage}</p>}
           {sections.map((section) => (
             <FaqSectionBlock
               key={section.id}

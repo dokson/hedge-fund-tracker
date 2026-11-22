@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import type { EnrichedNQFiling } from "@/lib/dataService";
 
 vi.mock("@/lib/dataService", async (importOriginal) => ({
@@ -25,7 +26,9 @@ describe("Landing latest-filings wire", () => {
     render(
       <QueryClientProvider client={client}>
         <MemoryRouter>
-          <Landing />
+          <TooltipProvider>
+            <Landing />
+          </TooltipProvider>
         </MemoryRouter>
       </QueryClientProvider>,
     );

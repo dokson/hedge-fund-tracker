@@ -133,8 +133,7 @@ describe("MobileNav", () => {
     openMenu();
     await screen.findByRole("dialog", { name: "Navigation" });
 
-    // Queried through the DOM: Radix has `aria-hidden` the page behind, so the
-    // button is (correctly) out of the accessibility tree while the menu is open.
+    // Query the underlying button directly because the modal makes the page inert.
     const away = document.querySelector<HTMLButtonElement>("#main button");
     fireEvent.click(away!);
 

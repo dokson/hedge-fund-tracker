@@ -21,7 +21,8 @@ export function SmartScoreBadge({
       title={title ?? "Smart Score: relative institutional screen (1–10), not a return forecast"}
     >
       {score.toFixed(1)}
-      {size === "default" && <span className="opacity-70">/10</span>}
+      {/* Opaque muted ink, not faded tone: at 70% the suffix fell to 3:1 on the chip. */}
+      {size === "default" && <span className="text-muted-foreground">/10</span>}
     </span>
   );
 }

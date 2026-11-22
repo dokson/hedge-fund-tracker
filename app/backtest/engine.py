@@ -36,7 +36,7 @@ class Benchmark:
     label: str
 
 
-BENCHMARKS: list[Benchmark] = [Benchmark("SPY", "S&P 500")]
+BENCHMARKS: list[Benchmark] = [Benchmark("SPY", "S&P 500"), Benchmark("QQQ", "Nasdaq-100")]
 
 
 def _prepare_quarter_pit(quarter: str) -> pd.DataFrame:

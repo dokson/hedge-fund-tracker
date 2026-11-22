@@ -5,7 +5,9 @@ const getModelsMock = vi.hoisted(() =>
   vi.fn<() => Promise<{ id: string; description: string }[]>>(),
 );
 vi.mock("@/lib/dataService", () => ({ getModels: getModelsMock }));
-vi.mock("sonner", () => ({ toast: { success: vi.fn<() => void>(), error: vi.fn<() => void>() } }));
+vi.mock("@/components/ui/toast", () => ({
+  toast: { success: vi.fn<() => void>(), error: vi.fn<() => void>() },
+}));
 
 import { useAIRun, type AIRunContext } from "./useAIRun";
 

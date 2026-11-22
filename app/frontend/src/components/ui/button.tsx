@@ -14,12 +14,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:brightness-110",
-        destructive: "bg-destructive text-destructive-foreground hover:brightness-110",
-        outline: "border border-border bg-card text-foreground shadow-sm hover:bg-muted",
-        secondary: "bg-muted text-foreground hover:brightness-110",
-        ghost: "text-muted-foreground hover:text-foreground hover:bg-muted",
-        link: "text-primary-text underline-offset-4 hover:underline",
+        // Hover and press deepen the fill instead of brightening it: a lighter fill under white
+        // text fell below 4.5:1 in dark.
+        default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:bg-primary/80",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/80",
+        outline: "border border-border bg-card text-foreground shadow-sm hover:bg-muted active:bg-secondary",
+        secondary: "bg-muted text-foreground hover:brightness-110 active:brightness-95",
+        ghost: "text-muted-foreground hover:text-foreground hover:bg-muted active:bg-secondary",
+        link: "text-primary-text underline-offset-4 hover:underline active:opacity-80",
       },
       size: {
         default: "h-9 px-3",

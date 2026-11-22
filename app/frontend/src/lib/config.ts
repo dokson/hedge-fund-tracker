@@ -23,3 +23,8 @@ export const DATABASE_URL = IS_GH_PAGES_MODE
 // The cloud_name is public (it ships in every image URL), so hardcoding it is fine.
 // To change provider, swap the URL builder in companyLogoUrl.ts — callers do not care.
 export const CLOUDINARY_CLOUD_NAME = "dskksi2dd";
+
+/** The project's source repository, linked from the top bar, the landing and the AI pages. */
+export const REPO_URL = "https://github.com/dokson/hedge-fund-tracker";
+/** Its public GitHub API record, read for the star count shown beside the link. */
+export const REPO_API_URL = "https://api.github.com/repos/dokson/hedge-fund-tracker";

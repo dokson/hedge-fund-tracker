@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useId, useRef } from "react";
 import { useSearchParams } from "react-router";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import {
@@ -46,6 +46,7 @@ import { BarChart3, LineChart, ArrowUpRight, Star } from "lucide-react";
 import { AnalysisProgress } from "@/components/ui/AnalysisProgress";
 import { QueryState } from "@/components/ui/QueryState";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
+import { CardSortBar } from "@/components/ui/CardSortBar";
 import { ResponsiveTable } from "@/components/ui/ResponsiveTable";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ControlBand, Field } from "@/components/ui/Field";
@@ -106,15 +107,22 @@ function AnalysisTable({
   deltaSign?: "positive" | "negative";
 }) {
   const researchKey = `question:${defaultSort}`;
+  // Every strategy's table stays mounted (findable tabs), so control ids must be unique per
+  // table or a label would point at another tab's field.
+  const ids = useId();
+  const fieldId = (name: string) => `${ids}-${name}`;
   const { sortKey, sortDir, toggleSort, setSort } = useSortState<SortKey>(
     defaultSort,
     defaultDir,
     researchKey,
   );
-  const [minHolders, setMinHolders] = useResearchState(
+  // Only the user's own pick is kept: the default follows the quarter's fund count, which
+  // may still be loading when this table mounts.
+  const [minHoldersPick, setMinHolders] = useResearchState<number | null>(
     `${researchKey}:minHolders`,
-    defaultMinHolders,
+    null,
   );
+  const minHolders = minHoldersPick ?? defaultMinHolders;
   const [filterInfinite, setFilterInfinite] = useResearchState(
     `${researchKey}:excludeNew`,
     defaultFilterInfinite,
@@ -124,7 +132,7 @@ function AnalysisTable({
   const filtered = useMemo(() => {
     let arr = disableFilters ? data : data.filter((s) => s.holderCount >= minHolders);
     if (!disableFilters && filterInfinite) arr = arr.filter((s) => isFinite(s.delta));
-    // Sign constraint always applies, on the strategy's ranking metric (defaultSort) —
+    // Sign constraint always applies on the strategy's ranking metric (defaultSort);
     // it defines the Increasing/Decreasing screens.
     if (deltaSign === "positive") arr = arr.filter((s) => (s[defaultSort] ?? NaN) > 0);
     else if (deltaSign === "negative") arr = arr.filter((s) => (s[defaultSort] ?? NaN) < 0);
@@ -152,7 +160,10 @@ function AnalysisTable({
       ) : (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
           <div className="flex items-center gap-2">
-            <Label htmlFor="minHolders" className="text-xs text-muted-foreground whitespace-nowrap">
+            <Label
+              htmlFor={fieldId("minHolders")}
+              className="text-xs text-muted-foreground whitespace-nowrap"
+            >
               Min Holders
             </Label>
             <div className="flex h-9 items-center rounded-md border border-input bg-background">
@@ -165,7 +176,7 @@ function AnalysisTable({
                 −
               </button>
               <Input
-                id="minHolders"
+                id={fieldId("minHolders")}
                 type="number"
                 min={0}
                 value={minHolders}
@@ -186,18 +197,25 @@ function AnalysisTable({
             the 24px minimum and the next filter group is 8px away, so the
             spacing exception does not rescue it either (SC 2.5.8). */}
           <Label
-            htmlFor="excludeInf"
+            htmlFor={fieldId("excludeInf")}
             className="flex h-9 cursor-pointer items-center gap-2 text-xs text-muted-foreground whitespace-nowrap"
           >
             Exclude NEW
-            <Switch id="excludeInf" checked={filterInfinite} onCheckedChange={setFilterInfinite} />
+            <Switch
+              id={fieldId("excludeInf")}
+              checked={filterInfinite}
+              onCheckedChange={setFilterInfinite}
+            />
           </Label>
           <div className="flex h-9 items-center gap-2">
-            <Label htmlFor="limit" className="text-xs text-muted-foreground whitespace-nowrap">
+            <Label
+              htmlFor={fieldId("limit")}
+              className="text-xs text-muted-foreground whitespace-nowrap"
+            >
               Show top
             </Label>
             <Select value={String(limit)} onValueChange={(v) => setLimit(parseInt(v))}>
-              <SelectTrigger id="limit" className="h-9 w-16 text-xs">
+              <SelectTrigger id={fieldId("limit")} className="h-9 w-16 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -216,7 +234,7 @@ function AnalysisTable({
       {customRanking && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           <span className="text-muted-foreground">
-            Sorted by {headlineColumn?.label} · {sortDir === "asc" ? "ascending" : "descending"}
+            Sorted by {headlineColumn?.label}, {sortDir === "asc" ? "ascending" : "descending"}
           </span>
           <button
             type="button"
@@ -229,78 +247,89 @@ function AnalysisTable({
       )}
 
       <ResponsiveTable
+        singleLayout
         label="Ranked stocks"
         tableClassName="frame"
         cards={
-          <ol className="border-t border-border" aria-label="Ranked stocks">
-            {sorted.length === 0 ? (
-              <li className="py-8 text-center text-muted-foreground">No data available.</li>
-            ) : (
-              sorted.map((s, index) => {
-                const headlineValue = headlineColumn ? s[headlineColumn.key] : null;
-                return (
-                  <li key={s.ticker} className="border-b border-border/60 py-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs text-muted-foreground shrink-0 w-[3ch] text-right">
-                          {index + 1}
-                        </span>
-                        <TickerLink ticker={s.ticker} />
-                      </div>
-                      {headlineColumn && (
-                        <span className="shrink-0 text-right">
-                          <span className="block text-xs text-muted-foreground">
-                            {headlineColumn.label}
+          <>
+            <CardSortBar
+              options={columns}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onToggle={toggleSort}
+            />
+            <ol className="border-t border-border" aria-label="Ranked stocks">
+              {sorted.length === 0 ? (
+                <li className="py-8 text-center text-muted-foreground">
+                  No stocks match this screen. Try changing the scope or filters.
+                </li>
+              ) : (
+                sorted.map((s, index) => {
+                  const headlineValue = headlineColumn ? s[headlineColumn.key] : null;
+                  return (
+                    <li key={s.ticker} className="border-b border-border/60 py-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs text-muted-foreground shrink-0 w-[3ch] text-right">
+                            {index + 1}
                           </span>
-                          {headlineColumn.render ? (
-                            headlineColumn.render(s)
-                          ) : headlineColumn.deltaMode && typeof headlineValue === "number" ? (
-                            <Delta value={headlineValue} mode={headlineColumn.deltaMode} />
-                          ) : (
-                            <span
-                              className={`text-sm tabular-nums ${headlineColumn.colorFn?.(headlineValue ?? NaN) ?? "text-foreground"}`}
-                            >
-                              {headlineColumn.format
-                                ? headlineColumn.format(headlineValue ?? NaN, s)
-                                : String(headlineValue ?? "—")}
+                          <TickerLink ticker={s.ticker} />
+                        </div>
+                        {headlineColumn && (
+                          <span className="shrink-0 text-right">
+                            <span className="block text-xs text-muted-foreground">
+                              {headlineColumn.label}
                             </span>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 pl-[calc(3ch+0.5rem)]">
-                      <CompanyLink ticker={s.ticker} company={s.company} showStar />
-                    </div>
-                    <dl className="mt-2 pl-[calc(3ch+0.5rem)] grid grid-cols-3 gap-x-2 gap-y-2">
-                      {metricColumns.map((col) => {
-                        const rawVal = s[col.key];
-                        return (
-                          <div key={col.key} className="min-w-0">
-                            <dt className="metric-label truncate !text-[11px]">{col.label}</dt>
-                            <dd className="text-sm">
-                              {col.render ? (
-                                col.render(s)
-                              ) : col.deltaMode && typeof rawVal === "number" ? (
-                                <Delta value={rawVal} mode={col.deltaMode} />
-                              ) : (
-                                <span
-                                  className={
-                                    col.colorFn ? col.colorFn(rawVal ?? NaN) : "text-foreground"
-                                  }
-                                >
-                                  {col.format ? col.format(rawVal ?? NaN, s) : String(rawVal)}
-                                </span>
-                              )}
-                            </dd>
-                          </div>
-                        );
-                      })}
-                    </dl>
-                  </li>
-                );
-              })
-            )}
-          </ol>
+                            {headlineColumn.render ? (
+                              headlineColumn.render(s)
+                            ) : headlineColumn.deltaMode && typeof headlineValue === "number" ? (
+                              <Delta value={headlineValue} mode={headlineColumn.deltaMode} />
+                            ) : (
+                              <span
+                                className={`text-sm tabular-nums ${headlineColumn.colorFn?.(headlineValue ?? NaN) ?? "text-foreground"}`}
+                              >
+                                {headlineColumn.format
+                                  ? headlineColumn.format(headlineValue ?? NaN, s)
+                                  : String(headlineValue ?? "N/A")}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 pl-[calc(3ch+0.5rem)]">
+                        <CompanyLink ticker={s.ticker} company={s.company} showStar />
+                      </div>
+                      <dl className="mt-2 pl-[calc(3ch+0.5rem)] grid grid-cols-3 gap-x-2 gap-y-2">
+                        {metricColumns.map((col) => {
+                          const rawVal = s[col.key];
+                          return (
+                            <div key={col.key} className="min-w-0">
+                              <dt className="metric-label truncate !text-[11px]">{col.label}</dt>
+                              <dd className="text-sm">
+                                {col.render ? (
+                                  col.render(s)
+                                ) : col.deltaMode && typeof rawVal === "number" ? (
+                                  <Delta value={rawVal} mode={col.deltaMode} />
+                                ) : (
+                                  <span
+                                    className={
+                                      col.colorFn ? col.colorFn(rawVal ?? NaN) : "text-foreground"
+                                    }
+                                  >
+                                    {col.format ? col.format(rawVal ?? NaN, s) : String(rawVal)}
+                                  </span>
+                                )}
+                              </dd>
+                            </div>
+                          );
+                        })}
+                      </dl>
+                    </li>
+                  );
+                })
+              )}
+            </ol>
+          </>
         }
         table={
           <table className="w-full text-sm" aria-label="Ranked stocks">
@@ -341,7 +370,7 @@ function AnalysisTable({
                     colSpan={3 + columns.length}
                     className="p-8 text-center text-muted-foreground"
                   >
-                    No data available.
+                    No stocks match this screen. Try changing the scope or filters.
                   </td>
                 </tr>
               ) : (
@@ -352,12 +381,7 @@ function AnalysisTable({
                       <TickerLink ticker={s.ticker} />
                     </td>
                     <td className="p-3">
-                      <CompanyLink
-                        ticker={s.ticker}
-                        company={s.company}
-                        className="max-w-[180px] xl:max-w-[260px]"
-                        showStar
-                      />
+                      <CompanyLink ticker={s.ticker} company={s.company} showStar />
                     </td>
                     {columns.map((col) => {
                       const align = col.align ?? "center";
@@ -402,18 +426,18 @@ function AnalysisTable({
 
 const DEFAULT_TAB = "smartscore";
 
-/** "Starred · n" segment; on phones it shrinks to a star and the count so the scope fits one row. */
+/** The starred segment keeps its count visible on narrow screens. */
 function starredOption(count: number) {
   return {
     value: "starred" as const,
-    title: `Starred · ${count}`,
+    title: `Starred ${count}`,
     label: (
       <>
         <span className="inline-flex items-center gap-1 sm:hidden">
           <Star className="h-3 w-3 fill-current" aria-hidden="true" />
           {count}
         </span>
-        <span className="max-sm:hidden">Starred · {count}</span>
+        <span className="max-sm:hidden">Starred {count}</span>
       </>
     ),
   };
@@ -439,7 +463,10 @@ function QuestionCard({ strategy, track }: { strategy: StrategyDef; track: Track
         <span
           aria-hidden="true"
           className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-md sm:flex"
-          style={{ color, backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)` }}
+          style={{
+            color,
+            backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`,
+          }}
         >
           <Icon className="h-5 w-5" />
         </span>
@@ -483,7 +510,7 @@ function QuestionCard({ strategy, track }: { strategy: StrategyDef; track: Track
           className="group hidden min-w-44 border-l border-border pl-6 text-foreground hover:no-underline sm:block"
         >
           <span className="metric-label block">
-            Backtest · {track.windows} {track.windows === 1 ? "window" : "windows"}
+            Backtest, {track.windows} {track.windows === 1 ? "window" : "windows"}
           </span>
           <span
             className={cn(
@@ -526,7 +553,11 @@ export default function QuarterlyTrends() {
   const { starred: starredFunds } = useStarred("fund");
   const [filterStarredStocks, setFilterStarredStocks] = useResearchState("starredStocks", false);
   const [filterStarredFunds, setFilterStarredFunds] = useResearchState("starredFunds", false);
-  const anyStarredFilter = filterStarredStocks || filterStarredFunds;
+  // The effective scope: a starred toggle left on with no stars shows everything, so the
+  // tables must keep their limits then.
+  const fundScope = filterStarredFunds && starredFunds.size > 0 ? "starred" : "all";
+  const stockScope = filterStarredStocks && starredStocks.size > 0 ? "starred" : "all";
+  const anyStarredFilter = fundScope === "starred" || stockScope === "starred";
 
   // URL sync: ?tab=<id> drives the active analysis tab so the view is
   // shareable / back-forward navigable. Missing or unknown tab → default.
@@ -544,7 +575,7 @@ export default function QuarterlyTrends() {
   }, [searchParams]);
   /* oxlint-enable react-hooks/set-state-in-effect */
 
-  const activeFundFilter = filterStarredFunds && starredFunds.size > 0 ? starredFunds : undefined;
+  const activeFundFilter = fundScope === "starred" ? starredFunds : undefined;
 
   const {
     data: rawData = [],
@@ -583,11 +614,11 @@ export default function QuarterlyTrends() {
   };
 
   const data = useMemo(() => {
-    if (filterStarredStocks && starredStocks.size > 0) {
+    if (stockScope === "starred") {
       return rawData.filter((s) => starredStocks.has(s.ticker));
     }
     return rawData;
-  }, [rawData, filterStarredStocks, starredStocks]);
+  }, [rawData, stockScope, starredStocks]);
   const activeStrategy = STRATEGY_BY_TAB[activeTab];
   const { data: performance } = useQuery({
     queryKey: ["performance"],
@@ -604,8 +635,6 @@ export default function QuarterlyTrends() {
       windows: own.total,
     };
   }, [performance, activeStrategy.id]);
-  const fundScope = filterStarredFunds && starredFunds.size > 0 ? "starred" : "all";
-  const stockScope = filterStarredStocks && starredStocks.size > 0 ? "starred" : "all";
   const hasStars = starredFunds.size > 0 || starredStocks.size > 0;
 
   return (
@@ -621,13 +650,7 @@ export default function QuarterlyTrends() {
       />
 
       {/* What is being observed: the period and the universe every signal is computed on. */}
-      <ControlBand
-        label="Observation scope"
-        className={cn(
-          "gap-x-4 sm:flex sm:flex-wrap sm:gap-x-6",
-          hasStars ? "grid grid-cols-[auto_auto_auto] justify-start" : "flex",
-        )}
-      >
+      <ControlBand label="Observation scope" className="flex flex-wrap gap-x-4 sm:gap-x-6">
         <Field label="Quarter" labelHiddenOnMobile={!hasStars}>
           <Select
             value={quarter ?? ""}
@@ -733,7 +756,9 @@ export default function QuarterlyTrends() {
                       <Icon
                         aria-hidden="true"
                         className="h-4 w-4 transition-colors"
-                        style={{ color: active ? seriesColor(d.id) : undefined }}
+                        style={{
+                          color: active ? seriesColor(d.id) : undefined,
+                        }}
                       />
                       {d.label}
                     </TabsTrigger>
@@ -744,7 +769,9 @@ export default function QuarterlyTrends() {
             <QuestionCard strategy={activeStrategy} track={trackRecord} />
           </section>
 
-          <TabsContent value="smartscore" className="mt-3">
+          {/* Findable: each tab lists at most `limit` (30) rows, so all seven stay mounted
+              and find in page reaches a ticker in any strategy, opening its tab. */}
+          <TabsContent value="smartscore" className="mt-3" findable>
             <AnalysisTable
               data={data}
               {...tableDefaults("smartscore")}
@@ -757,7 +784,7 @@ export default function QuarterlyTrends() {
                     row.smartScore != null ? (
                       <SmartScoreBadge score={row.smartScore} size="sm" />
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-muted-foreground">N/A</span>
                     ),
                   tooltip:
                     "Relative institutional screen (1–10): equal-weight blend of Breadth, Momentum and Conviction. Not a return forecast.",
@@ -796,7 +823,7 @@ export default function QuarterlyTrends() {
             />
           </TabsContent>
 
-          <TabsContent value="consensus" className="mt-3">
+          <TabsContent value="consensus" className="mt-3" findable>
             <AnalysisTable
               data={data}
               {...tableDefaults("consensus")}
@@ -841,7 +868,7 @@ export default function QuarterlyTrends() {
             />
           </TabsContent>
 
-          <TabsContent value="new" className="mt-3">
+          <TabsContent value="new" className="mt-3" findable>
             <AnalysisTable
               data={data}
               {...tableDefaults("new")}
@@ -887,7 +914,7 @@ export default function QuarterlyTrends() {
             />
           </TabsContent>
 
-          <TabsContent value="increasing" className="mt-3">
+          <TabsContent value="increasing" className="mt-3" findable>
             <AnalysisTable
               data={data}
               {...tableDefaults("increasing")}
@@ -933,7 +960,7 @@ export default function QuarterlyTrends() {
             />
           </TabsContent>
 
-          <TabsContent value="decreasing" className="mt-3">
+          <TabsContent value="decreasing" className="mt-3" findable>
             <AnalysisTable
               data={data}
               {...tableDefaults("decreasing")}
@@ -979,7 +1006,7 @@ export default function QuarterlyTrends() {
             />
           </TabsContent>
 
-          <TabsContent value="bigbets" className="mt-3">
+          <TabsContent value="bigbets" className="mt-3" findable>
             <AnalysisTable
               data={data}
               {...tableDefaults("bigbets")}
@@ -1021,7 +1048,7 @@ export default function QuarterlyTrends() {
             />
           </TabsContent>
 
-          <TabsContent value="avgportfolio" className="mt-3">
+          <TabsContent value="avgportfolio" className="mt-3" findable>
             <AnalysisTable
               data={data}
               {...tableDefaults("avgportfolio")}

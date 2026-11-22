@@ -349,6 +349,23 @@ class TestBuildFundPerformance(unittest.TestCase):
         self.assertAlmostEqual(float(str(rows[1]["fund_cum_return"])), 0.32)
         self.assertAlmostEqual(float(str(rows[1]["benchmark_cum_return"])), 1.05 * 1.05 - 1)
 
+    def test_nasdaq_compounds_over_the_same_windows_and_is_optional(self):
+        """
+        The Nasdaq-100 column compounds like the S&P 500's and stays empty without a source.
+        """
+        rows = build_fund_performance(
+            ["Alpha"],
+            ["2025Q4", "2026Q1", "2026Q2"],
+            holdings_fn=self.holdings_fn,
+            factors_fn=lambda _prev, _curr: {},
+            closed_return_fn=no_market,
+            benchmark_return_fn=lambda _s, _e: 0.05,
+            nasdaq_return_fn=lambda _s, _e: 0.10,
+        )
+        self.assertAlmostEqual(float(str(rows[0]["nasdaq_return"])), 0.10)
+        self.assertAlmostEqual(float(str(rows[1]["nasdaq_cum_return"])), 1.1 * 1.1 - 1)
+        self.assertIsNone(self.build(["2025Q4", "2026Q1"])[0].get("nasdaq_return"))
+
     def test_exit_priced_from_another_funds_quarter_end_filing(self):
         """
         A position the fund sold is priced from a fund still holding it.

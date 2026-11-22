@@ -84,11 +84,12 @@ export function MetaLine({ className, children }: { className?: string; children
   );
 }
 
-/** The "·" between items of a `MetaLine`. */
+/** The hairline between items of a `MetaLine` or a status line. */
 export function MetaSep({ className }: { className?: string }) {
   return (
-    <span aria-hidden="true" className={className}>
-      ·
-    </span>
+    <span
+      aria-hidden="true"
+      className={cn("inline-block h-3 w-px shrink-0 self-center bg-border", className)}
+    />
   );
 }

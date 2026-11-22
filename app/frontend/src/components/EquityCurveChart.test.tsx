@@ -1,4 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import EquityCurveChart from "./EquityCurveChart";
 
 import { buildChartData, spreadLabels } from "@/lib/equityCurve";
 import type { PerfSeries } from "@/lib/dataService";
@@ -18,6 +20,34 @@ const mkSeries = (id: string, cums: number[]): PerfSeries => ({
   excessPp: null,
   beats: 0,
   total: cums.length,
+});
+
+describe("EquityCurveChart data alternative", () => {
+  it("tracks visible series and preserves missing quarter values", () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const strategy = mkSeries("strategy", [0.2, 0.32]);
+    const benchmark = mkSeries("SPY", [0.1]);
+    const { rerender, unmount } = render(
+      <EquityCurveChart series={[strategy, benchmark]} quarters={["2025Q2", "2025Q3"]} />,
+    );
+    fireEvent.click(screen.getByText("View cumulative return data"));
+    const table = screen.getByRole("table", { name: /cumulative return by quarter/i });
+    const rows = within(table).getAllByRole("row");
+    expect(rows[2].textContent).toContain("+20.0%");
+    expect(rows[2].textContent).toContain("+10.0%");
+    expect(rows[3].textContent).toContain("+32.0%");
+    expect(rows[3].textContent).toContain("–");
+    rerender(<EquityCurveChart series={[benchmark]} quarters={["2025Q2", "2025Q3"]} />);
+    expect(within(table).queryByRole("columnheader", { name: "strategy" })).toBeNull();
+    unmount();
+    vi.unstubAllGlobals();
+  });
 });
 
 describe("buildChartData", () => {

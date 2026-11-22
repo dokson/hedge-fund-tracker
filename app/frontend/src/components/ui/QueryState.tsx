@@ -24,7 +24,7 @@ export function QueryState({
   const detail = error instanceof Error ? error.message : undefined;
   return (
     <div role="alert" className={cn("frame px-6 py-10 text-center", className)}>
-      <AlertTriangle className="mx-auto mb-2 h-5 w-5 text-destructive" aria-hidden="true" />
+      <AlertTriangle className="mx-auto mb-2 h-5 w-5 text-destructive-text" aria-hidden="true" />
       <p className="text-[13px] font-medium text-foreground">{title}</p>
       {detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}
     </div>

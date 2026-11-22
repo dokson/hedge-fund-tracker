@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Plus } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { DIALOG_AUTOFOCUS } from "@/lib/dialog";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/Field";
 import { isValidFundUrl } from "@/hooks/useInlineFundEdit";
 import type { HedgeFund } from "@/lib/dataService";
+import { IDENTIFIER_INPUT } from "@/lib/forms";
 
 const EMPTY_FORM: HedgeFund = {
   cik: "",
@@ -71,6 +73,8 @@ function AddFundForm({
 }) {
   const [form, setForm] = useState<HedgeFund>(EMPTY_FORM);
   const [pending, setPending] = useState(false);
+  const [urlError, setUrlError] = useState(false);
+  const urlRef = useRef<HTMLInputElement>(null);
   const update = (field: keyof HedgeFund, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -78,7 +82,8 @@ function AddFundForm({
     e.preventDefault();
     if (pending) return;
     if (form.url.trim() && !isValidFundUrl(form.url)) {
-      toast.error("Website URL must start with https://");
+      flushSync(() => setUrlError(true));
+      urlRef.current?.focus();
       return;
     }
     setPending(true);
@@ -102,11 +107,12 @@ function AddFundForm({
       <div className="space-y-4 py-2">
         <Field htmlFor="new-cik" label="CIK">
           <Input
+            {...DIALOG_AUTOFOCUS}
             id="new-cik"
             name="cik"
+            {...IDENTIFIER_INPUT}
             required
             inputMode="numeric"
-            autoComplete="off"
             aria-describedby="new-cik-hint"
             placeholder="e.g. 0001067983"
             value={form.cik}
@@ -168,8 +174,7 @@ function AddFundForm({
           <Input
             id="new-ciks"
             name="ciks"
-            inputMode="numeric"
-            autoComplete="off"
+            {...IDENTIFIER_INPUT}
             aria-describedby="new-ciks-hint"
             placeholder="Defaults to CIK if empty"
             value={form.ciks}
@@ -182,21 +187,29 @@ function AddFundForm({
         </Field>
         <Field htmlFor="new-url" label="Website (optional)">
           <Input
+            ref={urlRef}
             id="new-url"
             name="url"
+            {...IDENTIFIER_INPUT}
             inputMode="url"
-            autoComplete="off"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            aria-describedby="new-url-hint"
+            aria-invalid={urlError || undefined}
+            aria-describedby={urlError ? "new-url-hint new-url-error" : "new-url-hint"}
             placeholder="https://www.example.com"
             value={form.url}
-            onChange={(e) => update("url", e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              update("url", value);
+              if (!value.trim() || isValidFundUrl(value)) setUrlError(false);
+            }}
           />
           <p id="new-url-hint" className="text-xs text-muted-foreground">
             Official fund website. Must start with <code>https://</code> if provided.
           </p>
+          {urlError && (
+            <p id="new-url-error" className="text-xs text-negative">
+              Website URL must start with https://
+            </p>
+          )}
         </Field>
       </div>
       <DialogFooter className="gap-2 sm:gap-0">

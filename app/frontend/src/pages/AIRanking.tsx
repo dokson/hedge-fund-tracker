@@ -26,7 +26,7 @@ import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { smartScoreToneClass } from "@/lib/smartScore";
 
 import { useNavigate } from "react-router";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import sampleRanking from "@/data/sampleRanking.json";
 
@@ -265,7 +265,7 @@ export default function AIRanking() {
 
       {isReadOnly && (
         <LocalOnlyNotice
-          description="Live AI rankings need a local backend and your API keys. The sample below is a saved report, not a live analysis."
+          description="Live rankings need the local app and your own API keys."
           sample={
             isSample && {
               label: "Sample ranking",
@@ -276,29 +276,26 @@ export default function AIRanking() {
         />
       )}
 
-      <ControlBand label="Analysis scope" className="grid min-w-0 gap-3 sm:flex sm:gap-x-6">
-        <Field label="Quarter">
-          <p className="flex min-h-10 items-center text-sm tabular-nums">
-            {quarter?.replace("Q", " Q") ?? "Not available"}
-          </p>
-        </Field>
-        <Field label="AI model">
-          <ModelSelector
-            value={selectedModel}
-            onChange={setSelectedModel}
-            onProviderChange={setSelectedProviderId}
-            className="min-h-10 w-full min-w-0 sm:w-64"
-            disabled={isReadOnly}
-          />
-        </Field>
-        <Button
-          className="min-h-10 w-full sm:w-auto"
-          onClick={runAnalysis}
-          disabled={loading || isReadOnly}
-        >
-          {hasResults ? "Re-run" : "Run"}
-        </Button>
-      </ControlBand>
+      {!isReadOnly && (
+        <ControlBand label="Analysis scope" className="grid min-w-0 gap-3 sm:flex sm:gap-x-6">
+          <Field label="Quarter">
+            <p className="flex min-h-10 items-center text-sm tabular-nums">
+              {quarter?.replace("Q", " Q") ?? "Not available"}
+            </p>
+          </Field>
+          <Field label="AI model">
+            <ModelSelector
+              value={selectedModel}
+              onChange={setSelectedModel}
+              onProviderChange={setSelectedProviderId}
+              className="min-h-10 w-full min-w-0 sm:w-64"
+            />
+          </Field>
+          <Button className="min-h-10 w-full sm:w-auto" onClick={runAnalysis} disabled={loading}>
+            {hasResults ? "Re-run" : "Run"}
+          </Button>
+        </ControlBand>
+      )}
 
       {(loading || terminalLines.length > 0) && !hasResults && (
         <TerminalOutput lines={terminalLines} running={loading} />

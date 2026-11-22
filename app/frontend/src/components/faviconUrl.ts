@@ -1,3 +1,4 @@
+import { cloudinaryFetch } from "@/components/cloudinaryFetch";
 import { CLOUDINARY_CLOUD_NAME, IS_GH_PAGES_MODE } from "@/lib/config";
 
 const ICON_HORSE_BASE = "https://icon.horse/icon";
@@ -13,28 +14,18 @@ function hostOf(url: string | undefined | null): string | null {
 }
 
 /**
- * URL of the curated Cloudinary-stored favicon for this fund's host, if we
- * uploaded one. Callers should use this as the primary <img src> and fall
- * back via onError when the asset is missing (404).
+ * The URLs to try for a fund's logo, in order: the curated favicon we uploaded to Cloudinary
+ * for its host (no transform, so strict transformations never refuse it), then icon.horse for
+ * the host, through the Cloudinary fetch CDN in GH Pages mode and then direct (icon.horse
+ * sends CORS headers). In local dev icon.horse is hit directly: Cloudinary's referrer policy
+ * 401s from localhost. Empty when the URL is missing or unparseable.
  */
-export function buildCuratedFaviconUrl(url: string | undefined | null): string | null {
+export function buildFaviconUrls(url: string | undefined | null, size: number): string[] {
   const host = hostOf(url);
-  if (!host) return null;
-  return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${CLOUDINARY_FUND_FAVICON_FOLDER}/${encodeURIComponent(host)}.png`;
-}
-
-/**
- * Generic fallback: icon.horse for the fund's host, proxied through
- * Cloudinary's fetch CDN in GH Pages mode (in dev we hit icon.horse
- * directly because Cloudinary's strict referrer policy 401s from
- * localhost). Returns null when the URL is missing or unparseable.
- */
-export function buildFaviconUrl(url: string | undefined | null, size: number): string | null {
-  const host = hostOf(url);
-  if (!host) return null;
+  if (!host) return [];
+  const curated = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${CLOUDINARY_FUND_FAVICON_FOLDER}/${encodeURIComponent(host)}.png`;
   const source = `${ICON_HORSE_BASE}/${encodeURIComponent(host)}`;
-  if (!IS_GH_PAGES_MODE) return source;
-  const retina = size * 2;
-  const transforms = `w_${retina},h_${retina},c_fit,f_auto,q_auto`;
-  return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/fetch/${transforms}/${encodeURIComponent(source)}`;
+  return IS_GH_PAGES_MODE
+    ? [curated, cloudinaryFetch(encodeURIComponent(source), size), source]
+    : [curated, source];
 }

@@ -51,7 +51,13 @@ export function SegmentedControl<T extends string>({
     <div
       role="radiogroup"
       onKeyDown={onKeyDown}
-      className={cn("inline-flex items-stretch rounded-lg border border-border bg-muted p-0.5", className)}
+      // The track is exactly a field's height (h-9, h-7 when small on desktop), so it lines up
+      // with the search box and selects beside it; the segments stretch inside it.
+      className={cn(
+        "inline-flex max-w-full items-stretch overflow-x-auto rounded-lg border border-border bg-muted p-0.5",
+        size === "sm" ? "h-9 md:h-7" : "h-9",
+        className,
+      )}
       {...props}
     >
       {options.map((opt, i) => {
@@ -67,12 +73,12 @@ export function SegmentedControl<T extends string>({
             title={opt.title}
             onClick={() => onValueChange(opt.value)}
             className={cn(
-              "rounded-md font-medium transition-colors duration-[120ms] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
-              size === "sm"
-                ? "px-3 h-9 text-[13px] md:px-2 md:h-6 md:text-xs"
-                : "px-3 h-10 text-sm md:h-8 md:text-[13px]",
+              "whitespace-nowrap rounded-md font-medium transition-colors duration-[120ms] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+              size === "sm" ? "px-3 text-[13px] md:px-2 md:text-xs" : "px-3 text-sm md:text-[13px]",
+              // The selected segment also carries a gold underline: its lighter fill alone sat
+              // at 1.2:1 on the track (forced colours use Highlight instead).
               isActive
-                ? "bg-card text-foreground shadow-sm forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
+                ? "bg-card text-foreground shadow-[inset_0_-2px_0_hsl(var(--gold))] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

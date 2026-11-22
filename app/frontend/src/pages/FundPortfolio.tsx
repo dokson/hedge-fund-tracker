@@ -1,4 +1,5 @@
-import { useCallback, useMemo, type ComponentProps } from "react";
+import { useCallback, useMemo, useRef, type ComponentProps } from "react";
+import { ChangeChip } from "@/components/ui/ChangeChip";
 import { useParams, useNavigate, Link } from "react-router";
 import { filingFreshness, isQuarter, quartersBehind, type FilingFreshness } from "@/lib/quarters";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -25,7 +26,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TickerLink, CompanyLink, formatFundName } from "@/components/EntityLinks";
 import { FundLogo } from "@/components/FundLogo";
 import { Delta } from "@/components/Delta";
-import { toInitCap, matchesQuery } from "@/lib/utils";
+import { cn, toInitCap, matchesQuery } from "@/lib/utils";
 import { fundPath, stockPath, ROUTES } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
 import { usePageMeta, pageTitle } from "@/hooks/usePageMeta";
@@ -47,15 +48,36 @@ import { Stat, StatGrid } from "@/components/ui/Stat";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { LogoPlate } from "@/components/LogoPlate";
 import type { Tone } from "@/lib/tone";
+import { toneClass } from "@/lib/tone";
+import { pctFrac, pp } from "@/lib/performanceFormat";
+import { portfolioStats } from "@/lib/fundRanking";
+import { useFundRanking } from "@/hooks/useFundRanking";
+import { QuarterMoves } from "@/components/QuarterMoves";
+import type { MoveFilter } from "@/lib/moves";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
-import { SortArrow } from "@/components/ui/SortArrow";
+import { CardSortBar } from "@/components/ui/CardSortBar";
 import FundPerformancePanel from "@/components/FundPerformancePanel";
 import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 
-import { ArrowLeft, Wallet, Star, X, Check } from "lucide-react";
+import { ArrowLeft, Wallet, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MetaSep } from "@/components/ui/TextLink";
 import { useStarred } from "@/hooks/useStarred";
 import { StarButton } from "@/components/StarButton";
+
+const MOVE_LABEL: Record<MoveFilter, string> = {
+  new: "New positions",
+  increased: "Added to",
+  decreased: "Trimmed",
+  closed: "Sold out",
+};
+
+/** Defer only sections outside the initial viewport. */
+function deferBelowViewport(element: HTMLDivElement | null) {
+  if (element && element.getBoundingClientRect().top >= window.innerHeight) {
+    element.classList.add("defer-render");
+  }
+}
 
 // ────────────────────────── Fund Grid ──────────────────────────
 
@@ -82,7 +104,7 @@ function LastFiling({
   quarter: string | null;
   boardQuarter: string | null;
 }) {
-  if (!quarter) return <span className="text-muted-foreground">—</span>;
+  if (!quarter) return <span className="text-muted-foreground">No 13F</span>;
   const label = quarter.replace("Q", " Q");
   const freshness = filingFreshness(quarter, boardQuarter);
   if (!freshness) {
@@ -159,6 +181,7 @@ function FundList({
                 </div>
                 <StarButton
                   active={isStarred(fund.fund)}
+                  subject={fund.fund}
                   onClick={() => onToggleStar(fund.fund)}
                   size={16}
                   className="h-8 w-8 m-0 shrink-0"
@@ -224,6 +247,7 @@ function FundList({
                   <td className="px-3 py-1">
                     <StarButton
                       active={isStarred(fund.fund)}
+                      subject={fund.fund}
                       onClick={() => onToggleStar(fund.fund)}
                       size={16}
                       className="h-8 w-8 m-0"
@@ -474,7 +498,7 @@ function HoldingDeltaCell({
   if (isNew) {
     return (
       <>
-        <span className="badge-new">NEW</span>
+        <ChangeChip change="NEW" />
         {deltaValue}
       </>
     );
@@ -482,13 +506,13 @@ function HoldingDeltaCell({
   if (isClosed) {
     return (
       <>
-        <span className="badge-closed">CLOSE</span>
+        <ChangeChip change="CLOSE" />
         {deltaValue}
       </>
     );
   }
   if (deltaPct === 0) {
-    return <span className="badge-nochange">NO CHANGE</span>;
+    return <ChangeChip change="NO CHANGE" />;
   }
   return (
     <div className="flex flex-col items-end gap-0.5">
@@ -550,12 +574,14 @@ function FundMaps({
   activeSector,
   onTickerClick,
   onSectorClick,
+  className,
 }: {
   holdings: FundMapData;
   sectors: FundMapData;
   activeSector: string;
   onTickerClick: (ticker: string) => void;
   onSectorClick: (sector: string) => void;
+  className?: string;
 }) {
   const [containerRef, size] = useElementSize();
   const [map, setMap] = useResearchState<"holdings" | "sectors">("holdings:map", "holdings");
@@ -582,7 +608,7 @@ function FundMaps({
   );
 
   return (
-    <div ref={containerRef} className="min-w-0 lg:col-span-2 lg:sticky lg:top-4 lg:self-start">
+    <div ref={containerRef} className={cn("min-w-0", className)}>
       {tabbed ? (
         <Panel>
           <Tabs value={map} onValueChange={(value) => setMap(value as typeof map)}>
@@ -621,6 +647,7 @@ function FundMaps({
 
 function FundDetail({ fundName }: { fundName: string }) {
   const navigate = useNavigate();
+  const movesRef = useRef<HTMLDivElement>(null);
   const goBack = useBack(ROUTES.funds);
   const [quarter, setQuarter] = useResearchState<string | null>("holdings:quarter", null);
   const { sortKey, sortDir, toggleSort } = useSortState<SortKey>(
@@ -753,27 +780,17 @@ function FundDetail({ fundName }: { fundName: string }) {
     return arr;
   }, [holdings, sortKey, sortDir, positionFilter, activeSector, tickerSectorMap]);
 
-  const totalValue = useMemo(
-    () => holdings.reduce((s, h) => s + parseValueString(h.value), 0),
-    [holdings],
-  );
+  // Size, concentration and trading of the selected quarter's book.
+  const book = useMemo(() => portfolioStats(holdings), [holdings]);
 
-  const newPositions = useMemo(() => holdings.filter((h) => h.delta === "NEW").length, [holdings]);
+  // Return and standing come from the ranking window, whatever quarter the book shows.
+  const { data: ranking } = useFundRanking();
+  const ranked = ranking?.funds.find((f) => f.fund === fundName);
+  const annualized = ranking?.funds.filter((f) => f.annualReturn !== null) ?? [];
+  const rankIndex = annualized.findIndex((f) => f.fund === fundName);
+  const rankPosition = rankIndex >= 0 ? { position: rankIndex + 1, of: annualized.length } : null;
+  const lastQuarterLabel = ranking?.quarters.at(-1)?.replace("Q", " Q") ?? "Last quarter";
 
-  const closedPositions = useMemo(
-    () => holdings.filter((h) => h.delta === "CLOSE").length,
-    [holdings],
-  );
-
-  const increasedPositions = useMemo(
-    () =>
-      holdings.filter((h) => h.delta !== "NEW" && h.delta !== "CLOSE" && h.deltaShares > 0).length,
-    [holdings],
-  );
-  const decreasedPositions = useMemo(
-    () => holdings.filter((h) => h.delta !== "CLOSE" && h.deltaShares < 0).length,
-    [holdings],
-  );
   // Holdings map mirrors the active sector filter so it stays coherent with the
   // central list and the Sector map selection.
   const treemapData = useMemo(() => {
@@ -860,6 +877,7 @@ function FundDetail({ fundName }: { fundName: string }) {
           actions={
             <StarButton
               active={isStarred(fundName)}
+              subject={fundName}
               onClick={() => toggleStar(fundName)}
               size={20}
               className="h-8 w-8 m-0"
@@ -891,7 +909,7 @@ function FundDetail({ fundName }: { fundName: string }) {
       <Breadcrumb trail={[{ label: "Funds", to: ROUTES.funds }]} current={fundLabel} />
       <PageHeader
         title={fundLabel}
-        description={fund ? `Managed by ${fund.manager}` : undefined}
+        titleAside={fund ? `Managed by ${fund.manager}` : undefined}
         leading={
           <>
             <Button variant="ghost" size="icon" aria-label="Back" onClick={goBack}>
@@ -906,6 +924,7 @@ function FundDetail({ fundName }: { fundName: string }) {
           <>
             <StarButton
               active={isStarred(fundName)}
+              subject={fundName}
               onClick={() => toggleStar(fundName)}
               size={20}
               className="h-8 w-8 m-0"
@@ -917,116 +936,148 @@ function FundDetail({ fundName }: { fundName: string }) {
         <div className="sm:hidden">{quarterSelect("w-full")}</div>
       </PageHeader>
 
-      <div className="grid lg:grid-cols-5 gap-6">
-        {/* Left: KPIs + Table */}
-        <div className="min-w-0 lg:col-span-3 space-y-5">
-          {/* Status cells: 2 static + 4 toggle filters, one hairline grid. */}
-          <StatGrid className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-            <Stat label="AUM" value={formatValue(totalValue)} />
-            <Stat
-              label="Positions"
-              value={holdings.filter((h) => parseValueString(h.value) > 0).length}
-            />
-            {(
-              [
-                { key: "new", label: "New", count: newPositions, num: "text-muted-foreground" },
-                { key: "closed", label: "Closed", count: closedPositions, num: "text-closed" },
-                {
-                  key: "increased",
-                  label: "Increased",
-                  count: increasedPositions,
-                  num: "text-positive",
-                },
-                {
-                  key: "decreased",
-                  label: "Decreased",
-                  count: decreasedPositions,
-                  num: "text-negative",
-                },
-              ] as const
-            ).map((f) => {
-              const active = positionFilter === f.key;
-              return (
-                <Stat
-                  key={f.key}
-                  active={active}
-                  onClick={() => setPositionFilter((cur) => (cur === f.key ? "all" : f.key))}
-                  label={
-                    <>
-                      <Check
-                        aria-hidden="true"
-                        className={`h-3.5 w-3.5 shrink-0 ${active ? "" : "opacity-0"}`}
-                      />
-                      {f.label}
-                    </>
-                  }
-                  value={f.count}
-                  valueClassName={active ? undefined : f.num}
-                />
-              );
-            })}
-          </StatGrid>
+      {/* The quick read first: size, return, concentration, trading and standing. */}
+      <StatGrid className="grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
+        <Stat label="AUM" value={formatValue(book.aum)} />
+        <Stat label="Positions" value={book.positions} />
+        <Stat
+          label="Return per year"
+          info="Estimated from the reported 13F holdings over the fund's observed quarters, (1 + cumulative)^(4 / quarters) - 1; none under four quarters. Not a certified fund return."
+          value={ranked?.annualReturn != null ? `${pctFrac(ranked.annualReturn)}/yr` : "—"}
+          valueClassName={ranked?.annualReturn != null ? toneClass(ranked.annualReturn) : undefined}
+          hint={ranked ? `${pctFrac(ranked.cumReturn)} over ${ranked.total} quarters` : undefined}
+        />
+        <Stat
+          label={`${lastQuarterLabel} return`}
+          value={ranked?.lastReturn != null ? pctFrac(ranked.lastReturn) : "—"}
+          valueClassName={ranked?.lastReturn != null ? toneClass(ranked.lastReturn) : undefined}
+          hint={
+            ranked?.lastExcess != null ? `${pp(ranked.lastExcess * 100)} vs S&P 500` : undefined
+          }
+        />
+        <Stat
+          label="Top 10 weight"
+          value={book.top10Weight === null ? "—" : `${(book.top10Weight * 100).toFixed(1)}%`}
+        />
+        <Stat
+          label="Turnover"
+          info="The smaller of the quarter's buys and sales at reporting prices, over the book: the share of the portfolio replaced."
+          value={book.turnover === null ? "—" : `${(book.turnover * 100).toFixed(1)}%`}
+        />
+        <Stat
+          label="Ranking"
+          value={
+            rankPosition ? (
+              <Link to={ROUTES.fundRanking} className="underline underline-offset-2">
+                #{rankPosition.position}
+              </Link>
+            ) : (
+              "—"
+            )
+          }
+          hint={
+            rankPosition
+              ? `of ${rankPosition.of}, top ${Math.max(1, Math.ceil((rankPosition.position / rankPosition.of) * 100))}%`
+              : "Needs four quarters"
+          }
+        />
+      </StatGrid>
 
-          {/* Active sector filter, mirrors the Stocks page pattern. */}
-          {activeSector !== "all" && (
-            <p className="status-line flex items-center gap-2 flex-wrap">
-              <span className="k">Sector:</span>
-              <span className="text-foreground">{activeSector}</span>
-              <span aria-hidden="true">·</span>
-              <span className="k">
-                {activeSectorCount} holding{activeSectorCount === 1 ? "" : "s"}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSectorFilter("all")}
-                aria-label="Clear sector filter"
-                className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <X className="h-3 w-3" aria-hidden="true" /> Clear
-              </button>
-            </p>
-          )}
+      <div className="grid gap-6 lg:grid-cols-5">
+        <FundMaps
+          holdings={treemapData}
+          sectors={sectorTreemapData}
+          activeSector={activeSector}
+          onTickerClick={(ticker) => navigate(stockPath(ticker))}
+          onSectorClick={(sector) =>
+            setSectorFilter((current) => (current === sector ? "all" : sector))
+          }
+          className="lg:col-span-3"
+        />
+        <div ref={movesRef} className="lg:col-span-2 lg:self-start">
+          <QuarterMoves
+            holdings={holdings}
+            quarterLabel={quarterLabel}
+            active={positionFilter}
+            onToggle={(key) => setPositionFilter((cur) => (cur === key ? "all" : key))}
+          />
+        </div>
+      </div>
 
-          {isLoading ? (
-            <LoadingState message={`Loading holdings for ${quarterLabel}…`} />
-          ) : isError ? (
-            <EmptyState
-              padding="sm"
-              title={`No data available for ${fundName} in ${quarterLabel}. Try a different quarter.`}
-            />
-          ) : (
+      <div className="min-w-0 space-y-5">
+        {positionFilter !== "all" && (
+          <p className="status-line flex items-center gap-2 flex-wrap">
+            <span className="k">Showing:</span>
+            <span className="text-foreground">{MOVE_LABEL[positionFilter]}</span>
+            <button
+              type="button"
+              onClick={() => {
+                movesRef.current
+                  ?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')
+                  ?.focus();
+                setPositionFilter("all");
+              }}
+              aria-label="Clear position filter"
+              className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3 w-3" aria-hidden="true" /> Clear
+            </button>
+          </p>
+        )}
+
+        {/* Active sector filter, mirrors the Stocks page pattern. */}
+        {activeSector !== "all" && (
+          <p className="status-line flex items-center gap-2 flex-wrap">
+            <span className="k">Sector:</span>
+            <span className="text-foreground">{activeSector}</span>
+            <MetaSep />
+            <span className="k">
+              {activeSectorCount} holding{activeSectorCount === 1 ? "" : "s"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSectorFilter("all")}
+              aria-label="Clear sector filter"
+              className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3 w-3" aria-hidden="true" /> Clear
+            </button>
+          </p>
+        )}
+
+        {isLoading ? (
+          <LoadingState message={`Loading holdings for ${quarterLabel}…`} />
+        ) : isError ? (
+          <EmptyState
+            padding="sm"
+            title={`No data available for ${fundName} in ${quarterLabel}. Try a different quarter.`}
+          />
+        ) : (
+          // Estimate phone cards separately from desktop rows, including the sort toolbar.
+          <div
+            ref={deferBelowViewport}
+            className="[--defer-h:var(--defer-mobile)] md:[--defer-h:var(--defer-desktop)]"
+            style={
+              {
+                "--defer-mobile": `${(showAll ? sorted.length : Math.min(sorted.length, TOP_N)) * 140 + 100}px`,
+                "--defer-desktop": `${(showAll ? sorted.length : Math.min(sorted.length, TOP_N)) * 57 + 100}px`,
+              } as React.CSSProperties
+            }
+          >
             <ResponsiveTable
               label={`Holdings for ${quarterLabel}`}
               tableClassName="surface"
               cards={
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 overflow-x-auto">
-                    <span className="control-label shrink-0">Sort</span>
-                    {(
-                      [
-                        ["portfolioPct", "Port %"],
-                        ["delta", "Δ"],
-                      ] as const
-                    ).map(([key, label]) => {
-                      const active = sortKey === key;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => toggleSort(key)}
-                          aria-pressed={active}
-                          className={`inline-flex items-center gap-1 h-9 px-3 rounded-md border text-xs transition-colors shrink-0 ${
-                            active
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "border-border bg-card text-muted-foreground"
-                          }`}
-                        >
-                          {label}
-                          <SortArrow active={active} direction={sortDir} />
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <CardSortBar
+                    options={[
+                      { key: "portfolioPct", label: "Port %" },
+                      { key: "delta", label: "Δ" },
+                    ]}
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onToggle={toggleSort}
+                  />
                   <ol className="border-t border-border" aria-label="Holdings">
                     {(showAll ? sorted : sorted.slice(0, TOP_N)).map((h, i) => (
                       <HoldingCard key={`${h.cusip}-${h.ticker}-${h.delta}`} h={h} rank={i + 1} />
@@ -1127,18 +1178,8 @@ function FundDetail({ fundName }: { fundName: string }) {
                 </table>
               }
             />
-          )}
-        </div>
-
-        <FundMaps
-          holdings={treemapData}
-          sectors={sectorTreemapData}
-          activeSector={activeSector}
-          onTickerClick={(ticker) => navigate(stockPath(ticker))}
-          onSectorClick={(sector) =>
-            setSectorFilter((current) => (current === sector ? "all" : sector))
-          }
-        />
+          </div>
+        )}
       </div>
 
       <FundPerformancePanel fund={fundName} />

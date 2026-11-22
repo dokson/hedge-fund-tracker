@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ResearchProvider } from "@/components/ResearchProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -111,17 +111,39 @@ function tickers(): string[] {
   );
 }
 
+/** The open strategy's field: the other tabs stay mounted (findable), hidden. */
 function minHolders(): HTMLInputElement {
-  return screen.getByLabelText<HTMLInputElement>("Min Holders");
+  return within(screen.getByRole("tabpanel")).getByLabelText<HTMLInputElement>("Min Holders");
+}
+
+let desktop = true;
+const mediaListeners = new Set<() => void>();
+
+/** Switch the active layout as a real media-query change would. */
+function setDesktop(value: boolean) {
+  desktop = value;
+  act(() => mediaListeners.forEach((listener) => listener()));
 }
 
 // Full-page renders with navigation round trips exceed the 5s default when the suite runs in parallel.
 describe("Quarterly research context", { timeout: 15_000 }, () => {
   beforeEach(() => {
+    desktop = true;
+    mediaListeners.clear();
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      get matches() {
+        return desktop;
+      },
+      media: query,
+      addEventListener: (_event: string, listener: () => void) => mediaListeners.add(listener),
+      removeEventListener: (_event: string, listener: () => void) =>
+        mediaListeners.delete(listener),
+    }));
     localStorage.removeItem("starred_stock");
     localStorage.removeItem("starred_fund");
     vi.mocked(useQuarterAnalysis).mockClear();
   });
+  afterEach(() => vi.unstubAllGlobals());
 
   it("restores filters and a custom sort after returning from a stock", async () => {
     renderResearch();
@@ -137,7 +159,7 @@ describe("Quarterly research context", { timeout: 15_000 }, () => {
     await screen.findByRole("table", { name: "Ranked stocks" });
     expect(minHolders().value).toBe("40");
     expect(tickers()).toEqual(["TSM", "AMZN"]);
-    expect(screen.getByText("Sorted by Holders · ascending")).toBeTruthy();
+    expect(screen.getByText("Sorted by Holders, ascending")).toBeTruthy();
   });
 
   it("keeps each research question's filters separate", async () => {
@@ -146,9 +168,13 @@ describe("Quarterly research context", { timeout: 15_000 }, () => {
     fireEvent.change(minHolders(), {
       target: { value: "40" },
     });
-    fireEvent.keyDown(screen.getByRole("tab", { name: "Consensus Buys" }), { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Consensus Buys" }), {
+      key: "Enter",
+    });
     expect(minHolders().value).toBe("0");
-    fireEvent.keyDown(screen.getByRole("tab", { name: "Smart Score" }), { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Smart Score" }), {
+      key: "Enter",
+    });
     expect(minHolders().value).toBe("40");
   });
 
@@ -161,20 +187,38 @@ describe("Quarterly research context", { timeout: 15_000 }, () => {
     });
     fireEvent.click(within(table).getByRole("button", { name: "Holders" }));
     fireEvent.click(within(table).getByRole("button", { name: "Holders" }));
+    setDesktop(false);
     const firstCard = within(screen.getByRole("list", { name: "Ranked stocks" })).getAllByRole(
       "listitem",
     )[0];
     expect(within(firstCard).getByText("Holders").nextElementSibling?.textContent).toBe("42");
-    expect(screen.getByText("Sorted by Holders · ascending")).toBeTruthy();
+    expect(screen.getByText("Sorted by Holders, ascending")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Restore default ranking" }));
+    setDesktop(true);
     expect(tickers()).toEqual(["AMZN", "TSM"]);
     expect(minHolders().value).toBe("40");
     expect(screen.queryByText(/Sorted by/)).toBeNull();
+    setDesktop(false);
     const restoredCard = within(screen.getByRole("list", { name: "Ranked stocks" })).getAllByRole(
       "listitem",
     )[0];
     expect(within(restoredCard).getByText("Smart Score")).toBeTruthy();
     expect(within(restoredCard).getByText("10.0")).toBeTruthy();
+  });
+
+  it("sorts mobile cards with the same ranking as the table", async () => {
+    renderResearch();
+    await screen.findByRole("table", { name: "Ranked stocks" });
+    const sort = screen.getAllByRole("button", { name: "Holders" });
+    fireEvent.click(sort[0]);
+    fireEvent.click(sort[0]);
+    setDesktop(false);
+    const cards = within(screen.getByRole("list", { name: "Ranked stocks" })).getAllByRole(
+      "listitem",
+    );
+    expect(within(cards[0]).getByRole("link", { name: "STX" })).toBeTruthy();
+    setDesktop(true);
+    expect(tickers()[0]).toBe("STX");
   });
 
   it.each<[string, string[], string]>([
@@ -203,6 +247,7 @@ describe("Quarterly research context", { timeout: 15_000 }, () => {
       expect(screen.getByRole("switch", { name: "Exclude NEW" }).getAttribute("aria-checked")).toBe(
         String(strategy.excludeInfiniteDelta),
       );
+      setDesktop(false);
       const firstCard = within(screen.getByRole("list", { name: "Ranked stocks" })).getAllByRole(
         "listitem",
       )[0];
@@ -218,14 +263,14 @@ describe("Quarterly research context", { timeout: 15_000 }, () => {
     await screen.findByRole("table", { name: "Ranked stocks" });
     fireEvent.click(
       within(screen.getByRole("radiogroup", { name: "Stock scope" })).getByRole("radio", {
-        name: "Starred · 1",
+        name: "Starred 1",
       }),
     );
     expect(tickers()).toEqual(["TSM"]);
     expect(vi.mocked(useQuarterAnalysis).mock.lastCall?.[1]?.fundFilter).toBeUndefined();
     fireEvent.click(
       within(screen.getByRole("radiogroup", { name: "Fund universe" })).getByRole("radio", {
-        name: "Starred · 1",
+        name: "Starred 1",
       }),
     );
     expect(vi.mocked(useQuarterAnalysis).mock.lastCall?.[1]?.fundFilter).toEqual(

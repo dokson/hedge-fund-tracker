@@ -24,11 +24,11 @@ describe("Delta", () => {
     expect(root.textContent).toContain("-5.6%");
   });
 
-  it("renders a muted NO CHANGE label with the flat Minus icon for exactly-zero values", () => {
+  it("renders a muted no-change label with the flat Minus icon for exactly-zero values", () => {
     const { container } = render(<Delta value={0} mode="percent" />);
     const root = container.firstElementChild as HTMLElement;
     expect(root.className).toContain("text-muted-foreground");
-    expect(root.textContent).toContain("NO CHANGE");
+    expect(root.textContent).toContain("No change");
     expect(root.textContent).not.toContain("0.0%");
     expect(root.querySelector("svg")).not.toBeNull();
   });
@@ -42,7 +42,7 @@ describe("Delta", () => {
     const { container } = render(<Delta value={Infinity} mode="percent" />);
     const root = container.firstElementChild as HTMLElement;
     expect(root.className).toContain("delta-positive");
-    expect(root.textContent).toContain("NEW");
+    expect(root.textContent).toContain("New");
   });
 
   it.each([42, 0])("honours a custom formatter for %d", (value) => {

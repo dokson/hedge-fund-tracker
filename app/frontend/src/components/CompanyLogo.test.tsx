@@ -7,16 +7,16 @@ import { describe, expect, it } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
 
 import { CompanyLogo } from "./CompanyLogo";
-import { buildLogoUrl } from "./companyLogoUrl";
+import { buildLogoUrls } from "./companyLogoUrl";
 
 // IntersectionObserver polyfill comes from src/test/setup.ts.
 
-describe("buildLogoUrl", () => {
+describe("buildLogoUrls", () => {
   it("uri-encodes tickers containing slashes or special characters", () => {
-    const url = buildLogoUrl("BRK/B", 32);
-
-    expect(url).not.toContain("BRK/B.png");
-    expect(url).toContain("BRK%2FB.png");
+    for (const url of buildLogoUrls("BRK/B", 32)) {
+      expect(url).not.toContain("BRK/B.png");
+      expect(url).toContain("BRK%2FB.png");
+    }
   });
 });
 

@@ -1,9 +1,8 @@
 import { Link, useLocation } from "react-router";
 
 import { NavLink } from "@/components/NavLink";
-import { APP_VERSION } from "@/lib/config";
+import { BuildInfo } from "@/components/BuildInfo";
 import { MENU_SECTIONS } from "@/lib/menuDoors";
-import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/routes";
 import { Sidebar, SidebarContent, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
@@ -24,8 +23,6 @@ function SidebarNav({
   collapsed?: boolean;
 }) {
   const location = useLocation();
-  const { latestQuarter } = useAvailableQuarters();
-  const baselineQuarter = latestQuarter ? latestQuarter.replace("Q", " Q") : null;
 
   return (
     <>
@@ -36,7 +33,7 @@ function SidebarNav({
               {collapsed ? (
                 sIdx > 0 && <div className="mx-2 mb-2 h-px bg-border" aria-hidden="true" />
               ) : (
-                <div className="px-3 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                <div className="px-3 mb-1.5 text-xs font-medium text-muted-foreground">
                   {section.label}
                 </div>
               )}
@@ -83,37 +80,7 @@ function SidebarNav({
       <SidebarFooter
         className={cn("py-2 border-t border-border status-line", collapsed ? "px-1" : "px-3")}
       >
-        {collapsed ? (
-          baselineQuarter && (
-            <div className="flex justify-center">
-              <span className="h-2 w-2 bg-positive" aria-hidden="true" />
-              <span className="sr-only">13F baseline {baselineQuarter}</span>
-            </div>
-          )
-        ) : (
-          <div className="space-y-0 text-xs">
-            {baselineQuarter && (
-              <p className="flex items-center gap-2 truncate">
-                <span className="h-2 w-2 bg-positive shrink-0" aria-hidden="true" />
-                <span>
-                  <span className="k">13F baseline</span> {baselineQuarter}
-                </span>
-              </p>
-            )}
-            <p className="truncate text-muted-foreground">
-              v{APP_VERSION} · ©{" "}
-              <a
-                href="https://www.coalesce.coach/en"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="COalesCE website"
-                className="underline underline-offset-2 hover:text-foreground"
-              >
-                COalesCE
-              </a>
-            </p>
-          </div>
-        )}
+        <BuildInfo compact={collapsed} />
       </SidebarFooter>
     </>
   );
@@ -128,8 +95,9 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
   return (
     <div
       className={cn(
-        "flex items-center h-12 border-b border-border shrink-0",
-        collapsed ? "justify-center px-1" : "gap-2 px-3",
+        // Same height as the top bar beside it, so the two rules form one line.
+        "flex items-center h-14 border-b border-border shrink-0",
+        collapsed ? "justify-center px-1" : "gap-1.5 px-3",
       )}
     >
       <button
@@ -137,16 +105,16 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
         onClick={toggleSidebar}
         aria-label={collapsed ? "Expand menu" : "Collapse menu"}
         aria-expanded={!collapsed}
-        className="shrink-0 grid place-items-center h-9 w-9 rounded-md transition-colors duration-[120ms] hover:bg-muted"
+        className="shrink-0 grid place-items-center h-11 w-10 rounded-md transition-colors duration-[120ms] hover:bg-muted"
       >
-        <BrandLogo size={28} className="h-7 w-7" />
+        <BrandLogo size={36} className="h-9 w-9" />
       </button>
       {!collapsed && (
-        <Link to={ROUTES.home} className="min-w-0 leading-none group/brand" title="Home">
-          <p className="text-sm font-semibold tracking-tight text-foreground truncate">
+        <Link to={ROUTES.home} className="min-w-0 leading-tight group/brand" title="Home">
+          <p className="text-base font-semibold tracking-tight text-foreground truncate">
             Hedge Fund Tracker
           </p>
-          <p className="text-[11px] text-muted-foreground truncate">SEC 13F · 13D/G · Form 4</p>
+          <p className="text-xs text-muted-foreground truncate">SEC 13F, 13D/G and Form 4</p>
         </Link>
       )}
     </div>

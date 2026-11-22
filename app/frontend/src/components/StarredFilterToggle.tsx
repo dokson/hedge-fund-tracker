@@ -28,7 +28,7 @@ export function StarredFilterToggle({
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Star className="h-3.5 w-3.5 text-warning" fill="currentColor" /> Consider starred only:
+        <Star className="h-3.5 w-3.5 text-gold-text" fill="currentColor" /> Consider starred only:
       </span>
       <ToggleChip
         icon={Users}

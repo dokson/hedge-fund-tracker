@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import type * as DataService from "@/lib/dataService";
 import type { EnrichedNQFiling, HedgeFund } from "@/lib/dataService";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const fund: HedgeFund = {
   cik: "1",
@@ -60,7 +61,9 @@ describe("Landing latest-filings wire logos", () => {
     render(
       <QueryClientProvider client={client}>
         <MemoryRouter>
-          <Landing />
+          <TooltipProvider>
+            <Landing />
+          </TooltipProvider>
         </MemoryRouter>
       </QueryClientProvider>,
     );

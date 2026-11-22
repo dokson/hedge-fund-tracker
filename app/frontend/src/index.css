@@ -3,53 +3,62 @@
 
 @layer base {
   /* Light: white page and white panels told apart by hairlines and a faint
-     lift, neutral zinc greys, one indigo. Values are HSL triples so every
-     hsl(var(--x)) consumer keeps working. */
+     lift, greys cooled toward the logo's navy, the logo's royal blue for
+     action and its horn gold for the current place (nav, tabs, stars).
+     Values are HSL triples so every hsl(var(--x)) consumer keeps working. */
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 6% 10%; /* #18181b, 17.7:1 */
+    --foreground: 224 32% 11%; /* #131825, 17.7:1 */
 
     --card: 0 0% 100%;
-    --card-foreground: 240 6% 10%;
+    --card-foreground: 224 32% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 6% 10%;
+    --popover-foreground: 224 32% 11%;
 
-    --primary: 243 75% 59%; /* #5048e5, 6.18:1 with white */
+    --primary: 224 76% 46%; /* #1c4cce, logo blue: 7.07:1 with white */
     --primary-foreground: 0 0% 100%;
-    --primary-text: 243 75% 52%; /* link text: muted 7.57, card/bg 8.30 */
+    --primary-text: 224 78% 40%; /* #1641b6 link text: muted 7.83, card/bg 8.54 */
 
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 6% 10%;
+    --secondary: 222 30% 96.5%;
+    --secondary-foreground: 224 32% 11%;
 
-    --muted: 240 5% 96%; /* #f4f4f5, hover / track surface */
-    /* #67676f: labels go down to 11px, so the muted tone carries the AA bar
-       on every surface. muted 5.12, card/bg 5.62. */
-    --muted-foreground: 240 4% 42%;
+    --muted: 222 30% 96.5%; /* #f3f5f9, hover / track surface */
+    /* #5a6172: labels go down to 11px, so the muted tone carries the AA bar
+       on every surface. muted 5.68, card/bg 6.19. */
+    --muted-foreground: 222 12% 40%;
 
-    --accent: 243 75% 59%;
+    --accent: 224 76% 46%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 355 74% 44%;
     --destructive-foreground: 0 0% 100%;
+    --destructive-text: 355 74% 44%; /* error text: same red as the fill in light */
 
-    --border: 240 6% 90%; /* #e4e4e7 */
-    --input: 240 5% 84%;
-    --ring: 243 75% 59%;
+    --border: 222 22% 89%;
+    --input: 222 10% 55%; /* field edges: 3:1 on background, card and muted (WCAG 1.4.11) */
+    --ring: 224 76% 46%;
+
+    /* The logo's horn gold. --gold marks state (tab underline: 3.6:1 on white),
+       --gold-bright only tints a surface, --gold-text is gold as text (5.0 on muted). */
+    --gold: 40 85% 38%; /* #b37c0f */
+    --gold-bright: 43 96% 50%; /* #fab505 */
+    --gold-text: 38 100% 29%; /* #945e00 */
+    --gold-foreground: 224 45% 12%;
 
     --radius: 8px;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 4% 42%; /* mirrors --muted-foreground */
-    --sidebar-primary: 243 75% 59%;
+    --sidebar-background: 222 33% 98.5%;
+    --sidebar-foreground: 222 12% 40%; /* mirrors --muted-foreground */
+    --sidebar-primary: 224 76% 46%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 5% 96%;
-    --sidebar-accent-foreground: 240 6% 10%;
-    --sidebar-border: 240 6% 90%;
-    --sidebar-ring: 243 75% 59%;
+    --sidebar-accent: 222 30% 96.5%;
+    --sidebar-accent-foreground: 224 32% 11%;
+    --sidebar-border: 222 22% 89%;
+    --sidebar-ring: 224 76% 46%;
 
     /* Deltas are darkened off the canon greens/reds, which sit near 3.3:1
-       on white. Every ratio below is measured on --muted (#f4f4f5), the
+       on white. Every ratio below is measured on --muted (#f3f5f9), the
        darkest ground a delta, a chip or a hover row reaches in this theme,
        so it holds on --card and --background too. */
     --positive: 171 92% 24%; /* #057665: muted 5.09, bg 5.58 */
@@ -59,10 +68,10 @@
     --closed: 355 74% 44%;
     --warning: 36 100% 30%; /* #995c00: muted 4.94, bg 5.41 */
     --warning-foreground: 0 0% 100%;
-    --info: 243 75% 59%;
+    --info: 224 76% 46%;
     --magenta: 282 68% 38%; /* #7b1fa3, AI: muted 7.45, bg 8.17 */
 
-    --chart-1: 243 75% 59%;
+    --chart-1: 224 76% 46%;
     --chart-2: 171 92% 24%;
     --chart-3: 36 100% 30%;
     --chart-4: 282 68% 38%;
@@ -74,68 +83,73 @@
     --chart-8: 46 100% 30%; /* #997300, Smart Score yellow: bg 4.6 */
   }
 
-  /* Dark is the default look: an ink-indigo page, one step lighter panel,
-     hairlines tinted to the brand hue, indigo for primary and selection.
-     The neutrals carry 14-30% saturation at hue 236, so the page reads as
-     the product's colour instead of zinc grey; every text token below keeps
-     or beats the ratio it had on zinc. */
+  /* Dark is the default look: the logo's navy, lifted off near-black so the
+     page reads lit rather than ink; one step lighter panels, hairlines tinted
+     to the same hue, royal blue for action and gold for the current place. */
   .dark {
-    --background: 236 28% 5%; /* #090a10 */
-    --foreground: 230 30% 94%; /* #ebedf4, 16.9:1 */
+    --background: 224 38% 9%; /* #0e1320 */
+    --foreground: 220 35% 95%; /* #eef1f7, 16.4:1 */
 
-    --card: 236 24% 8.5%; /* #10111b */
-    --card-foreground: 230 30% 94%;
+    --card: 224 34% 12.5%; /* #151b2b */
+    --card-foreground: 220 35% 95%;
 
-    --popover: 236 24% 10%;
-    --popover-foreground: 230 30% 94%;
+    --popover: 224 32% 14%;
+    --popover-foreground: 220 35% 95%;
 
-    --primary: 239 78% 63%; /* #575aea, 5.19:1 with white */
+    --primary: 222 80% 56%; /* #356be9, 4.75:1 with white */
     --primary-foreground: 0 0% 100%;
-    --primary-text: 234 89% 80%; /* #9fa8f9 link text: muted 7.44, card 8.41, bg 8.87 */
+    --primary-text: 220 95% 78%; /* #92b5fc link text: muted 7.17, card 8.39, bg 9.05 */
 
-    --secondary: 236 20% 14%;
-    --secondary-foreground: 230 30% 94%;
+    --secondary: 224 28% 18%;
+    --secondary-foreground: 220 35% 95%;
 
-    --muted: 236 20% 14%; /* #1d1e2b, hover / track surface */
-    /* #a2a5b9: labels go down to 11px. muted 6.81, card 7.70, bg 8.12. */
-    --muted-foreground: 232 14% 68%;
+    --muted: 224 28% 18%; /* #21283b, hover / track surface */
+    /* #a5aec0: labels go down to 11px. muted 6.58, card 7.70, bg 8.31. */
+    --muted-foreground: 220 18% 70%;
 
-    --accent: 239 78% 63%;
+    --accent: 222 80% 56%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 355 88% 58%;
+    --destructive: 355 75% 46%;
     --destructive-foreground: 0 0% 100%;
+    /* The fill is dark enough for white text; as text on the navy it fell near 3:1. */
+    --destructive-text: 355 88% 68%;
 
-    --border: 236 18% 19%; /* #282939 */
-    --input: 236 16% 25%;
-    --ring: 239 78% 63%;
+    --border: 224 24% 24%;
+    --input: 222 16% 50%; /* field edges: 3:1 on background, card and muted (WCAG 1.4.11) */
+    --ring: 222 80% 56%;
+
+    --gold: 43 96% 56%; /* #fbbd23: 8.7 on muted */
+    --gold-bright: 43 96% 56%;
+    --gold-text: 44 100% 62%; /* #ffcb3d: muted 9.72 */
+    --gold-foreground: 224 45% 10%;
 
     --radius: 8px;
 
-    --sidebar-background: 236 30% 6%;
-    --sidebar-foreground: 232 14% 68%;
-    --sidebar-primary: 239 78% 63%;
+    --sidebar-background: 224 42% 7.5%;
+    --sidebar-foreground: 220 18% 70%;
+    --sidebar-primary: 222 80% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 238 38% 17%;
-    --sidebar-accent-foreground: 230 30% 94%;
-    --sidebar-border: 236 18% 19%;
-    --sidebar-ring: 239 78% 63%;
+    --sidebar-accent: 224 34% 20%;
+    --sidebar-accent-foreground: 220 35% 95%;
+    --sidebar-border: 224 24% 24%;
+    --sidebar-ring: 222 80% 56%;
 
     /* Lifted off the canon greens/reds. Ratios are measured on --muted
-       (#1d1e2b), the lightest ground a delta, a chip or a hover row reaches
+       (#21283b), the lightest ground a delta, a chip or a hover row reaches
        in this theme, so they hold on --card and --background too. */
-    --positive: 170 90% 36%; /* #09ae93: muted 5.94, card 6.71, bg 7.08 */
+    --positive: 170 90% 38%; /* #0ab89b: muted 5.84, card 6.84, bg 7.38 */
     --positive-foreground: 0 0% 100%;
-    --negative: 355 88% 68%; /* #f56672: muted 5.54, card 6.26, bg 6.61 */
+    --negative: 355 88% 68%; /* #f56672: muted 4.91, card 5.74, bg 6.20 */
     --negative-foreground: 0 0% 100%;
     --closed: 355 88% 68%;
-    --warning: 36 100% 50%; /* #ff9900: muted 7.75, card 8.76, bg 9.24 */
-    --warning-foreground: 236 28% 5%;
-    --info: 239 78% 63%;
-    --magenta: 288 53% 66%; /* #c47ad6, the AI purple lightened for text: muted 5.62, card 6.36, bg 6.71 */
+    --warning: 36 100% 50%; /* #ff9900: muted 6.86, card 8.03, bg 8.67 */
+    --warning-foreground: 224 38% 9%;
+    --info: 222 80% 56%;
+    --magenta: 288 53% 68%; /* #c782d9, the AI purple lightened for text: muted 5.34, card 6.25, bg 6.75 */
 
-    --chart-1: 239 78% 63%;
-    --chart-2: 170 90% 36%;
+    --chart-1: 222 80% 56%;
+    --chart-2: 170 90% 38%;
     --chart-3: 36 100% 50%;
     --chart-4: 291 64% 55%;
     --chart-5: 187 100% 42%;
@@ -164,6 +178,11 @@
     font-variant-numeric: tabular-nums;
     /* Inter's open digits and single-storey a read cleaner at 13px. */
     font-feature-settings: "cv11", "ss01";
+    /* Until Inter loads (or if it never does) the system fallback is scaled to Inter's
+       x-height (0.547 of the em, measured in the browser), so the swap does not reflow the
+       page. An explicit value, not `from-font`: that reads the first available font, which
+       during the swap is the fallback itself. */
+    font-size-adjust: 0.547;
   }
 
   html {
@@ -172,6 +191,8 @@
     /* The phone top bar is sticky over the scrolling document: keep focused
        elements and #hash targets clear of it (SC 2.4.11). */
     scroll-padding-top: 3.5rem;
+    /* Any native checkbox, radio, range or progress takes the brand blue, not the OS accent. */
+    accent-color: hsl(var(--primary));
   }
 
   @media (max-width: 767.98px) {
@@ -190,27 +211,28 @@
   ::selection {
     background: hsl(var(--primary) / 0.25);
   }
-  ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  /* The thumb must read against the page (3:1, SC 1.4.11), so it takes the
-     muted text tone rather than the hairline border colour. */
-  ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground) / 0.75);
-    border-radius: 5px;
-    border: 2px solid transparent;
-    background-clip: content-box;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
-    background-clip: content-box;
-  }
+  /* The thumb must read against the page (3:1, SC 1.4.11), so it takes the muted text tone
+     rather than the hairline border colour. The standard property is the rule; the WebKit
+     pseudo-elements only serve browsers without it, or the two would fight where both exist. */
   * {
-    scrollbar-color: hsl(var(--muted-foreground) / 0.75) transparent;
+    --scrollbar-thumb: hsl(var(--muted-foreground) / 0.75);
+    --scrollbar-track: transparent;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+  @supports not (scrollbar-color: auto) {
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--scrollbar-track);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 5px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
   }
 
   button:not(:disabled):not([aria-disabled="true"]):not([data-disabled="true"]) {
@@ -222,17 +244,9 @@
     outline-offset: 2px;
   }
 
-  /* WCAG 2.3.3. Spinners are exempt: a frozen spinner reads as a hang. */
-  @media (prefers-reduced-motion: reduce) {
-    *:not(.animate-spin),
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
-    }
-  }
+  /* Reduced motion (WCAG 2.3.3) is handled per component with `motion-reduce:`, never by a
+     global zero duration, which makes some animations jump harder: what moves (accordion
+     height, switch thumbs, progress) stops moving, while colour and opacity fades stay. */
 }
 
 @layer components {
@@ -242,7 +256,7 @@
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
     border-radius: var(--radius);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+    box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
   }
 
   /* The panel header row: title left, controls right. Meant as the panel's
@@ -273,10 +287,20 @@
     justify-content: flex-end;
   }
 
-  /* A KPI cell inside a gap-px grid: label over value, no bar, no border. */
+  /* A KPI cell inside a gap-px grid: label over value, no bar, no border. Top-aligned, so a
+     row's labels and values line up whether or not a cell carries a hint line. */
   .kpi-card {
-    @apply flex flex-col justify-center gap-0.5 p-3;
+    @apply flex flex-col justify-start gap-0.5 px-4 py-3;
     background: hsl(var(--card));
+  }
+
+  /* A long table below the fold: the browser skips its layout and paint until it nears the
+     viewport. The estimated height (`--defer-h`, set from the row count) holds its place, and
+     `auto` keeps the real height once rendered, so the scrollbar never jumps. On the section,
+     not the rows: containment does not apply to table rows. Never above the fold. */
+  .defer-render {
+    content-visibility: auto;
+    contain-intrinsic-size: auto none auto var(--defer-h, 1200px);
   }
 
   .text-faint {
@@ -314,8 +338,8 @@
     color: hsl(var(--foreground));
   }
 
-  /* A nav row: icon and label. Active is a filled, rounded row in the brand
-     wash, with a bar on its leading edge. */
+  /* A nav row: icon and label. Active is a filled, rounded row in the logo's
+     gold wash, its icon in gold. */
   .menu-line {
     @apply relative flex items-center gap-2.5 h-9 px-3 rounded-lg;
     font-size: 13px;
@@ -329,23 +353,25 @@
     color: hsl(var(--foreground));
     background: hsl(var(--muted));
   }
+  /* The wash says "here" at a glance; the 2px gold edge (3.2:1 light, 8.3:1 dark) is the
+     non-colour-wash mark, and the only one left when the rail shows icons alone. */
   .menu-line[data-active="true"] {
     color: hsl(var(--foreground));
-    background: hsl(var(--primary) / 0.16);
-    box-shadow: inset 2px 0 0 hsl(var(--primary));
+    background: hsl(var(--gold-bright) / 0.16);
+    box-shadow: inset 2px 0 0 hsl(var(--gold));
     font-weight: 500;
   }
   .menu-line[data-active="true"] svg {
-    color: hsl(var(--primary-text));
+    color: hsl(var(--gold-text));
   }
-  /* Forced colors drop the wash and the inset bar; keep an edge on the current page. */
+  /* Forced colors drop the wash; keep an edge on the current page. */
   @media (forced-colors: active) {
     .menu-line[data-active="true"] {
       border-inline-start: 2px solid Highlight;
     }
   }
 
-  /* `Key value · Key value`: keys muted, values in the text colour. */
+  /* `Key value | Key value`: keys muted, values in the text colour. */
   .status-line {
     font-size: 12px;
     line-height: 20px;
@@ -389,13 +415,9 @@
      in the text alone; the delta tokens are tuned on `--muted` because it is
      the lightest ground in dark and the darkest in light, so a token that
      passes there passes on `--card` and `--background` as well. */
-  .chip,
-  .badge-new,
-  .badge-closed,
-  .badge-nochange,
-  .badge-bullish,
-  .badge-bearish,
-  .badge-neutral {
+  /* Every status and change pill is a `.chip` (`StatusChip`, `ChangeChip`); the tone lives
+     in its text class. */
+  .chip {
     display: inline-flex;
     align-items: center;
     padding: 0 0.5rem;
@@ -407,35 +429,21 @@
     white-space: nowrap;
     background: hsl(var(--muted));
   }
-  .badge-new,
-  .badge-bullish {
-    color: hsl(var(--positive));
-  }
-  .badge-closed,
-  .badge-bearish {
-    color: hsl(var(--negative));
-  }
-  .badge-nochange {
-    color: hsl(var(--muted-foreground));
-  }
-  .badge-neutral {
-    color: hsl(var(--warning));
-  }
 
-  /* Dark only: the status tone also tints the chip. A 14% wash of the tone
-     over --muted keeps the tone's text at 4.57:1 or better (positive 4.83,
-     warning 6.04, negative 4.57), measured on the resulting grounds. Light
-     keeps the neutral chip: there the wash is what fell to 2.13:1. */
-  .dark :is(.chip.text-positive, .chip[class*="(--positive)"], .badge-new, .badge-bullish) {
-    background: color-mix(in srgb, hsl(var(--positive)) 14%, hsl(var(--muted)));
+  /* Dark only: the status tone also tints the chip. A 12% wash of the tone over --card (not
+     --muted, whose lift ate the margin) keeps the tone's text at 4.93:1 or better (positive
+     5.65, warning 6.58, negative 4.93) and the plain text over 12:1. Light keeps the neutral
+     chip: there the wash is what fell to 2.13:1. */
+  .dark :is(.chip.text-positive, .chip[class*="(--positive)"]) {
+    background: color-mix(in srgb, hsl(var(--positive)) 12%, hsl(var(--card)));
     border-color: color-mix(in srgb, hsl(var(--positive)) 35%, hsl(var(--border)));
   }
-  .dark :is(.chip.text-warning, .chip[class*="(--warning)"], .badge-neutral) {
-    background: color-mix(in srgb, hsl(var(--warning)) 14%, hsl(var(--muted)));
+  .dark :is(.chip.text-warning, .chip[class*="(--warning)"]) {
+    background: color-mix(in srgb, hsl(var(--warning)) 12%, hsl(var(--card)));
     border-color: color-mix(in srgb, hsl(var(--warning)) 35%, hsl(var(--border)));
   }
-  .dark :is(.chip.text-negative, .chip[class*="(--negative)"], .badge-closed, .badge-bearish) {
-    background: color-mix(in srgb, hsl(var(--negative)) 14%, hsl(var(--muted)));
+  .dark :is(.chip.text-negative, .chip[class*="(--negative)"]) {
+    background: color-mix(in srgb, hsl(var(--negative)) 12%, hsl(var(--card)));
     border-color: color-mix(in srgb, hsl(var(--negative)) 35%, hsl(var(--border)));
   }
 

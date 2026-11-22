@@ -104,6 +104,9 @@ export interface RawFundPerformanceRow {
   fund_cum_return: string;
   benchmark_cum_return: string;
   unpriced_weight: string;
+  /** Nasdaq-100 (QQQ) over the same window; empty or absent where it was not measured. */
+  nasdaq_return?: string;
+  nasdaq_cum_return?: string;
 }
 
 export interface PerfWindow {

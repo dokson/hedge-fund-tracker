@@ -51,7 +51,7 @@ export const PERFORMANCE_PAGE: PublicPage = {
   path: ROUTES.strategyPerformance,
   title: pageTitle("Strategy Performance"),
   description:
-    "Backtested returns for every consensus screen, rebalanced each quarter and held to the next, measured against the S&P 500.",
+    "Backtested returns for every consensus screen, rebalanced each quarter and held to the next, measured against the S&P 500 and the Nasdaq-100.",
   heading: "Strategy Performance",
 };
 
@@ -59,7 +59,7 @@ export const RANKING_PAGE: PublicPage = {
   path: ROUTES.fundRanking,
   title: pageTitle("Fund Ranking"),
   description:
-    "Rank tracked funds by estimated 13F-holdings returns, with S&P 500 comparisons on each fund's observed quarters, coverage limits and consistency.",
+    "Rank tracked funds by estimated 13F-holdings returns per year, with S&P 500 comparisons on each fund's observed quarters, coverage limits and consistency.",
   heading: "Fund Ranking",
 };
 

@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { announce, sortMessage } from "@/lib/announce";
 
 type Align = "left" | "center" | "right";
 
@@ -48,12 +49,17 @@ export function ColumnHeader({
       aria-sort={ariaSort}
       className={`${alignClass} px-3 py-2 text-xs font-normal text-muted-foreground ${className}`}
     >
-      <span className={`inline-flex items-center gap-1 ${wrapperJustify}`}>
+      <span className={`inline-flex items-center gap-1 whitespace-nowrap ${wrapperJustify}`}>
         {sort ? (
           <button
             type="button"
-            onClick={sort.onToggle}
-            className="inline-flex min-h-6 items-center gap-1 transition-colors duration-[120ms] hover:text-foreground"
+            onClick={() => {
+              sort.onToggle();
+              // The next direction: the active column flips, another one starts descending.
+              const next = sort.active ? (sort.direction === "asc" ? "desc" : "asc") : "desc";
+              announce(sortMessage(label, next));
+            }}
+            className="inline-flex min-h-6 items-center gap-1 whitespace-nowrap transition-colors duration-[120ms] hover:text-foreground"
           >
             {label}
             {SortIcon && <SortIcon className="h-3.5 w-3.5" aria-hidden="true" />}

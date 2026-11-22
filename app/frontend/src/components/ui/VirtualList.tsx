@@ -1,4 +1,10 @@
-import { useCallback, useContext, useLayoutEffect, useRef, type ReactNode } from "react";
+import {
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  type ReactNode,
+} from "react";
 import { useLocation, useNavigationType } from "react-router";
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 
@@ -19,6 +25,15 @@ interface VirtualListProps<T> {
   overscan?: number;
   /** Stable viewport identity for per-history-entry research scroll restoration. */
   scrollKey?: string;
+  /**
+   * Table semantics for a virtualized grid: the rows container becomes a `rowgroup` and each
+   * mounted item a `row` with its `aria-rowindex` (1-based, after `rowIndexOffset` header
+   * rows), so a screen reader keeps the position of a row that is one of thousands while only
+   * a slice is in the DOM. The page puts `role="table"` and `aria-rowcount` (header rows plus
+   * `items.length`) on the element around the header and this list, and `role="cell"` /
+   * `columnheader` on its cells; the item's own wrapper elements are generic and pass through.
+   */
+  tableRows?: { rowIndexOffset: number };
 }
 
 interface VirtualScrollMemory {
@@ -32,11 +47,14 @@ interface VirtualScrollSnapshot {
   measurements: VirtualItem[];
 }
 
-function ResearchVirtualList<T>(props: VirtualListProps<T> & { scrollKey: string }) {
+function ResearchVirtualList<T>(
+  props: VirtualListProps<T> & { scrollKey: string },
+) {
   const memory = useContext(ResearchContext);
   const { key, hash } = useLocation();
   const navigationType = useNavigationType();
-  if (!memory) throw new Error("Research virtual scrolling requires a ResearchProvider");
+  if (!memory)
+    throw new Error("Research virtual scrolling requires a ResearchProvider");
   return (
     <VirtualListViewport
       {...props}
@@ -59,9 +77,11 @@ function ResearchVirtualList<T>(props: VirtualListProps<T> & { scrollKey: string
  * outside this component so they don't scroll with the body.
  */
 export function VirtualList<T>(props: VirtualListProps<T>) {
-  return props.scrollKey === undefined
-    ? <VirtualListViewport {...props} />
-    : <ResearchVirtualList {...props} scrollKey={props.scrollKey} />;
+  return props.scrollKey === undefined ? (
+    <VirtualListViewport {...props} />
+  ) : (
+    <ResearchVirtualList {...props} scrollKey={props.scrollKey} />
+  );
 }
 
 function VirtualListViewport<T>({
@@ -73,14 +93,20 @@ function VirtualListViewport<T>({
   overscan = 8,
   scrollKey,
   memory,
+  tableRows,
 }: VirtualListProps<T> & { memory?: VirtualScrollMemory }) {
   const parentRef = useRef<HTMLDivElement>(null);
-  const initial = useRef(memory?.restore
-    ? memory.values.get(memory.key) as VirtualScrollSnapshot | undefined
-    : undefined).current;
+  const initial = useRef(
+    memory?.restore
+      ? (memory.values.get(memory.key) as VirtualScrollSnapshot | undefined)
+      : undefined,
+  ).current;
   const values = memory?.values;
   const storageKey = memory?.key;
-  const getItemKey = useCallback((index: number) => getKey(items[index], index), [getKey, items]);
+  const getItemKey = useCallback(
+    (index: number) => getKey(items[index], index),
+    [getKey, items],
+  );
 
   const virtualizer = useVirtualizer({
     count: items.length,
@@ -92,24 +118,45 @@ function VirtualListViewport<T>({
     overscan,
   });
 
-  useLayoutEffect(() => () => {
-    if (values && storageKey !== undefined) {
-      values.set(storageKey, {
-        offset: virtualizer.scrollOffset ?? 0,
-        measurements: virtualizer.takeSnapshot(),
-      } satisfies VirtualScrollSnapshot);
-    }
-  }, [storageKey, values, virtualizer]);
+  useLayoutEffect(
+    () => () => {
+      if (values && storageKey !== undefined) {
+        values.set(storageKey, {
+          offset: virtualizer.scrollOffset ?? 0,
+          measurements: virtualizer.takeSnapshot(),
+        } satisfies VirtualScrollSnapshot);
+      }
+    },
+    [storageKey, values, virtualizer],
+  );
 
   return (
-    <div ref={parentRef} data-research-scroll={scrollKey} className={className} style={{ overflow: "auto" }}>
-      <div style={{ height: virtualizer.getTotalSize(), position: "relative", width: "100%" }}>
+    <div
+      ref={parentRef}
+      data-research-scroll={scrollKey}
+      className={className}
+      style={{ overflow: "auto" }}
+    >
+      <div
+        role={tableRows ? "rowgroup" : undefined}
+        style={{
+          height: virtualizer.getTotalSize(),
+          position: "relative",
+          width: "100%",
+        }}
+      >
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const item = items[virtualRow.index];
           return (
             <div
               key={getKey(item, virtualRow.index)}
               data-index={virtualRow.index}
+              role={tableRows ? "row" : undefined}
+              aria-rowindex={
+                tableRows
+                  ? virtualRow.index + 1 + tableRows.rowIndexOffset
+                  : undefined
+              }
               ref={virtualizer.measureElement}
               style={{
                 position: "absolute",

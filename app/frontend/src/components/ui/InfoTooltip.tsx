@@ -34,7 +34,9 @@ export function InfoTooltip({
             event.preventDefault();
             setOpen(true);
           }}
-          className="-m-1 inline-flex cursor-help items-center justify-center rounded-sm p-1"
+          // A full 24px target (WCAG 2.5.8) around the 12px icon: beside a sort button the old
+          // 20px box let the two targets overlap.
+          className="inline-flex size-6 shrink-0 cursor-help items-center justify-center rounded-sm"
         >
           <Info className={cn("h-3 w-3 icon-faint", className)} aria-hidden="true" />
         </button>

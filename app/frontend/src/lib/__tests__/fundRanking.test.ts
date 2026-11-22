@@ -40,11 +40,10 @@ describe("rankFunds", () => {
     expect(a?.excess).toBeCloseTo(1.2 * 0.9 * 1.1 - 1.21);
   });
 
-  it("counts the quarters beating the index and the worst quarter", () => {
+  it("counts the quarters beating the index", () => {
     const [a] = rankFunds(fund("A", [0.2, -0.1, 0.1])).funds;
     expect(a?.beats).toBe(1);
     expect(a?.total).toBe(3);
-    expect(a?.worstQuarter).toBeCloseTo(-0.1);
   });
 
   it("measures consistency as mean excess over its sample deviation", () => {
@@ -56,6 +55,26 @@ describe("rankFunds", () => {
   it("has no consistency when the excess never varies", () => {
     const [a] = rankFunds(fund("A", [0.2, 0.1, 0.2])).funds;
     expect(a?.consistency).toBeNull();
+  });
+
+  it("measures the Nasdaq-100 excess over the fund's own quarters, and none without its data", () => {
+    const nasdaq = [0.2, 0.0, 0.1];
+    const withNasdaq = fund("A", [0.2, -0.1, 0.1]).map((r, i) => ({
+      ...r,
+      nasdaq_return: String(nasdaq[i]),
+    }));
+    // B misses the first quarter, so its Nasdaq excess covers only the last two.
+    const partial = fund("B", [0.5, 0.5, 0.5])
+      .slice(1)
+      .map((r, i) => ({ ...r, nasdaq_return: String(nasdaq[i + 1]) }));
+    const ranking = rankFunds([...withNasdaq, ...partial]);
+    const byName = new Map(ranking.funds.map((f) => [f.fund, f]));
+    expect(byName.get("A")?.excessNasdaq).toBeCloseTo(1.2 * 0.9 * 1.1 - 1.2 * 1.0 * 1.1);
+    expect(byName.get("B")?.excessNasdaq).toBeCloseTo(1.5 * 1.5 - 1.0 * 1.1);
+    // A file without the Nasdaq-100 columns (older builds) gives no excess and no path.
+    const [c] = rankFunds(fund("C", [0.1, 0.1, 0.1])).funds;
+    expect(c?.excessNasdaq).toBeNull();
+    expect(c?.curve.every((p) => p.nasdaq === null)).toBe(true);
   });
 
   it("ranks a fund missing quarters on its own, against the index on the same quarters", () => {

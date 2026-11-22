@@ -90,6 +90,6 @@ describe("StockAnalysis smart score", () => {
         "Smart Score: relative institutional screen (1–10), not a return forecast",
       ),
     ).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "Add to starred" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add AAA to starred" })).toBeTruthy();
   });
 });

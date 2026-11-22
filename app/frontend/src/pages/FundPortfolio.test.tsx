@@ -33,6 +33,7 @@ vi.mock("@/lib/dataService", async (importOriginal) => {
     getFundQuarterlyHoldings: vi.fn<() => Promise<QuarterlyHolding[]>>(async () => [holding]),
     aggregateHoldingsByTicker: aggregateSpy,
     getFundPerformance: vi.fn<() => Promise<null>>(async () => null),
+    getFundPerformanceRows: vi.fn<() => Promise<never[]>>(async () => []),
   };
 });
 
@@ -55,6 +56,29 @@ function GoToFund({ name }: { name: string }) {
 }
 
 describe("FundPortfolio fund detail", () => {
+  it("returns focus to the selected position category when the filter is cleared", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TooltipProvider>
+          <MemoryRouter initialEntries={[fundPath("Fund A")]}>
+            <ResearchProvider>
+              <Routes>
+                <Route path={`${ROUTES.funds}/:fundId`} element={<FundPortfolio />} />
+              </Routes>
+            </ResearchProvider>
+          </MemoryRouter>
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+    const category = await screen.findByRole("button", { name: /New positions/ });
+    fireEvent.click(category);
+    const clear = screen.getByRole("button", { name: "Clear position filter" });
+    clear.focus();
+    fireEvent.click(clear);
+    expect(document.activeElement).toBe(category);
+    expect(category.getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("resets table state when navigating to another fund", async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>

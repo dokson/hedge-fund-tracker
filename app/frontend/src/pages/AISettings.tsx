@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AI_PROVIDERS } from "@/lib/aiClient";
+import { IDENTIFIER_INPUT } from "@/lib/forms";
 import {
   getModels,
   generateModelsCSV,
@@ -36,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog, DetailList } from "@/components/ui/ConfirmDialog";
 import {
   Select,
   SelectContent,
@@ -43,8 +45,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
+import { DIALOG_AUTOFOCUS } from "@/lib/dialog";
 
 export default function AISettingsPage() {
   usePageMeta({
@@ -67,10 +70,10 @@ export default function AISettingsPage() {
           <TabsTrigger value="keys">API Keys</TabsTrigger>
           <TabsTrigger value="models">AI Models</TabsTrigger>
         </TabsList>
-        <TabsContent value="keys" className="mt-6">
+        <TabsContent value="keys" className="mt-6" findable>
           <APIKeysTab />
         </TabsContent>
-        <TabsContent value="models" className="mt-6">
+        <TabsContent value="models" className="mt-6" findable>
           <ModelsTab />
         </TabsContent>
       </Tabs>
@@ -99,7 +102,10 @@ function APIKeysTab() {
   const [providerToDelete, setProviderToDelete] = useState<(typeof AI_PROVIDERS)[number] | null>(
     null,
   );
-  const { data: allModels = [] } = useQuery({ queryKey: ["models"], queryFn: getModels });
+  const { data: allModels = [] } = useQuery({
+    queryKey: ["models"],
+    queryFn: getModels,
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -225,38 +231,31 @@ function APIKeysTab() {
         </div>
       </Panel>
 
-      {/* Delete API Key Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto break-words sm:max-w-md [&_button]:min-h-10">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" aria-hidden="true" /> Remove API Key
-            </DialogTitle>
-            <DialogDescription>
-              You are about to remove the API key for <strong>{providerToDelete?.name}</strong>.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-2 text-sm text-muted-foreground space-y-2">
-            <p>
-              This will permanently delete the key from the{" "}
-              <code className="font-mono bg-muted px-1 py-0.5 text-xs">.env</code> file on disk.
-              Since <code className="font-mono bg-muted px-1 py-0.5 text-xs">.env</code> is not
-              tracked by Git,{" "}
-              <strong className="text-foreground">this operation cannot be undone</strong>: the key
-              cannot be recovered from version history.
-            </p>
-            <p>Make sure you have a copy of the key before proceeding.</p>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleConfirmDelete}>
-              Remove Key
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        icon={Trash2}
+        title="Remove API Key"
+        description={
+          <>
+            You are about to remove the API key for <strong>{providerToDelete?.name}</strong>.
+          </>
+        }
+        confirmLabel="Remove Key"
+        onConfirm={handleConfirmDelete}
+        destructive
+      >
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            This will permanently delete the key from the{" "}
+            <code className="font-mono bg-muted px-1 py-0.5 text-xs">.env</code> file on disk. Since{" "}
+            <code className="font-mono bg-muted px-1 py-0.5 text-xs">.env</code> is not tracked by
+            Git, <strong className="text-foreground">this operation cannot be undone</strong>: the
+            key cannot be recovered from version history.
+          </p>
+          <p>Make sure you have a copy of the key before proceeding.</p>
+        </div>
+      </ConfirmDialog>
 
       {/* API Keys management */}
       <div className="space-y-3">
@@ -296,6 +295,7 @@ function APIKeysTab() {
                     <div className="relative min-w-0 flex-1">
                       <Input
                         id={`api-key-${provider.id}`}
+                        {...IDENTIFIER_INPUT}
                         type={isVisible ? "text" : "password"}
                         value={
                           hasKey
@@ -308,7 +308,10 @@ function APIKeysTab() {
                           hasKey
                             ? undefined
                             : (e) =>
-                                setDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))
+                                setDrafts((prev) => ({
+                                  ...prev,
+                                  [provider.id]: e.target.value,
+                                }))
                         }
                         placeholder={hasKey ? "" : provider.hint}
                         aria-label={`${provider.name} API key`}
@@ -418,7 +421,11 @@ function ModelsTab() {
     if (!newModelId.trim() || !newModelDesc.trim()) return;
     const updatedModels: AIModel[] = [
       ...models,
-      { id: newModelId.trim(), description: newModelDesc.trim(), client: newModelProvider },
+      {
+        id: newModelId.trim(),
+        description: newModelDesc.trim(),
+        client: newModelProvider,
+      },
     ];
     const csv = generateModelsCSV(updatedModels);
     try {
@@ -499,7 +506,8 @@ function ModelsTab() {
               title={displayName(client)}
               aside={
                 <span className="tabular-nums">
-                  {clientModels.length} model{clientModels.length !== 1 ? "s" : ""}
+                  {clientModels.length} model
+                  {clientModels.length !== 1 ? "s" : ""}
                 </span>
               }
             >
@@ -568,6 +576,7 @@ function ModelsTab() {
               </Field>
               <Field label="Model ID" htmlFor="model-id">
                 <Input
+                  {...DIALOG_AUTOFOCUS}
                   id="model-id"
                   name="model_id"
                   required
@@ -605,43 +614,34 @@ function ModelsTab() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Model Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto break-words sm:max-w-md [&_button]:min-h-10">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" aria-hidden="true" /> Remove AI Model
-            </DialogTitle>
-            <DialogDescription>
-              Remove <strong>{modelToDelete?.description}</strong> (
-              {modelToDelete ? displayName(modelToDelete.client) : ""}) from the configuration.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-2">
-            <div className="rounded-md border border-border bg-card p-3 space-y-1 text-sm">
-              <div>
-                <span className="text-muted-foreground">Model:</span> {modelToDelete?.description}
-              </div>
-              <div>
-                <span className="text-muted-foreground">ID:</span>{" "}
-                <span className="break-all font-mono text-xs">{modelToDelete?.id}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Provider:</span>{" "}
-                {modelToDelete ? displayName(modelToDelete.client) : ""}
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleConfirmDelete}>
-              Confirm Remove
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        icon={Trash2}
+        title="Remove AI Model"
+        description={
+          <>
+            Remove <strong>{modelToDelete?.description}</strong> (
+            {modelToDelete ? displayName(modelToDelete.client) : ""}) from the configuration.
+          </>
+        }
+        confirmLabel="Confirm Remove"
+        onConfirm={handleConfirmDelete}
+        destructive
+      >
+        {modelToDelete && (
+          <DetailList
+            items={[
+              { label: "Model", value: modelToDelete.description },
+              {
+                label: "ID",
+                value: <span className="break-all font-mono text-xs">{modelToDelete.id}</span>,
+              },
+              { label: "Provider", value: displayName(modelToDelete.client) },
+            ]}
+          />
+        )}
+      </ConfirmDialog>
     </div>
   );
 }

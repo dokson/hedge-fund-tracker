@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import type { HedgeFund } from "@/lib/dataService";
 
 const saveMock = vi.hoisted(() => vi.fn<(content: string, path: string) => Promise<void>>());
-vi.mock("sonner", () => ({
+vi.mock("@/components/ui/toast", () => ({
   toast: { success: vi.fn<() => void>(), error: vi.fn<() => void>() },
 }));
 vi.mock("@/lib/dataService", async (importOriginal) => {

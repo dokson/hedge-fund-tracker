@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ResearchProvider } from "@/components/ResearchProvider";
 import type { Stock, StockQuarterAnalysis } from "@/lib/dataService";
+import { APP_STATUS_ID } from "@/lib/announce";
 import { useAvailableQuarters } from "@/hooks/useAvailableQuarters";
 import type { ReactNode } from "react";
 
@@ -12,6 +13,8 @@ vi.mock("@/lib/dataService", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/dataService")>()),
   getStocks: vi.fn<() => Promise<Stock[]>>(async () => [
     { cusip: "000000001", ticker: "AAA", company: "Alpha Co" },
+    // Every analysed ticker is in stocks.csv in real data; the Starred tab lists from here.
+    { cusip: "000000002", ticker: "ZZZ", company: "Zeta Co" },
   ]),
   getSectorHierarchy: vi.fn<() => Promise<never[]>>(async () => []),
 }));
@@ -52,6 +55,7 @@ function renderAt(path: string, client = new QueryClient()) {
       <TooltipProvider>
         <MemoryRouter initialEntries={[path]}>
           <ResearchProvider>
+            <div id={APP_STATUS_ID} role="status" />
             <StockBrowser />
             <LocationProbe />
           </ResearchProvider>
@@ -103,7 +107,7 @@ describe("StockBrowser analysis readiness", () => {
       isLoading: true,
     });
     renderAt("/stocks?tab=score");
-    expect((await screen.findByRole("status")).textContent).toContain("Loading Smart Score");
+    expect(await screen.findByText("Loading Smart Score…")).not.toBeNull();
     const panel = screen.getByRole("tabpanel");
     expect(within(panel).queryByRole("link", { name: "AAA" })).toBeNull();
     expect(within(panel).queryByText("1.0")).toBeNull();
@@ -120,7 +124,7 @@ describe("StockBrowser analysis readiness", () => {
     // Hold the real query pending without depending on timers or a network response.
     client.setQueryDefaults(["quarterAnalysis"], { enabled: false });
     renderAt("/stocks?tab=score", client);
-    expect((await screen.findByRole("status")).textContent).toContain("Loading Smart Score");
+    expect(await screen.findByText("Loading Smart Score…")).not.toBeNull();
     const panel = screen.getByRole("tabpanel");
     expect(within(panel).queryByRole("link", { name: "AAA" })).toBeNull();
     expect(within(panel).queryByText("1.0")).toBeNull();
@@ -130,7 +134,7 @@ describe("StockBrowser analysis readiness", () => {
     await waitFor(() =>
       expect(within(panel).getAllByRole("link", { name: "ZZZ" }).length).toBeGreaterThan(0),
     );
-    expect(within(panel).queryByRole("status")).toBeNull();
+    expect(within(panel).queryByText("Loading Smart Score…")).toBeNull();
     expect(within(panel).getAllByRole("link", { name: "AAA" }).length).toBeGreaterThan(0);
     expect(within(panel).getAllByText("9.8").length).toBeGreaterThan(0);
     expect(within(panel).getAllByText("1.0").length).toBeGreaterThan(0);
@@ -159,8 +163,8 @@ describe("StockBrowser analysis readiness", () => {
         isLoading: true,
       });
       renderAt(`/stocks?tab=${tab}`);
-      expect((await screen.findByRole("status")).textContent).toContain(message);
-      const panel = screen.getByRole("tabpanel");
+      const panel = await screen.findByRole("tabpanel");
+      expect(within(panel).getByText(new RegExp(message))).not.toBeNull();
       expect(within(panel).queryByText("No data available.")).toBeNull();
       expect(within(panel).queryByText("0 stocks")).toBeNull();
       expect(within(panel).queryByText("1.0")).toBeNull();
@@ -221,5 +225,43 @@ describe("StockBrowser cards", () => {
     const panel = await screen.findByRole("tabpanel");
     const link = await within(panel).findByRole("link", { name: /AAA/ });
     expect(link.getAttribute("title")).toBe("Alpha Co");
+  });
+});
+
+describe("StockBrowser controls", () => {
+  it("keeps the empty starred view reachable and allows a stock to be starred from the score cards", async () => {
+    vi.mocked(useAvailableQuarters).mockReturnValue({
+      quarters: ["2026Q3"],
+      latestQuarter: "2026Q3",
+      isLoading: false,
+    });
+    const client = new QueryClient();
+    client.setQueryData(["quarterAnalysis", "2026Q3"], [completedAnalysis()]);
+    renderAt("/stocks?tab=score", client);
+    const panel = await screen.findByRole("tabpanel");
+    const star = (await within(panel).findAllByRole("button", { name: "Add ZZZ to starred" }))[0];
+    fireEvent.click(star);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Starred/ }), { button: 0 });
+    expect(
+      await within(screen.getByRole("tabpanel")).findByRole("link", { name: "ZZZ" }),
+    ).not.toBeNull();
+  });
+
+  it("announces the filtered count through the shared status region", async () => {
+    vi.mocked(useAvailableQuarters).mockReturnValue({
+      quarters: ["2026Q3"],
+      latestQuarter: "2026Q3",
+      isLoading: false,
+    });
+    const client = new QueryClient();
+    client.setQueryData(["quarterAnalysis", "2026Q3"], [completedAnalysis()]);
+    renderAt("/stocks?tab=score", client);
+    const panel = await screen.findByRole("tabpanel");
+    await within(panel).findAllByRole("link", { name: "ZZZ" });
+    fireEvent.change(within(panel).getByLabelText("Search ticker or company"), {
+      target: { value: "not-a-ticker" },
+    });
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("0 stocks"));
+    expect(within(panel).queryByRole("link", { name: "ZZZ" })).toBeNull();
   });
 });

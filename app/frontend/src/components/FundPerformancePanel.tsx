@@ -8,8 +8,19 @@ import { FUND_SERIES_ID, getFundPerformance, type PerfWindow } from "@/lib/dataS
 import { PLOT_INSET } from "@/lib/equityCurve";
 import { pctFrac, pp } from "@/lib/performanceFormat";
 import { toneClass } from "@/lib/tone";
-import { seriesColor } from "@/lib/seriesColors";
+import { BENCHMARK_DASH, seriesColor } from "@/lib/seriesColors";
+import { SeriesSwatch } from "@/components/ui/SeriesSwatch";
 import { cn } from "@/lib/utils";
+
+/** A benchmark's name with the line key the chart draws it with. */
+function BenchmarkLabel({ id, label }: { id: "SPY" | "QQQ"; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <SeriesSwatch color={seriesColor(id)} dash={BENCHMARK_DASH[id]} />
+      {label}
+    </span>
+  );
+}
 
 // Lazy so the fund list and the static pages never pull the charting library.
 const EquityCurveChart = lazy(() => import("@/components/EquityCurveChart"));
@@ -18,8 +29,6 @@ const quarterLabel = (quarter: string) => quarter.replace("Q", " Q");
 
 /** Narrowest a quarter column can get before the chart drops axis labels or values touch. */
 const MIN_COLUMN_PX = 64;
-/** Narrow layout, used where the columns cannot line up with the chart: label and column width. */
-const NARROW_LABEL_PX = 72;
 const NARROW_COLUMN_PX = 64;
 
 /**
@@ -31,26 +40,34 @@ const NARROW_COLUMN_PX = 64;
 function QuarterTable({
   fundWindows,
   indexWindows,
+  nasdaqWindows,
   lowCoverage,
 }: {
   fundWindows: PerfWindow[];
   indexWindows: PerfWindow[];
+  nasdaqWindows: PerfWindow[];
   lowCoverage: string[];
 }) {
   const [containerRef, size] = useElementSize();
+  const [labelRef, labelSize] = useElementSize();
   const [moreToTheRight, setMoreToTheRight] = useState(false);
   useEffect(() => {
     const el = containerRef.current;
     if (el) setMoreToTheRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
   }, [containerRef, size]);
   const indexBy = new Map(indexWindows.map((w) => [w.quarterOut, w.windowReturn]));
+  const nasdaqBy = new Map(nasdaqWindows.map((w) => [w.quarterOut, w.windowReturn]));
   const flagged = new Set(lowCoverage);
   const count = fundWindows.length;
   if (count === 0) return null;
 
   const inset = PLOT_INSET.left + PLOT_INSET.right;
-  const alignedMinWidth = inset + count * MIN_COLUMN_PX;
-  const aligned = size === null || size.width >= alignedMinWidth;
+  const labelWidth = labelSize?.width ?? 0;
+  const alignedMinWidth = Math.max(
+    inset + count * MIN_COLUMN_PX,
+    inset + Math.max(0, labelWidth - PLOT_INSET.left) * 2 * count,
+  );
+  const aligned = size === null || labelSize === null || size.width >= alignedMinWidth;
   const step = `(100% - ${inset}px) / ${count}`;
   const gridStyle = aligned
     ? {
@@ -60,16 +77,23 @@ function QuarterTable({
           `calc(${step} / 2 + ${PLOT_INSET.right}px)`,
         ].join(" "),
       }
-    : {
-        gridTemplateColumns: `${NARROW_LABEL_PX}px repeat(${count}, minmax(${NARROW_COLUMN_PX}px, 1fr))`,
-      };
-  const minWidth = aligned ? alignedMinWidth : NARROW_LABEL_PX + count * NARROW_COLUMN_PX;
+    : { gridColumn: "1 / -1", gridTemplateColumns: "subgrid" };
   const cellAlign = (i: number) => (aligned && i === count - 1 ? "text-right" : "text-center");
   const cell = "py-1.5 tabular-nums";
   const rowLabel = "sticky left-0 bg-card py-1.5 text-left text-muted-foreground";
 
   return (
     <div className="border-t border-border px-3">
+      <div
+        ref={labelRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute invisible grid w-max whitespace-nowrap text-xs"
+      >
+        <span>Fund</span>
+        {nasdaqBy.size > 0 && <BenchmarkLabel id="QQQ" label="Nasdaq-100" />}
+        <BenchmarkLabel id="SPY" label="S&P 500" />
+        <span>Difference</span>
+      </div>
       <div
         ref={containerRef}
         role="region"
@@ -88,8 +112,15 @@ function QuarterTable({
         <div
           role="table"
           aria-label="Quarter by quarter"
-          className="whitespace-nowrap text-xs"
-          style={{ minWidth }}
+          className={cn("whitespace-nowrap text-xs", !aligned && "grid")}
+          style={
+            aligned
+              ? { minWidth: alignedMinWidth }
+              : {
+                  minWidth: "max-content",
+                  gridTemplateColumns: `max-content repeat(${count}, minmax(${NARROW_COLUMN_PX}px, 1fr))`,
+                }
+          }
         >
           <div
             role="row"
@@ -127,9 +158,28 @@ function QuarterTable({
               </div>
             ))}
           </div>
+          {nasdaqBy.size > 0 && (
+            <div role="row" className="grid" style={gridStyle}>
+              <div role="rowheader" className={rowLabel}>
+                <BenchmarkLabel id="QQQ" label="Nasdaq-100" />
+              </div>
+              {fundWindows.map((w, i) => {
+                const value = nasdaqBy.get(w.quarterOut);
+                return (
+                  <div
+                    key={w.quarterOut}
+                    role="cell"
+                    className={cn(cell, cellAlign(i), "text-muted-foreground")}
+                  >
+                    {value === undefined ? "—" : pctFrac(value)}
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div role="row" className="grid" style={gridStyle}>
             <div role="rowheader" className={rowLabel}>
-              S&amp;P 500
+              <BenchmarkLabel id="SPY" label="S&P 500" />
             </div>
             {fundWindows.map((w, i) => {
               const value = indexBy.get(w.quarterOut);
@@ -169,9 +219,10 @@ function QuarterTable({
 }
 
 /**
- * The fund's quarter-by-quarter track record against the S&P 500. It describes
- * the whole history, so it stays the same whichever quarter the page shows;
- * nothing renders for a fund without a measured quarter.
+ * The fund's quarter-by-quarter track record against the S&P 500, with the
+ * Nasdaq-100 as a second reference. It describes the whole history, so it stays
+ * the same whichever quarter the page shows; nothing renders for a fund without
+ * a measured quarter.
  */
 export default function FundPerformancePanel({ fund }: { fund: string }) {
   const { data } = useQuery({
@@ -181,26 +232,37 @@ export default function FundPerformancePanel({ fund }: { fund: string }) {
   if (!data) return null;
 
   const fundSeries = data.series.find((s) => s.id === FUND_SERIES_ID);
-  const index = data.series.find((s) => s.type === "benchmark");
+  const index = data.series.find((s) => s.id === "SPY");
+  const nasdaq = data.series.find((s) => s.id === "QQQ");
   if (!fundSeries) return null;
   const firstQuarter = data.quarters[0] ?? "";
 
   return (
     <Panel title="Estimated return" titleId="fund-track-record">
-      <p className="px-3 pb-3 text-xs leading-5 text-muted-foreground">
-        Price-only return of the fund&apos;s top 100 US longs at each quarter start, since{" "}
-        {firstQuarter.replace("Q", " Q")}, vs the S&amp;P 500. Not its actual return (no trades,
-        fees, shorts, derivatives, cash). Not investment advice.
-      </p>
-      <StatGrid className="grid-cols-2 rounded-none border-x-0 sm:grid-cols-4">
+      <StatGrid className="grid-cols-2 rounded-none border-x-0 sm:grid-cols-6">
         <Stat
           label="Fund"
           value={pctFrac(fundSeries.cumReturn)}
           valueClassName={toneClass(fundSeries.cumReturn)}
+          className="col-span-2"
+          hint={
+            <span className="block text-[11px] leading-4">
+              Price-only return of the fund&apos;s top 100 US longs at each quarter start, since{" "}
+              {firstQuarter.replace("Q", " Q")}. Not its actual return (no trades, fees, shorts,
+              derivatives, cash). Not investment advice.
+            </span>
+          }
         />
-        <Stat label="S&P 500" value={index && index.total > 0 ? pctFrac(index.cumReturn) : "—"} />
         <Stat
-          label="Excess"
+          label={<BenchmarkLabel id="QQQ" label="Nasdaq-100" />}
+          value={nasdaq && nasdaq.total > 0 ? pctFrac(nasdaq.cumReturn) : "—"}
+        />
+        <Stat
+          label={<BenchmarkLabel id="SPY" label="S&P 500" />}
+          value={index && index.total > 0 ? pctFrac(index.cumReturn) : "—"}
+        />
+        <Stat
+          label="Excess vs S&P 500"
           value={fundSeries.excessPp === null ? "—" : pp(fundSeries.excessPp)}
           valueClassName={fundSeries.excessPp === null ? undefined : toneClass(fundSeries.excessPp)}
         />
@@ -224,6 +286,7 @@ export default function FundPerformancePanel({ fund }: { fund: string }) {
       <QuarterTable
         fundWindows={fundSeries.windows}
         indexWindows={index?.windows ?? []}
+        nasdaqWindows={nasdaq?.windows ?? []}
         lowCoverage={data.lowCoverage}
       />
       {data.lowCoverage.length > 0 && (

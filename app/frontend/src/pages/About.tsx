@@ -54,7 +54,7 @@ export default function About() {
             <Panel title={section.title} className="h-full">
               <div className="space-y-3 p-4">
                 {section.paragraphs.map((segments, i) => (
-                  <p key={i} className="max-w-[72ch] text-sm leading-6 text-foreground/90">
+                  <p key={i} className="text-sm leading-6 text-foreground/90">
                     {segments.map((segment, j) => (
                       <SegmentText key={j} segment={segment} />
                     ))}

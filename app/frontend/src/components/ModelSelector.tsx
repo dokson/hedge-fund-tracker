@@ -100,7 +100,7 @@ export default function ModelSelector({
   if (availableModels.length === 0) {
     return (
       <div className="text-xs text-muted-foreground italic">
-        No API keys configured — see AI Settings
+        No API keys configured. Add one in AI Settings.
       </div>
     );
   }

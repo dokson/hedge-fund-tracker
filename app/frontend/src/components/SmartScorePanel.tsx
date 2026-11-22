@@ -36,13 +36,15 @@ export function SmartScorePanel({
       <div aria-busy="true">
         <Panel
           title="Smart Score"
-          aside={<span className="h-4 w-12 animate-pulse rounded-sm bg-muted" />}
+          aside={
+            <span className="h-4 w-12 animate-pulse motion-reduce:animate-none rounded-sm bg-muted" />
+          }
         >
           <div className="grid grid-cols-1 gap-x-6 divide-y divide-border px-3 pb-3 sm:grid-cols-3 sm:divide-y-0">
             {COMPONENTS.map(({ key, label }) => (
               <div key={key} className="py-2">
                 <span className="text-sm font-medium leading-5">{label}</span>
-                <span className="mt-1 block h-4 w-2/3 animate-pulse rounded-sm bg-muted" />
+                <span className="mt-1 block h-4 w-2/3 animate-pulse motion-reduce:animate-none rounded-sm bg-muted" />
               </div>
             ))}
           </div>

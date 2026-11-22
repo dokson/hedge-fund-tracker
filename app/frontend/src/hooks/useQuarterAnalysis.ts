@@ -8,6 +8,8 @@ interface QuarterAnalysisOptions {
   onProgress?: ProgressFn;
   /** Restrict the analysis to these funds (client-side pipeline, own cache key). */
   fundFilter?: ReadonlySet<string>;
+  /** False keeps the query from fetching or computing; an already cached frame is still read. */
+  enabled?: boolean;
 }
 
 /** The single query key for a quarter's stock-level analysis. */
@@ -27,7 +29,7 @@ export function quarterAnalysisKey(
  */
 export function useQuarterAnalysis(
   quarter: string | undefined,
-  { onProgress, fundFilter }: QuarterAnalysisOptions = {},
+  { onProgress, fundFilter, enabled = true }: QuarterAnalysisOptions = {},
 ) {
   const filtered = fundFilter && fundFilter.size > 0 ? new Set(fundFilter) : undefined;
   return useQuery<readonly StockQuarterAnalysis[]>({
@@ -41,5 +43,6 @@ export function useQuarterAnalysis(
         }
       : skipToken,
     staleTime: 10 * 60 * 1000,
+    enabled,
   });
 }

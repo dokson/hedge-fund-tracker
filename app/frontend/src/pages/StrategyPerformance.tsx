@@ -11,11 +11,12 @@ import { QueryState } from "@/components/ui/QueryState";
 import { TableFrame } from "@/components/ui/TableFrame";
 import { Panel } from "@/components/ui/Panel";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { FaqLink } from "@/components/ui/TextLink";
+import { FaqLink, MetaLine } from "@/components/ui/TextLink";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { PERFORMANCE_PAGE } from "@/lib/pageMeta";
 import { canonicalUrl } from "@/lib/seo";
-import { seriesColor } from "@/lib/seriesColors";
+import { BENCHMARK_DASH, seriesColor } from "@/lib/seriesColors";
+import { SeriesSwatch } from "@/components/ui/SeriesSwatch";
 import { getPerformance, type PerfSeries } from "@/lib/dataService";
 import { STRATEGY_BY_ID, perfOrderIndex } from "@/lib/strategies";
 import { pctFrac, pp } from "@/lib/performanceFormat";
@@ -42,22 +43,19 @@ const longDate = (iso: string) =>
 function LegendRow({
   series,
   active,
-  dimmed,
   onToggle,
 }: {
   series: PerfSeries;
   active: boolean;
-  dimmed: boolean;
   onToggle?: () => void;
 }) {
   const def = STRATEGY_BY_ID[series.id];
-  const swatch = (
-    <span
-      aria-hidden="true"
-      className="inline-block h-2.5 w-2.5 shrink-0"
-      style={{ backgroundColor: seriesColor(series.id) }}
-    />
-  );
+  const swatch =
+    series.type === "benchmark" ? (
+      <SeriesSwatch color={seriesColor(series.id)} dash={BENCHMARK_DASH[series.id]} />
+    ) : (
+      <SeriesSwatch color={seriesColor(series.id)} className="h-2.5 w-2.5" />
+    );
   const name = (
     <span className="inline-flex items-center gap-2 min-w-0">
       {swatch}
@@ -76,9 +74,10 @@ function LegendRow({
             }
           : undefined
       }
+      // No fading of the other rows: they stay clickable, and at 50% their text fell to 2.2:1.
+      // The focused row is marked by its wash and the check in its toggle.
       className={cn(
         "data-table-row",
-        dimmed && "opacity-50",
         active && "bg-muted/60",
         onToggle && "cursor-pointer hover:bg-muted/60",
       )}
@@ -160,15 +159,15 @@ export default function StrategyPerformance() {
   const strategies = series
     .filter((s) => s.type === "strategy")
     .sort((a, b) => perfOrderIndex(a.id) - perfOrderIndex(b.id));
-  const benchmark = series.find((s) => s.type === "benchmark");
+  // The S&P 500 is listed last, just above the excess measured against it.
+  const benchmarks = series
+    .filter((s) => s.type === "benchmark")
+    .sort((a, b) => Number(a.id === "SPY") - Number(b.id === "SPY"));
+  // Excess and the shaded band are measured against the S&P 500.
+  const benchmark = benchmarks.find((s) => s.id === "SPY") ?? benchmarks[0];
   const focusedSeries = focused ? series.find((s) => s.id === focused) : undefined;
 
-  const visible =
-    focusedSeries && benchmark
-      ? [focusedSeries, benchmark]
-      : focusedSeries
-        ? [focusedSeries]
-        : series;
+  const visible = focusedSeries ? [focusedSeries, ...benchmarks] : series;
   const band =
     focusedSeries && benchmark
       ? {
@@ -187,7 +186,7 @@ export default function StrategyPerformance() {
       <PageHeader
         title="Strategy Performance"
         icon={LineChartIcon}
-        description="A descriptive backtest of each consensus screen, rebalanced quarterly and held to the next window, against the S&P 500."
+        description="A descriptive backtest of each consensus screen, rebalanced quarterly and held to the next window, against the S&P 500 and the Nasdaq-100."
       />
 
       {isError ? (
@@ -201,19 +200,17 @@ export default function StrategyPerformance() {
         />
       ) : (
         <>
-          <div className="space-y-2 border-y border-border py-3 text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">
-              {longDate(startDate)} → {lastQuarter} exit · {windows} completed window
-              {windows === 1 ? "" : "s"}
-            </p>
-            <p className="max-w-3xl">
-              A tiny, single-regime sample, using a fund roster preselected on past performance.
-              These results describe this window; they do not establish an investing edge.{" "}
-              <FaqLink item="how-strategy-performance-is-backtested">
-                Backtest method &amp; limits
-              </FaqLink>
-            </p>
-          </div>
+          <MetaLine className="-mt-3 block leading-5">
+            <span className="font-medium text-foreground">
+              {longDate(startDate)} to the {lastQuarter} exit, {windows} completed window
+              {windows === 1 ? "" : "s"}.
+            </span>{" "}
+            A tiny, single-regime sample, using a fund roster preselected on past performance; it
+            describes this window and does not establish an investing edge.{" "}
+            <FaqLink item="how-strategy-performance-is-backtested">
+              Backtest method &amp; limits
+            </FaqLink>
+          </MetaLine>
           {/* Mobile keeps the plot and its compact controls together, before the detail table. */}
           <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
             <Panel title="Series" spaced className="order-2 flex h-full flex-col md:order-1">
@@ -244,18 +241,12 @@ export default function StrategyPerformance() {
                         key={s.id}
                         series={s}
                         active={focused === s.id}
-                        dimmed={!!focusedSeries && s.id !== focused}
                         onToggle={() => setFocused((prev) => (prev === s.id ? null : s.id))}
                       />
                     ))}
-                    {benchmark && (
-                      <LegendRow
-                        key={benchmark.id}
-                        series={benchmark}
-                        active={false}
-                        dimmed={false}
-                      />
-                    )}
+                    {benchmarks.map((b) => (
+                      <LegendRow key={b.id} series={b} active={false} />
+                    ))}
                   </tbody>
                 </table>
               </TableFrame>
@@ -266,7 +257,7 @@ export default function StrategyPerformance() {
               <p className="px-3 pb-3 pt-2 text-xs text-muted-foreground">
                 {focusedSeries ? (
                   <>
-                    Showing {focusedSeries.label} against the S&amp;P 500.{" "}
+                    Showing {focusedSeries.label} against the S&amp;P 500 and the Nasdaq-100.{" "}
                     <button
                       type="button"
                       onClick={() => setFocused(null)}
@@ -276,7 +267,7 @@ export default function StrategyPerformance() {
                     </button>
                   </>
                 ) : (
-                  "Select a strategy to isolate it against the S&P 500 and see its holdings."
+                  "Select a strategy to isolate it against the benchmarks and see its holdings."
                 )}
               </p>
             </Panel>
@@ -310,28 +301,24 @@ export default function StrategyPerformance() {
                     onClick={() => setFocused((prev) => (prev === s.id ? null : s.id))}
                     className={cn(
                       "inline-flex min-h-8 items-center gap-1.5 rounded-sm text-xs hover:text-foreground",
-                      focused === s.id ? "font-semibold text-foreground" : "text-muted-foreground",
-                      focusedSeries && focused !== s.id && "opacity-50",
+                      focused === s.id
+                        ? "font-semibold text-foreground underline underline-offset-4"
+                        : "text-muted-foreground",
                     )}
                   >
-                    <span
-                      aria-hidden="true"
-                      className="h-2 w-2 shrink-0"
-                      style={{ backgroundColor: seriesColor(s.id) }}
-                    />
+                    <SeriesSwatch color={seriesColor(s.id)} />
                     {s.label}
                   </button>
                 ))}
-                {benchmark && (
-                  <span className="inline-flex min-h-8 items-center gap-1.5 text-xs text-muted-foreground">
-                    <span
-                      aria-hidden="true"
-                      className="h-2 w-2 shrink-0"
-                      style={{ backgroundColor: seriesColor(benchmark.id) }}
-                    />
-                    {benchmark.label}
+                {benchmarks.map((b) => (
+                  <span
+                    key={b.id}
+                    className="inline-flex min-h-8 items-center gap-1.5 text-xs text-muted-foreground"
+                  >
+                    <SeriesSwatch color={seriesColor(b.id)} dash={BENCHMARK_DASH[b.id]} />
+                    {b.label}
                   </span>
-                )}
+                ))}
               </div>
             </Panel>
           </div>
@@ -348,7 +335,10 @@ export default function StrategyPerformance() {
                 {benchmark ? pctFrac(benchmark.cumReturn) : "—"}).
               </>
             ) : (
-              <>All strategies shown against the S&amp;P 500 benchmark in grey.</>
+              <>
+                All strategies shown against the S&amp;P 500 (grey dashes) and the Nasdaq-100 (amber
+                dash-dot).
+              </>
             )}
           </p>
 

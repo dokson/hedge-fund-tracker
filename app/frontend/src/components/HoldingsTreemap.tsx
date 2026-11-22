@@ -1,3 +1,4 @@
+import { changeLabel } from "@/lib/tone";
 import { treemapLabel } from "@/components/treemapLabel";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -91,7 +92,11 @@ function TreemapTooltip({
   const translate = `translate(${flipX ? "-100%" : "0"}, ${flipY ? "-100%" : "0"})`;
 
   const noChange = !isNew && item.deltaPct === 0;
-  const deltaLabel = isNew ? "NEW" : noChange ? "NO CHANGE" : formatPct(item.deltaPct, true);
+  const deltaLabel = isNew
+    ? changeLabel("NEW")
+    : noChange
+      ? changeLabel("NO CHANGE")
+      : formatPct(item.deltaPct, true);
   const deltaTone = isNew
     ? "text-[hsl(var(--positive))]"
     : down
@@ -299,7 +304,8 @@ export function HoldingsTreemap({
               aria-label={item.name}
               aria-describedby={tip?.item.name === item.name ? tooltipId : undefined}
               aria-pressed={selectable ? isSelected : undefined}
-              className="absolute flex flex-col items-center justify-center overflow-hidden rounded-sm border border-border bg-card text-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+              // Focus in the text colour: the blue ring fell to 1.2:1 on the strongest washes.
+              className="absolute flex flex-col items-center justify-center overflow-hidden rounded-sm border border-border bg-card text-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-foreground"
               style={{
                 left: `${x}%`,
                 top: y,

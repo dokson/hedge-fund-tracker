@@ -8,8 +8,12 @@ import { FundLogo } from "@/components/FundLogo";
 import { MAX_PER_GROUP, type SearchHit, score } from "@/components/globalSearchUtils";
 import { getHedgeFunds, getStocks } from "@/lib/dataService";
 import { stockPath, fundPath } from "@/lib/routes";
+import { SEARCH_INPUT } from "@/lib/forms";
+import { announce } from "@/lib/announce";
 
 const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+/** One of each kind the index finds: a ticker, a fund, a manager. */
+const SEARCH_EXAMPLES = ["NVDA", "Duquesne", "Druckenmiller"] as const;
 
 /**
  * One combobox over tickers, CUSIPs, companies, funds, CIKs and managers;
@@ -18,15 +22,19 @@ const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(naviga
 export default function GlobalSearch({
   focusOnMount = false,
   onNavigate,
+  inline = false,
 }: {
   /** Focus the input on mount — used when the search lives inside a mobile sheet. */
   focusOnMount?: boolean;
   /** Fired after navigating to a hit — lets a wrapping mobile sheet close itself. */
   onNavigate?: () => void;
+  /** Keep the suggestions in the available space of a mobile dialog. */
+  inline?: boolean;
 } = {}) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const listId = useId();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -204,27 +212,56 @@ export default function GlobalSearch({
 
   // Arrowing past the visible slice of the results must follow the active option.
   useEffect(() => {
-    if (!expanded || !hasResults) return;
-    document.getElementById(`${listId}-opt-${activeIndex}`)?.scrollIntoView?.({ block: "nearest" });
-  }, [activeIndex, expanded, hasResults, listId]);
+    if (!expanded || !hasResults || isLoading) return;
+    const list = listRef.current;
+    const option = document.getElementById(`${listId}-opt-${activeIndex}`);
+    if (!list || !option) return;
+    const listRect = list.getBoundingClientRect();
+    const optionRect = option.getBoundingClientRect();
+    if (optionRect.top < listRect.top) list.scrollTop += optionRect.top - listRect.top;
+    else if (optionRect.bottom > listRect.bottom)
+      list.scrollTop += optionRect.bottom - listRect.bottom;
+  }, [activeIndex, expanded, hasResults, isLoading, listId]);
   const groupCount = grouped
     ? [grouped.tickers, grouped.companies, grouped.funds, grouped.managers].filter((g) => g.length)
         .length
     : 0;
+  const resultsMessage =
+    expanded && !isLoading
+      ? hasResults
+        ? `${flatHits.length} results in ${groupCount} groups`
+        : "No matches"
+      : "";
+  // Spoken once typing pauses, through the shared region (the open modal's on phones).
+  useEffect(() => {
+    if (!resultsMessage) return;
+    const timer = window.setTimeout(() => announce(resultsMessage), 300);
+    return () => window.clearTimeout(timer);
+  }, [resultsMessage]);
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-md">
-      <div className="relative flex items-center h-9 rounded-lg border border-transparent bg-muted transition-colors duration-[120ms] hover:border-border focus-within:border-primary focus-within:bg-background focus-within:ring-2 focus-within:ring-ring/20">
+    <div
+      ref={containerRef}
+      className={inline ? "relative flex min-h-0 w-full flex-col" : "relative w-full"}
+      onBlur={(event) => {
+        const next = event.relatedTarget as HTMLElement | null;
+        if (next !== inputRef.current && !next?.closest("[data-search-example]")) setOpen(false);
+      }}
+    >
+      <div className="relative flex h-9 shrink-0 items-center rounded-lg border border-input bg-muted transition-colors duration-[120ms] hover:border-muted-foreground focus-within:border-primary focus-within:bg-background focus-within:ring-2 focus-within:ring-ring forced-colors:focus-within:outline forced-colors:focus-within:outline-2 forced-colors:focus-within:outline-[Highlight]">
         <Search aria-hidden="true" className="ml-2.5 mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
         <input
           ref={inputRef}
+          {...SEARCH_INPUT}
           type="text"
           role="combobox"
           aria-label="Search ticker, CUSIP, company, fund, CIK or manager"
           aria-expanded={expanded}
           aria-controls={listId}
           aria-autocomplete="list"
-          aria-activedescendant={expanded && hasResults ? optionId(activeIndex) : undefined}
+          aria-activedescendant={
+            expanded && hasResults && !isLoading ? optionId(activeIndex) : undefined
+          }
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -232,33 +269,59 @@ export default function GlobalSearch({
             setActiveIndex(0);
           }}
           onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
           onKeyDown={handleKeyDown}
-          placeholder="ticker, cusip, fund, manager"
-          // No `focus:outline-none`: Tailwind emits it into the `utilities`
-          // layer, which beats the `@layer base` :focus-visible ring in
-          // index.css, leaving a 1px border tint as the only indicator.
-          className="w-full h-full bg-transparent pr-16 text-[13px] text-foreground placeholder:text-muted-foreground"
+          // Short enough for a phone; the hint under the box lists every kind it finds.
+          placeholder="Search stocks or funds"
+          // The box draws the focus ring (full --ring, 3:1 on both themes), so the field's own
+          // outline would be a second, inner ring.
+          className="w-full h-full bg-transparent pr-3 sm:pr-16 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none"
         />
         <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-border bg-background px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground">
           {IS_MAC ? "⌘K" : "Ctrl K"}
         </kbd>
       </div>
 
-      <div aria-live="polite" className="sr-only">
-        {expanded && !isLoading
-          ? hasResults
-            ? `${flatHits.length} results in ${groupCount} groups`
-            : "No matches"
-          : ""}
-      </div>
-
+      {/* An empty focused box says what it can find, with examples that fill it. */}
+      {open && query.trim().length === 0 && (
+        <div
+          className={`${inline ? "relative min-h-0 overflow-y-auto" : "absolute left-0 right-0"} z-50 mt-2 rounded-xl border border-border bg-popover p-3 text-[13px] shadow-lg`}
+        >
+          <p className="text-muted-foreground">
+            Find a stock by ticker, name or CUSIP, or a fund by name, manager or CIK.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Try</span>
+            {SEARCH_EXAMPLES.map((example) => (
+              <button
+                key={example}
+                data-search-example
+                type="button"
+                // Keep focus in the box: a mousedown elsewhere would blur and close it first.
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  setQuery(example);
+                  setActiveIndex(0);
+                  inputRef.current?.focus();
+                }}
+                className="inline-flex min-h-7 items-center rounded-full border border-border bg-card px-2.5 text-xs font-medium text-foreground hover:bg-muted active:bg-secondary"
+              >
+                {example}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Arrows to move, Enter to open, Esc to close.
+          </p>
+        </div>
+      )}
       <ul
+        ref={listRef}
         id={listId}
         role="listbox"
         aria-label="Search results"
+        tabIndex={-1}
         hidden={!expanded}
-        className="absolute left-0 right-0 mt-2 max-h-96 overflow-auto rounded-xl border border-border bg-popover p-1 shadow-lg z-50 text-[13px]"
+        className={`${inline ? "relative min-h-0" : "absolute left-0 right-0"} mt-2 max-h-96 overflow-y-auto overscroll-contain rounded-xl border border-border bg-popover p-1 shadow-lg z-50 text-[13px]`}
       >
         {expanded && isLoading && (
           <li className="flex items-center gap-2 px-3 py-3 text-muted-foreground">

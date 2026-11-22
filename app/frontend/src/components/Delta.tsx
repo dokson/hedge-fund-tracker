@@ -1,3 +1,4 @@
+import { changeLabel } from "@/lib/tone";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 import { formatValue, formatPct } from "@/lib/dataService";
@@ -40,13 +41,14 @@ export function Delta({ value, mode, format, size = "md", className = "" }: Delt
   if (format) {
     display = format(value);
   } else if (isZero) {
-    // A literal zero is "no activity", not a +0.0% move — label it like the
-    // categorical NO CHANGE state the filing tables use.
-    display = "NO CHANGE";
+    // A literal zero is "no activity", not a +0.0% move: label it like the categorical
+    // no-change state the filing tables use.
+    display = changeLabel("NO CHANGE");
   } else if (mode === "currency") {
     display = `${isPositive && !isInfinity ? "+" : ""}${formatValue(value)}`;
   } else {
-    display = formatPct(value, true);
+    // An infinite change is a new position (formatPct's "NEW" token): shown in sentence case.
+    display = changeLabel(formatPct(value, true));
   }
 
   return (

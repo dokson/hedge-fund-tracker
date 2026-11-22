@@ -31,6 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { IDENTIFIER_INPUT } from "@/lib/forms";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
 import { Button } from "@/components/ui/button";
@@ -41,20 +42,31 @@ import { Panel } from "@/components/ui/Panel";
 import { Field } from "@/components/ui/Field";
 import { ResponsiveTable } from "@/components/ui/ResponsiveTable";
 import { TextLink } from "@/components/ui/TextLink";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ConfirmDialog, DetailList } from "@/components/ui/ConfirmDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddFundDialog } from "@/components/AddFundDialog";
 import { useInlineFundEdit, type FundDraft } from "@/hooks/useInlineFundEdit";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 
 const SEC_CIK_URL = (cik: string) => `https://www.sec.gov/edgar/browse/?CIK=${cik}`;
+
+/** What a delete or restore dialog shows of the fund it acts on. */
+const fundDetails = (f: { fund: string; manager: string; cik: string; url?: string }) => [
+  { label: "Fund", value: f.fund },
+  { label: "Manager", value: f.manager },
+  {
+    label: "CIK",
+    value: <span className="font-mono text-xs tabular-nums">{f.cik}</span>,
+  },
+  ...(f.url
+    ? [
+        {
+          label: "Website",
+          value: <span className="break-all text-xs">{f.url}</span>,
+        },
+      ]
+    : []),
+];
 
 const EDIT_FIELDS = [
   ["fund", "Fund"],
@@ -85,6 +97,15 @@ function InlineInput({
   return (
     <Input
       id={id}
+      // CIKs and the website are identifiers: no autocorrect, capitals or spell check, and a
+      // keypad or URL keyboard on phones. The CIK list keeps the text keyboard: some keypads
+      // have no comma. Names keep the defaults (capitalised proper nouns).
+      {...(field === "cik" || field === "ciks" || field === "url"
+        ? {
+            ...IDENTIFIER_INPUT,
+            inputMode: field === "url" ? "url" : field === "cik" ? "numeric" : "text",
+          }
+        : { autoComplete: "off" })}
       aria-label={id ? undefined : FIELD_LABEL[field]}
       value={draft[field] ?? value}
       onChange={(e) => {
@@ -372,7 +393,7 @@ export default function FundsConfig() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="active" className="mt-6 space-y-3">
+        <TabsContent value="active" className="mt-6 space-y-3" findable>
           <div className="flex items-center gap-3 flex-wrap">
             <SearchInput
               label="Search fund, manager, CIK"
@@ -638,7 +659,7 @@ export default function FundsConfig() {
           )}
         </TabsContent>
 
-        <TabsContent value="excluded" className="mt-6 space-y-3">
+        <TabsContent value="excluded" className="mt-6 space-y-3" findable>
           <div className="flex items-center gap-3 flex-wrap">
             <SearchInput
               label="Search excluded fund, manager, URL"
@@ -889,87 +910,38 @@ export default function FundsConfig() {
 
       {!IS_GH_PAGES_MODE && (
         <>
-          {/* ── Delete Dialog ── */}
-          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <DialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto break-words sm:max-w-md [&_button]:min-h-10">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="h-5 w-5" aria-hidden="true" /> Delete Hedge Fund
-                </DialogTitle>
-                <DialogDescription>
-                  This will move <strong>{fundToDelete?.fund}</strong> to the excluded list.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="rounded-md border border-border bg-card p-3 space-y-1 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Fund:</span> {fundToDelete?.fund}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Manager:</span> {fundToDelete?.manager}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">CIK:</span>{" "}
-                    <span className="font-mono text-xs tabular-nums">{fundToDelete?.cik}</span>
-                  </div>
-                  {fundToDelete?.url && (
-                    <div>
-                      <span className="text-muted-foreground">Website:</span>{" "}
-                      <span className="break-all text-xs">{fundToDelete.url}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleConfirmDelete}>
-                  Confirm Delete
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <ConfirmDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+            icon={AlertTriangle}
+            title="Delete Hedge Fund"
+            description={
+              <>
+                This will move <strong>{fundToDelete?.fund}</strong> to the excluded list.
+              </>
+            }
+            confirmLabel="Confirm Delete"
+            onConfirm={handleConfirmDelete}
+            destructive
+          >
+            {fundToDelete && <DetailList items={fundDetails(fundToDelete)} />}
+          </ConfirmDialog>
 
-          {/* ── Restore Dialog ── */}
-          <Dialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
-            <DialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto break-words sm:max-w-md [&_button]:min-h-10">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Undo2 className="h-5 w-5" aria-hidden="true" /> Restore Hedge Fund
-                </DialogTitle>
-                <DialogDescription>
-                  This will move <strong>{fundToRestore?.fund}</strong> back to the active list.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="rounded-md border border-border bg-card p-3 space-y-1 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Fund:</span> {fundToRestore?.fund}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Manager:</span> {fundToRestore?.manager}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">CIK:</span>{" "}
-                    <span className="font-mono text-xs tabular-nums">{fundToRestore?.cik}</span>
-                  </div>
-                  {fundToRestore?.url && (
-                    <div>
-                      <span className="text-muted-foreground">Website:</span>{" "}
-                      <span className="break-all text-xs">{fundToRestore.url}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button variant="outline" onClick={() => setRestoreDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleConfirmRestore}>Confirm Restore</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <ConfirmDialog
+            open={restoreDialogOpen}
+            onOpenChange={setRestoreDialogOpen}
+            icon={Undo2}
+            title="Restore Hedge Fund"
+            description={
+              <>
+                This will move <strong>{fundToRestore?.fund}</strong> back to the active list.
+              </>
+            }
+            confirmLabel="Confirm Restore"
+            onConfirm={handleConfirmRestore}
+          >
+            {fundToRestore && <DetailList items={fundDetails(fundToRestore)} />}
+          </ConfirmDialog>
 
           <AddFundDialog
             open={addDialogOpen}

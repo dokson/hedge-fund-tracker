@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { SEARCH_INPUT } from "@/lib/forms";
 
 interface SearchInputProps extends Omit<
   React.ComponentProps<typeof Input>,
@@ -34,6 +35,7 @@ export function SearchInput({
         )}
       />
       <Input
+        {...SEARCH_INPUT}
         placeholder={`${label}…`}
         aria-label={label}
         className={cn(isSm ? "h-7 pl-7 text-xs" : "h-9 pl-8", className)}

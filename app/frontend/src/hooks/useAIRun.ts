@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { getModels } from "@/lib/dataService";
 
 // Module-level cache: survives component unmount/remount within a single tab

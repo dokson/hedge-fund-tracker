@@ -3,7 +3,7 @@
  * section on scroll and opens/scrolls to the item named by the URL hash.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 
 import Learn from "./Learn";
@@ -84,5 +84,32 @@ describe("Learn page", () => {
     const { getByRole } = renderLearn();
     const trigger = getByRole("button", { name: /How are the tracked funds selected/ });
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("keeps the FAQ usable with a malformed URL fragment", () => {
+    const { getByRole } = renderLearn("/learn#%E0%A4%A");
+    expect(getByRole("button", { name: /How are the tracked funds selected/ })).toBeDefined();
+  });
+
+  it("recovers from a search with no matches", () => {
+    const { getByRole, getByText, queryByText } = renderLearn();
+    const input = getByRole("textbox", { name: /Search .* questions/ });
+    fireEvent.change(input, { target: { value: "no-such-faq-answer" } });
+    expect(getByText(/No questions match/)).toBeDefined();
+    fireEvent.click(getByRole("button", { name: "Clear search" }));
+    expect(queryByText(/No questions match/)).toBeNull();
+    expect(getByRole("button", { name: /How are the tracked funds selected/ })).toBeDefined();
+  });
+
+  it("removes filtered FAQ sections from link navigation", () => {
+    const { getByRole } = renderLearn();
+    const nav = getByRole("navigation", { name: "FAQ sections" });
+    const section = FAQ_SECTIONS[0];
+    expect(within(nav).getByRole("link", { name: new RegExp(section.title) })).toBeDefined();
+    fireEvent.change(getByRole("textbox", { name: /Search .* questions/ }), {
+      target: { value: "no-such-faq-answer" },
+    });
+    expect(within(nav).queryByRole("link", { name: new RegExp(section.title) })).toBeNull();
+    expect(within(nav).getByText(section.title).closest("a")).toBeNull();
   });
 });

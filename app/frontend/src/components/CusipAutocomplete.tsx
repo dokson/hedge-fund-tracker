@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo, useId } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getStocks } from "@/lib/dataService";
 import { Input } from "@/components/ui/input";
+import { IDENTIFIER_INPUT } from "@/lib/forms";
 
 interface CusipAutocompleteProps {
   value: string;
@@ -119,6 +120,7 @@ export default function CusipAutocomplete({
     <div className="relative">
       <Input
         id={id}
+        {...IDENTIFIER_INPUT}
         role="combobox"
         aria-expanded={expanded}
         aria-controls={expanded ? listboxId : undefined}
@@ -145,7 +147,7 @@ export default function CusipAutocomplete({
         className={`${className} font-mono uppercase ${showError ? "border-destructive" : ""}`}
       />
       {showError && (
-        <p id={errorId} role="alert" className="text-[11px] text-destructive mt-0.5 absolute">
+        <p id={errorId} role="alert" className="text-[11px] text-destructive-text mt-0.5 absolute">
           CUSIP not found
         </p>
       )}

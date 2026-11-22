@@ -11,6 +11,7 @@ import {
   type FundTickerHolding,
 } from "@/lib/dataService";
 import type { SmartScoreView } from "@/lib/smartScore";
+import { SmartScorePill } from "@/components/SmartScorePill";
 import { SmartScorePanel } from "@/components/SmartScorePanel";
 import { stocksByIndustry, aiDiligenceFor, stockPath, ROUTES } from "@/lib/routes";
 import { canonicalUrl } from "@/lib/seo";
@@ -27,76 +28,77 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
-import { MeasuredChart } from "@/components/MeasuredChart";
+import { HolderMoves } from "@/components/QuarterMoves";
+import { HOLDER_MOVE_PICK, type MoveFilter } from "@/lib/moves";
+import { RecentStockFilings } from "@/components/RecentStockFilings";
+import { Stat, StatGrid } from "@/components/ui/Stat";
+import { useAnnualReturns } from "@/hooks/useFundRanking";
+import { pctFrac } from "@/lib/performanceFormat";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ResponsiveTable } from "@/components/ui/ResponsiveTable";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Panel } from "@/components/ui/Panel";
 import { LogoPlate } from "@/components/LogoPlate";
 import { toneClass } from "@/lib/tone";
+import { ChangeChip } from "@/components/ui/ChangeChip";
 import { ArrowDown, ArrowLeft, Brain } from "lucide-react";
-import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { PageEnd } from "@/components/PageEnd";
 import { useBack } from "@/hooks/useBack";
 import { ColumnHeader } from "@/components/ui/ColumnHeader";
 import { QueryState } from "@/components/ui/QueryState";
 import { useSortState } from "@/hooks/useSortState";
+import { announce } from "@/lib/announce";
+import { CardSortBar } from "@/components/ui/CardSortBar";
 import { useResearchState } from "@/hooks/useResearchState";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { StockPriceChart } from "@/components/StockPriceChart";
 import { IS_GH_PAGES_MODE } from "@/lib/config";
 import { useNavigate } from "react-router";
 import { AnalysisProgress } from "@/components/ui/AnalysisProgress";
+import { MetaLine, MetaSep } from "@/components/ui/TextLink";
 
-type SortKey = "shares" | "value" | "deltaValue" | "portfolioPct";
-type HoldingFilter = "all" | "buyers" | "sellers" | "new" | "closed";
+type SortKey = "shares" | "value" | "deltaValue" | "portfolioPct" | "annualReturn";
+type HoldingFilter = "all" | MoveFilter;
 
 const HOLDING_FILTER_OPTIONS: readonly { value: HoldingFilter; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "buyers", label: "Buyers" },
   { value: "new", label: "New" },
-  { value: "sellers", label: "Sellers" },
+  { value: "increased", label: "Added" },
+  { value: "decreased", label: "Trimmed" },
   { value: "closed", label: "Sold out" },
 ];
 
-const TOOLTIP_STYLE = {
-  background: "hsl(var(--popover))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: "var(--radius)",
-  boxShadow: "0 2px 8px rgba(0,0,0,.35)",
-  fontSize: 12,
-  color: "hsl(var(--foreground))",
-  padding: "6px 10px",
-  lineHeight: 1.6,
-} as const;
+/** Defer only sections outside the initial viewport. */
+function deferBelowViewport(element: HTMLElement | null) {
+  if (element && element.getBoundingClientRect().top >= window.innerHeight) {
+    element.classList.add("defer-render");
+  }
+}
 
 function signed(n: number, digits = 0) {
   return `${n > 0 ? "+" : ""}${n.toFixed(digits)}`;
 }
 
-/** Dot legend under a chart, so the colours are named, not only seen. */
-function ChartLegend({ items }: { items: readonly { swatch: string; label: string }[] }) {
-  return (
-    <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-      {items.map((it) => (
-        <li key={it.label} className="inline-flex items-center gap-1.5">
-          <span
-            aria-hidden="true"
-            className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-            style={{ background: it.swatch }}
-          />
-          {it.label}
-        </li>
-      ))}
-    </ul>
+/** A fund's return per year from the ranking, toned; a dash when it has none. */
+function PerYear({ value }: { value: number | null | undefined }) {
+  return value == null ? (
+    <span className="text-muted-foreground">—</span>
+  ) : (
+    <span className={toneClass(value)}>{pctFrac(value)}</span>
   );
 }
 
 /** Mobile row for one holder: the six-column table does not fit a phone. */
-function StockHolderCard({ h, rank }: { h: FundTickerHolding; rank: number }) {
+function StockHolderCard({
+  h,
+  rank,
+  perYear,
+}: {
+  h: FundTickerHolding;
+  rank: number;
+  perYear: number | null | undefined;
+}) {
   const deltaNum =
     h.delta === "NEW" ? Infinity : h.delta === "CLOSE" ? -100 : parseFloat(h.delta) || 0;
   return (
@@ -112,23 +114,27 @@ function StockHolderCard({ h, rank }: { h: FundTickerHolding; rank: number }) {
         <span>
           <span className="k">Value:</span> {formatValue(h.value)}
         </span>
-        <span aria-hidden="true">·</span>
+        <MetaSep />
         <span>
           <span className="k">Share Δ %:</span>{" "}
           {h.isNew ? (
-            <span className="badge-new">NEW</span>
+            <ChangeChip change="NEW" />
           ) : h.isClosed ? (
-            <span className="badge-closed">CLOSE</span>
+            <ChangeChip change="CLOSE" />
           ) : deltaNum === 0 ? (
-            <span className="badge-nochange">NO CHANGE</span>
+            <ChangeChip change="NO CHANGE" />
           ) : (
             <span className={toneClass(deltaNum)}>{h.delta}</span>
           )}
         </span>
-        <span aria-hidden="true">·</span>
+        <MetaSep />
         <span>
           <span className="k">Position Δ $:</span>{" "}
           <span className={toneClass(h.deltaValue)}>{formatValue(h.deltaValue)}</span>
+        </span>
+        <MetaSep />
+        <span>
+          <span className="k">Fund %/yr:</span> <PerYear value={perYear} />
         </span>
       </div>
     </li>
@@ -207,8 +213,6 @@ export default function StockAnalysis() {
     let holderCount = 0;
     let newHolderCount = 0;
     let closeCount = 0;
-    let totalValueBought = 0;
-    let totalValueSold = 0;
     for (const h of holdings) {
       totalValue += h.value;
       totalDeltaValue += h.deltaValue;
@@ -219,8 +223,6 @@ export default function StockAnalysis() {
       if (h.isHolder) holderCount++;
       if (h.isNew) newHolderCount++;
       if (h.isClosed) closeCount++;
-      if (h.deltaValue > 0) totalValueBought += h.deltaValue;
-      else totalValueSold -= h.deltaValue;
     }
     const previousTotal = totalValue - totalDeltaValue;
     const deltaPct =
@@ -241,33 +243,10 @@ export default function StockAnalysis() {
       newHolderCount,
       closeCount,
       netBuyers: buyerCount - sellerCount,
-      bsRatio: sellerCount > 0 ? buyerCount / sellerCount : Infinity,
-      totalValueBought,
-      totalValueSold,
     };
   }, [holdings]);
 
-  const sentimentData = [
-    {
-      label: "Buyers",
-      buyers: kpi.buyerCount - kpi.newHolderCount,
-      new: kpi.newHolderCount,
-      sellers: 0,
-      closed: 0,
-    },
-    {
-      label: "Sellers",
-      buyers: 0,
-      new: 0,
-      sellers: kpi.sellerCount - kpi.closeCount,
-      closed: kpi.closeCount,
-    },
-  ];
-
-  const valueFlowData = [
-    { label: "Added", value: kpi.totalValueBought, fill: "hsl(var(--positive))" },
-    { label: "Reduced", value: kpi.totalValueSold, fill: "hsl(var(--negative))" },
-  ];
+  const annualReturns = useAnnualReturns();
 
   const { sortKey, sortDir, toggleSort } = useSortState<SortKey>("portfolioPct", "desc", "holders");
   const [holdingFilter, setHoldingFilter] = useResearchState<HoldingFilter>(
@@ -276,30 +255,42 @@ export default function StockAnalysis() {
   );
 
   const sortedHoldings = (() => {
-    let list = [...holdings];
-    switch (holdingFilter) {
-      case "buyers":
-        list = list.filter((h) => h.isBuyer);
-        break;
-      case "sellers":
-        list = list.filter((h) => h.isSeller);
-        break;
-      case "new":
-        list = list.filter((h) => h.isNew);
-        break;
-      case "closed":
-        list = list.filter((h) => h.isClosed);
-        break;
-    }
+    const list =
+      holdingFilter === "all" ? [...holdings] : holdings.filter(HOLDER_MOVE_PICK[holdingFilter]);
+    // A fund without a return per year sorts last in either direction.
+    const valueOf = (h: FundTickerHolding) =>
+      sortKey === "annualReturn" ? (annualReturns.get(h.fund) ?? null) : h[sortKey];
     list.sort((a, b) => {
-      const va = a[sortKey];
-      const vb = b[sortKey];
+      const va = valueOf(a);
+      const vb = valueOf(b);
+      if (va === null) return vb === null ? 0 : 1;
+      if (vb === null) return -1;
       return sortDir === "desc" ? vb - va : va - vb;
     });
     return list;
   })();
+  // A filter change says how many funds it left, through the app's one status region.
+  const applyFilter = (next: HoldingFilter) => {
+    setHoldingFilter(next);
+    const shown = next === "all" ? holdings.length : holdings.filter(HOLDER_MOVE_PICK[next]).length;
+    announce(`Showing ${shown} of ${holdings.length} funds`);
+  };
+  const toggleMoves = (key: MoveFilter) => applyFilter(holdingFilter === key ? "all" : key);
 
   const holdersTitle = `Holders by Shares (${holdings.length} funds)`;
+  const scorePanel = (
+    // Quarter-analysis score and the stock's independently merged holder view need not
+    // have the same disclosure coverage.
+    <QueryState
+      isError={scoreError}
+      error={scoreErrorDetail}
+      title="Could not load the smart score"
+    >
+      <div id="smart-score" className="scroll-mt-20">
+        <SmartScorePanel score={smartScore} quarterLabel={quarter} loading={scoreLoading} />
+      </div>
+    </QueryState>
+  );
 
   return (
     <div className="space-y-3 max-w-screen-2xl">
@@ -336,7 +327,22 @@ export default function StockAnalysis() {
           </LogoPlate>
         }
         actions={
-          <StarButton active={isStarred(ticker)} onClick={() => toggleStar(ticker)} size={24} />
+          <>
+            {smartScore && (
+              <SmartScorePill
+                score={smartScore.smartScore}
+                ticker={ticker}
+                quarterLabel={quarter}
+                inPage
+              />
+            )}
+            <StarButton
+              active={isStarred(ticker)}
+              subject={ticker}
+              onClick={() => toggleStar(ticker)}
+              size={24}
+            />
+          </>
         }
       >
         {(sector || industry) && (
@@ -372,11 +378,10 @@ export default function StockAnalysis() {
               if (isQuarter(v)) setSelectedQuarter(v);
             }}
           >
-            <SelectTrigger
-              className="flex-1 sm:flex-none sm:w-36 bg-card border-border"
-              aria-label="Quarter"
-            >
-              <SelectValue />
+            <SelectTrigger className="flex-1 sm:flex-none sm:w-36 bg-card" aria-label="Quarter">
+              {/* The label itself, not Radix's match: before the quarter list loads there is no
+                  item to match and the trigger would read blank. */}
+              <SelectValue placeholder="Quarter">{quarter?.replace("Q", " Q")}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {quarters.toReversed().map((q) => (
@@ -386,26 +391,21 @@ export default function StockAnalysis() {
               ))}
             </SelectContent>
           </Select>
-          <Button
-            variant="outline"
-            className="h-9 flex-1 sm:flex-none whitespace-nowrap text-magenta"
-            onClick={() => navigate(aiDiligenceFor(ticker))}
-          >
-            <Brain className="h-4 w-4" aria-hidden="true" /> AI Due Diligence
-          </Button>
+          {/* The static build has no AI backend: a button to a disabled page would mislead. */}
+          {!IS_GH_PAGES_MODE && (
+            <Button
+              variant="outline"
+              className="h-9 flex-1 sm:flex-none whitespace-nowrap text-magenta"
+              onClick={() => navigate(aiDiligenceFor(ticker))}
+            >
+              <Brain className="h-4 w-4" aria-hidden="true" /> AI Due Diligence
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Quarter-analysis score and the stock's independently merged holder
-          view need not have the same disclosure coverage. */}
-      <QueryState
-        isError={scoreError}
-        error={scoreErrorDetail}
-        title="Could not load the smart score"
-      >
-        <SmartScorePanel score={smartScore} quarterLabel={quarter} loading={scoreLoading} />
-      </QueryState>
-
+      {/* With no holders to show, the score still explains itself above the message. */}
+      {(isError || isLoading || holdings.length === 0) && scorePanel}
       {isError ? (
         <QueryState isError error={error} title="Could not load this stock's holders" />
       ) : isLoading ? (
@@ -419,234 +419,102 @@ export default function StockAnalysis() {
         </div>
       ) : (
         <>
-          <section aria-labelledby="flow-heading" className="space-y-3">
-            <div>
-              <h2 id="flow-heading" className="section-title">
-                Institutional position changes, {quarter?.replace("Q", " Q")}
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Reconstructed between disclosures at reporting prices — not returns or executed
-                trades.
-                {quarter === latestQuarter && " Includes saved 13D/G and Form 4 updates."}
-              </p>
-            </div>
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-border py-4 sm:grid-cols-[auto_auto_1fr] sm:gap-x-10">
-              <div>
-                <dt className="metric-label flex h-5 items-center">Total held</dt>
-                <dd className="mt-1 text-2xl font-semibold tabular-nums">
-                  {formatValue(kpi.totalValue)}
-                </dd>
-              </div>
-              <div>
-                <dt className="metric-label flex h-5 items-center gap-1">
-                  Position change
-                  <InfoTooltip text="Share changes valued at reporting prices. The percentage divides that change by the implied prior position value; it is not aggregate share growth or a return." />
-                </dt>
-                <dd className="mt-1 flex items-baseline gap-2 tabular-nums">
-                  <span className={`text-2xl font-semibold ${toneClass(kpi.totalDeltaValue)}`}>
-                    {formatValue(kpi.totalDeltaValue)}
-                  </span>
-                  <span className={`text-sm ${toneClass(kpi.deltaPct)}`}>
-                    {formatPct(kpi.deltaPct, true)}
-                  </span>
-                </dd>
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <dt className="metric-label flex h-5 items-center gap-1">
-                  Net buyers
-                  <InfoTooltip text="Funds that opened or increased the position minus funds that reduced or closed it." />
-                </dt>
-                <dd className="mt-1 flex flex-wrap items-baseline gap-x-2 tabular-nums">
-                  <span className={`text-2xl font-semibold ${toneClass(kpi.netBuyers)}`}>
-                    {signed(kpi.netBuyers)}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    {kpi.buyerCount} increased · {kpi.sellerCount} reduced
-                  </span>
-                </dd>
-              </div>
-            </dl>
-            <dl className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
-              {[
-                ["Holders", kpi.holderCount],
-                ["New", kpi.newHolderCount],
-                ["Sold out", kpi.closeCount],
-                ["Buy/sell ratio", isFinite(kpi.bsRatio) ? `${kpi.bsRatio.toFixed(1)}×` : "∞"],
-                ["Avg weight", `${kpi.avgPtfPct.toFixed(2)}%`],
-                ["Max weight", `${kpi.maxPtfPct.toFixed(1)}%`],
-              ].map(([label, value]) => (
-                <div key={label} className="flex items-baseline gap-1.5">
-                  <dt>{label}</dt>
-                  <dd className="font-medium tabular-nums text-foreground">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
+          <MetaLine className="block">
+            Position changes in {quarter?.replace("Q", " Q")}, reconstructed between disclosures at
+            reporting prices, not returns or executed trades.
+            {quarter === latestQuarter && " Includes saved 13D/G and Form 4 updates."}
+          </MetaLine>
+          <StatGrid className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            <Stat
+              label="Holders"
+              value={kpi.holderCount}
+              hint={`${kpi.newHolderCount} new, ${kpi.closeCount} sold out`}
+            />
+            <Stat label="Total held" value={formatValue(kpi.totalValue)} />
+            <Stat
+              label="Position change"
+              info="Share changes valued at reporting prices. The percentage divides that change by the implied prior position value; it is not aggregate share growth or a return."
+              value={formatValue(kpi.totalDeltaValue)}
+              valueClassName={toneClass(kpi.totalDeltaValue)}
+              hint={formatPct(kpi.deltaPct, true)}
+            />
+            <Stat
+              label="Net buyers"
+              info="Funds that opened or increased the position minus funds that reduced or closed it."
+              value={signed(kpi.netBuyers)}
+              valueClassName={toneClass(kpi.netBuyers)}
+              hint={`${kpi.buyerCount} increased, ${kpi.sellerCount} reduced`}
+            />
+            <Stat
+              label="Avg weight"
+              value={`${kpi.avgPtfPct.toFixed(2)}%`}
+              hint={`max ${kpi.maxPtfPct.toFixed(1)}%`}
+            />
+            <Stat
+              label="Smart Score"
+              value={
+                smartScore ? (
+                  <a
+                    href="#smart-score"
+                    // The name keeps the visible figure (SC 2.5.3) and says where it leads.
+                    aria-label={`Smart Score ${smartScore.smartScore.toFixed(1)} out of 10, see the breakdown`}
+                    className="underline underline-offset-2"
+                  >
+                    {smartScore.smartScore.toFixed(1)}
+                  </a>
+                ) : (
+                  "—"
+                )
+              }
+              hint="out of 10, see below"
+            />
+          </StatGrid>
+
+          <RecentStockFilings ticker={ticker} />
+          <HolderMoves
+            holdings={holdings}
+            annualReturns={annualReturns}
+            quarterLabel={quarter?.replace("Q", " Q") ?? ""}
+            active={holdingFilter}
+            onToggle={toggleMoves}
+          />
+
+          {scorePanel}
 
           {/* The static build has no backend: no chart, and no apology card either. */}
           {!IS_GH_PAGES_MODE && <StockPriceChart ticker={ticker} />}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Panel title="Funds increasing vs reducing" titleId="sentiment-heading">
-              <div className="p-3">
-                <div className="h-[80px]">
-                  <MeasuredChart>
-                    {({ width, height }) => (
-                      <BarChart
-                        width={width}
-                        height={height}
-                        aria-label={`Funds increasing ${sentimentData[0].buyers + sentimentData[0].new}, reducing ${sentimentData[1].sellers + sentimentData[1].closed}`}
-                        data={sentimentData}
-                        layout="vertical"
-                      >
-                        <XAxis type="number" hide />
-                        <YAxis
-                          type="category"
-                          dataKey="label"
-                          width={60}
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <Tooltip
-                          cursor={{ fill: "hsl(var(--muted))" }}
-                          content={({ active, payload }) => {
-                            if (!active || !payload?.length) return null;
-                            const row = payload[0]?.payload;
-                            const isBuyers = row.label === "Buyers";
-                            return (
-                              <div style={TOOLTIP_STYLE}>
-                                <div>
-                                  <span style={{ fontWeight: 700 }}>
-                                    {isBuyers ? "Increase" : "Decrease"}
-                                  </span>{" "}
-                                  : {isBuyers ? row.buyers : row.sellers}
-                                </div>
-                                <div>
-                                  <span style={{ fontWeight: 700 }}>
-                                    {isBuyers ? "New" : "Close"}
-                                  </span>{" "}
-                                  : {isBuyers ? row.new : row.closed}
-                                </div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Bar
-                          dataKey="buyers"
-                          name="Buyers"
-                          stackId="a"
-                          barSize={24}
-                          fill="hsl(var(--positive))"
-                          radius={0}
-                        />
-                        <Bar
-                          dataKey="new"
-                          name="New"
-                          stackId="a"
-                          fill="hsl(var(--positive) / 0.55)"
-                          radius={0}
-                        />
-                        <Bar
-                          dataKey="sellers"
-                          name="Sellers"
-                          stackId="a"
-                          fill="hsl(var(--negative))"
-                          radius={0}
-                        />
-                        <Bar
-                          dataKey="closed"
-                          name="Closed"
-                          stackId="a"
-                          fill="hsl(var(--negative) / 0.55)"
-                          radius={0}
-                        />
-                      </BarChart>
-                    )}
-                  </MeasuredChart>
-                </div>
-                <ChartLegend
-                  items={[
-                    {
-                      swatch: "hsl(var(--positive))",
-                      label: `Increased (${sentimentData[0].buyers})`,
-                    },
-                    { swatch: "hsl(var(--positive) / 0.55)", label: `New (${kpi.newHolderCount})` },
-                    {
-                      swatch: "hsl(var(--negative))",
-                      label: `Decreased (${sentimentData[1].sellers})`,
-                    },
-                    { swatch: "hsl(var(--negative) / 0.55)", label: `Closed (${kpi.closeCount})` },
-                  ]}
-                />
-              </div>
-            </Panel>
-
-            <Panel title="Reconstructed position change ($)" titleId="flow-chart-heading">
-              <div className="p-3">
-                <div className="h-[80px]">
-                  <MeasuredChart>
-                    {({ width, height }) => (
-                      <BarChart
-                        width={width}
-                        height={height}
-                        aria-label={`Added ${formatValue(kpi.totalValueBought)}, reduced ${formatValue(kpi.totalValueSold)}`}
-                        data={valueFlowData}
-                        layout="vertical"
-                      >
-                        <XAxis type="number" hide />
-                        <YAxis
-                          type="category"
-                          dataKey="label"
-                          width={90}
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <Tooltip
-                          cursor={{ fill: "hsl(var(--muted))" }}
-                          contentStyle={TOOLTIP_STYLE}
-                          labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
-                          itemStyle={{ color: "hsl(var(--foreground))" }}
-                          formatter={(val) => [formatValue(Number(val ?? 0)), null]}
-                          separator=" : "
-                        />
-                        <Bar dataKey="value" radius={0} barSize={24}>
-                          {valueFlowData.map((entry) => (
-                            <Cell key={entry.fill + entry.value} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    )}
-                  </MeasuredChart>
-                </div>
-                <ChartLegend
-                  items={[
-                    {
-                      swatch: "hsl(var(--positive))",
-                      label: `Added ${formatValue(kpi.totalValueBought)}`,
-                    },
-                    {
-                      swatch: "hsl(var(--negative))",
-                      label: `Reduced ${formatValue(kpi.totalValueSold)}`,
-                    },
-                  ]}
-                />
-              </div>
-            </Panel>
-          </div>
-
-          <section aria-labelledby="holders-heading" className="space-y-3">
+          <section
+            aria-labelledby="holders-heading"
+            // The header and toolbar precede different card and table row heights.
+            ref={deferBelowViewport}
+            className="space-y-3 [--defer-h:var(--defer-mobile)] md:[--defer-h:var(--defer-desktop)]"
+            style={
+              {
+                "--defer-mobile": `${sortedHoldings.length * 90 + 180}px`,
+                "--defer-desktop": `${sortedHoldings.length * 57 + 120}px`,
+              } as React.CSSProperties
+            }
+          >
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <h2 id="holders-heading" className="section-title">
-                {holdersTitle}
-              </h2>
+              <div>
+                <h2 id="holders-heading" className="section-title">
+                  {holdersTitle}
+                </h2>
+                {holdingFilter !== "all" && (
+                  <MetaLine className="block">
+                    Showing {sortedHoldings.length} of {holdings.length} funds
+                  </MetaLine>
+                )}
+              </div>
               <SegmentedControl
                 size="sm"
                 aria-label="Filter holders"
                 value={holdingFilter}
-                onValueChange={setHoldingFilter}
+                onValueChange={applyFilter}
                 options={HOLDING_FILTER_OPTIONS}
+                // Five segments overflow a phone's width: they wrap to two rows there.
+                className="max-md:h-auto max-md:flex-wrap max-md:overflow-visible max-md:[&>button]:min-h-6"
               />
             </div>
 
@@ -654,11 +522,29 @@ export default function StockAnalysis() {
               label={holdersTitle}
               tableClassName="surface"
               cards={
-                <ul className="border-t border-border">
-                  {sortedHoldings.map((h, i) => (
-                    <StockHolderCard key={`${h.fund}-${h.delta}-${h.value}`} h={h} rank={i + 1} />
-                  ))}
-                </ul>
+                <div className="space-y-3">
+                  <CardSortBar
+                    options={[
+                      { key: "portfolioPct", label: "Ptf %" },
+                      { key: "value", label: "Value" },
+                      { key: "deltaValue", label: "Position Δ $" },
+                      { key: "annualReturn", label: "Fund %/yr" },
+                    ]}
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onToggle={toggleSort}
+                  />
+                  <ul className="border-t border-border">
+                    {sortedHoldings.map((h, i) => (
+                      <StockHolderCard
+                        key={`${h.fund}-${h.delta}-${h.value}`}
+                        h={h}
+                        rank={i + 1}
+                        perYear={annualReturns.get(h.fund)}
+                      />
+                    ))}
+                  </ul>
+                </div>
               }
               table={
                 <table className="w-full text-sm" aria-label={holdersTitle}>
@@ -699,6 +585,15 @@ export default function StockAnalysis() {
                           onToggle: () => toggleSort("deltaValue"),
                         }}
                       />
+                      <ColumnHeader
+                        label="Fund %/yr"
+                        align="right"
+                        sort={{
+                          active: sortKey === "annualReturn",
+                          direction: sortDir,
+                          onToggle: () => toggleSort("annualReturn"),
+                        }}
+                      />
                     </tr>
                   </thead>
                   <tbody>
@@ -721,17 +616,20 @@ export default function StockAnalysis() {
                           <td className="p-3 text-right font-mono">{formatValue(h.value)}</td>
                           <td className="p-3 text-right font-mono">
                             {h.isNew ? (
-                              <span className="badge-new">NEW</span>
+                              <ChangeChip change="NEW" />
                             ) : h.isClosed ? (
-                              <span className="badge-closed">CLOSE</span>
+                              <ChangeChip change="CLOSE" />
                             ) : deltaNum === 0 ? (
-                              <span className="badge-nochange">NO CHANGE</span>
+                              <ChangeChip change="NO CHANGE" />
                             ) : (
                               <span className={toneClass(deltaNum)}>{h.delta}</span>
                             )}
                           </td>
                           <td className={`p-3 text-right font-mono ${toneClass(h.deltaValue)}`}>
                             {formatValue(h.deltaValue)}
+                          </td>
+                          <td className="p-3 text-right font-mono">
+                            <PerYear value={annualReturns.get(h.fund)} />
                           </td>
                         </tr>
                       );

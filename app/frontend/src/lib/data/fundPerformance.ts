@@ -1,6 +1,6 @@
 /**
- * Per-fund quarterly Holding-Based Return vs the S&P 500
- * (database/fund_performance.csv, computed offline by gen_fund_performance.py).
+ * Per-fund quarterly Holding-Based Return vs the S&P 500, with the Nasdaq-100 as a
+ * second reference (database/fund_performance.csv, computed offline by gen_fund_performance.py).
  */
 
 import { cachedFetch, fetchCSV } from "./fetch";
@@ -69,6 +69,7 @@ export function parseFundPerformance(
 
   const fundWindows: PerfWindow[] = [];
   const indexWindows: PerfWindow[] = [];
+  const nasdaqWindows: PerfWindow[] = [];
   let beats = 0;
   for (const r of rows) {
     const fundReturn = toNumber(r.fund_return) ?? 0;
@@ -89,6 +90,16 @@ export function parseFundPerformance(
       });
       if (fundReturn > indexReturn) beats += 1;
     }
+    const nasdaqReturn = toNumber(r.nasdaq_return ?? "");
+    const nasdaqCum = toNumber(r.nasdaq_cum_return ?? "");
+    if (nasdaqReturn !== null && nasdaqCum !== null) {
+      nasdaqWindows.push({
+        quarterOut: r.quarter,
+        windowReturn: nasdaqReturn,
+        cumReturn: nasdaqCum,
+        excessReturn: null,
+      });
+    }
   }
 
   const fundSeries = series(FUND_SERIES_ID, "Fund", "strategy", fundWindows);
@@ -100,7 +111,13 @@ export function parseFundPerformance(
 
   return {
     quarters: rows.map((r) => r.quarter),
-    series: [fundSeries, indexSeries],
+    series: [
+      fundSeries,
+      indexSeries,
+      ...(nasdaqWindows.length > 0
+        ? [series("QQQ", "Nasdaq-100", "benchmark", nasdaqWindows)]
+        : []),
+    ],
     lowCoverage: rows
       .filter((r) => (toNumber(r.unpriced_weight) ?? 0) > UNPRICED_LIMIT)
       .map((r) => r.quarter),
@@ -119,6 +136,7 @@ export function getFundPerformanceRows(): Promise<RawFundPerformanceRow[]> {
       "fund_cum_return",
       "benchmark_cum_return",
       "unpriced_weight",
+      // nasdaq_return / nasdaq_cum_return are optional: files written before them still load.
     ] satisfies readonly (keyof RawFundPerformanceRow)[]),
   );
 }

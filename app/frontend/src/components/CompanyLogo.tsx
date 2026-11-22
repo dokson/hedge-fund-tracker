@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import { buildLogoUrl } from "@/components/companyLogoUrl";
+import { buildLogoUrls } from "@/components/companyLogoUrl";
+import { useFallbackSrc } from "@/hooks/useFallbackSrc";
 import { LOGO_PLATE_BACKGROUND, type LogoPlate } from "@/components/logoPresentation";
 import { imageNeedsDarkPlate } from "@/lib/imageInk";
 
@@ -31,10 +32,10 @@ function tickerHue(ticker: string): number {
 }
 
 /**
- * Renders the company logo for a ticker. On 404 / load error (common for
- * ETFs and small caps that FMP doesn't track), falls back to a colored
- * initial-letter avatar — the ticker is the identifier, so seeing it in the
- * avatar slot is more useful than a blank grey square.
+ * Renders the company logo for a ticker, trying each source in turn (the CDN, then FMP
+ * itself). When all fail (common for ETFs and small caps FMP doesn't track), falls back to
+ * a coloured initial-letter avatar: the ticker is the identifier, so seeing it in the avatar
+ * slot is more useful than a blank grey square.
  */
 export function CompanyLogo({
   ticker,
@@ -43,7 +44,8 @@ export function CompanyLogo({
   decorative = true,
   eager = false,
 }: CompanyLogoProps) {
-  const [failed, setFailed] = useState(false);
+  const candidates = useMemo(() => buildLogoUrls(ticker, size), [ticker, size]);
+  const { src, failed, next } = useFallbackSrc(candidates);
   const [plate, setPlate] = useState<LogoPlate>("pending");
   // Native loading="lazy" still fetches with a ~300px viewport margin — Chrome
   // ends up firing dozens of requests as soon as the page mounts. Gate the
@@ -118,12 +120,15 @@ export function CompanyLogo({
   // Preserve the full source; only light transparent artwork needs a dark plate.
   return (
     <img
-      src={buildLogoUrl(ticker, size)}
+      src={src}
       alt={decorative ? "" : ticker}
       width={size}
       height={size}
       crossOrigin="anonymous"
-      onError={() => setFailed(true)}
+      onError={() => {
+        setPlate("pending");
+        next();
+      }}
       onLoad={(e) => setPlate(imageNeedsDarkPlate(e.currentTarget) ? "dark" : "light")}
       className={`rounded-sm border border-border object-contain p-px transition-opacity duration-150 ${plate === "pending" ? "opacity-0" : "opacity-100"} ${className}`}
       style={{

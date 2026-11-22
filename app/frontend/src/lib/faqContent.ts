@@ -175,7 +175,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
         answer: [
           "Each strategy on the Strategy Performance page is entered on the date its 13F becomes public — 45 days after quarter-end — and held until the next quarter's filing, then rebalanced. That filing date is the first day the holdings are actually known.",
           "Measuring a quarter's holdings during the quarter they refer to (for example, January to March for the first quarter) would be look-ahead bias: you cannot trade on positions that are not disclosed until 45 days later. Entering at the filing date removes that one bias, and it follows the convention used in published research on 13F holdings.",
-          "Returns are conviction-weighted by each stock's average portfolio weight across the holding funds and compared to the S&P 500. Only fully-elapsed quarters are shown.",
+          "Returns are conviction-weighted by each stock's average portfolio weight across the holding funds and compared to the S&P 500 (SPY) and the Nasdaq-100 (QQQ); the excess in percentage points is measured against the S&P 500. Only fully-elapsed quarters are shown.",
           "Read the result as a description, not as evidence of an edge. The sample covers a small number of quarters in a single market regime, with no significant down quarter yet, so most of the gap versus the index is exposure to a rising market — a screen built on funds reducing their positions beat the index over the same window, for that reason. The figures include no trading costs or slippage, and the tracked fund list is curated and revised over time, which flatters any backtest run on it. Past results here say nothing about future returns.",
         ],
       },

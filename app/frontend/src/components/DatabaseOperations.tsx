@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/Field";
 import { Panel } from "@/components/ui/Panel";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +32,8 @@ import CusipAutocomplete from "@/components/CusipAutocomplete";
 import TerminalOutput from "@/components/TerminalOutput";
 
 import { IS_GH_PAGES_MODE } from "@/lib/config";
+import { scrollBehavior } from "@/lib/motion";
+import { IDENTIFIER_INPUT } from "@/lib/forms";
 
 const API_BASE = `${window.location.origin}/api`;
 
@@ -152,9 +154,9 @@ export default function DatabaseOperations() {
     setFieldValues((prev) => ({ ...prev, [opId]: { ...prev[opId], [key]: value } }));
   };
 
-  // Auto-scroll logs
+  // Follow the log as it grows; a jump, not a glide, when the OS asks for less motion.
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    logEndRef.current?.scrollIntoView({ behavior: scrollBehavior() });
   }, [logs, activeOp]);
 
   const runOperation = useCallback(async (op: Operation, params: Record<string, string> = {}) => {
@@ -316,7 +318,7 @@ export default function DatabaseOperations() {
           <Field label="New Ticker" htmlFor={`${op.id}-new-ticker`}>
             <Input
               id={`${op.id}-new-ticker`}
-              autoComplete="off"
+              {...IDENTIFIER_INPUT}
               autoCapitalize="characters"
               autoCorrect="off"
               spellCheck={false}
@@ -355,7 +357,7 @@ export default function DatabaseOperations() {
           <Field label="New Ticker" htmlFor={`${op.id}-new-ticker`}>
             <Input
               id={`${op.id}-new-ticker`}
-              autoComplete="off"
+              {...IDENTIFIER_INPUT}
               autoCapitalize="characters"
               autoCorrect="off"
               spellCheck={false}
@@ -453,10 +455,8 @@ export default function DatabaseOperations() {
       >
         <DialogContent
           className={`max-h-[90dvh] w-[calc(100%_-_2rem)] min-w-0 overflow-y-auto sm:max-w-3xl [&_button]:min-h-10 ${activeIsRunning ? "[&>button]:hidden" : ""}`}
-          onPointerDownOutside={(e) => {
-            if (activeIsRunning) e.preventDefault();
-          }}
-          onEscapeKeyDown={(e) => {
+          closedBy={activeIsRunning ? "none" : "any"}
+          onCancel={(e) => {
             if (activeIsRunning) e.preventDefault();
           }}
         >
@@ -482,7 +482,7 @@ export default function DatabaseOperations() {
             </DialogTitle>
             <DialogDescription>
               {activeIsRunning
-                ? "Operation in progress — closing is disabled until it completes."
+                ? "Operation in progress. Closing is disabled until it completes."
                 : "Operation completed. You can close this dialog."}
             </DialogDescription>
           </DialogHeader>

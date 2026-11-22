@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
-import { buildCuratedFaviconUrl, buildFaviconUrl } from "@/components/faviconUrl";
+import { buildFaviconUrls } from "@/components/faviconUrl";
+import { useFallbackSrc } from "@/hooks/useFallbackSrc";
 import { LOGO_PLATE_BACKGROUND, type LogoPlate } from "@/components/logoPresentation";
 import { imageNeedsDarkPlate, isBlankImage } from "@/lib/imageInk";
 
@@ -32,12 +33,11 @@ function fundInitials(name: string): string {
 }
 
 /**
- * Renders the favicon of a hedge fund's website. Tries the curated
- * Cloudinary-stored asset first, falls back to icon.horse (also via
- * Cloudinary in GH Pages mode), and finally to a monogram tile on the neutral
- * chip surface when both fail. The tile is a token surface, not an invented
- * hue: a per-fund colour was a hue outside the token set, and a bare white
- * square read as a broken image.
+ * Renders the favicon of a hedge fund's website, trying each source in turn (the curated
+ * Cloudinary asset, then icon.horse through the CDN, then icon.horse direct), and finally a
+ * monogram tile on the neutral chip surface when all fail. The tile is a token surface, not
+ * an invented hue: a per-fund colour was a hue outside the token set, and a bare white square
+ * read as a broken image.
  */
 export function FundLogo({
   fundName,
@@ -47,18 +47,10 @@ export function FundLogo({
   decorative = true,
   eager = false,
 }: FundLogoProps) {
-  const candidates = useMemo(() => {
-    const list: string[] = [];
-    const curated = buildCuratedFaviconUrl(url);
-    if (curated) list.push(curated);
-    const generic = buildFaviconUrl(url, size);
-    if (generic) list.push(generic);
-    return list;
-  }, [url, size]);
+  const candidates = useMemo(() => buildFaviconUrls(url, size), [url, size]);
 
-  const [index, setIndex] = useState(0);
+  const { src, next } = useFallbackSrc(candidates);
   const [plate, setPlate] = useState<LogoPlate>("pending");
-  const src = candidates[index];
 
   if (!src) {
     return (
@@ -89,12 +81,12 @@ export function FundLogo({
       crossOrigin="anonymous"
       onError={() => {
         setPlate("pending");
-        setIndex((i) => i + 1);
+        next();
       }}
       onLoad={(e) => {
         if (isBlankImage(e.currentTarget)) {
           setPlate("pending");
-          setIndex((i) => i + 1);
+          next();
         } else {
           setPlate(imageNeedsDarkPlate(e.currentTarget) ? "dark" : "light");
         }
