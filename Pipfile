@@ -15,10 +15,10 @@ curl-cffi = "~=0.17.0"
 fastapi = "~=0.165"
 fastapi-users = { extras = ["sqlalchemy"], version = "~=15.0" }
 fastapi-users-db-sqlalchemy = "~=7.0"
-google-genai = "~=3.5"
+google-genai = "~=3.6"
 httptools = { version = "==0.9.0", markers = "sys_platform != 'win32' or platform_machine == 'AMD64'" }
 lxml = "~=6.1"
-openai = "~=3.55"
+openai = "~=3.57"
 pandas = "~=3.1"
 prometheus-client = "==0.26.0"
 psutil = "~=7.2"
