@@ -20,8 +20,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from bs4 import BeautifulSoup  # noqa: E402
-
 from app.analysis.quarterly_report import generate_comparison  # noqa: E402
 from app.analysis.splits import factors_between  # noqa: E402
 from app.database import (  # noqa: E402
@@ -35,8 +33,7 @@ from app.database.filing_anomalies import corrections_for  # noqa: E402
 from app.database.splits import load_split_factors  # noqa: E402
 from app.scraper.amendments import consolidate_period  # noqa: E402
 from app.scraper.sec_scraper import (  # noqa: E402
-    _create_search_url,
-    _get_request,
+    _list_filings,
     _scrape_filing,
     scraper_session,
 )
@@ -103,19 +100,16 @@ def fetch_fund_filings(cik: str) -> list[dict]:
 
     A filing EDGAR fails to serve raises instead of being skipped: a missing
     period would silently pair the next quarter with the one two quarters back.
+    So does a filing list that cannot be downloaded, which would look like a fund
+    without filings.
     """
-    response = _get_request(_create_search_url(cik, "13F-HR"))
-    if not response:
-        return []
-
-    soup = BeautifulSoup(response.text, "html.parser")
 
     def scrape_all() -> Iterator[dict | None]:
         """
         Yields each scraped filing from the fund's EDGAR listing, lazily.
         """
-        for tag in soup.find_all("a", id="documentsbutton"):
-            yield _scrape_filing(tag, "13F-HR", raise_on_request_error=True)
+        for entry in _list_filings(cik, ("13F-HR",)):
+            yield _scrape_filing(entry, "13F-HR", raise_on_request_error=True)
 
     return collect_filings_until_floor(scrape_all())
 

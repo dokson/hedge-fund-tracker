@@ -1,7 +1,13 @@
 import { useCallback, useMemo, useRef, type ComponentProps } from "react";
 import { ChangeChip } from "@/components/ui/ChangeChip";
 import { useParams, useNavigate, Link } from "react-router";
-import { filingFreshness, isQuarter, quartersBehind, type FilingFreshness } from "@/lib/quarters";
+import {
+  comparisonBasis,
+  filingFreshness,
+  isQuarter,
+  quartersBehind,
+  type FilingFreshness,
+} from "@/lib/quarters";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { PageEnd } from "@/components/PageEnd";
 import { useBack } from "@/hooks/useBack";
@@ -61,7 +67,7 @@ import { HoldingsTreemap } from "@/components/HoldingsTreemap";
 
 import { ArrowLeft, Wallet, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MetaSep } from "@/components/ui/TextLink";
+import { MetaLine, MetaSep } from "@/components/ui/TextLink";
 import { useStarred } from "@/hooks/useStarred";
 import { StarButton } from "@/components/StarButton";
 
@@ -853,6 +859,10 @@ function FundDetail({ fundName }: { fundName: string }) {
   }, [holdings, activeSector, tickerSectorMap]);
 
   const quarterLabel = selectedQuarter ? selectedQuarter.replace("Q", " Q") : "—";
+  // A fund that skipped a filing is compared with the one before: say what the changes span.
+  const basis = selectedQuarter ? comparisonBasis(availableQuarters, selectedQuarter) : null;
+  const gap = basis && basis.skipped.length > 0 ? basis : null;
+  const gapLabel = (q: string) => q.replace("Q", " Q");
 
   if (quartersLoading) {
     return <LoadingState message="Loading available quarters…" />;
@@ -936,6 +946,17 @@ function FundDetail({ fundName }: { fundName: string }) {
         <div className="sm:hidden">{quarterSelect("w-full")}</div>
       </PageHeader>
 
+      {gap && (
+        <MetaLine className="block">
+          No 13F on file for{" "}
+          {gap.skipped.length === 1
+            ? gapLabel(gap.skipped[0])
+            : `${gapLabel(gap.skipped[0])} to ${gapLabel(gap.skipped[gap.skipped.length - 1])}`}
+          , so the changes shown for {quarterLabel} are measured against {gapLabel(gap.previous)}{" "}
+          and span {gap.skipped.length + 1} quarters.
+        </MetaLine>
+      )}
+
       {/* The quick read first: size, return, concentration, trading and standing. */}
       <StatGrid className="grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
         <Stat label="AUM" value={formatValue(book.aum)} />
@@ -997,7 +1018,7 @@ function FundDetail({ fundName }: { fundName: string }) {
         <div ref={movesRef} className="lg:col-span-2 lg:self-start">
           <QuarterMoves
             holdings={holdings}
-            quarterLabel={quarterLabel}
+            quarterLabel={gap ? `${gapLabel(gap.previous)} → ${quarterLabel}` : quarterLabel}
             active={positionFilter}
             onToggle={(key) => setPositionFilter((cur) => (cur === key ? "all" : key))}
           />

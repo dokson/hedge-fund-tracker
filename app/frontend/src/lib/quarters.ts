@@ -76,3 +76,25 @@ export function filingFreshness(
   if (behind === 0) return "current";
   return behind <= MAX_LATE_QUARTERS ? "late" : "stale";
 }
+
+/** The quarter at a position of the continuous quarter count (inverse of `quarterIndex`). */
+const quarterAt = (index: number) => `${Math.floor(index / 4)}Q${(index % 4) + 1}` as Quarter;
+
+/**
+ * What a fund's changes in `quarter` are measured against: its last filing before that quarter
+ * and the quarters in between with no 13F on file (a fund that skips a filing is compared with
+ * the one before, so its changes span them). Null for the fund's first quarter on file.
+ */
+export function comparisonBasis(
+  fundQuarters: readonly string[],
+  quarter: string,
+): { previous: Quarter; skipped: Quarter[] } | null {
+  const earlier = parseQuarters(fundQuarters).filter((q) => q < quarter);
+  const previous = earlier.at(-1);
+  if (previous === undefined) return null;
+  const skipped: Quarter[] = [];
+  for (let i = quarterIndex(previous) + 1; i < quarterIndex(quarter); i++) {
+    skipped.push(quarterAt(i));
+  }
+  return { previous, skipped };
+}

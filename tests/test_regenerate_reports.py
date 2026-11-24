@@ -1,8 +1,7 @@
 import unittest
-from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from app.scraper.sec_scraper import _FilingRequestError
+from app.scraper.sec_scraper import _FilingRequestError, _ListingError
 from scripts.regenerate_reports import (
     build_comparison_pairs,
     collect_filings_until_floor,
@@ -71,20 +70,35 @@ class TestCollectFilingsUntilFloor(unittest.TestCase):
 
 
 class TestFetchFundFilings(unittest.TestCase):
-    @patch("app.scraper.sec_scraper._get_request", return_value=None)
-    @patch("scripts.regenerate_reports._get_request")
-    def test_failed_filing_download_aborts_instead_of_dropping_the_period(
-        self, mock_listing, _mock_filing_request
-    ):
+    @patch("app.scraper.sec_scraper._get_request")
+    def test_failed_filing_download_aborts_instead_of_dropping_the_period(self, mock_get):
         """
         A filing EDGAR fails to serve must fail the fund: skipping it silently
         compared the next quarter against the one two quarters back.
         """
-        mock_listing.return_value = SimpleNamespace(
-            text='<a id="documentsbutton" href="/Archives/edgar/data/1/a-index.htm">Docs</a>'
-        )
+        listing = MagicMock()
+        listing.json.return_value = {
+            "filings": {
+                "recent": {
+                    "accessionNumber": ["0000000001-26-000001"],
+                    "form": ["13F-HR"],
+                    "filingDate": ["2026-05-14"],
+                    "acceptanceDateTime": ["2026-05-14T09:00:00.000Z"],
+                }
+            }
+        }
+        mock_get.side_effect = lambda url, **_: listing if "data.sec.gov" in url else None
 
         with self.assertRaises(_FilingRequestError):
+            fetch_fund_filings("0000000001")
+
+    @patch("app.scraper.sec_scraper._get_request", return_value=None)
+    def test_failed_listing_fails_the_fund_instead_of_regenerating_nothing(self, _mock_get):
+        """
+        A filing list EDGAR does not serve must fail the fund, not pass as a fund without
+        filings (zero quarters regenerated, reported as success).
+        """
+        with self.assertRaises(_ListingError):
             fetch_fund_filings("0000000001")
 
 

@@ -11,6 +11,8 @@ import { CompanyLink, FundCell, TickerLink } from "./EntityLinks";
 import * as imageInk from "@/lib/imageInk";
 // IntersectionObserver polyfill comes from src/test/setup.ts.
 
+vi.mock("@/data/curatedFavicons.json", () => ({ default: ["example.com"] }));
+
 function renderWithRouter(ui: React.ReactElement, initialPath = "/") {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },

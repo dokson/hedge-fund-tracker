@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { filingFreshness, latestUsableQuarter, quartersBehind } from "./quarters";
+import { comparisonBasis, filingFreshness, latestUsableQuarter, quartersBehind } from "./quarters";
 
 describe("quartersBehind", () => {
   it("is 0 for a fund on the board's quarter, and for one already past it", () => {
@@ -61,5 +61,33 @@ describe("latestUsableQuarter", () => {
 
   it("is null without quarters", () => {
     expect(latestUsableQuarter({})).toBeNull();
+  });
+});
+
+describe("comparisonBasis", () => {
+  it("measures a quarter against the fund's last filing before it, naming the quarters skipped", () => {
+    expect(comparisonBasis(["2025Q4", "2026Q2", "2026Q3"], "2026Q2")).toEqual({
+      previous: "2025Q4",
+      skipped: ["2026Q1"],
+    });
+  });
+
+  it("skips nothing between consecutive filings, across a year boundary too", () => {
+    expect(comparisonBasis(["2025Q4", "2026Q1"], "2026Q1")).toEqual({
+      previous: "2025Q4",
+      skipped: [],
+    });
+  });
+
+  it("lists every quarter of a longer gap, oldest first", () => {
+    expect(comparisonBasis(["2025Q2", "2026Q1"], "2026Q1")?.skipped).toEqual(["2025Q3", "2025Q4"]);
+  });
+
+  it("does not depend on the order the quarters are listed in", () => {
+    expect(comparisonBasis(["2026Q2", "2025Q4"], "2026Q2")?.previous).toBe("2025Q4");
+  });
+
+  it("is null for the fund's first quarter on file, whose basis is not in the database", () => {
+    expect(comparisonBasis(["2025Q4", "2026Q2"], "2025Q4")).toBeNull();
   });
 });

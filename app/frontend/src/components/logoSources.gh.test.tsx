@@ -12,6 +12,8 @@ vi.mock("@/lib/config", async (importOriginal) => ({
   IS_GH_PAGES_MODE: true,
   CLOUDINARY_CLOUD_NAME: "demo",
 }));
+vi.mock("@/data/curatedFavicons.json", () => ({ default: ["kopernikglobal.com"] }));
+vi.mock("@/data/curatedLogos.json", () => ({ default: ["IRLA"] }));
 
 import { CompanyLogo } from "./CompanyLogo";
 import { FundLogo } from "./FundLogo";
@@ -30,6 +32,20 @@ describe("logo sources on GH Pages", () => {
     expect(fund).toHaveLength(3);
     expect(fund[1]).toContain("res.cloudinary.com/demo/image/fetch/");
     expect(fund[2]).toBe("https://icon.horse/icon/kopernikglobal.com");
+  });
+
+  it("tries a stock's uploaded logo first, before the FMP sources it stands in for", () => {
+    const [curated, cdn, direct] = buildLogoUrls("IRLA", 40);
+    expect(curated).toBe("https://res.cloudinary.com/demo/image/upload/stocks/logos/IRLA.png");
+    expect(cdn).toContain("res.cloudinary.com/demo/image/fetch/");
+    expect(direct).toBe("https://images.financialmodelingprep.com/symbol/IRLA.png");
+  });
+
+  it("never asks Cloudinary for a curated favicon the manifest does not list", () => {
+    const fund = buildFaviconUrls("https://www.uncurated.example", 28);
+    expect(fund).toHaveLength(2);
+    expect(fund.some((url) => url.includes("/image/upload/"))).toBe(false);
+    expect(fund[1]).toBe("https://icon.horse/icon/uncurated.example");
   });
 
   it("falls back to the original logo when the CDN refuses, not to the monogram", () => {
